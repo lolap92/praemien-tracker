@@ -22,12 +22,14 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect
 
 from .config import DATABASE_URL, DB_BACKUP_PATH, DB_PATH
-from .database import engine
+from .database import SessionLocal, engine
 from .routers import completeness, deals, overview, todos
+from .seed import import_seed_data
 from .templating import STATIC_DIR
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("praemien_tracker")
+logger.setLevel(logging.INFO)
 
 APP_DIR = Path(__file__).resolve().parent
 MIGRATIONS_DIR = APP_DIR.parent / "migrations"
@@ -43,22 +45,27 @@ def _alembic_config() -> AlembicConfig:
 
 def run_migrations() -> None:
     db_existed = DB_PATH.exists()
+    cfg = _alembic_config()
 
     if db_existed:
         shutil.copy2(DB_PATH, DB_BACKUP_PATH)
         logger.info("Sicherheitskopie erstellt: %s", DB_BACKUP_PATH)
 
-    cfg = _alembic_config()
-
-    if db_existed:
         inspector = inspect(engine)
         if "alembic_version" not in inspector.get_table_names():
             logger.info("Bestehende Datenbank ohne Versionsstand - markiere als Baseline (head).")
             command.stamp(cfg, "head")
             return
 
+        command.upgrade(cfg, "head")
+        logger.info("Migrationen angewendet, Datenbank auf aktuellem Stand.")
+        return
+
     command.upgrade(cfg, "head")
-    logger.info("Migrationen angewendet, Datenbank auf aktuellem Stand.")
+    logger.info("Neue Datenbank angelegt, Schema auf aktuellem Stand.")
+
+    with SessionLocal() as db:
+        import_seed_data(db)
 
 
 def create_app() -> FastAPI:

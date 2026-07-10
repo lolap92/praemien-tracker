@@ -14,4 +14,6 @@ DB_PATH = DATA_DIR / "praemien.db"
 DB_BACKUP_PATH = DATA_DIR / "praemien.db.bak"
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 
+SEED_PATH = DATA_DIR / "seed-data.json"
+
 PORT = int(os.environ.get("PORT", "8000"))

@@ -7,5 +7,6 @@ venv/
 praemien_tracker/app/data/
 *.db
 *.db.bak
+seed-data.json
 
 .DS_Store

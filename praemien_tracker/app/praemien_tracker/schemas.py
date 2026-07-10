@@ -39,10 +39,20 @@ class DealImport(BaseModel):
     inhaber: str
     kontonummer: Optional[str] = None
     kuendbar_ab: Optional[date] = None
+    gekuendigt: bool = False
+    gekuendigt_im_monat: Optional[str] = None
+    kuendigung_bestaetigt: bool = False
     kommentar: Optional[str] = None
     freibetrag: Optional[Decimal] = None
+    praemien_auf_sparkonto: Optional[bool] = None
     zugangsdaten_gespeichert: bool = False
     praemien: list[PraemieIn] = Field(default_factory=list)
     bedingungen: list[BedingungIn] = Field(default_factory=list)
     urls: list[UrlIn] = Field(default_factory=list)
     aufgaben: list[AufgabeIn] = Field(default_factory=list)
+
+
+class SeedData(BaseModel):
+    schema_version: int
+    hinweis: Optional[str] = None
+    deals: list[DealImport] = Field(default_factory=list)
