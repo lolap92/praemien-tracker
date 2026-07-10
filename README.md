@@ -56,12 +56,15 @@ praemien-tracker/
 
 Wer bereits bereinigte Daten hat, legt **vor dem ersten Start** eine
 `seed-data.json` (reiner Text, siehe `schemas.SeedData`/`DealImport` für das
-Format) nach `/addon_configs/<slug>_praemien_tracker/seed-data.json` (z. B.
-über die Samba- oder Terminal/SSH-Add-ons). Beim ersten Start - wenn noch
-keine `praemien.db` existiert - baut die App daraus die Datenbank auf und
-stempelt die Schema-Baseline. Bei jedem weiteren Start ist die Datenbank
-bereits vorhanden, der Seed-Import läuft dann nicht erneut (siehe
-`praemien_tracker/app/praemien_tracker/seed.py`).
+Format) in den Add-on-Konfigurationsordner. Der ist z. B. über die
+Samba-Freigabe erreichbar unter `\\<HA-IP>\addon_configs\<hash>_praemien_tracker\`
+(der Ordner erscheint dort, sobald das Add-on einmal mit der aktuellen
+Version gestartet wurde) oder über ein Terminal/SSH-Add-on unter
+`/addon_configs/<hash>_praemien_tracker/seed-data.json`. Beim ersten Start
+- wenn noch keine `praemien.db` existiert - baut die App daraus die
+Datenbank auf und stempelt die Schema-Baseline. Bei jedem weiteren Start
+ist die Datenbank bereits vorhanden, der Seed-Import läuft dann nicht
+erneut (siehe `praemien_tracker/app/praemien_tracker/seed.py`).
 
 `seed-data.json` enthält private Daten und gehört **nicht** ins Repo -
 sie ist in `.gitignore` ausgeschlossen und verbleibt ausschließlich auf
@@ -83,6 +86,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 export DATA_DIR=./data
+export CONFIG_DIR=./config
 uvicorn praemien_tracker.main:app --reload --port 8000
 ```
 

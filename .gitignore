@@ -5,6 +5,7 @@ venv/
 *.egg-info/
 
 praemien_tracker/app/data/
+praemien_tracker/app/config/
 *.db
 *.db.bak
 seed-data.json
