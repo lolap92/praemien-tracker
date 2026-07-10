@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1
+
+- Fix: `/deals/{id}/kuendigung-hinweis` akzeptiert jetzt auch JSON-Bodies
+  (zusätzlich zu normalen Formulardaten).
+
 ## 1.1.0
 
 - Neues Feld "Kündigung Anweisungen" je Deal (Freitext + optionaler Link,
