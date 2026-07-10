@@ -24,8 +24,7 @@ praemien-tracker/
 ├── repository.yaml          # HA-Add-on-Repository-Metadaten
 └── praemien_tracker/        # das eigentliche Add-on
     ├── config.yaml          # Add-on-Manifest (Ingress, Architekturen, …)
-    ├── build.yaml           # Basis-Images je Architektur
-    ├── Dockerfile
+    ├── Dockerfile           # FROM python:3.12-slim-bookworm (multi-arch)
     ├── run.sh
     ├── DOCS.md              # wird in der HA-UI als Add-on-Doku angezeigt
     └── app/
