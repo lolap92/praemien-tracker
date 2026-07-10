@@ -16,6 +16,7 @@ from .models import Aufgabe, Deal
 
 STATUS_BEDINGUNGEN = "bedingungen"
 STATUS_PRAEMIE_WARTEN = "praemie_warten"
+STATUS_WARTET_AUF_KUENDIGUNG = "wartet_auf_kuendigung"
 STATUS_KUENDIGEN = "kuendigen"
 STATUS_BESTAETIGUNG_WARTEN = "bestaetigung_warten"
 STATUS_ABGESCHLOSSEN = "abgeschlossen"
@@ -23,6 +24,7 @@ STATUS_ABGESCHLOSSEN = "abgeschlossen"
 STATUS_ORDER = [
     STATUS_BEDINGUNGEN,
     STATUS_PRAEMIE_WARTEN,
+    STATUS_WARTET_AUF_KUENDIGUNG,
     STATUS_KUENDIGEN,
     STATUS_BESTAETIGUNG_WARTEN,
     STATUS_ABGESCHLOSSEN,
@@ -31,6 +33,7 @@ STATUS_ORDER = [
 STATUS_LABELS = {
     STATUS_BEDINGUNGEN: "Bedingungen",
     STATUS_PRAEMIE_WARTEN: "Auf Prämie warten",
+    STATUS_WARTET_AUF_KUENDIGUNG: "Auf Kündigung warten",
     STATUS_KUENDIGEN: "Kündigen",
     STATUS_BESTAETIGUNG_WARTEN: "Bestätigung warten",
     STATUS_ABGESCHLOSSEN: "Abgeschlossen",
@@ -59,12 +62,16 @@ def ist_kuendbar(deal: Deal, heute: datetime.date | None = None) -> bool:
 
 
 def status(deal: Deal) -> str:
-    """Fünfstufige Pipeline, siehe Konzept Abschnitt 6."""
+    """Sechsstufige Pipeline (Konzept Abschnitt 6, erweitert um 'Auf
+    Kündigung warten' für den Fall, dass alles erledigt ist, aber
+    kuendbar_ab noch in der Zukunft liegt)."""
     if not bedingungen_erfuellt(deal):
         return STATUS_BEDINGUNGEN
     if not alle_praemien_erhalten(deal):
         return STATUS_PRAEMIE_WARTEN
     if not deal.gekuendigt:
+        if not ist_kuendbar(deal):
+            return STATUS_WARTET_AUF_KUENDIGUNG
         return STATUS_KUENDIGEN
     if not deal.kuendigung_bestaetigt:
         return STATUS_BESTAETIGUNG_WARTEN
@@ -116,8 +123,7 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
                     text += f" – erwartet {p.auszahlung_erwartet}"
                 todos.append(Todo("Auf Prämie warten", text, deal))
     elif s == STATUS_KUENDIGEN:
-        if ist_kuendbar(deal, heute):
-            todos.append(Todo("Kündigen", f"{bezeichnung}: jetzt kündbar – kündigen", deal, deal.kuendbar_ab))
+        todos.append(Todo("Kündigen", f"{bezeichnung}: jetzt kündbar – kündigen", deal, deal.kuendbar_ab))
     elif s == STATUS_BESTAETIGUNG_WARTEN:
         todos.append(Todo("Bestätigung warten", f"{bezeichnung}: Kündigung bestätigen lassen", deal))
 

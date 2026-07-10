@@ -37,7 +37,7 @@
       <div class="betraege">
         <span class="chip status-{{ zeile.status }}">{{ status_labels[zeile.status] }}</span>
         <div class="track">
-          {% for i in range(4) %}
+          {% for i in range(5) %}
           <i class="{{ 'done' if i < zeile.status_index else ('on' if i == zeile.status_index else '') }}"></i>
           {% endfor %}
         </div>

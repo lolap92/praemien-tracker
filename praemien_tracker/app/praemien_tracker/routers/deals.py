@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import StreamingResponse
@@ -230,6 +231,26 @@ async def deal_kuendigung_hinweis_update(request: Request, deal_id: int, db: Ses
     if deal:
         deal.kuendigung_hinweis = (daten.get("kuendigung_hinweis") or "").strip() or None
         deal.kuendigung_hinweis_url = (daten.get("kuendigung_hinweis_url") or "").strip() or None
+        db.commit()
+    return redirect(request, f"deals/{deal_id}/edit")
+
+
+@router.post("/deals/{deal_id}/stornieren")
+def deal_stornieren(request: Request, deal_id: int, db: Session = Depends(get_db)):
+    """Storniert einen Deal: alle Bedingungen gelten als erfüllt, noch nicht
+    erhaltene Prämien werden auf 0 gesetzt und als erhalten markiert, der
+    Deal gilt als gekündigt und bestätigt - der Status springt damit
+    unabhängig vom bisherigen Stand auf 'Abgeschlossen'."""
+    deal = db.get(Deal, deal_id)
+    if deal:
+        for b in deal.bedingungen:
+            b.erfuellt = True
+        for p in deal.praemien:
+            if not p.erhalten:
+                p.betrag = Decimal("0")
+                p.erhalten = True
+        deal.gekuendigt = True
+        deal.kuendigung_bestaetigt = True
         db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
 

@@ -251,6 +251,14 @@
   </form>
 </div>
 
+{% if status != "abgeschlossen" %}
+<div class="card">
+  <form action="deals/{{ deal.id }}/stornieren" method="post" onsubmit="return confirm('Deal stornieren? Noch nicht erhaltene Prämien werden auf 0 gesetzt, offene Bedingungen als erfüllt markiert und der Deal als abgeschlossen/gekündigt/bestätigt gekennzeichnet. Das lässt sich nur manuell rückgängig machen.');">
+    <button type="submit" class="secondary">Deal stornieren (auf abgeschlossen setzen)</button>
+  </form>
+</div>
+{% endif %}
+
 <div class="card">
   <form action="deals/{{ deal.id }}/delete" method="post" onsubmit="return confirm('Deal wirklich löschen?');">
     <button type="submit" class="danger">Deal löschen</button>

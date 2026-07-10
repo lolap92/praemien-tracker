@@ -28,35 +28,54 @@
   </form>
 </div>
 
-{% for kategorie in kategorie_reihenfolge %}
-  {% if gruppen.get(kategorie) %}
-  {% set slug = kategorie_slugs[kategorie] %}
-  <div class="card todo-gruppe">
-    <div class="todo-gruppe-head">
-      <div class="tag tag-{{ slug }}"></div>
-      <h3>{{ kategorie }}</h3>
-      <span class="num">{{ gruppen[kategorie] | length }}</span>
-    </div>
-    {% for todo in gruppen[kategorie] %}
-    <div class="todo-item cat-{{ slug }}">
-      <div class="check"></div>
-      <div class="ti-main">
-        {% if todo.deal %}
-        <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
-        {% else %}
-        <div class="t">{{ todo.text }}</div>
-        {% endif %}
-        {% if todo.faellig_bis %}
-        <div class="frist {{ 'ueberfaellig' if todo.ueberfaellig else '' }}">Fällig bis {{ todo.faellig_bis | datum }}</div>
-        {% endif %}
-      </div>
-    </div>
+{% if gruppen %}
+<div class="todo-tabs">
+  {% set ns = namespace(erster=true) %}
+  {% for kategorie in kategorie_reihenfolge %}
+    {% if gruppen.get(kategorie) %}
+    <input type="radio" name="todotab" id="todotab-{{ kategorie_slugs[kategorie] }}" {{ "checked" if ns.erster else "" }}>
+    {% set ns.erster = false %}
+    {% endif %}
+  {% endfor %}
+
+  <div class="todo-tabs-nav">
+    {% for kategorie in kategorie_reihenfolge %}
+      {% if gruppen.get(kategorie) %}
+      <label for="todotab-{{ kategorie_slugs[kategorie] }}">{{ kategorie }} <span class="num">{{ gruppen[kategorie] | length }}</span></label>
+      {% endif %}
     {% endfor %}
   </div>
-  {% endif %}
-{% endfor %}
 
-{% if not gruppen %}
+  <div class="todo-panels">
+    {% for kategorie in kategorie_reihenfolge %}
+      {% if gruppen.get(kategorie) %}
+      {% set slug = kategorie_slugs[kategorie] %}
+      <div class="card todo-gruppe" id="panel-{{ slug }}">
+        <div class="todo-gruppe-head">
+          <div class="tag tag-{{ slug }}"></div>
+          <h3>{{ kategorie }}</h3>
+        </div>
+        {% for todo in gruppen[kategorie] %}
+        <div class="todo-item cat-{{ slug }}">
+          <div class="check"></div>
+          <div class="ti-main">
+            {% if todo.deal %}
+            <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+            {% else %}
+            <div class="t">{{ todo.text }}</div>
+            {% endif %}
+            {% if todo.faellig_bis %}
+            <div class="frist {{ 'ueberfaellig' if todo.ueberfaellig else '' }}">Fällig bis {{ todo.faellig_bis | datum }}</div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% else %}
 <div class="card">
   <p class="leer">Keine offenen ToDos – alles erledigt.</p>
 </div>

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0
+
+- Neuer Pipeline-Status "Auf Kündigung warten": greift, wenn alles erledigt
+  ist, aber "Kündbar ab" noch in der Zukunft liegt.
+- Deals lassen sich jetzt stornieren (auf Abgeschlossen setzen) - offene
+  Bedingungen gelten dann als erfüllt, noch nicht erhaltene Prämien werden
+  auf 0 gesetzt.
+- "Zu erledigen" zeigt die ToDo-Kategorien jetzt als Tabs statt
+  untereinander.
+
 ## 1.2.0
 
 - Automatischer Vorschlag für "Kündigung Anweisungen" bei jedem Start:
