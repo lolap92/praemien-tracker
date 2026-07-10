@@ -20,11 +20,14 @@ automatisch daraus - sie werden nirgends redundant gepflegt.
 ## Startdaten einspielen (optional, einmalig)
 
 Wer bereits bereinigte Daten besitzt (z. B. aus einer Excel-Migration),
-legt einmalig eine `seed-data.json` in das Add-on-Datenverzeichnis
-(erreichbar z. B. über die Samba- oder SSH/Terminal-Add-ons):
+legt einmalig eine `seed-data.json` in den Add-on-Konfigurationsordner
+(erreichbar z. B. über die Samba-Freigabe oder ein SSH/Terminal-Add-on).
+Der Ordnername folgt dem Muster `<hash>_praemien_tracker` (der Hash steht
+für das Repository) und erscheint unter `addon_configs`, sobald das Add-on
+einmal gestartet wurde:
 
 ```
-/addon_configs/<slug>_praemien_tracker/seed-data.json
+/addon_configs/<hash>_praemien_tracker/seed-data.json
 ```
 
 Die Datei muss **vor dem ersten Start** des Add-ons dort liegen. Existiert
