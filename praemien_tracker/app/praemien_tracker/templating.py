@@ -23,5 +23,14 @@ def format_date(value) -> str:
     return value.strftime("%d.%m.%Y")
 
 
+def format_eur_ganz(value) -> str:
+    """Ganzzahlige Darstellung mit Tausenderpunkt, ohne Nachkommastellen (für große Kennzahlen)."""
+    if value is None:
+        return "–"
+    formatted = f"{float(value):,.0f}"
+    return formatted.replace(",", ".")
+
+
 templates.env.filters["eur"] = format_eur
+templates.env.filters["eur_ganz"] = format_eur_ganz
 templates.env.filters["datum"] = format_date

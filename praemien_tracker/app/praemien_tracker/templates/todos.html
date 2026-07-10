@@ -30,15 +30,21 @@
 
 {% for kategorie in kategorie_reihenfolge %}
   {% if gruppen.get(kategorie) %}
+  {% set slug = kategorie_slugs[kategorie] %}
   <div class="card todo-gruppe">
-    <h3>{{ kategorie }}</h3>
+    <div class="todo-gruppe-head">
+      <div class="tag tag-{{ slug }}"></div>
+      <h3>{{ kategorie }}</h3>
+      <span class="num">{{ gruppen[kategorie] | length }}</span>
+    </div>
     {% for todo in gruppen[kategorie] %}
-    <div class="todo-item">
-      <div style="flex:1;">
+    <div class="todo-item cat-{{ slug }}">
+      <div class="check"></div>
+      <div class="ti-main">
         {% if todo.deal %}
-        <a href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+        <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
         {% else %}
-        {{ todo.text }}
+        <div class="t">{{ todo.text }}</div>
         {% endif %}
         {% if todo.faellig_bis %}
         <div class="frist {{ 'ueberfaellig' if todo.ueberfaellig else '' }}">Fällig bis {{ todo.faellig_bis | datum }}</div>
@@ -62,7 +68,7 @@
   <ul class="unterliste">
     {% for a in erledigte_aufgaben %}
     <li>
-      <span style="flex:1; text-decoration: line-through; color: var(--ink-muted);">{{ a.beschreibung }}</span>
+      <span style="flex:1; text-decoration: line-through; color: var(--ink-faint);">{{ a.beschreibung }}</span>
       <form class="inline" action="todos/aufgaben/{{ a.id }}/toggle" method="post">
         <button type="submit" class="secondary">Wieder öffnen</button>
       </form>

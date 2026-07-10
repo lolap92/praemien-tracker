@@ -12,6 +12,15 @@ from ..templating import templates
 
 router = APIRouter()
 
+KATEGORIE_SLUGS = {
+    "Manuelle Aufgaben": "manuell",
+    "Bedingungen": "bedingungen",
+    "Auf Prämie warten": "praemie",
+    "Kündigen": "kuendigen",
+    "Bestätigung warten": "bestaetigung",
+    "Zugangsdaten": "zugangsdaten",
+}
+
 
 @router.get("/todos")
 def todos_view(request: Request, db: Session = Depends(get_db)):
@@ -44,6 +53,7 @@ def todos_view(request: Request, db: Session = Depends(get_db)):
         {
             "request": request,
             "gruppen": gruppen,
+            "kategorie_slugs": KATEGORIE_SLUGS,
             "kategorie_reihenfolge": [
                 "Manuelle Aufgaben",
                 "Bedingungen",

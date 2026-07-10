@@ -2,26 +2,35 @@
 {% block title %}Vollständigkeit – Prämien-Tracker{% endblock %}
 {% block content %}
 
-<div class="card">
-  <p>{{ anzahl_vollstaendig }} von {{ anzahl_gesamt }} Deals sind vollständig.</p>
+<div class="card hero" style="padding: 1rem;">
+  <div class="card-label">Gepflegt</div>
+  <div class="total" style="font-size: 1.9rem;">{{ anzahl_vollstaendig }}<span class="cur">/ {{ anzahl_gesamt }} Deals</span></div>
+  {% set anteil = (anzahl_vollstaendig / anzahl_gesamt * 100) if anzahl_gesamt else 0 %}
+  <div class="progress"><div class="fill" style="width: {{ anteil }}%"></div></div>
 </div>
 
 {% if zeilen %}
+<div class="card-label">{{ zeilen | length }} Deal{{ "s" if zeilen | length != 1 else "" }} mit offenen Feldern</div>
 {% for zeile in zeilen %}
-<div class="card">
-  <h3><a href="deals/{{ zeile.deal.id }}/edit">{{ zeile.deal.bank.name }} · {{ zeile.deal.kontoart }} · {{ zeile.deal.inhaber.name }}</a></h3>
-  <ul class="unterliste">
+<div class="deal-zeile" style="margin-bottom: 0.6rem;">
+  <div class="titel">
+    <div>
+      <div class="bank"><a href="deals/{{ zeile.deal.id }}/edit">{{ zeile.deal.bank.name }}</a></div>
+      <div class="meta">{{ zeile.deal.kontoart }} · {{ zeile.deal.inhaber.name }}</div>
+    </div>
+  </div>
+  <div class="miss">
     {% for feld in zeile.offene_felder %}
-    <li>
-      <span style="flex:1;">{{ feld.label }}</span>
-      <a class="button secondary" href="deals/{{ zeile.deal.id }}/edit#{{ feld.feld }}">Befüllen</a>
-      <form action="deals/{{ zeile.deal.id }}/skip-field" method="post">
+    <span class="mf">
+      {{ feld.label }}
+      <a href="deals/{{ zeile.deal.id }}/edit#{{ feld.feld }}" class="plus" title="Befüllen">+</a>
+      <form action="deals/{{ zeile.deal.id }}/skip-field" method="post" style="display:inline;">
         <input type="hidden" name="feld" value="{{ feld.feld }}">
-        <button type="submit" class="secondary">Nicht nötig</button>
+        <button type="submit" class="x" title="Nicht nötig">×</button>
       </form>
-    </li>
+    </span>
     {% endfor %}
-  </ul>
+  </div>
 </div>
 {% endfor %}
 {% else %}

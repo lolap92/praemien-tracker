@@ -20,23 +20,62 @@
   <a class="button" href="deals/new">+ Neuer Deal</a>
 </form>
 
-<div class="card">
-  {% if zeilen %}
+{% if zeilen %}
+
+<div class="deals-karten">
   <ul class="deal-liste">
     {% for zeile in zeilen %}
     <a class="deal-zeile" href="deals/{{ zeile.deal.id }}/edit">
       <div class="titel">
-        <span class="bank">{{ zeile.deal.bank.name }} · {{ zeile.deal.kontoart }}</span>
-        <span class="chip status-{{ zeile.status }}">{{ status_labels[zeile.status] }}</span>
+        <div>
+          <div class="bank">{{ zeile.deal.bank.name }}</div>
+          <div class="meta">{{ zeile.deal.kontoart }} · {{ zeile.deal.inhaber.name }}{% if zeile.deal.kuendbar_ab %} · kündbar ab {{ zeile.deal.kuendbar_ab | datum }}{% endif %}</div>
+        </div>
+        <div class="geld d-amt">{{ zeile.kennzahlen.gesamt | eur }}</div>
       </div>
-      <div class="meta">{{ zeile.deal.inhaber.name }}{% if zeile.deal.kuendbar_ab %} · kündbar ab {{ zeile.deal.kuendbar_ab | datum }}{% endif %}</div>
-      <div class="betraege geld">Gesamt {{ zeile.kennzahlen.gesamt | eur }} · Erhalten {{ zeile.kennzahlen.erhalten | eur }} · Offen {{ zeile.kennzahlen.offen | eur }}</div>
+      <div class="betraege">
+        <span class="chip status-{{ zeile.status }}">{{ status_labels[zeile.status] }}</span>
+        <div class="track">
+          {% for i in range(4) %}
+          <i class="{{ 'done' if i < zeile.status_index else ('on' if i == zeile.status_index else '') }}"></i>
+          {% endfor %}
+        </div>
+      </div>
     </a>
     {% endfor %}
   </ul>
-  {% else %}
-  <p class="leer">Keine Deals gefunden.</p>
-  {% endif %}
 </div>
+
+<div class="card deals-tabelle">
+  <div class="tabelle-wrapper">
+    <table class="pc-tabelle">
+      <thead>
+        <tr>
+          <th>Bank</th><th>Konto</th><th>Inhaber</th>
+          <th>Gesamt</th><th>Offen</th><th>Kündbar ab</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for zeile in zeilen %}
+        <tr onclick="window.location='deals/{{ zeile.deal.id }}/edit'" style="cursor:pointer;">
+          <td class="bank">{{ zeile.deal.bank.name }}</td>
+          <td>{{ zeile.deal.kontoart }}</td>
+          <td>{{ zeile.deal.inhaber.name }}</td>
+          <td class="geld">{{ zeile.kennzahlen.gesamt | eur }}</td>
+          <td class="geld">{{ zeile.kennzahlen.offen | eur }}</td>
+          <td>{{ zeile.deal.kuendbar_ab | datum if zeile.deal.kuendbar_ab else "–" }}</td>
+          <td><span class="chip status-{{ zeile.status }}">{{ status_labels[zeile.status] }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <p class="leer">Keine Deals gefunden.</p>
+</div>
+{% endif %}
 
 {% endblock %}

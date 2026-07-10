@@ -36,6 +36,8 @@ STATUS_LABELS = {
     STATUS_ABGESCHLOSSEN: "Abgeschlossen",
 }
 
+STATUS_INDEX = {s: i for i, s in enumerate(STATUS_ORDER)}
+
 
 def bedingungen_erfuellt(deal: Deal) -> bool:
     """Ein Deal gilt als 'Bedingungen erfüllt', wenn alle Bedingungen abgehakt
