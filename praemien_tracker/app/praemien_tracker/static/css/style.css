@@ -14,6 +14,7 @@
 
   --st-cond: #6b7a85;
   --st-wait: #b9822f;
+  --st-pending-cancel: #7c6a9e;
   --st-cancel: #b4462a;
   --st-confirm: #3d5a8a;
   --st-done: #1b9e77;
@@ -266,6 +267,9 @@ main {
 .pipe-bar-praemie_warten {
   background: var(--st-wait);
 }
+.pipe-bar-wartet_auf_kuendigung {
+  background: var(--st-pending-cancel);
+}
 .pipe-bar-kuendigen {
   background: var(--st-cancel);
 }
@@ -361,6 +365,10 @@ main {
   color: var(--st-wait);
   background: rgba(185, 130, 47, 0.13);
 }
+.chip.status-wartet_auf_kuendigung {
+  color: var(--st-pending-cancel);
+  background: rgba(124, 106, 158, 0.13);
+}
 .chip.status-kuendigen {
   color: var(--st-cancel);
   background: rgba(180, 70, 42, 0.12);
@@ -372,6 +380,76 @@ main {
 .chip.status-abgeschlossen {
   color: var(--st-done);
   background: rgba(27, 158, 119, 0.13);
+}
+
+/* ---------- todo tabs (reines CSS, kein JS) ---------- */
+
+.todo-tabs input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.todo-tabs-nav {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+.todo-tabs-nav label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 20px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  margin: 0;
+}
+
+.todo-tabs-nav label .num {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+
+.todo-panels > .todo-gruppe {
+  display: none;
+}
+
+#todotab-manuell:checked ~ .todo-tabs-nav label[for="todotab-manuell"],
+#todotab-bedingungen:checked ~ .todo-tabs-nav label[for="todotab-bedingungen"],
+#todotab-praemie:checked ~ .todo-tabs-nav label[for="todotab-praemie"],
+#todotab-kuendigen:checked ~ .todo-tabs-nav label[for="todotab-kuendigen"],
+#todotab-bestaetigung:checked ~ .todo-tabs-nav label[for="todotab-bestaetigung"],
+#todotab-zugangsdaten:checked ~ .todo-tabs-nav label[for="todotab-zugangsdaten"] {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+#todotab-manuell:checked ~ .todo-tabs-nav label[for="todotab-manuell"] .num,
+#todotab-bedingungen:checked ~ .todo-tabs-nav label[for="todotab-bedingungen"] .num,
+#todotab-praemie:checked ~ .todo-tabs-nav label[for="todotab-praemie"] .num,
+#todotab-kuendigen:checked ~ .todo-tabs-nav label[for="todotab-kuendigen"] .num,
+#todotab-bestaetigung:checked ~ .todo-tabs-nav label[for="todotab-bestaetigung"] .num,
+#todotab-zugangsdaten:checked ~ .todo-tabs-nav label[for="todotab-zugangsdaten"] .num {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+#todotab-manuell:checked ~ .todo-panels #panel-manuell,
+#todotab-bedingungen:checked ~ .todo-panels #panel-bedingungen,
+#todotab-praemie:checked ~ .todo-panels #panel-praemie,
+#todotab-kuendigen:checked ~ .todo-panels #panel-kuendigen,
+#todotab-bestaetigung:checked ~ .todo-panels #panel-bestaetigung,
+#todotab-zugangsdaten:checked ~ .todo-panels #panel-zugangsdaten {
+  display: block;
 }
 
 /* ---------- todo groups ---------- */
