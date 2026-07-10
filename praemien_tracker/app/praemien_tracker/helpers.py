@@ -60,6 +60,8 @@ def build_deal_from_import(db: Session, daten: DealImport) -> Deal:
         gekuendigt=daten.gekuendigt,
         gekuendigt_im_monat=daten.gekuendigt_im_monat,
         kuendigung_bestaetigt=daten.kuendigung_bestaetigt,
+        kuendigung_hinweis=daten.kuendigung_hinweis,
+        kuendigung_hinweis_url=daten.kuendigung_hinweis_url,
         freibetrag=daten.freibetrag,
         praemien_auf_sparkonto=daten.praemien_auf_sparkonto,
         kommentar=daten.kommentar or None,

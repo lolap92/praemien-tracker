@@ -81,6 +81,14 @@
         <input type="checkbox" id="kuendigung_bestaetigt" name="kuendigung_bestaetigt" {{ "checked" if deal.kuendigung_bestaetigt else "" }}>
         <label for="kuendigung_bestaetigt">Kündigung bestätigt</label>
       </div>
+      <div class="feld" id="kuendigung_hinweis">
+        <label for="kuendigung_hinweis">Kündigung Anweisungen</label>
+        <textarea id="kuendigung_hinweis" name="kuendigung_hinweis" placeholder="Wie kündige ich dieses Konto? (z. B. Online im Kundenportal, per Post, Formular nötig …)">{{ deal.kuendigung_hinweis or '' }}</textarea>
+      </div>
+      <div class="feld">
+        <label for="kuendigung_hinweis_url">Link zur Anleitung (optional, z. B. PDF-Formular)</label>
+        <input type="url" id="kuendigung_hinweis_url" name="kuendigung_hinweis_url" placeholder="https://…" value="{{ deal.kuendigung_hinweis_url or '' }}">
+      </div>
     </fieldset>
 
     <fieldset>
