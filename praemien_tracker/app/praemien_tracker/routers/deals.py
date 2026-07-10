@@ -46,7 +46,15 @@ def deals_list(
         q_lower = q.strip().lower()
         deals = [d for d in deals if q_lower in d.bank.name.lower()]
 
-    zeilen = [{"deal": d, "status": derived.status(d), "kennzahlen": derived.kennzahlen(d.praemien)} for d in deals]
+    zeilen = [
+        {
+            "deal": d,
+            "status": derived.status(d),
+            "status_index": derived.STATUS_INDEX[derived.status(d)],
+            "kennzahlen": derived.kennzahlen(d.praemien),
+        }
+        for d in deals
+    ]
 
     return templates.TemplateResponse(
         "deals_list.html",

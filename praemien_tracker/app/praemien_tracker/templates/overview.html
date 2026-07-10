@@ -2,60 +2,47 @@
 {% block title %}Übersicht – Prämien-Tracker{% endblock %}
 {% block content %}
 
-<div class="kennzahlen-grid">
-  <div class="kennzahl">
-    <div class="label">Gesamt</div>
-    <div class="wert geld">{{ kennzahlen.gesamt | eur }}</div>
-  </div>
-  <div class="kennzahl">
-    <div class="label">Erhalten</div>
-    <div class="wert geld">{{ kennzahlen.erhalten | eur }}</div>
-  </div>
-  <div class="kennzahl">
-    <div class="label">Offen</div>
-    <div class="wert geld">{{ kennzahlen.offen | eur }}</div>
+<div class="card hero">
+  <div class="card-label">Prämien gesamt</div>
+  <div class="total">{{ kennzahlen.gesamt | eur_ganz }}<span class="cur">€</span></div>
+  {% set anteil = (kennzahlen.erhalten / kennzahlen.gesamt * 100) if kennzahlen.gesamt else 0 %}
+  <div class="progress"><div class="fill" style="width: {{ anteil }}%"></div></div>
+  <div class="split">
+    <div class="col recv">
+      <div class="k">Schon erhalten</div>
+      <div class="v">{{ kennzahlen.erhalten | eur }}</div>
+    </div>
+    <div class="col open">
+      <div class="k">Noch offen</div>
+      <div class="v">{{ kennzahlen.offen | eur }}</div>
+    </div>
   </div>
 </div>
 
 <div class="card">
-  <h2>Pipeline</h2>
-  <div class="pipeline">
+  <div class="card-label">Pipeline · {{ anzahl_deals }} Deals</div>
+  <div class="pipe">
     {% for s in status_order %}
-    <a class="pipeline-stufe status-{{ s }}" href="deals?status={{ s }}">
-      <span class="anzahl">{{ nach_status[s] | length }}</span>
-      <span class="label">{{ status_labels[s] }}</span>
+    <a class="seg" href="deals?status={{ s }}">
+      <div class="bar pipe-bar-{{ s }}"></div>
+      <div class="cnt">{{ nach_status[s] | length }}</div>
+      <div class="nm">{{ status_labels[s] }}</div>
     </a>
     {% endfor %}
   </div>
-  <p class="meta" style="color: var(--ink-muted); font-size: 0.85rem;">{{ anzahl_deals }} Deals insgesamt</p>
 </div>
 
 <div class="card">
-  <h2>Pro Inhaber</h2>
-  <div class="tabelle-wrapper">
-    <table class="pc-tabelle">
-      <thead>
-        <tr>
-          <th>Inhaber</th>
-          <th>Deals</th>
-          <th>Gesamt</th>
-          <th>Erhalten</th>
-          <th>Offen</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for eintrag in pro_inhaber %}
-        <tr>
-          <td><a href="deals?inhaber_id={{ eintrag.inhaber.id }}">{{ eintrag.inhaber.name }}</a></td>
-          <td>{{ eintrag.anzahl_deals }}</td>
-          <td class="geld">{{ eintrag.kennzahlen.gesamt | eur }}</td>
-          <td class="geld">{{ eintrag.kennzahlen.erhalten | eur }}</td>
-          <td class="geld">{{ eintrag.kennzahlen.offen | eur }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  <div class="card-label">Pro Inhaber</div>
+  {% for eintrag in pro_inhaber %}
+  <a class="person-row" href="deals?inhaber_id={{ eintrag.inhaber.id }}">
+    <div class="who">
+      <div class="avatar">{{ eintrag.inhaber.name[0] }}</div>
+      <div class="nm">{{ eintrag.inhaber.name }}</div>
+    </div>
+    <div class="amt"><span class="o">{{ eintrag.kennzahlen.offen | eur }}</span> <span class="r">/ {{ eintrag.kennzahlen.gesamt | eur }}</span></div>
+  </a>
+  {% endfor %}
 </div>
 
 {% endblock %}

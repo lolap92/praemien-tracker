@@ -16,9 +16,10 @@
 </datalist>
 
 {% if deal %}
-<div class="card">
-  <h2>Status: <span class="chip status-{{ status }}">{{ status_labels[status] }}</span></h2>
-  <p style="color: var(--ink-muted); font-size: 0.85rem;">Automatisch berechnet aus den Fakten unten – nicht direkt änderbar.</p>
+<div class="form-status">
+  <div class="card-label">Status</div>
+  <span class="chip status-{{ status }}">{{ status_labels[status] }}</span>
+  <div class="auto">automatisch aus den Fakten berechnet – nicht direkt änderbar</div>
 </div>
 {% endif %}
 
@@ -31,8 +32,8 @@
 </div>
 {% endif %}
 
+<div class="sec-t">Konto</div>
 <div class="card">
-  <h2>Konto</h2>
   <form action="{{ 'deals/' ~ deal.id if deal else 'deals/new' }}" method="post">
     <div class="reihe">
       <div class="feld">
@@ -105,13 +106,13 @@
     </fieldset>
     {% endif %}
 
-    <button type="submit">{{ "Speichern" if deal else "Deal anlegen" }}</button>
+    <button type="submit" class="save-btn">{{ "Speichern" if deal else "Deal anlegen" }}</button>
   </form>
 </div>
 
 {% if not deal %}
+<div class="sec-t">Deal per JSON anlegen</div>
 <div class="card" id="json-import">
-  <h2>Deal per JSON anlegen</h2>
   {% if json_fehler %}
   <div class="hinweis">Konnte JSON nicht verarbeiten: {{ json_fehler }}</div>
   {% endif %}
@@ -126,8 +127,8 @@
 
 {% if deal %}
 
+<div class="sec-t">Prämien</div>
 <div class="card">
-  <h2>Prämien</h2>
   <ul class="unterliste">
     {% for p in deal.praemien %}
     <li>
@@ -163,8 +164,8 @@
   </form>
 </div>
 
+<div class="sec-t">Bedingungen</div>
 <div class="card">
-  <h2>Bedingungen</h2>
   <ul class="unterliste">
     {% for b in deal.bedingungen %}
     <li>
@@ -192,8 +193,8 @@
   </form>
 </div>
 
+<div class="sec-t">Aufgaben (frei)</div>
 <div class="card">
-  <h2>Aufgaben (frei)</h2>
   <ul class="unterliste">
     {% for a in deal.aufgaben %}
     <li>
@@ -221,8 +222,8 @@
   </form>
 </div>
 
+<div class="sec-t">Links</div>
 <div class="card">
-  <h2>Links</h2>
   <ul class="unterliste">
     {% for u in deal.urls %}
     <li>
