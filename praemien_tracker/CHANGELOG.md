@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0
+
+- Automatischer Vorschlag für "Kündigung Anweisungen" bei jedem Start:
+  recherchierte Kündigungswege für 10 Banken/Kontoarten (Bfor, Ferratum,
+  Quirion, Traders Place, BBBank, DB Max blue, Comdirect, 1822direkt,
+  C24 Bank, S Broker) werden auf noch nicht gekündigte Deals ohne eigene
+  Anweisung angewendet - bereits gesetzte oder vom Nutzer bearbeitete
+  Werte werden nie überschrieben (`kuendigung_hinweise.py`).
+
 ## 1.1.1
 
 - Fix: `/deals/{id}/kuendigung-hinweis` akzeptiert jetzt auch JSON-Bodies
