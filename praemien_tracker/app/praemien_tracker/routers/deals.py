@@ -219,17 +219,17 @@ def deal_update(
 
 
 @router.post("/deals/{deal_id}/kuendigung-hinweis")
-def deal_kuendigung_hinweis_update(
-    request: Request,
-    deal_id: int,
-    kuendigung_hinweis: str = Form(""),
-    kuendigung_hinweis_url: str = Form(""),
-    db: Session = Depends(get_db),
-):
+async def deal_kuendigung_hinweis_update(request: Request, deal_id: int, db: Session = Depends(get_db)):
+    """Setzt nur dieses eine Feld. Nimmt sowohl normale Formulardaten als auch
+    einen JSON-Body entgegen (z. B. für programmatisches Befüllen)."""
+    if request.headers.get("content-type", "").startswith("application/json"):
+        daten = await request.json()
+    else:
+        daten = await request.form()
     deal = db.get(Deal, deal_id)
     if deal:
-        deal.kuendigung_hinweis = kuendigung_hinweis.strip() or None
-        deal.kuendigung_hinweis_url = kuendigung_hinweis_url.strip() or None
+        deal.kuendigung_hinweis = (daten.get("kuendigung_hinweis") or "").strip() or None
+        deal.kuendigung_hinweis_url = (daten.get("kuendigung_hinweis_url") or "").strip() or None
         db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
 
