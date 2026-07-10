@@ -5,9 +5,15 @@ betrieben als Home-Assistant-Add-on. Details zu Anforderungen und
 Architekturentscheidungen siehe das ursprüngliche Konzeptdokument.
 
 **Grundprinzip:** Der Nutzer erfasst nur Fakten (Bank, Kontoart, Inhaber,
-Prämien, Bedingungen, Kündigungsdaten). Status, Kennzahlen und die
-ToDo-Liste werden von der App aus diesen Fakten abgeleitet und nirgends
-redundant gespeichert.
+Prämien, Bedingungen, Kündigungsdaten, Kündigung-Anweisungen). Status,
+Kennzahlen und die ToDo-Liste werden von der App aus diesen Fakten
+abgeleitet und nirgends redundant gespeichert.
+
+Jeder Deal kann eine **Kündigung-Anweisung** tragen (Freitext + optionaler
+Link, z. B. zu einem PDF-Kündigungsformular) - hilfreich, wenn der genaue
+Kündigungsweg pro Bank nicht offensichtlich ist. Über **Deals → Export**
+lässt sich der komplette Datenbestand als Excel-Datei (mehrere Sheets:
+Deals, Prämien, Bedingungen, Aufgaben, Links) herunterladen.
 
 ## Stack
 

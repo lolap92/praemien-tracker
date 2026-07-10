@@ -53,6 +53,8 @@ class Deal(Base):
     kontonummer: Mapped[str | None] = mapped_column(String(50), nullable=True)
     zugangsdaten_gespeichert: Mapped[bool] = mapped_column(Boolean, default=False)
     kommentar: Mapped[str | None] = mapped_column(Text, nullable=True)
+    kuendigung_hinweis: Mapped[str | None] = mapped_column(Text, nullable=True)
+    kuendigung_hinweis_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # JSON-Liste von Feldnamen, die bewusst als "nicht nötig" abgehakt wurden
     uebersprungene_felder: Mapped[str | None] = mapped_column(Text, nullable=True)
     erstellt_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())

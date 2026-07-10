@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0
+
+- Neues Feld "Kündigung Anweisungen" je Deal (Freitext + optionaler Link,
+  z. B. zu einem PDF-Kündigungsformular).
+- Excel-Export aller Deals (Deals → Export) mit Sheets für Deals, Prämien,
+  Bedingungen, Aufgaben und Links.
+
 ## 1.0.2
 
 - Redesign gemäß GUI-Mockups: Design-System (Farben, Space Grotesk / Inter /

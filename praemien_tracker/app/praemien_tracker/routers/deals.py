@@ -3,11 +3,13 @@ from __future__ import annotations
 import json
 
 from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, joinedload
 
 from .. import derived
 from ..database import get_db
+from ..export import build_workbook
 from ..helpers import build_deal_from_import, get_or_create_bank, get_or_create_inhaber, parse_date, parse_decimal
 from ..ingress import redirect
 from ..models import Aufgabe, Bank, Bedingung, Deal, DealUrl, Inhaber, Praemie
@@ -68,6 +70,17 @@ def deals_list(
             "filter_status": status,
             "filter_q": q or "",
         },
+    )
+
+
+@router.get("/deals/export.xlsx")
+def deals_export(db: Session = Depends(get_db)):
+    deals = _deal_query(db).join(Bank).order_by(Bank.name, Deal.kontoart).all()
+    buffer = build_workbook(deals)
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=praemien-tracker-export.xlsx"},
     )
 
 
@@ -178,6 +191,8 @@ def deal_update(
     gekuendigt: str = Form(""),
     gekuendigt_im_monat: str = Form(""),
     kuendigung_bestaetigt: str = Form(""),
+    kuendigung_hinweis: str = Form(""),
+    kuendigung_hinweis_url: str = Form(""),
     freibetrag: str = Form(""),
     praemien_auf_sparkonto: str = Form(""),
     kommentar: str = Form(""),
@@ -193,11 +208,29 @@ def deal_update(
     deal.gekuendigt = gekuendigt == "on"
     deal.gekuendigt_im_monat = gekuendigt_im_monat.strip() or None
     deal.kuendigung_bestaetigt = kuendigung_bestaetigt == "on"
+    deal.kuendigung_hinweis = kuendigung_hinweis.strip() or None
+    deal.kuendigung_hinweis_url = kuendigung_hinweis_url.strip() or None
     deal.freibetrag = parse_decimal(freibetrag)
     deal.praemien_auf_sparkonto = (praemien_auf_sparkonto == "on") if praemien_auf_sparkonto else None
     deal.kommentar = kommentar.strip() or None
     deal.zugangsdaten_gespeichert = zugangsdaten_gespeichert == "on"
     db.commit()
+    return redirect(request, f"deals/{deal_id}/edit")
+
+
+@router.post("/deals/{deal_id}/kuendigung-hinweis")
+def deal_kuendigung_hinweis_update(
+    request: Request,
+    deal_id: int,
+    kuendigung_hinweis: str = Form(""),
+    kuendigung_hinweis_url: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    deal = db.get(Deal, deal_id)
+    if deal:
+        deal.kuendigung_hinweis = kuendigung_hinweis.strip() or None
+        deal.kuendigung_hinweis_url = kuendigung_hinweis_url.strip() or None
+        db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
 
 

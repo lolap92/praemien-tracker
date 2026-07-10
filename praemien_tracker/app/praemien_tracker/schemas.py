@@ -42,6 +42,8 @@ class DealImport(BaseModel):
     gekuendigt: bool = False
     gekuendigt_im_monat: Optional[str] = None
     kuendigung_bestaetigt: bool = False
+    kuendigung_hinweis: Optional[str] = None
+    kuendigung_hinweis_url: Optional[str] = None
     kommentar: Optional[str] = None
     freibetrag: Optional[Decimal] = None
     praemien_auf_sparkonto: Optional[bool] = None
