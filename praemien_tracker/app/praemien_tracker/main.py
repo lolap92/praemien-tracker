@@ -23,6 +23,7 @@ from sqlalchemy import inspect
 
 from .config import DATABASE_URL, DB_BACKUP_PATH, DB_PATH
 from .database import SessionLocal, engine
+from .kuendigung_hinweise import backfill_kuendigung_hinweise
 from .routers import completeness, deals, overview, todos
 from .seed import import_seed_data
 from .templating import STATIC_DIR
@@ -59,6 +60,10 @@ def run_migrations() -> None:
 
         command.upgrade(cfg, "head")
         logger.info("Migrationen angewendet, Datenbank auf aktuellem Stand.")
+        with SessionLocal() as db:
+            anzahl = backfill_kuendigung_hinweise(db)
+            if anzahl:
+                logger.info("Kündigung-Anweisungen für %d Deals vorgeschlagen.", anzahl)
         return
 
     command.upgrade(cfg, "head")
@@ -66,6 +71,7 @@ def run_migrations() -> None:
 
     with SessionLocal() as db:
         import_seed_data(db)
+        backfill_kuendigung_hinweise(db)
 
 
 def create_app() -> FastAPI:
