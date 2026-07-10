@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Deals – Prämien-Tracker{% endblock %}
+{% block content %}
+
+<form class="filterleiste" method="get" action="deals">
+  <select name="inhaber_id" onchange="this.form.submit()">
+    <option value="">Alle Inhaber</option>
+    {% for inh in inhaber_liste %}
+    <option value="{{ inh.id }}" {{ "selected" if filter_inhaber_id == inh.id else "" }}>{{ inh.name }}</option>
+    {% endfor %}
+  </select>
+  <select name="status" onchange="this.form.submit()">
+    <option value="">Alle Status</option>
+    {% for s in status_order %}
+    <option value="{{ s }}" {{ "selected" if filter_status == s else "" }}>{{ status_labels[s] }}</option>
+    {% endfor %}
+  </select>
+  <input type="search" name="q" placeholder="Bank suchen…" value="{{ filter_q }}">
+  <button type="submit" class="secondary">Filtern</button>
+  <a class="button" href="deals/new">+ Neuer Deal</a>
+</form>
+
+<div class="card">
+  {% if zeilen %}
+  <ul class="deal-liste">
+    {% for zeile in zeilen %}
+    <a class="deal-zeile" href="deals/{{ zeile.deal.id }}/edit">
+      <div class="titel">
+        <span class="bank">{{ zeile.deal.bank.name }} · {{ zeile.deal.kontoart }}</span>
+        <span class="chip status-{{ zeile.status }}">{{ status_labels[zeile.status] }}</span>
+      </div>
+      <div class="meta">{{ zeile.deal.inhaber.name }}{% if zeile.deal.kuendbar_ab %} · kündbar ab {{ zeile.deal.kuendbar_ab | datum }}{% endif %}</div>
+      <div class="betraege geld">Gesamt {{ zeile.kennzahlen.gesamt | eur }} · Erhalten {{ zeile.kennzahlen.erhalten | eur }} · Offen {{ zeile.kennzahlen.offen | eur }}</div>
+    </a>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="leer">Keine Deals gefunden.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

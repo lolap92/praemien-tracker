@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Vollständigkeit – Prämien-Tracker{% endblock %}
+{% block content %}
+
+<div class="card">
+  <p>{{ anzahl_vollstaendig }} von {{ anzahl_gesamt }} Deals sind vollständig.</p>
+</div>
+
+{% if zeilen %}
+{% for zeile in zeilen %}
+<div class="card">
+  <h3><a href="deals/{{ zeile.deal.id }}/edit">{{ zeile.deal.bank.name }} · {{ zeile.deal.kontoart }} · {{ zeile.deal.inhaber.name }}</a></h3>
+  <ul class="unterliste">
+    {% for feld in zeile.offene_felder %}
+    <li>
+      <span style="flex:1;">{{ feld.label }}</span>
+      <a class="button secondary" href="deals/{{ zeile.deal.id }}/edit#{{ feld.feld }}">Befüllen</a>
+      <form action="deals/{{ zeile.deal.id }}/skip-field" method="post">
+        <input type="hidden" name="feld" value="{{ feld.feld }}">
+        <button type="submit" class="secondary">Nicht nötig</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endfor %}
+{% else %}
+<div class="card">
+  <p class="leer">Alle Deals sind vollständig.</p>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Übersicht – Prämien-Tracker{% endblock %}
+{% block content %}
+
+<div class="kennzahlen-grid">
+  <div class="kennzahl">
+    <div class="label">Gesamt</div>
+    <div class="wert geld">{{ kennzahlen.gesamt | eur }}</div>
+  </div>
+  <div class="kennzahl">
+    <div class="label">Erhalten</div>
+    <div class="wert geld">{{ kennzahlen.erhalten | eur }}</div>
+  </div>
+  <div class="kennzahl">
+    <div class="label">Offen</div>
+    <div class="wert geld">{{ kennzahlen.offen | eur }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Pipeline</h2>
+  <div class="pipeline">
+    {% for s in status_order %}
+    <a class="pipeline-stufe status-{{ s }}" href="deals?status={{ s }}">
+      <span class="anzahl">{{ nach_status[s] | length }}</span>
+      <span class="label">{{ status_labels[s] }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  <p class="meta" style="color: var(--ink-muted); font-size: 0.85rem;">{{ anzahl_deals }} Deals insgesamt</p>
+</div>
+
+<div class="card">
+  <h2>Pro Inhaber</h2>
+  <div class="tabelle-wrapper">
+    <table class="pc-tabelle">
+      <thead>
+        <tr>
+          <th>Inhaber</th>
+          <th>Deals</th>
+          <th>Gesamt</th>
+          <th>Erhalten</th>
+          <th>Offen</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for eintrag in pro_inhaber %}
+        <tr>
+          <td><a href="deals?inhaber_id={{ eintrag.inhaber.id }}">{{ eintrag.inhaber.name }}</a></td>
+          <td>{{ eintrag.anzahl_deals }}</td>
+          <td class="geld">{{ eintrag.kennzahlen.gesamt | eur }}</td>
+          <td class="geld">{{ eintrag.kennzahlen.erhalten | eur }}</td>
+          <td class="geld">{{ eintrag.kennzahlen.offen | eur }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

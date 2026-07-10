@@ -1,0 +1,19 @@
+name: "Prämien-Tracker"
+version: "1.0.0"
+slug: "praemien_tracker"
+description: "Private Übersicht und Verwaltung von Bank-Prämien-Deals"
+url: "https://github.com/lolap92/praemien-tracker"
+arch:
+  - aarch64
+  - amd64
+  - armv7
+init: false
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8000
+panel_icon: mdi:cash-multiple
+panel_title: "Prämien-Tracker"
+map:
+  - type: data
+    read_only: false
