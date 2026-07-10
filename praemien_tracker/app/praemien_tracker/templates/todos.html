@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Zu erledigen – Prämien-Tracker{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h2>Neue Aufgabe</h2>
+  <form action="todos/aufgaben" method="post">
+    <div class="feld">
+      <label for="beschreibung">Beschreibung</label>
+      <input type="text" id="beschreibung" name="beschreibung" required>
+    </div>
+    <div class="reihe">
+      <div class="feld">
+        <label for="deal_id">Deal (optional)</label>
+        <select id="deal_id" name="deal_id">
+          <option value="">– allgemein –</option>
+          {% for d in deals %}
+          <option value="{{ d.id }}">{{ d.bank.name }} · {{ d.inhaber.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="feld">
+        <label for="faellig_bis">Frist (optional)</label>
+        <input type="date" id="faellig_bis" name="faellig_bis">
+      </div>
+    </div>
+    <button type="submit">Aufgabe anlegen</button>
+  </form>
+</div>
+
+{% for kategorie in kategorie_reihenfolge %}
+  {% if gruppen.get(kategorie) %}
+  <div class="card todo-gruppe">
+    <h3>{{ kategorie }}</h3>
+    {% for todo in gruppen[kategorie] %}
+    <div class="todo-item">
+      <div style="flex:1;">
+        {% if todo.deal %}
+        <a href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+        {% else %}
+        {{ todo.text }}
+        {% endif %}
+        {% if todo.faellig_bis %}
+        <div class="frist {{ 'ueberfaellig' if todo.ueberfaellig else '' }}">Fällig bis {{ todo.faellig_bis | datum }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endfor %}
+
+{% if not gruppen %}
+<div class="card">
+  <p class="leer">Keine offenen ToDos – alles erledigt.</p>
+</div>
+{% endif %}
+
+{% if erledigte_aufgaben %}
+<div class="card">
+  <h3>Erledigte Aufgaben</h3>
+  <ul class="unterliste">
+    {% for a in erledigte_aufgaben %}
+    <li>
+      <span style="flex:1; text-decoration: line-through; color: var(--ink-muted);">{{ a.beschreibung }}</span>
+      <form class="inline" action="todos/aufgaben/{{ a.id }}/toggle" method="post">
+        <button type="submit" class="secondary">Wieder öffnen</button>
+      </form>
+      <form class="inline" action="todos/aufgaben/{{ a.id }}/delete" method="post">
+        <button type="submit" class="danger">Löschen</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% endblock %}

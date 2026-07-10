@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Prämien-Tracker{% endblock %}</title>
+<base href="{{ request.headers.get('X-Ingress-Path', '') }}/">
+<link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>Prämien-Tracker</h1>
+    <nav class="tabs">
+      <a href="overview" class="{{ 'active' if request.url.path.endswith('/overview') or request.url.path.endswith('tracker/') else '' }}">Übersicht</a>
+      <a href="todos" class="{{ 'active' if '/todos' in request.url.path else '' }}">Zu erledigen</a>
+      <a href="deals" class="{{ 'active' if request.url.path.endswith('/deals') else '' }}">Deals</a>
+      <a href="deals/new" class="{{ 'active' if request.url.path.endswith('/deals/new') else '' }}">Neuer Deal</a>
+      <a href="completeness" class="{{ 'active' if '/completeness' in request.url.path else '' }}">Vollständigkeit</a>
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>
