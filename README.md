@@ -35,6 +35,7 @@ praemien-tracker/
         └── praemien_tracker/
             ├── models.py    # Fakten (SQLAlchemy-Modelle)
             ├── derived.py   # abgeleitete Sichten: Status, Kennzahlen, ToDos
+            ├── seed.py      # einmaliger Import aus seed-data.json (Erststart)
             ├── main.py      # FastAPI-App + Migrations-Startup
             ├── routers/     # Übersicht, ToDos, Deals, Vollständigkeit
             ├── templates/   # Jinja2-Templates
@@ -52,14 +53,20 @@ praemien-tracker/
    `python:3.12-slim`-Basis-Image, keine Kompilierung nötig).
 3. Add-on **starten**. Es erscheint per Ingress in der Seitenleiste.
 
-### Optional: vorhandene Datenbank einspielen
+### Optional: Startdaten einspielen
 
-Wer bereits eine vorbereitete `praemien.db` hat, kann diese **vor dem
-ersten Start** einmalig nach `/addon_configs/<slug>_praemien_tracker/`
-kopieren (z. B. über die Samba- oder Terminal/SSH-Add-ons). Die App
-erkennt beim Start automatisch eine Datenbank ohne Migrations-Versionsstand
-und markiert sie als Baseline, statt die Tabellen erneut anzulegen (siehe
-`praemien_tracker/app/praemien_tracker/main.py`).
+Wer bereits bereinigte Daten hat, legt **vor dem ersten Start** eine
+`seed-data.json` (reiner Text, siehe `schemas.SeedData`/`DealImport` für das
+Format) nach `/addon_configs/<slug>_praemien_tracker/seed-data.json` (z. B.
+über die Samba- oder Terminal/SSH-Add-ons). Beim ersten Start - wenn noch
+keine `praemien.db` existiert - baut die App daraus die Datenbank auf und
+stempelt die Schema-Baseline. Bei jedem weiteren Start ist die Datenbank
+bereits vorhanden, der Seed-Import läuft dann nicht erneut (siehe
+`praemien_tracker/app/praemien_tracker/seed.py`).
+
+`seed-data.json` enthält private Daten und gehört **nicht** ins Repo -
+sie ist in `.gitignore` ausgeschlossen und verbleibt ausschließlich auf
+dem Green.
 
 ## Schema-Änderungen
 

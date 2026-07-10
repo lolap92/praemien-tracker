@@ -19,18 +19,22 @@ automatisch daraus - sie werden nirgends redundant gepflegt.
 
 ## Startdaten einspielen (optional, einmalig)
 
-Wer bereits eine vorbereitete `praemien.db` besitzt (z. B. aus einer
-Excel-Migration), kann diese einmalig in das Add-on-Datenverzeichnis legen
+Wer bereits bereinigte Daten besitzt (z. B. aus einer Excel-Migration),
+legt einmalig eine `seed-data.json` in das Add-on-Datenverzeichnis
 (erreichbar z. B. über die Samba- oder SSH/Terminal-Add-ons):
 
 ```
-/addon_configs/<slug>_praemien_tracker/praemien.db
+/addon_configs/<slug>_praemien_tracker/seed-data.json
 ```
 
-Die Datei muss vor dem ersten Start des Add-ons dort liegen. Die App
-erkennt beim Start automatisch, dass die Datenbank noch keinen
-Migrations-Versionsstand hat, und markiert sie als Baseline - die Tabellen
-werden dabei nicht erneut angelegt.
+Die Datei muss **vor dem ersten Start** des Add-ons dort liegen. Existiert
+beim Start noch keine `praemien.db`, baut die App das Schema an und legt
+alle in der `seed-data.json` beschriebenen Deals inklusive Prämien,
+Bedingungen, Aufgaben und Links an. Bei jedem weiteren Start ist die
+Datenbank bereits vorhanden, der Seed-Import läuft dann nicht erneut.
+
+Die Datei enthält private Daten und darf nie ins öffentliche Repo gelangen
+- sie verbleibt ausschließlich lokal auf dem Green.
 
 ## Daten & Sicherheit
 
