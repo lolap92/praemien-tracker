@@ -81,6 +81,16 @@ def create_app() -> FastAPI:
     def on_startup() -> None:
         run_migrations()
 
+    @app.middleware("http")
+    async def no_cache(request, call_next):
+        """Verhindert, dass die HA-Companion-App (oder andere Webviews) HTML-Seiten
+        zwischenspeichert - sonst bleibt nach einem Add-on-Update die alte Seite
+        (mit veraltetem CSS-Link) sichtbar, obwohl der Server bereits die neue
+        Version ausliefert."""
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
     app.include_router(overview.router)

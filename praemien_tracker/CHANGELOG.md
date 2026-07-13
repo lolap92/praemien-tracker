@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.2
+
+- Fix: Alle Seiten werden jetzt mit "Cache-Control: no-store" ausgeliefert,
+  damit insbesondere die Home-Assistant-Companion-App die Seiten nicht
+  mehr als Ganzes zwischenspeichert. Vorher blieb nach einem Add-on-Update
+  dort teilweise noch die alte, unformatierte Seite sichtbar, obwohl der
+  Server schon die neue Version auslieferte.
+
 ## 1.5.1
 
 - Fix: CSS-Datei wird jetzt mit einer Versions-Kennung geladen, damit der
