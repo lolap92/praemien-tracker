@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.1
+
+- Fix: CSS-Datei wird jetzt mit einer Versions-Kennung geladen, damit der
+  Browser nach einem Update nicht mehr eine veraltete, gecachte Version
+  anzeigt (das ließ z.B. den Sperrfristen-Tab unformatiert aussehen).
+- "Pro Inhaber" in der Übersicht ist jetzt eine echte Tabelle mit den
+  Spalten Person, Erhalten, Offen und Freibetrag.
+
 ## 1.5.0
 
 - Neuer Tab "Sperrfristen": zeigt für alle gekündigten Deals die Monate

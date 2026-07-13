@@ -8,6 +8,9 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
+_STYLE_CSS = STATIC_DIR / "css" / "style.css"
+templates.env.globals["asset_v"] = int(_STYLE_CSS.stat().st_mtime) if _STYLE_CSS.exists() else 0
+
 
 def format_eur(value) -> str:
     if value is None:
