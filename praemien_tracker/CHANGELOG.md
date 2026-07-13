@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0
+
+- ToDos lassen sich jetzt direkt in "Zu erledigen" abhaken (Bedingung
+  erfüllt, Prämie erhalten, gekündigt, Kündigung bestätigt, Zugangsdaten
+  gesichert, Aufgabe erledigt) - kein Umweg mehr über die Deal-Seite nötig.
+- Bedingungen und Prämien werden pro Deal zu einer Zeile zusammengefasst;
+  bei mehreren offenen Posten öffnet ein Klick einen Dialog zum einzelnen
+  Abhaken.
+- Beim Abhaken von "Kündigen" wird automatisch der aktuelle Monat als
+  Kündigungsdatum gesetzt.
+
 ## 1.3.0
 
 - Neuer Pipeline-Status "Auf Kündigung warten": greift, wenn alles erledigt

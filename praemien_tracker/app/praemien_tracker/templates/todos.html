@@ -33,7 +33,9 @@
   {% set ns = namespace(erster=true) %}
   {% for kategorie in kategorie_reihenfolge %}
     {% if gruppen.get(kategorie) %}
-    <input type="radio" name="todotab" id="todotab-{{ kategorie_slugs[kategorie] }}" {{ "checked" if ns.erster else "" }}>
+    {% set slug = kategorie_slugs[kategorie] %}
+    {% set ist_aktiv = (aktiver_tab == slug) or (not aktiver_tab and ns.erster) %}
+    <input type="radio" name="todotab" id="todotab-{{ slug }}" {{ "checked" if ist_aktiv else "" }}>
     {% set ns.erster = false %}
     {% endif %}
   {% endfor %}
@@ -55,20 +57,135 @@
           <div class="tag tag-{{ slug }}"></div>
           <h3>{{ kategorie }}</h3>
         </div>
+
         {% for todo in gruppen[kategorie] %}
-        <div class="todo-item cat-{{ slug }}">
-          <div class="check"></div>
-          <div class="ti-main">
-            {% if todo.deal %}
-            <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
-            {% else %}
-            <div class="t">{{ todo.text }}</div>
-            {% endif %}
-            {% if todo.faellig_bis %}
-            <div class="frist {{ 'ueberfaellig' if todo.ueberfaellig else '' }}">Fällig bis {{ todo.faellig_bis | datum }}</div>
-            {% endif %}
+
+          {% if kategorie == "Bedingungen" and todo.elemente | length > 1 %}
+          <div class="todo-item cat-{{ slug }}">
+            <div class="check"></div>
+            <div class="ti-main">
+              <button type="button" class="t todo-link" onclick="document.getElementById('dlg-bedingungen-{{ todo.deal.id }}').showModal()">{{ todo.text }}</button>
+            </div>
           </div>
-        </div>
+          <dialog id="dlg-bedingungen-{{ todo.deal.id }}" class="todo-dialog">
+            <h3>{{ todo.deal.bank.name }} · {{ todo.deal.kontoart }} · {{ todo.deal.inhaber.name }}</h3>
+            <ul class="unterliste">
+              {% for b in todo.elemente %}
+              <li>
+                <form action="todos/bedingungen/{{ b.id }}/toggle" method="post" class="dialog-zeile">
+                  <input type="hidden" name="tab" value="{{ slug }}">
+                  <input type="hidden" name="dialog" value="bedingungen-{{ todo.deal.id }}">
+                  <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
+                  <span>{{ b.beschreibung }}{% if b.faellig_bis %} <span class="frist">(bis {{ b.faellig_bis | datum }})</span>{% endif %}</span>
+                </form>
+              </li>
+              {% endfor %}
+            </ul>
+            <button type="button" class="secondary" onclick="this.closest('dialog').close()">Schließen</button>
+          </dialog>
+
+          {% elif kategorie == "Bedingungen" %}
+          <div class="todo-item cat-{{ slug }}">
+            <form action="todos/bedingungen/{{ todo.elemente[0].id }}/toggle" method="post" class="todo-check-form">
+              <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
+            </form>
+            <div class="ti-main">
+              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+              {% if todo.faellig_bis %}
+              <div class="frist {{ 'ueberfaellig' if todo.ueberfaellig else '' }}">Fällig bis {{ todo.faellig_bis | datum }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          {% elif kategorie == "Auf Prämie warten" and todo.elemente | length > 1 %}
+          <div class="todo-item cat-{{ slug }}">
+            <div class="check"></div>
+            <div class="ti-main">
+              <button type="button" class="t todo-link" onclick="document.getElementById('dlg-praemie-{{ todo.deal.id }}').showModal()">{{ todo.text }}</button>
+            </div>
+          </div>
+          <dialog id="dlg-praemie-{{ todo.deal.id }}" class="todo-dialog">
+            <h3>{{ todo.deal.bank.name }} · {{ todo.deal.kontoart }} · {{ todo.deal.inhaber.name }}</h3>
+            <ul class="unterliste">
+              {% for p in todo.elemente %}
+              <li>
+                <form action="todos/praemien/{{ p.id }}/toggle" method="post" class="dialog-zeile">
+                  <input type="hidden" name="tab" value="{{ slug }}">
+                  <input type="hidden" name="dialog" value="praemie-{{ todo.deal.id }}">
+                  <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
+                  <span>{{ p.quelle }}, {{ p.betrag }} €{% if p.auszahlung_erwartet %} – erwartet {{ p.auszahlung_erwartet }}{% endif %}</span>
+                </form>
+              </li>
+              {% endfor %}
+            </ul>
+            <button type="button" class="secondary" onclick="this.closest('dialog').close()">Schließen</button>
+          </dialog>
+
+          {% elif kategorie == "Auf Prämie warten" %}
+          <div class="todo-item cat-{{ slug }}">
+            <form action="todos/praemien/{{ todo.elemente[0].id }}/toggle" method="post" class="todo-check-form">
+              <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
+            </form>
+            <div class="ti-main">
+              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+            </div>
+          </div>
+
+          {% elif kategorie == "Kündigen" %}
+          <div class="todo-item cat-{{ slug }}">
+            <form action="todos/deals/{{ todo.deal.id }}/kuendigen-toggle" method="post" class="todo-check-form">
+              <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
+            </form>
+            <div class="ti-main">
+              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+              {% if todo.faellig_bis %}<div class="frist">Kündbar seit {{ todo.faellig_bis | datum }}</div>{% endif %}
+            </div>
+          </div>
+
+          {% elif kategorie == "Bestätigung warten" %}
+          <div class="todo-item cat-{{ slug }}">
+            <form action="todos/deals/{{ todo.deal.id }}/bestaetigen-toggle" method="post" class="todo-check-form">
+              <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
+            </form>
+            <div class="ti-main">
+              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+            </div>
+          </div>
+
+          {% elif kategorie == "Zugangsdaten" %}
+          <div class="todo-item cat-{{ slug }}">
+            <form action="todos/deals/{{ todo.deal.id }}/zugangsdaten-toggle" method="post" class="todo-check-form">
+              <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
+            </form>
+            <div class="ti-main">
+              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+            </div>
+          </div>
+
+          {% elif kategorie == "Manuelle Aufgaben" %}
+          <div class="todo-item cat-{{ slug }}">
+            <form action="todos/aufgaben/{{ todo.elemente[0].id }}/toggle" method="post" class="todo-check-form">
+              <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
+            </form>
+            <div class="ti-main">
+              {% if todo.deal %}
+              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+              {% else %}
+              <div class="t">{{ todo.text }}</div>
+              {% endif %}
+              {% if todo.faellig_bis %}
+              <div class="frist {{ 'ueberfaellig' if todo.ueberfaellig else '' }}">Fällig bis {{ todo.faellig_bis | datum }}</div>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
         {% endfor %}
       </div>
       {% endif %}
@@ -79,6 +196,15 @@
 <div class="card">
   <p class="leer">Keine offenen ToDos – alles erledigt.</p>
 </div>
+{% endif %}
+
+{% if offener_dialog %}
+<script>
+  (function () {
+    var dlg = document.getElementById("dlg-{{ offener_dialog }}");
+    if (dlg && dlg.showModal) { dlg.showModal(); }
+  })();
+</script>
 {% endif %}
 
 {% if erledigte_aufgaben %}

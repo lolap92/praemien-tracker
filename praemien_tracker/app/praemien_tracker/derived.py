@@ -98,30 +98,44 @@ class Todo:
     deal: Deal | None
     faellig_bis: datetime.date | None = None
     ueberfaellig: bool = False
+    # Zugrunde liegende Fakten-Objekte (Bedingung/Praemie/Aufgabe), damit die
+    # Oberfläche bei mehreren offenen Posten einen Dialog zum einzelnen
+    # Abhaken anbieten kann. Bei Kündigen/Bestätigung/Zugangsdaten leer,
+    # weil dort direkt am Deal abgehakt wird.
+    elemente: list = field(default_factory=list)
 
 
 def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
     """Abgeleitete ToDos aus Status und offenen Bedingungen. Zukünftige
-    Kündigungstermine erscheinen erst, wenn sie fällig sind."""
+    Kündigungstermine erscheinen erst, wenn sie fällig sind. Bedingungen und
+    Prämien werden pro Deal zu einem ToDo zusammengefasst (elemente trägt
+    die einzelnen offenen Posten für den Abhak-Dialog)."""
     heute = heute or datetime.date.today()
     todos: list[Todo] = []
     s = status(deal)
     bezeichnung = f"{deal.bank.name} · {deal.inhaber.name}"
 
     if s == STATUS_BEDINGUNGEN:
-        for b in deal.bedingungen:
-            if not b.erfuellt:
-                ueberfaellig = bool(b.faellig_bis and b.faellig_bis < heute)
-                todos.append(
-                    Todo("Bedingungen", f"{bezeichnung}: {b.beschreibung}", deal, b.faellig_bis, ueberfaellig)
-                )
+        offene = [b for b in deal.bedingungen if not b.erfuellt]
+        if len(offene) == 1:
+            b = offene[0]
+            ueberfaellig = bool(b.faellig_bis and b.faellig_bis < heute)
+            todos.append(Todo("Bedingungen", f"{bezeichnung}: {b.beschreibung}", deal, b.faellig_bis, ueberfaellig, offene))
+        elif offene:
+            ueberfaellig = any(b.faellig_bis and b.faellig_bis < heute for b in offene)
+            todos.append(
+                Todo("Bedingungen", f"{bezeichnung}: {len(offene)} Bedingungen offen", deal, None, ueberfaellig, offene)
+            )
     elif s == STATUS_PRAEMIE_WARTEN:
-        for p in deal.praemien:
-            if not p.erhalten:
-                text = f"{bezeichnung}: Prämie prüfen ({p.quelle}, {p.betrag} €)"
-                if p.auszahlung_erwartet:
-                    text += f" – erwartet {p.auszahlung_erwartet}"
-                todos.append(Todo("Auf Prämie warten", text, deal))
+        offene = [p for p in deal.praemien if not p.erhalten]
+        if len(offene) == 1:
+            p = offene[0]
+            text = f"{bezeichnung}: Prämie prüfen ({p.quelle}, {p.betrag} €)"
+            if p.auszahlung_erwartet:
+                text += f" – erwartet {p.auszahlung_erwartet}"
+            todos.append(Todo("Auf Prämie warten", text, deal, elemente=offene))
+        elif offene:
+            todos.append(Todo("Auf Prämie warten", f"{bezeichnung}: {len(offene)} Prämien offen", deal, elemente=offene))
     elif s == STATUS_KUENDIGEN:
         todos.append(Todo("Kündigen", f"{bezeichnung}: jetzt kündbar – kündigen", deal, deal.kuendbar_ab))
     elif s == STATUS_BESTAETIGUNG_WARTEN:
@@ -146,7 +160,7 @@ def alle_todos(
             continue
         ueberfaellig = bool(a.faellig_bis and a.faellig_bis < heute)
         prefix = f"{a.deal.bank.name} · {a.deal.inhaber.name}: " if a.deal else ""
-        todos.append(Todo("Manuelle Aufgaben", f"{prefix}{a.beschreibung}", a.deal, a.faellig_bis, ueberfaellig))
+        todos.append(Todo("Manuelle Aufgaben", f"{prefix}{a.beschreibung}", a.deal, a.faellig_bis, ueberfaellig, [a]))
     return todos
 
 
