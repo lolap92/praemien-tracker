@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Sperrfristen – Prämien-Tracker{% endblock %}
+{% block content %}
+
+<div class="card">
+  <p style="color: var(--ink-soft); font-size: 0.88rem; margin: 0;">
+    Monate seit Kündigung je Bank, Kontoart und Inhaber – hilfreich, um zu sehen,
+    wann eine Bank wieder als Neukunde infrage kommt. Älteste Kündigung zuerst.
+  </p>
+</div>
+
+{% if zeilen %}
+<div class="card" style="padding: 0.2rem 1rem;">
+  {% for zeile in zeilen %}
+  <a class="sperr-zeile sperr-{{ zeile.stufe }}" href="deals/{{ zeile.deal.id }}/edit">
+    <div>
+      <div class="bank">{{ zeile.deal.bank.name }}</div>
+      <div class="meta">{{ zeile.deal.kontoart }} · {{ zeile.deal.inhaber.name }} · gekündigt {{ zeile.deal.gekuendigt_im_monat }}</div>
+    </div>
+    <div class="sperr-monate">{{ zeile.monate }}<span class="einheit"> Mon.</span></div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <p class="leer">Noch keine gekündigten Deals mit auswertbarem Kündigungsdatum.</p>
+</div>
+{% endif %}
+
+{% if ohne_datum %}
+<div class="card">
+  <div class="card-label">Gekündigt, aber ohne Kündigungsmonat</div>
+  <ul class="deal-liste">
+    {% for d in ohne_datum %}
+    <a class="deal-zeile" href="deals/{{ d.id }}/edit">
+      <div class="titel">
+        <div>
+          <div class="bank">{{ d.bank.name }}</div>
+          <div class="meta">{{ d.kontoart }} · {{ d.inhaber.name }}</div>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% endblock %}

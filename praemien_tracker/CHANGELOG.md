@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.0
+
+- Neuer Tab "Sperrfristen": zeigt für alle gekündigten Deals die Monate
+  seit Kündigung je Bank, Kontoart und Inhaber - rot bei unter 6 Monaten,
+  orange bis 12 Monaten, grün darüber. Älteste Kündigung steht oben.
+- Übersicht zeigt jetzt pro Inhaber zusätzlich den genutzten Freibetrag.
+
 ## 1.4.0
 
 - ToDos lassen sich jetzt direkt in "Zu erledigen" abhaken (Bedingung

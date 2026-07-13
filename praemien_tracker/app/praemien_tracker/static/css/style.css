@@ -321,6 +321,13 @@ main {
   font-weight: 500;
 }
 
+.person-row .fb {
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  margin-top: 0.1rem;
+}
+
 .person-row .amt {
   font-family: var(--font-mono);
   font-size: 0.85rem;
@@ -753,6 +760,66 @@ dialog.todo-dialog .dialog-zeile {
 
 .deal-zeile .track i.on {
   background: var(--st-wait);
+}
+
+/* ---------- Sperrfristen ---------- */
+
+.sperr-zeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+}
+
+.sperr-zeile:last-child {
+  border-bottom: none;
+}
+
+.sperr-zeile .bank {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.sperr-zeile .meta {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  margin-top: 0.1rem;
+}
+
+.sperr-monate {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 0.35rem 0.7rem;
+  border-radius: 10px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.sperr-monate .einheit {
+  font-size: 0.65rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.sperr-rot .sperr-monate {
+  background: rgba(180, 70, 42, 0.14);
+  color: var(--danger);
+}
+
+.sperr-orange .sperr-monate {
+  background: rgba(185, 130, 47, 0.16);
+  color: var(--st-wait);
+}
+
+.sperr-gruen .sperr-monate {
+  background: rgba(27, 158, 119, 0.15);
+  color: var(--st-done);
 }
 
 /* ---------- forms ---------- */
