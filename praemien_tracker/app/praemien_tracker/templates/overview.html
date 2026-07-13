@@ -32,20 +32,27 @@
   </div>
 </div>
 
-<div class="card">
-  <div class="card-label">Pro Inhaber</div>
-  {% for eintrag in pro_inhaber %}
-  <a class="person-row" href="deals?inhaber_id={{ eintrag.inhaber.id }}">
-    <div class="who">
-      <div class="avatar">{{ eintrag.inhaber.name[0] }}</div>
-      <div>
-        <div class="nm">{{ eintrag.inhaber.name }}</div>
-        <div class="fb">Freibetrag genutzt: {{ eintrag.freibetrag_genutzt | eur }}</div>
-      </div>
-    </div>
-    <div class="amt"><span class="o">{{ eintrag.kennzahlen.offen | eur }}</span> <span class="r">/ {{ eintrag.kennzahlen.gesamt | eur }}</span></div>
-  </a>
-  {% endfor %}
+<div class="card" style="padding: 1.1rem 0.6rem;">
+  <div class="card-label" style="padding: 0 0.5rem;">Pro Inhaber</div>
+  <div class="tabelle-wrapper">
+    <table class="pc-tabelle">
+      <thead>
+        <tr>
+          <th>Person</th><th>Erhalten</th><th>Offen</th><th>Freibetrag</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for eintrag in pro_inhaber %}
+        <tr onclick="window.location='deals?inhaber_id={{ eintrag.inhaber.id }}'" style="cursor:pointer;">
+          <td class="bank">{{ eintrag.inhaber.name }}</td>
+          <td class="geld" style="color: var(--received);">{{ eintrag.kennzahlen.erhalten | eur }}</td>
+          <td class="geld" style="color: var(--open);">{{ eintrag.kennzahlen.offen | eur }}</td>
+          <td class="geld">{{ eintrag.freibetrag_genutzt | eur }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
 {% endblock %}

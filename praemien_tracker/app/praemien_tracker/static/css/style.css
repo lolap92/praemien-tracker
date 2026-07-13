@@ -280,69 +280,6 @@ main {
   background: var(--st-done);
 }
 
-/* ---------- per person ---------- */
-
-.person-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem 0;
-  text-decoration: none;
-  color: inherit;
-}
-
-.person-row + .person-row {
-  border-top: 1px solid var(--line);
-}
-
-.person-row .who {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
-
-.avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 9px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--ink);
-  flex-shrink: 0;
-}
-
-.person-row .nm {
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.person-row .fb {
-  font-size: 0.72rem;
-  color: var(--ink-faint);
-  font-family: var(--font-mono);
-  margin-top: 0.1rem;
-}
-
-.person-row .amt {
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  text-align: right;
-}
-
-.person-row .amt .o {
-  color: var(--open);
-}
-
-.person-row .amt .r {
-  color: var(--ink-faint);
-  font-size: 0.75rem;
-}
-
 /* ---------- status chip ---------- */
 
 .chip {
@@ -1083,12 +1020,14 @@ table.pc-tabelle th {
   text-align: left;
   padding: 0.6rem 0.7rem;
   border-bottom: 1px solid var(--line-strong);
+  white-space: nowrap;
 }
 
 table.pc-tabelle td {
   text-align: left;
   padding: 0.6rem 0.7rem;
   border-bottom: 1px solid var(--line);
+  white-space: nowrap;
 }
 
 table.pc-tabelle td.bank {
@@ -1110,6 +1049,16 @@ table.pc-tabelle tr:hover {
   }
   .deals-karten {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  table.pc-tabelle {
+    font-size: 0.8rem;
+  }
+  table.pc-tabelle th,
+  table.pc-tabelle td {
+    padding: 0.5rem 0.4rem;
   }
 }
 
