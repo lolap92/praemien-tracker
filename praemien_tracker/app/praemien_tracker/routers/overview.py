@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session, joinedload
 
@@ -40,7 +42,15 @@ def overview(request: Request, db: Session = Depends(get_db)):
     for inh in db.query(Inhaber).order_by(Inhaber.name).all():
         deals_inh = [d for d in deals if d.inhaber_id == inh.id]
         kz = derived.kennzahlen([p for d in deals_inh for p in d.praemien])
-        pro_inhaber.append({"inhaber": inh, "kennzahlen": kz, "anzahl_deals": len(deals_inh)})
+        freibetrag_genutzt = sum((d.freibetrag for d in deals_inh if d.freibetrag is not None), Decimal("0"))
+        pro_inhaber.append(
+            {
+                "inhaber": inh,
+                "kennzahlen": kz,
+                "anzahl_deals": len(deals_inh),
+                "freibetrag_genutzt": freibetrag_genutzt,
+            }
+        )
 
     return templates.TemplateResponse(
         "overview.html",

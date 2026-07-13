@@ -38,7 +38,10 @@
   <a class="person-row" href="deals?inhaber_id={{ eintrag.inhaber.id }}">
     <div class="who">
       <div class="avatar">{{ eintrag.inhaber.name[0] }}</div>
-      <div class="nm">{{ eintrag.inhaber.name }}</div>
+      <div>
+        <div class="nm">{{ eintrag.inhaber.name }}</div>
+        <div class="fb">Freibetrag genutzt: {{ eintrag.freibetrag_genutzt | eur }}</div>
+      </div>
     </div>
     <div class="amt"><span class="o">{{ eintrag.kennzahlen.offen | eur }}</span> <span class="r">/ {{ eintrag.kennzahlen.gesamt | eur }}</span></div>
   </a>

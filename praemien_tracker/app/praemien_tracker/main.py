@@ -24,7 +24,7 @@ from sqlalchemy import inspect
 from .config import DATABASE_URL, DB_BACKUP_PATH, DB_PATH
 from .database import SessionLocal, engine
 from .kuendigung_hinweise import backfill_kuendigung_hinweise
-from .routers import completeness, deals, overview, todos
+from .routers import completeness, deals, overview, sperrfristen, todos
 from .seed import import_seed_data
 from .templating import STATIC_DIR
 
@@ -87,6 +87,7 @@ def create_app() -> FastAPI:
     app.include_router(todos.router)
     app.include_router(deals.router)
     app.include_router(completeness.router)
+    app.include_router(sperrfristen.router)
 
     return app
 

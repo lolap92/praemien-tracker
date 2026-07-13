@@ -78,6 +78,51 @@ def status(deal: Deal) -> str:
     return STATUS_ABGESCHLOSSEN
 
 
+# --- Sperrfristen ---
+
+SPERRFRIST_ROT = "rot"
+SPERRFRIST_ORANGE = "orange"
+SPERRFRIST_GRUEN = "gruen"
+
+
+def parse_gekuendigt_monat(wert: str | None) -> datetime.date | None:
+    """Parst das Freitextfeld gekuendigt_im_monat ('MM.YY' oder 'M.YY', z.B.
+    '07.26' oder '5.26') zum ersten Tag des jeweiligen Monats."""
+    if not wert:
+        return None
+    teile = wert.strip().split(".")
+    if len(teile) != 2:
+        return None
+    try:
+        monat = int(teile[0])
+        jahr = int(teile[1])
+    except ValueError:
+        return None
+    if not (1 <= monat <= 12):
+        return None
+    if jahr < 100:
+        jahr += 2000
+    try:
+        return datetime.date(jahr, monat, 1)
+    except ValueError:
+        return None
+
+
+def monate_seit_kuendigung(kuendigungsdatum: datetime.date, heute: datetime.date | None = None) -> int:
+    heute = heute or datetime.date.today()
+    diff = (heute.year - kuendigungsdatum.year) * 12 + (heute.month - kuendigungsdatum.month)
+    return max(0, diff)
+
+
+def sperrfrist_stufe(monate: int) -> str:
+    """< 6 Monate: rot · 6-12 Monate: orange · > 12 Monate: grün."""
+    if monate < 6:
+        return SPERRFRIST_ROT
+    if monate <= 12:
+        return SPERRFRIST_ORANGE
+    return SPERRFRIST_GRUEN
+
+
 @dataclass
 class Kennzahlen:
     gesamt: Decimal

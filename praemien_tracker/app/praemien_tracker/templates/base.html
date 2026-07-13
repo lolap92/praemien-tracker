@@ -17,6 +17,7 @@
       <a href="deals" class="{{ 'active' if request.url.path.endswith('/deals') else '' }}">Deals</a>
       <a href="deals/new" class="{{ 'active' if request.url.path.endswith('/deals/new') else '' }}">Neuer Deal</a>
       <a href="completeness" class="{{ 'active' if '/completeness' in request.url.path else '' }}">Vollständigkeit</a>
+      <a href="sperrfristen" class="{{ 'active' if '/sperrfristen' in request.url.path else '' }}">Sperrfristen</a>
     </nav>
   </header>
   <main>
