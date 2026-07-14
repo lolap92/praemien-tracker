@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..ingress import redirect
 from ..models import ProtokollEintrag
 from ..templating import templates
 
@@ -31,3 +32,10 @@ def protokoll_view(request: Request, db: Session = Depends(get_db)):
             "limit": ANZEIGE_LIMIT,
         },
     )
+
+
+@router.post("/protokoll/loeschen")
+def protokoll_loeschen(request: Request, db: Session = Depends(get_db)):
+    db.query(ProtokollEintrag).delete()
+    db.commit()
+    return redirect(request, "protokoll")
