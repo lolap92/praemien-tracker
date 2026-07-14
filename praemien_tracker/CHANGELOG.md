@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.3
+
+- Protokoll: neuer Button "Protokoll leeren", um alle bisherigen Einträge
+  unwiderruflich zu löschen.
+
 ## 1.6.2
 
 - Protokoll: neue Spalten Person, Bank und Kontoart pro Eintrag (auch nach
