@@ -124,3 +124,22 @@ class DealUrl(Base):
     bezeichnung: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     deal: Mapped["Deal"] = relationship(back_populates="urls")
+
+
+class ProtokollEintrag(Base):
+    """Änderungsprotokoll, automatisch über SQLAlchemy-Events befüllt (siehe
+    protokoll.py) - kein manuelles Loggen in den Routen nötig. Bewusst ohne
+    ForeignKey-Constraint auf deals.id, da ein Eintrag auch nach dem Löschen
+    des zugehörigen Deals bestehen bleiben muss."""
+
+    __tablename__ = "protokoll"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    zeitpunkt: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    tabelle: Mapped[str] = mapped_column(String(50))
+    objekt_id: Mapped[int] = mapped_column()
+    deal_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
+    aktion: Mapped[str] = mapped_column(String(20))  # "erstellt" | "geaendert" | "geloescht"
+    feld: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    alter_wert: Mapped[str | None] = mapped_column(Text, nullable=True)
+    neuer_wert: Mapped[str | None] = mapped_column(Text, nullable=True)
