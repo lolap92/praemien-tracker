@@ -114,7 +114,7 @@
                   <input type="hidden" name="tab" value="{{ slug }}">
                   <input type="hidden" name="dialog" value="praemie-{{ todo.deal.id }}">
                   <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
-                  <span>{{ p.quelle }}, {{ p.betrag }} €{% if p.auszahlung_erwartet %} – erwartet {{ p.auszahlung_erwartet }}{% endif %}</span>
+                  <span>{{ p.quelle | quelle }}, {{ p.betrag }} €{% if p.auszahlung_erwartet %} – erwartet {{ p.auszahlung_erwartet }}{% endif %}</span>
                 </form>
               </li>
               {% endfor %}

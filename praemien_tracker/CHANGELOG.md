@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.1
+
+- "Zu erledigen": Prämien-Quelle wird jetzt großgeschrieben angezeigt
+  ("Spartanien" / "Bank" statt "spartanien" / "bank").
+
 ## 1.6.0
 
 - Neuer Tab "Protokoll": erfasst automatisch jede Änderung an Deals,

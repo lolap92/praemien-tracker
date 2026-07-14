@@ -2,6 +2,8 @@ from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
 
+from .derived import quelle_label
+
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 TEMPLATES_DIR = BASE_DIR / "templates"
@@ -37,3 +39,4 @@ def format_eur_ganz(value) -> str:
 templates.env.filters["eur"] = format_eur
 templates.env.filters["eur_ganz"] = format_eur_ganz
 templates.env.filters["datum"] = format_date
+templates.env.filters["quelle"] = quelle_label
