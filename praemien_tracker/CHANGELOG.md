@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.2
+
+- Protokoll: neue Spalten Person, Bank und Kontoart pro Eintrag (auch nach
+  dem Löschen eines Deals noch lesbar, da zum Zeitpunkt des Eintrags
+  gespeichert statt live nachgeschlagen).
+- Protokoll: neue Spalte "JSON" mit dem kompletten Stand der jeweiligen
+  Zeile zu diesem Zeitpunkt - zusätzlich zu den Vorher-/Nachher-Werten je
+  Feld, auch bei "geändert"-Einträgen (vorher nur bei neu/gelöscht).
+
 ## 1.6.1
 
 - "Zu erledigen": Prämien-Quelle wird jetzt großgeschrieben angezeigt

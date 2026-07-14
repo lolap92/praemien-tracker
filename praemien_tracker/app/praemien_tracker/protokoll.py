@@ -67,6 +67,24 @@ def _deal_id_von(obj) -> int | None:
     return getattr(obj, "deal_id", None)
 
 
+def _kontext_von(obj) -> tuple[str | None, str | None, str | None]:
+    """(bank_name, inhaber_name, kontoart) - für Deals direkt, für
+    Deal-Kinder über die Beziehung, für Bank/Inhaber nur der eigene Name.
+    Wird zum Zeitpunkt des Eintrags aufgelöst und denormalisiert
+    gespeichert, damit der Kontext auch nach dem Löschen des Deals noch
+    im Protokoll lesbar bleibt."""
+    deal = obj if isinstance(obj, Deal) else getattr(obj, "deal", None)
+    if deal is not None:
+        bank_name = deal.bank.name if deal.bank else None
+        inhaber_name = deal.inhaber.name if deal.inhaber else None
+        return bank_name, inhaber_name, deal.kontoart
+    if isinstance(obj, Bank):
+        return obj.name, None, None
+    if isinstance(obj, Inhaber):
+        return None, obj.name, None
+    return None, None, None
+
+
 def _dirty_feld_aenderungen(obj):
     mapper = inspect(obj).mapper
     for col in mapper.columns:
@@ -92,7 +110,12 @@ def _before_flush(session, flush_context, instances):
     for obj in session.dirty:
         if not isinstance(obj, GETRACKTE_MODELLE):
             continue
-        for feld, alt, neu in _dirty_feld_aenderungen(obj):
+        aenderungen = list(_dirty_feld_aenderungen(obj))
+        if not aenderungen:
+            continue
+        snapshot_json = json.dumps(_voller_snapshot(obj), ensure_ascii=False)
+        bank_name, inhaber_name, kontoart = _kontext_von(obj)
+        for feld, alt, neu in aenderungen:
             eintraege.append(
                 {
                     "tabelle": type(obj).__name__,
@@ -102,12 +125,18 @@ def _before_flush(session, flush_context, instances):
                     "feld": feld,
                     "alter_wert": None if alt is None else str(alt),
                     "neuer_wert": None if neu is None else str(neu),
+                    "json_snapshot": snapshot_json,
+                    "bank_name": bank_name,
+                    "inhaber_name": inhaber_name,
+                    "kontoart": kontoart,
                 }
             )
 
     for obj in session.deleted:
         if not isinstance(obj, GETRACKTE_MODELLE):
             continue
+        snapshot_json = json.dumps(_voller_snapshot(obj), ensure_ascii=False)
+        bank_name, inhaber_name, kontoart = _kontext_von(obj)
         eintraege.append(
             {
                 "tabelle": type(obj).__name__,
@@ -115,8 +144,12 @@ def _before_flush(session, flush_context, instances):
                 "deal_id": _deal_id_von(obj),
                 "aktion": "geloescht",
                 "feld": None,
-                "alter_wert": json.dumps(_voller_snapshot(obj), ensure_ascii=False),
+                "alter_wert": snapshot_json,
                 "neuer_wert": None,
+                "json_snapshot": snapshot_json,
+                "bank_name": bank_name,
+                "inhaber_name": inhaber_name,
+                "kontoart": kontoart,
             }
         )
 
@@ -126,6 +159,8 @@ def _after_flush(session, flush_context):
     eintraege = session.info.setdefault("protokoll_eintraege", [])
     neu_pending = session.info.pop("protokoll_neu_pending", [])
     for obj in neu_pending:
+        snapshot_json = json.dumps(_voller_snapshot(obj), ensure_ascii=False)
+        bank_name, inhaber_name, kontoart = _kontext_von(obj)
         eintraege.append(
             {
                 "tabelle": type(obj).__name__,
@@ -134,7 +169,11 @@ def _after_flush(session, flush_context):
                 "aktion": "erstellt",
                 "feld": None,
                 "alter_wert": None,
-                "neuer_wert": json.dumps(_voller_snapshot(obj), ensure_ascii=False),
+                "neuer_wert": snapshot_json,
+                "json_snapshot": snapshot_json,
+                "bank_name": bank_name,
+                "inhaber_name": inhaber_name,
+                "kontoart": kontoart,
             }
         )
 

@@ -5,9 +5,11 @@
 <div class="card">
   <p style="color: var(--ink-soft); font-size: 0.88rem; margin: 0;">
     Jede Änderung an Deals, Prämien, Bedingungen, Aufgaben, Links, Banken und
-    Inhabern wird hier automatisch protokolliert - mit Vorher-/Nachher-Wert
-    und Zeitstempel. Bei neu angelegten oder gelöschten Deals steht das
-    komplette JSON dabei. Neueste zuerst.
+    Inhabern wird hier automatisch protokolliert - mit Person, Bank,
+    Kontoart, Vorher-/Nachher-Wert, Zeitstempel und zusätzlich immer dem
+    kompletten JSON der jeweiligen Zeile zu diesem Zeitpunkt. Bei neu
+    angelegten oder gelöschten Deals ist darin auch das komplette JSON von
+    Prämien/Bedingungen/Aufgaben/Links enthalten. Neueste zuerst.
     {% if gesamt > limit %}Zeige die neuesten {{ limit }} von {{ gesamt }} Einträgen.{% endif %}
   </p>
 </div>
@@ -19,7 +21,8 @@
       <thead>
         <tr>
           <th>Zeitpunkt</th><th>Tabelle</th><th>ID</th><th>Deal</th>
-          <th>Aktion</th><th>Feld</th><th>Vorher</th><th>Nachher</th>
+          <th>Person</th><th>Bank</th><th>Kontoart</th>
+          <th>Aktion</th><th>Feld</th><th>Vorher</th><th>Nachher</th><th>JSON</th>
         </tr>
       </thead>
       <tbody>
@@ -31,10 +34,14 @@
           <td class="geld">
             {% if e.deal_id %}<a href="deals/{{ e.deal_id }}/edit">#{{ e.deal_id }}</a>{% else %}–{% endif %}
           </td>
+          <td>{{ e.inhaber_name or "–" }}</td>
+          <td>{{ e.bank_name or "–" }}</td>
+          <td>{{ e.kontoart or "–" }}</td>
           <td><span class="chip protokoll-aktion-{{ e.aktion }}">{{ e.aktion }}</span></td>
           <td>{{ e.feld or "–" }}</td>
           <td class="protokoll-wert">{{ e.alter_wert or "–" }}</td>
           <td class="protokoll-wert">{{ e.neuer_wert or "–" }}</td>
+          <td class="protokoll-wert">{{ e.json_snapshot or "–" }}</td>
         </tr>
         {% endfor %}
       </tbody>
