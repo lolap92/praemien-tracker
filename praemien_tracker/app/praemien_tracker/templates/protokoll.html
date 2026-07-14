@@ -12,9 +12,6 @@
     Prämien/Bedingungen/Aufgaben/Links enthalten. Neueste zuerst.
     {% if gesamt > limit %}Zeige die neuesten {{ limit }} von {{ gesamt }} Einträgen.{% endif %}
   </p>
-  <form action="protokoll/loeschen" method="post" onsubmit="return confirm('Das komplette Protokoll unwiderruflich löschen?');" style="margin-top: 0.8rem;">
-    <button type="submit" class="danger">Protokoll leeren</button>
-  </form>
 </div>
 
 {% if eintraege %}

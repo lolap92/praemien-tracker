@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.4
+
+- Protokoll: Button "Protokoll leeren" (samt Route) wieder entfernt.
+
 ## 1.6.3
 
 - Protokoll: neuer Button "Protokoll leeren", um alle bisherigen Einträge
