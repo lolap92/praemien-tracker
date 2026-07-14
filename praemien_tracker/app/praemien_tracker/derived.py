@@ -150,6 +150,13 @@ class Todo:
     elemente: list = field(default_factory=list)
 
 
+QUELLE_LABELS = {"spartanien": "Spartanien", "bank": "Bank"}
+
+
+def quelle_label(quelle: str) -> str:
+    return QUELLE_LABELS.get(quelle, quelle)
+
+
 def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
     """Abgeleitete ToDos aus Status und offenen Bedingungen. Zukünftige
     Kündigungstermine erscheinen erst, wenn sie fällig sind. Bedingungen und
@@ -175,7 +182,7 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
         offene = [p for p in deal.praemien if not p.erhalten]
         if len(offene) == 1:
             p = offene[0]
-            text = f"{bezeichnung}: Prämie prüfen ({p.quelle}, {p.betrag} €)"
+            text = f"{bezeichnung}: Prämie prüfen ({quelle_label(p.quelle)}, {p.betrag} €)"
             if p.auszahlung_erwartet:
                 text += f" – erwartet {p.auszahlung_erwartet}"
             todos.append(Todo("Auf Prämie warten", text, deal, elemente=offene))
