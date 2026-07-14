@@ -143,3 +143,14 @@ class ProtokollEintrag(Base):
     feld: Mapped[str | None] = mapped_column(String(100), nullable=True)
     alter_wert: Mapped[str | None] = mapped_column(Text, nullable=True)
     neuer_wert: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Komplettes JSON der Zeile zum Zeitpunkt dieses Eintrags (bei "geaendert"
+    # der Stand nach der Änderung, bei "geloescht" der Stand davor) -
+    # zusätzlich zu alter_wert/neuer_wert, die sich nur auf das einzelne
+    # geänderte Feld beziehen.
+    json_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Denormalisiert zum Zeitpunkt des Eintrags gespeichert (nicht per JOIN
+    # nachgeschlagen), damit der Kontext auch nach dem Löschen des Deals
+    # erhalten bleibt.
+    bank_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    inhaber_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    kontoart: Mapped[str | None] = mapped_column(String(50), nullable=True)
