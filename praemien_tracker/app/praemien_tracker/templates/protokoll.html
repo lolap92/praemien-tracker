@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Protokoll – Prämien-Tracker{% endblock %}
+{% block content %}
+
+<div class="card">
+  <p style="color: var(--ink-soft); font-size: 0.88rem; margin: 0;">
+    Jede Änderung an Deals, Prämien, Bedingungen, Aufgaben, Links, Banken und
+    Inhabern wird hier automatisch protokolliert - mit Vorher-/Nachher-Wert
+    und Zeitstempel. Bei neu angelegten oder gelöschten Deals steht das
+    komplette JSON dabei. Neueste zuerst.
+    {% if gesamt > limit %}Zeige die neuesten {{ limit }} von {{ gesamt }} Einträgen.{% endif %}
+  </p>
+</div>
+
+{% if eintraege %}
+<div class="card" style="padding: 0.6rem;">
+  <div class="tabelle-wrapper">
+    <table class="pc-tabelle protokoll-tabelle">
+      <thead>
+        <tr>
+          <th>Zeitpunkt</th><th>Tabelle</th><th>ID</th><th>Deal</th>
+          <th>Aktion</th><th>Feld</th><th>Vorher</th><th>Nachher</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in eintraege %}
+        <tr>
+          <td class="geld">{{ e.zeitpunkt.strftime("%d.%m.%Y %H:%M:%S") }}</td>
+          <td>{{ e.tabelle }}</td>
+          <td class="geld">{{ e.objekt_id }}</td>
+          <td class="geld">
+            {% if e.deal_id %}<a href="deals/{{ e.deal_id }}/edit">#{{ e.deal_id }}</a>{% else %}–{% endif %}
+          </td>
+          <td><span class="chip protokoll-aktion-{{ e.aktion }}">{{ e.aktion }}</span></td>
+          <td>{{ e.feld or "–" }}</td>
+          <td class="protokoll-wert">{{ e.alter_wert or "–" }}</td>
+          <td class="protokoll-wert">{{ e.neuer_wert or "–" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <p class="leer">Noch keine protokollierten Änderungen.</p>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.0
+
+- Neuer Tab "Protokoll": erfasst automatisch jede Änderung an Deals,
+  Prämien, Bedingungen, Aufgaben, Links, Banken und Inhabern - mit
+  Vorher-/Nachher-Wert je Feld und Zeitstempel. Bei neu angelegten oder
+  gelöschten Deals wird zusätzlich das komplette JSON protokolliert.
+  Läuft vollautomatisch über die Datenbank-Ebene, keine Route muss dafür
+  extra angepasst werden.
+
 ## 1.5.2
 
 - Fix: Alle Seiten werden jetzt mit "Cache-Control: no-store" ausgeliefert,

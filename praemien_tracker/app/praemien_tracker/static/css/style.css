@@ -1077,3 +1077,33 @@ table.pc-tabelle tr:hover {
   font-size: 0.88rem;
   color: var(--st-wait);
 }
+
+/* ---------- Protokoll ---------- */
+
+.protokoll-tabelle th,
+.protokoll-tabelle td {
+  white-space: normal;
+  vertical-align: top;
+}
+
+.protokoll-wert {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  max-width: 320px;
+  word-break: break-word;
+}
+
+.protokoll-aktion-erstellt {
+  color: var(--st-done);
+  background: rgba(27, 158, 119, 0.13);
+}
+
+.protokoll-aktion-geaendert {
+  color: var(--st-confirm);
+  background: rgba(61, 90, 138, 0.12);
+}
+
+.protokoll-aktion-geloescht {
+  color: var(--danger);
+  background: rgba(180, 70, 42, 0.12);
+}
