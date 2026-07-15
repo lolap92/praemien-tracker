@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.0
+
+- Fix: Filtern im Deals-Tab führte zu einem Fehler, wenn "Alle Inhaber"
+  ausgewählt war (leerer Wert konnte nicht als Zahl geparst werden).
+- Deals-Filter: Inhaber und Status lassen sich jetzt per Mehrfachauswahl
+  (Strg/Cmd-Klick) filtern statt nur einzeln. Neuer "Zurücksetzen"-Link,
+  wenn ein Filter aktiv ist.
+
 ## 1.6.4
 
 - Protokoll: Button "Protokoll leeren" (samt Route) wieder entfernt.

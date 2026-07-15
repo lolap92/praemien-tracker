@@ -3,20 +3,19 @@
 {% block content %}
 
 <form class="filterleiste" method="get" action="deals">
-  <select name="inhaber_id" onchange="this.form.submit()">
-    <option value="">Alle Inhaber</option>
+  <select name="inhaber_id" multiple size="4" title="Strg/Cmd-Klick für Mehrfachauswahl, leer lassen für alle">
     {% for inh in inhaber_liste %}
-    <option value="{{ inh.id }}" {{ "selected" if filter_inhaber_id == inh.id else "" }}>{{ inh.name }}</option>
+    <option value="{{ inh.id }}" {{ "selected" if inh.id in filter_inhaber_id else "" }}>{{ inh.name }}</option>
     {% endfor %}
   </select>
-  <select name="status" onchange="this.form.submit()">
-    <option value="">Alle Status</option>
+  <select name="status" multiple size="6" title="Strg/Cmd-Klick für Mehrfachauswahl, leer lassen für alle">
     {% for s in status_order %}
-    <option value="{{ s }}" {{ "selected" if filter_status == s else "" }}>{{ status_labels[s] }}</option>
+    <option value="{{ s }}" {{ "selected" if s in filter_status else "" }}>{{ status_labels[s] }}</option>
     {% endfor %}
   </select>
   <input type="search" name="q" placeholder="Bank suchen…" value="{{ filter_q }}">
   <button type="submit" class="secondary">Filtern</button>
+  {% if filter_aktiv %}<a class="button secondary" href="deals">Zurücksetzen</a>{% endif %}
   <a class="button secondary" href="deals/export.xlsx">Export</a>
   <a class="button" href="deals/new">+ Neuer Deal</a>
 </form>

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, joinedload
@@ -34,17 +34,20 @@ def _deal_query(db: Session):
 @router.get("/deals")
 def deals_list(
     request: Request,
-    inhaber_id: int | None = None,
-    status: str | None = None,
+    inhaber_id: list[str] = Query(default=[]),
+    status: list[str] = Query(default=[]),
     q: str | None = None,
     db: Session = Depends(get_db),
 ):
+    inhaber_ids = [int(v) for v in inhaber_id if v.strip()]
+    status_werte = [s for s in status if s.strip()]
+
     deals = _deal_query(db).join(Bank).order_by(Bank.name, Deal.kontoart).all()
 
-    if inhaber_id:
-        deals = [d for d in deals if d.inhaber_id == inhaber_id]
-    if status:
-        deals = [d for d in deals if derived.status(d) == status]
+    if inhaber_ids:
+        deals = [d for d in deals if d.inhaber_id in inhaber_ids]
+    if status_werte:
+        deals = [d for d in deals if derived.status(d) in status_werte]
     if q:
         q_lower = q.strip().lower()
         deals = [d for d in deals if q_lower in d.bank.name.lower()]
@@ -67,9 +70,10 @@ def deals_list(
             "inhaber_liste": db.query(Inhaber).order_by(Inhaber.name).all(),
             "status_labels": derived.STATUS_LABELS,
             "status_order": derived.STATUS_ORDER,
-            "filter_inhaber_id": inhaber_id,
-            "filter_status": status,
+            "filter_inhaber_id": inhaber_ids,
+            "filter_status": status_werte,
             "filter_q": q or "",
+            "filter_aktiv": bool(inhaber_ids or status_werte or q),
         },
     )
 
