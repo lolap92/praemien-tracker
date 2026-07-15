@@ -3,16 +3,28 @@
 {% block content %}
 
 <form class="filterleiste" method="get" action="deals">
-  <select name="inhaber_id" multiple size="4" title="Strg/Cmd-Klick für Mehrfachauswahl, leer lassen für alle">
-    {% for inh in inhaber_liste %}
-    <option value="{{ inh.id }}" {{ "selected" if inh.id in filter_inhaber_id else "" }}>{{ inh.name }}</option>
-    {% endfor %}
-  </select>
-  <select name="status" multiple size="6" title="Strg/Cmd-Klick für Mehrfachauswahl, leer lassen für alle">
-    {% for s in status_order %}
-    <option value="{{ s }}" {{ "selected" if s in filter_status else "" }}>{{ status_labels[s] }}</option>
-    {% endfor %}
-  </select>
+  <details class="multi-filter">
+    <summary>Inhaber{% if filter_inhaber_id %} ({{ filter_inhaber_id | length }}){% endif %}</summary>
+    <div class="multi-filter-panel">
+      {% for inh in inhaber_liste %}
+      <label>
+        <input type="checkbox" name="inhaber_id" value="{{ inh.id }}" {{ "checked" if inh.id in filter_inhaber_id else "" }}>
+        {{ inh.name }}
+      </label>
+      {% endfor %}
+    </div>
+  </details>
+  <details class="multi-filter">
+    <summary>Status{% if filter_status %} ({{ filter_status | length }}){% endif %}</summary>
+    <div class="multi-filter-panel">
+      {% for s in status_order %}
+      <label>
+        <input type="checkbox" name="status" value="{{ s }}" {{ "checked" if s in filter_status else "" }}>
+        {{ status_labels[s] }}
+      </label>
+      {% endfor %}
+    </div>
+  </details>
   <input type="search" name="q" placeholder="Bank suchen…" value="{{ filter_q }}">
   <button type="submit" class="secondary">Filtern</button>
   {% if filter_aktiv %}<a class="button secondary" href="deals">Zurücksetzen</a>{% endif %}

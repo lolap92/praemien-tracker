@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.1
+
+- Deals-Filter: das native Mehrfachauswahl-Feld (große, unformatierte
+  Liste) durch ein kompaktes Dropdown mit Checkboxen ersetzt - passt
+  wieder zum Design der App.
+
 ## 1.7.0
 
 - Fix: Filtern im Deals-Tab führte zu einem Fehler, wenn "Alle Inhaber"
