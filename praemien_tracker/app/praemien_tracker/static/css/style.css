@@ -618,9 +618,78 @@ dialog.todo-dialog .dialog-zeile {
   font-size: 0.85rem;
 }
 
-.filterleiste select[multiple] {
-  border-radius: 10px;
-  padding: 0.3rem;
+.multi-filter {
+  position: relative;
+}
+
+.multi-filter > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.5rem 0.9rem;
+  border-radius: 20px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.multi-filter > summary::-webkit-details-marker {
+  display: none;
+}
+
+.multi-filter > summary::after {
+  content: "▾";
+  font-size: 0.65rem;
+  color: var(--ink-faint);
+}
+
+.multi-filter[open] > summary {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.multi-filter-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  padding: 0.5rem;
+  min-width: 180px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.multi-filter-panel label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+  color: var(--ink);
+  margin: 0;
+  cursor: pointer;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.multi-filter-panel label:hover {
+  background: var(--surface-2);
+}
+
+.multi-filter-panel input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  margin: 0;
+  flex-shrink: 0;
 }
 
 /* ---------- deal cards ---------- */
