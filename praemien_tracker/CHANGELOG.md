@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.3
+
+- Caching: zusätzlich zu Cache-Control werden jetzt auch die Legacy-Header
+  Pragma und Expires gesetzt (für alle Seiten und statischen Dateien).
+  Ältere Android-Webviews werten Cache-Control teilweise nicht aus und
+  zeigten nach einem Update weiterhin die alte Oberfläche.
+
 ## 1.7.2
 
 - Deals-Filter: Checkboxen im Inhaber-/Status-Dropdown im App-Design
