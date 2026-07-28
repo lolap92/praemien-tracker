@@ -685,11 +685,38 @@ dialog.todo-dialog .dialog-zeile {
 }
 
 .multi-filter-panel input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--accent);
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
   margin: 0;
   flex-shrink: 0;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.multi-filter-panel input[type="checkbox"]:hover {
+  border-color: var(--ink-faint);
+}
+
+.multi-filter-panel input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.multi-filter-panel input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 /* ---------- deal cards ---------- */
