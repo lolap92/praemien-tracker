@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.2
+
+- Deals-Filter: Checkboxen im Inhaber-/Status-Dropdown im App-Design
+  (abgerundet, mit Häkchen) statt native OS-Checkbox - konsistent zum
+  restlichen Look, unabhängig vom Browser.
+
 ## 1.7.1
 
 - Deals-Filter: das native Mehrfachauswahl-Feld (große, unformatierte
