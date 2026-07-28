@@ -12,23 +12,17 @@ Priorisierung: **A** = Datenverlust/falsche fachliche Aussage,
 
 ## 0. Vorbemerkung zum CSV-Import
 
-Es gibt **keinen CSV-Import** – weder im Code noch in der UI. Die einzigen
-Importwege sind:
-
-| Weg | Format | Wann | Menge |
-|---|---|---|---|
-| `seed-data.json` (`seed.py`) | JSON, `SeedData` (Liste von Deals) | **nur** beim allerersten Start | beliebig viele |
-| Textfeld „Deal per JSON anlegen" (`/deals/json-import`) | JSON, `DealImport` (**ein einzelnes** Objekt) | jederzeit | genau 1 Deal |
+Es gibt **keinen CSV-Import** – weder im Code noch in der UI. Der einzige
+laufende Importweg ist das Textfeld „Deal per JSON anlegen"
+(`/deals/json-import`, Schema `DealImport`), und das nimmt **genau einen
+Deal** je Einfügevorgang entgegen.
 
 Der Export läuft dagegen über `.xlsx` (`export.py`). Damit ist der
 Round-Trip gebrochen: Was die App ausgibt, kann sie nicht wieder einlesen –
 und was sie einliest, kann sie nicht ausgeben. Das ist die größte
-strukturelle Inkonsistenz der App. Die beiden JSON-Formate unterscheiden
-sich zudem voneinander (`{"schema_version": …, "deals": [...]}` vs. ein
-nacktes Deal-Objekt), sodass der Nutzer, der seine Seed-Datei in das
-Textfeld kopiert, einen Validierungsfehler bekommt.
+strukturelle Inkonsistenz der App.
 
-Das folgende Kapitel 2 bewertet daher den bestehenden Importprozess und
+Das folgende Kapitel 2 bewertet daher den bestehenden Importweg und
 beschreibt am Ende, was ein CSV-Import zusätzlich braucht.
 
 ---
@@ -142,79 +136,60 @@ Checkbox zeigt außerdem nie den tatsächlichen Zustand an.
 
 *Empfehlung:* Zielzustand mitschicken (`wert=on|off`) statt invertieren.
 
-### B9 – Backfill überschreibt bewusst geleerte Kündigungs-Anweisungen
-`kuendigung_hinweise.py` verspricht im Docstring, „vom Nutzer bearbeitete
-Werte werden nie überschrieben" – der Filter ist aber
-`kuendigung_hinweis.is_(None)`. Leert der Nutzer das Feld (die Route setzt
-es dann auf `None`), steht beim nächsten Add-on-Start der Standardtext
-wieder drin. Zusagen im Docstring und Verhalten weichen voneinander ab.
+### B9 – Kündigungs-Hinweise: greifen zu spät und überschreiben Geleertes [V]
+Zwei getrennte Defekte in `kuendigung_hinweise.py`:
+
+1. `backfill_kuendigung_hinweise()` läuft **ausschließlich beim Start** der
+   App (`main.run_migrations()`). Ein per Formular oder JSON angelegter Deal
+   bekommt seinen Hinweis daher erst beim nächsten Add-on-Neustart –
+   verifiziert: direkt nach dem Import steht `hinweis=False`, obwohl
+   `("Comdirect", "Depot")` hinterlegt ist. Genau dann, wenn der Hinweis
+   gebraucht wird (neuer Deal), ist er nicht da.
+2. Der Docstring verspricht, „vom Nutzer bearbeitete Werte werden nie
+   überschrieben" – der Filter ist aber `kuendigung_hinweis.is_(None)`.
+   Leert der Nutzer das Feld (die Route setzt es dann auf `None`), steht
+   beim nächsten Start der Standardtext wieder drin.
 
 Zusätzlich ist der Lookup ein exakter Tupel-Match auf
 `(bank.name, kontoart)`. Schreibweisen wie `BforBank` statt des hinterlegten
 `Bfor` oder `Girokonto ` mit Leerzeichen führen stillschweigend dazu, dass
-gar kein Hinweis gesetzt wird.
+gar kein Hinweis gesetzt wird (siehe A10).
 
 ---
 
-## 2. Importprozess
+## 2. Importweg (JSON-Textfeld)
 
-### A10 – Ein Fehler in `seed-data.json` macht den Import dauerhaft unmöglich [V]
-Der wichtigste Befund dieses Reviews. Reproduziert mit einer Seed-Datei, bei
-der einem von zwei Deals `kontoart` fehlt:
-
-```
-1. Start:  pydantic ValidationError → Startup-Crash, Add-on startet nicht
-   danach: /data/praemien.db existiert bereits (86 KB, Schema auf head)
-2. Start (seed-data.json korrigiert):
-   „Migrationen angewendet" → Deals in DB: 0
-```
-
-Ursache: `run_migrations()` legt die DB an und migriert sie, **bevor**
-`import_seed_data()` läuft; der Import hat kein `try/except`. Schlägt er
-fehl, existiert die DB-Datei trotzdem. Beim nächsten Start greift der
-`db_existed`-Zweig – der Seed-Import wird nie wieder aufgerufen. Der Nutzer
-sitzt vor einer dauerhaft leeren App, und die einzige Reparatur ist das
-Löschen von `/data/praemien.db` – ein Pfad, der laut `config.py` bewusst
-**nicht** per Samba erreichbar ist.
-
-Erschwerend: Der Fehler ist nur im Add-on-Log sichtbar, die UI zeigt nichts,
-und README/DOCS.md erwähnen den Fall nicht.
-
-*Empfehlung (in dieser Reihenfolge):*
-1. Import in `try/except` kapseln, Fehler protokollieren, App trotzdem
-   starten.
-2. Erfolgreichen Import über einen Marker (z. B. Zeile in einer
-   `import_log`-Tabelle) statt über die bloße Existenz der DB-Datei
-   erkennen – dann kann eine korrigierte Datei nachträglich greifen.
-3. Import zusätzlich aus der UI anstoßbar machen (Datei-Upload statt nur
-   Ablage im Konfigordner).
-4. Validierungsfehler als lesbare Liste („Deal 2: kontoart fehlt")
-   ausgeben, nicht als Pydantic-Dump.
-
-### A11 – Keine Normalisierung: Dubletten und tote Zuordnungen [V]
-Seed mit `"Comdirect"/"Depot"` und `"comdirect "/" Depot"`:
+### A10 – Keine Normalisierung: Dubletten und tote Zuordnungen [V]
+Zwei Einfügevorgänge über `/deals/json-import`, einmal
+`"Comdirect"/"Depot"/"Max"`, einmal `"comdirect "/" Depot"/"max"`:
 
 ```
-Banken: ['Comdirect', 'comdirect']
-Deal 1: bank='Comdirect' kontoart='Depot'  hinweis=True
-Deal 2: bank='comdirect' kontoart=' Depot' hinweis=False
+Banken : ['Comdirect', 'comdirect']
+Inhaber: ['Max', 'max']
+Deal 1: bank='Comdirect' kontoart='Depot'   hinweis=False
+Deal 2: bank='comdirect' kontoart=' Depot'  hinweis=False
 ```
 
 Drei getrennte Defekte:
 
 - `get_or_create_bank/-inhaber` vergleichen **case-sensitiv**. „Comdirect",
-  „comdirect", „ComDirect" werden zu drei Banken. Das zerlegt die
-  Sperrfristen-Auswertung (deren ganzer Zweck der Vergleich pro Bank ist),
-  die Pro-Inhaber-Tabelle und den Bank-Filter.
+  „comdirect", „ComDirect" werden zu drei Banken, „Max" und „max" zu zwei
+  Personen. Das zerlegt die Sperrfristen-Auswertung (deren ganzer Zweck der
+  Vergleich pro Bank ist), die Pro-Inhaber-Tabelle inklusive
+  Freibetragssumme und den Bank-Filter.
 - `build_deal_from_import()` übernimmt `kontoart` **ungetrimmt**, während
-  der Formularpfad (`deals.py`) `.strip()` aufruft. Zwei Importwege, zwei
+  der Formularpfad (`deals.py`) `.strip()` aufruft. Zwei Anlagewege, zwei
   Ergebnisse für dieselbe Eingabe.
-- Folgefehler: Der Kündigungs-Hinweis greift für Deal 2 nicht mehr.
+- Folgefehler: Der Kündigungs-Hinweis findet `(' Depot')` nicht mehr.
 
-### A12 – Formularpfad validiert praktisch gar nicht [V]
+*Empfehlung:* Normalisierung (`strip()`, Vergleich über
+`func.lower(Bank.name)`) zentral in `helpers.py`, damit sie für beide
+Anlagewege gilt.
+
+### A11 – Formularpfad validiert praktisch gar nicht [V]
 ```
 POST /deals/new  bank='   '  inhaber='  '  kontoart='   '
-→ 303, Deal 3 angelegt: bank='' kontoart=''
+→ 303, Deal angelegt: bank='' kontoart=''
 ```
 Das HTML-`required` lässt Leerzeichen durch, und die Route strippt erst
 **nach** der Prüfung (die es nicht gibt). Ergebnis: eine Bank mit leerem
@@ -223,10 +198,10 @@ Leereingaben einsammelt. Der JSON-Pfad validiert immerhin Typen – die
 beiden Anlagewege haben also unterschiedliche Qualitätsansprüche an
 dieselben Daten.
 
-### A13 – `quelle` ist unvalidiert und wird beim Speichern still umgeschrieben [V]
+### A12 – `quelle` ist unvalidiert und wird beim Speichern still umgeschrieben [V]
 `PraemieIn.quelle: str` akzeptiert jeden String; die Route
-`POST /deals/{id}/praemien` ebenso. Im Seed getestet: `"quelle":
-"Spartanien"` landet unverändert in der DB.
+`POST /deals/{id}/praemien` ebenso. Verifiziert: `{"quelle": "Bank"}` landet
+unverändert als `'Bank'` in der Datenbank.
 
 Das `<select>` in `deal_form.html` kennt aber nur `spartanien` und `bank`.
 Bei einem abweichenden Wert ist **keine** Option selektiert, der Browser
@@ -238,7 +213,7 @@ hängt, kippt ohne Meldung.
 *Empfehlung:* `Literal["spartanien","bank"]` im Schema, Normalisierung
 (`.strip().lower()`) im Import, Ablehnung unbekannter Werte in der Route.
 
-### B14 – Zwei Monatsformate, beides ungeprüfter Freitext
+### B13 – Zwei Monatsformate, beides ungeprüfter Freitext
 | Feld | Format | Geprüft? |
 |---|---|---|
 | `gekuendigt_im_monat` | `MM.YY` (`07.26`) | nur beim Lesen, `parse_gekuendigt_monat()` |
@@ -250,11 +225,28 @@ Gibt der Nutzer bei `gekuendigt_im_monat` „2026-05" ein, liefert
 die Liste „Gekündigt, aber ohne Kündigungsmonat" – ohne Hinweis, dass die
 Eingabe nur falsch formatiert war.
 
+### B14 – Kein Massenimport, und die Fehlermeldung hilft nicht weiter [V]
+`/deals/json-import` akzeptiert ausschließlich ein einzelnes Deal-Objekt.
+Eine Liste ergibt:
+
+```
+POST json_text=[{"bank":"X","kontoart":"Depot","inhaber":"Max"}] → 400
+```
+
+Für mehrere Deals muss der Vorgang also n-mal wiederholt werden. Angezeigt
+wird dabei der rohe `str(exc)` von Pydantic (`deal_form.html:125`) – ein
+technischer Dump mit englischen Feldnamen und Link auf errors.pydantic.dev,
+mitten in einer sonst durchgängig deutschen Oberfläche.
+
+*Empfehlung:* zusätzlich eine Liste akzeptieren (`list[DealImport]`) und
+Validierungsfehler als lesbare Zeilenliste ausgeben („Deal 2: kontoart
+fehlt").
+
 ### B15 – Kein Duplikat-Schutz
-Weder Seed noch JSON-Textfeld prüfen, ob `(bank, kontoart, inhaber)` bereits
-existiert. Zweimaliges Einfügen desselben JSON erzeugt zwei identische
-Deals, die sich in Pipeline und Kennzahlen doppelt niederschlagen. Es gibt
-auch keinen Unique-Constraint auf dieser Kombination.
+Der Import prüft nicht, ob `(bank, kontoart, inhaber)` bereits existiert.
+Zweimaliges Einfügen desselben JSON erzeugt zwei identische Deals, die sich
+in Pipeline und Kennzahlen doppelt niederschlagen. Es gibt auch keinen
+Unique-Constraint auf dieser Kombination.
 
 ### B16 – Fremdschlüssel werden nicht durchgesetzt [V]
 ```
@@ -266,16 +258,15 @@ setzt es nicht. `praemie_add()`, `bedingung_add()` u. a. prüfen ebenfalls
 nicht, ob der Deal existiert. Waisen-Datensätze sind damit möglich und
 tauchen in keiner Ansicht mehr auf.
 
-### C17 – Kleinere Lücken im Importformat
-- `uebersprungene_felder` ist nicht importierbar – wer die App neu aufsetzt,
-  muss alle „nicht nötig"-Häkchen erneut setzen.
-- `schema_version` wird eingelesen, aber nie ausgewertet.
+### C17 – `uebersprungene_felder` ist nicht importierbar
+`DealImport` kennt das Feld nicht. Wer die App neu aufsetzt oder Deals
+zwischen Instanzen bewegt, muss alle „nicht nötig"-Häkchen aus dem
+Vollständigkeits-Tab erneut setzen.
 
 ### Was ein CSV-Import zusätzlich bräuchte
-Falls CSV das eigentliche Ziel ist (naheliegend, weil die Ausgangsdaten laut
-DOCS.md aus Excel stammen), sind über die obigen Punkte hinaus nötig:
-Trennzeichen- und Encoding-Erkennung (Excel-DE schreibt `;` und CP1252),
-deutsches Dezimalkomma (`parse_decimal` kann das bereits, die
+Falls CSV das eigentliche Ziel ist, sind über die obigen Punkte hinaus
+nötig: Trennzeichen- und Encoding-Erkennung (Excel-DE schreibt `;` und
+CP1252), deutsches Dezimalkomma (`parse_decimal` kann das bereits, die
 Pydantic-Schemas nicht), Spalten-Mapping-Vorschau, und vor allem eine
 Entscheidung, wie 1:n-Daten (mehrere Prämien/Bedingungen je Deal) in einer
 flachen Zeile abgebildet werden – die xlsx-Exportstruktur mit fünf Sheets
@@ -406,11 +397,13 @@ der Nachfolger ist der `lifespan`-Kontextmanager.
 
 ## Empfohlene Reihenfolge
 
-1. **A10** – Seed-Import absichern (Sackgasse mit dauerhaft leerer DB)
-2. **A13 / A11 / A12** – Eingaben normalisieren und validieren
-   (`quelle`, Bank/Inhaber case-insensitiv, `strip()`, Leereingaben)
-3. **A1 / A2** – Status-Pipeline korrigieren
-4. **B18 / B19 / B20 / B21 / B23** – Frontend-Fehler; alle klein und isoliert
-5. **A4 / A5** – überfällige Prämien und Freibetragsgrenze: die zwei
+1. **A12 / A10 / A11** – Eingaben normalisieren und validieren
+   (`quelle`, Bank/Inhaber case-insensitiv, `strip()`, Leereingaben).
+   Hier gehen still und ohne Meldung Daten kaputt.
+2. **A1 / A2** – Status-Pipeline korrigieren
+3. **B18 / B19 / B20 / B21 / B23** – Frontend-Fehler; alle klein und isoliert
+4. **A4 / A5** – überfällige Prämien und Freibetragsgrenze: die zwei
    fachlichen Funktionen, die dem Anwendungsfall am meisten fehlen
+5. **B9 / B14** – Kündigungs-Hinweise beim Anlegen statt beim Start,
+   Massenimport und lesbare Fehlermeldungen
 6. **B28 / C29 / C30** – Zeitbasis, Backup-Strategie, Tests
