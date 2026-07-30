@@ -57,7 +57,7 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B7 | mittel | Zugangsdaten-ToDo erscheint auch für abgeschlossene Deals | **Entschieden:** entfällt ab `gekuendigt`. Noch nicht umgesetzt |
 | B8 | hoch | Abhak-Routen invertieren statt zu setzen; eine doppelt ankommende Anfrage kippt den Wert zurück und überschreibt beim Kündigen den gepflegten Kündigungsmonat | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
 | B9 | mittel | Kündigungs-Hinweise greifen nur beim App-Start (neuer Deal bleibt leer) und überschreiben bewusst geleerte Felder | Beim Anlegen anwenden? Und wie „bewusst leer" von „nie gesetzt" unterscheiden? |
-| B11 | hoch | `quelle` unvalidiert; „Bank" wird beim nächsten Speichern still zu „Spartanien" | Normalisierung ist trivial, aber vorhandene Zeilen müssen einmalig bereinigt werden – und unbekannte Werte künftig ablehnen heißt, Importe abzuweisen |
+| B11 | hoch | `quelle` unvalidiert; „Bank" wird beim nächsten Speichern still zu „Spartanien" | **Entschieden:** normalisieren, `Literal` im Schema, Bestand einmalig bereinigen. Noch nicht umgesetzt |
 | B12 | mittel | Zwei Monatsformate (`MM.YY` vs. `YYYY-MM`), beide ungeprüft | **Entschieden:** beide auf ISO `YYYY-MM`. Noch nicht umgesetzt |
 | B13 | mittel | Kein Duplikat-Schutz – zweimal dasselbe JSON = zwei Deals | Warnen oder blocken? Ist `(Bank, Kontoart, Inhaber)` wirklich eindeutig, oder gibt es legitim zwei gleiche Konten? |
 | B14 | mittel | Zeitstempel in UTC, Fälligkeiten lokal → Protokoll zeigt 2 h falsch | Nur die Anzeige umrechnen oder künftig lokal speichern? Bestehende Zeilen sind UTC |
@@ -533,10 +533,34 @@ spätere Auswertung („wie viel kam eigentlich über Spartanien?") dann auf
 verfälschter Historie aufsetzt, die sich nicht mehr rekonstruieren lässt –
 außer mühsam aus dem Protokoll.
 
-*Empfehlung:* `Literal["spartanien","bank"]` im Schema, Normalisierung
-(`.strip().lower()`) im Import, Ablehnung unbekannter Werte in der Route.
-Die Normalisierung selbst ist trivial – zu entscheiden ist, was mit
-bereits gespeicherten abweichenden Werten passiert.
+**Entschieden.** Es gibt fachlich **nur die beiden Quellen** Spartanien und
+Bank – keine dritte, weder historisch noch geplant. Damit ist jeder
+abweichende Wert per Definition ein Schreibfehler, und die Behandlung ist
+eindeutig:
+
+1. **Normalisieren:** `.strip().lower()` auf dem Importweg und in
+   `praemie_add()` / `praemie_update()`.
+2. **Unbekanntes ablehnen:** `Literal["spartanien", "bank"]` in `PraemieIn`,
+   und in den Routen eine Prüfung gegen dieselbe Menge. Ein Import mit
+   `"quelle": "Kombi"` scheitert künftig mit einer Meldung, statt
+   stillschweigend geschluckt und später umgeschrieben zu werden. Das ist
+   die eigentliche Verhaltensänderung – sie ist unbedenklich, weil es den
+   Fall fachlich nicht gibt.
+3. **Bestand bereinigen:** einmalig `strip().lower()` über alle Zeilen.
+   Weil es nur die zwei Werte gibt, löst das jeden Fall vollständig auf –
+   keine Zuordnung nach Gefühl, keine Rückfrage.
+
+**Eine Vorsichtsmaßnahme für die Bereinigung:** Ergibt eine Zeile nach
+`strip().lower()` weder `spartanien` noch `bank` – etwa bei einem leeren
+String –, sollte sie unangetastet bleiben und protokolliert werden, statt
+auf einen der beiden Werte geraten zu werden. Erwartet wird das nicht, aber
+eine Migration, die im Zweifel nichts tut, ist einer vorzuziehen, die
+falsch zuordnet.
+
+Ergänzend gehören die beiden Werte an *eine* Stelle statt an drei (siehe
+A10): heute stehen sie in `QUELLE_LABELS` und in zwei `<select>`-Blöcken in
+`deal_form.html`. Sobald das Schema die Menge kennt, sollten die Optionen
+daraus gerendert werden.
 
 ### B12 – Zwei Monatsformate, beides ungeprüfter Freitext
 | Feld | Format | Geprüft? |
