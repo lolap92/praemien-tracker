@@ -50,7 +50,7 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B3 | hoch | Deal ohne Prämien hängt unsichtbar in „Auf Prämie warten" – kein ToDo, keine Meldung | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
 | B4 | hoch | `auszahlung_erwartet` wird eingefordert, aber nie ausgewertet – keine Überfälligkeit | Ab wann gilt eine Prämie als überfällig? Neue ToDo-Kategorie oder Markierung? |
 | B5 | hoch | Freibetragssumme zählt gekündigte Deals mit, kein Bezug zum Sparer-Pauschbetrag | Nur aktive Deals? Grenze 1.000/2.000 € je Person pflegbar machen? Jahresbezug? |
-| B6 | mittel | „Stornieren" setzt `gekuendigt=True` → stornierte Deals verfälschen den Sperrfristen-Tab | **Entschieden:** eigenes Feld `storniert`. Offen: was mit offenen Bedingungen passiert, siehe unten |
+| B6 | mittel | „Stornieren" setzt `gekuendigt=True` → stornierte Deals verfälschen den Sperrfristen-Tab | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
 | B7 | mittel | Zugangsdaten-ToDo erscheint auch für abgeschlossene Deals | Ab welchem Status entfällt es – ab „gekündigt" oder ab „bestätigt"? |
 | B8 | mittel | Abhak-Routen invertieren; Doppelklick/Zurück-Button kippt „Prämie erhalten" zurück | Zielzustand mitschicken heißt auch: Checkboxen sollen den Ist-Zustand zeigen. Ändert die Bedienung spürbar |
 | B9 | mittel | Kündigungs-Hinweise greifen nur beim App-Start (neuer Deal bleibt leer) und überschreiben bewusst geleerte Felder | Beim Anlegen anwenden? Und wie „bewusst leer" von „nie gesetzt" unterscheiden? |
@@ -249,17 +249,21 @@ Daraus folgt:
   `storniert.is_(False)` – damit ist der Tab automatisch sauber.
 - Neue Spalte + Alembic-Migration `0005`.
 
-**Noch offen – offene Bedingungen beim Stornieren:** Heute setzt
-`deal_stornieren()` alle Bedingungen auf `erfuellt=True`. Das war nötig,
-weil der Status sonst nicht auf „Abgeschlossen" springt. Mit einem eigenen
-`storniert`-Flag ist es nicht mehr nötig – und es widerspricht der
-Entscheidung aus B2, offene Bedingungen nach dem Abschluss nicht
-stillschweigend abzuhaken. Zwei Möglichkeiten:
+**Offene Bedingungen beim Stornieren – entschieden:** `deal_stornieren()`
+hakt sie **weiterhin** als erfüllt ab. Ein stornierter Deal ist wirklich
+erledigt und soll nicht noch einmal auftauchen.
 
-1. Bedingungen offen lassen (konsistent zu B2); der Deal taucht dann ggf.
-   unter „Zu prüfen" auf.
-2. Beim Stornieren weiterhin abhaken, weil ein stornierter Deal wirklich
-   erledigt ist und nicht noch einmal angeschaut werden muss.
+Das ist bewusst die Ausnahme zur B2-Regel („nach Abschluss nicht
+stillschweigend abhaken") und kein Widerspruch, weil sich die beiden Fälle
+fachlich unterscheiden: Bei einem *gekündigten* Konto ist eine offene
+Bedingung ein echter loser Faden – die Prämie könnte daran hängen. Bei
+einem *stornierten* Deal ist der Vorgang nie zustande gekommen, es gibt
+nichts nachzuschauen.
+
+Für die Umsetzung heißt das: Die Regel „Bedingungen nach Kündigung offen"
+aus dem Bereich *Zu prüfen* darf auf stornierte Deals nicht anspringen –
+sie greift ohnehin nur bei `gekuendigt`, und das setzt `deal_stornieren()`
+künftig nicht mehr. Der Ausschluss ergibt sich also von selbst.
 
 **Altbestand:** Bereits stornierte Deals sind nachträglich nicht sicher
 erkennbar – sie sehen aus wie normal gekündigte mit 0-€-Prämien. Sie müssten
