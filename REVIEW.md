@@ -98,21 +98,20 @@ Bedingung *ist* fachlich abgeschlossen – er hat nur einen losen Faden.
 | Keine Prämie erfasst | `praemien` ist leer | B3 |
 | Gekündigt ohne Kündigungsmonat | `gekuendigt` und `parse_gekuendigt_monat()` liefert `None` | wandert aus dem Sperrfristen-Tab hierher |
 
-**Was bei der Umsetzung noch zu klären ist:**
+**Umsetzungsdetails – entschieden:**
 
-- **Abhaken braucht gespeicherten Zustand.** Damit ein geprüfter Deal die
-  Liste verlässt, ohne die Bedingung abzuhaken, muss „angesehen" pro Deal
-  und Regel gespeichert werden – neue Spalte + Alembic-Migration. Das weicht
-  das Prinzip „nur Fakten speichern, alles andere ableiten" auf; als Muster
-  bietet sich `uebersprungene_felder` an, das für die Vollständigkeit genau
-  das schon tut. Die Route sollte idempotent setzen, nicht togglen (vgl. B8).
-- **Frisch angelegte Deals** erfüllen „keine Prämie erfasst" sofort, weil die
-  Prämien erst danach eingetragen werden. Entweder als Rauschen akzeptieren
-  (abhakbar) oder die Regel erst ab einem gewissen Alter greifen lassen.
-- **Wiederauftauchen:** Ändern sich die Fakten nach dem Abhaken (z. B. neue
-  unbezahlte Prämie), bleibt der Marker gesetzt und die Auffälligkeit
-  versteckt. Für den Anfang vertretbar, sollte aber bewusst so entschieden
-  sein.
+- **Abhaken speichert einen Marker.** Neue Spalte `Deal.pruefung_geprueft`
+  (JSON) nach dem Muster von `uebersprungene_felder`, plus Migration. Die
+  Route setzt idempotent, sie toggelt nicht (vgl. B8).
+- **„Keine Prämie erfasst" greift erst 72 Stunden nach dem Anlegen.**
+  Sonst landet jeder neue Deal sofort in der Liste, weil die Prämien
+  naturgemäß erst danach eingetragen werden. Bezug ist `erstellt_am`.
+- **Abgehakte Auffälligkeiten kommen wieder**, wenn sich die zugrunde
+  liegenden Fakten ändern. Dafür speichert der Marker nicht nur „geprüft",
+  sondern eine Signatur des geprüften Zustands – bei den beiden
+  mengenabhängigen Regeln die IDs der offenen Bedingungen bzw. Prämien.
+  Kommt eine unbezahlte Prämie dazu, passt die Signatur nicht mehr und der
+  Hinweis erscheint erneut.
 - **Sperrfristen-Tab:** Die Liste „Gekündigt, aber ohne Kündigungsmonat"
   (`sperrfristen.html:30-46`) entfällt dort, sobald die Regel greift – sonst
   lebt derselbe Hinweis an zwei Stellen.
@@ -305,7 +304,7 @@ Damit ergibt sich die Regel:
 **Detail 1 – Deals ohne Bedingungen.** `bedingungen_erfuellt()` liefert für
 eine leere Liste `True` („keine Bedingungen hinterlegt – gilt als erfüllt",
 `deal_form.html:194`). Dann gibt es aber auch kein `erfuellt_am`, an dem die
-Frist hängen könnte. Vorschlag: in diesem Fall **keine**
+Frist hängen könnte. **Entschieden:** in diesem Fall **keine**
 Überfälligkeitsmarkierung – es gibt schlicht keinen Bezugspunkt. Die
 Vollständigkeit mahnt `auszahlung_erwartet` ohnehin an, der Nutzer wird also
 an derselben Stelle abgeholt. `deal.erstellt_am` wäre die Alternative,
@@ -372,8 +371,8 @@ weil der Sparer-Pauschbetrag pro Kalenderjahr gilt.
   Teil dieser Entscheidung – hier festgehalten, falls die Vorjahresanzeige
   später erwartet, dass sie stimmt.
 
-**Kleines Detail für die Umsetzung:** Wird ein Freibetrag ohne Jahr
-gespeichert, sollte das laufende Jahr eingesetzt werden, statt das Feld
+**Entschieden:** Wird ein Freibetrag ohne Jahr
+gespeichert, wird das laufende Jahr eingesetzt, statt das Feld
 leer zu lassen – sonst taucht der Betrag in keiner der beiden Spalten auf
 und ist unsichtbar.
 
@@ -739,7 +738,7 @@ beim Anlegen.
 angefordert, zusätzlich weist die App auf die anderen Deals mit derselben
 Kombination hin.
 
-**Vorschlag zur Ausgestaltung** – die Warnung ist dann nützlich, wenn sie
+**Ausgestaltung – entschieden: dreistufig.** Die Warnung ist dann nützlich, wenn sie
 die Frage beantwortet, die man sich in dem Moment stellt: *Ist das eine
 zweite Runde oder ein Versehen?* Beides lässt sich aus vorhandenen Daten
 ableiten, ohne neue Felder:
