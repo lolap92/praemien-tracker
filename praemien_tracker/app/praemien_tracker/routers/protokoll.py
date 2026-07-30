@@ -9,18 +9,29 @@ from ..templating import templates
 
 router = APIRouter()
 
-ANZEIGE_LIMIT = 1000
+PRO_SEITE = 200
 
 
 @router.get("/protokoll")
-def protokoll_view(request: Request, db: Session = Depends(get_db)):
+def protokoll_view(request: Request, seite: str = "1", db: Session = Depends(get_db)):
+    gesamt = db.query(ProtokollEintrag).count()
+    seiten = max(1, -(-gesamt // PRO_SEITE))
+    # Unbrauchbare Seitenangaben (Text, 0, negativ, jenseits des Endes) landen
+    # auf der ersten bzw. letzten Seite, statt die Seite mit einem Fehler
+    # abzubrechen.
+    try:
+        nummer = int(seite)
+    except (TypeError, ValueError):
+        nummer = 1
+    seite = min(max(nummer, 1), seiten)
+
     eintraege = (
         db.query(ProtokollEintrag)
         .order_by(ProtokollEintrag.zeitpunkt.desc(), ProtokollEintrag.id.desc())
-        .limit(ANZEIGE_LIMIT)
+        .offset((seite - 1) * PRO_SEITE)
+        .limit(PRO_SEITE)
         .all()
     )
-    gesamt = db.query(ProtokollEintrag).count()
 
     return templates.TemplateResponse(
         "protokoll.html",
@@ -28,6 +39,8 @@ def protokoll_view(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "eintraege": eintraege,
             "gesamt": gesamt,
-            "limit": ANZEIGE_LIMIT,
+            "seite": seite,
+            "seiten": seiten,
+            "pro_seite": PRO_SEITE,
         },
     )

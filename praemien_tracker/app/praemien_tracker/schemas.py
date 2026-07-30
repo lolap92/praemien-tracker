@@ -48,6 +48,9 @@ class DealImport(BaseModel):
     freibetrag: Optional[Decimal] = None
     praemien_auf_sparkonto: Optional[bool] = None
     zugangsdaten_gespeichert: bool = False
+    # Felder, die bewusst als "nicht nötig" abgehakt wurden - damit sich die
+    # Vollständigkeits-Häkchen mit exportieren und wieder einlesen lassen.
+    uebersprungene_felder: list[str] = Field(default_factory=list)
     praemien: list[PraemieIn] = Field(default_factory=list)
     bedingungen: list[BedingungIn] = Field(default_factory=list)
     urls: list[UrlIn] = Field(default_factory=list)

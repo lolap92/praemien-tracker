@@ -13,11 +13,12 @@ from __future__ import annotations
 
 import logging
 import shutil
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from alembic import command
 from alembic.config import Config as AlembicConfig
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect
 
@@ -27,7 +28,7 @@ from .database import SessionLocal, engine
 from .kuendigung_hinweise import backfill_kuendigung_hinweise
 from .routers import completeness, deals, overview, protokoll as protokoll_router, sperrfristen, todos
 from .seed import import_seed_data
-from .templating import STATIC_DIR
+from .templating import STATIC_DIR, templates
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("praemien_tracker")
@@ -75,12 +76,24 @@ def run_migrations() -> None:
         backfill_kuendigung_hinweise(db)
 
 
-def create_app() -> FastAPI:
-    app = FastAPI(title="Prämien-Tracker")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    run_migrations()
+    yield
 
-    @app.on_event("startup")
-    def on_startup() -> None:
-        run_migrations()
+
+def create_app() -> FastAPI:
+    app = FastAPI(title="Prämien-Tracker", lifespan=lifespan)
+
+    @app.exception_handler(HTTPException)
+    async def http_fehler(request: Request, exc: HTTPException):
+        """Fehler als normale Seite ausliefern statt als JSON-Rumpf - die App
+        wird ausschließlich im Browser benutzt."""
+        return templates.TemplateResponse(
+            "fehler.html",
+            {"request": request, "code": exc.status_code, "detail": exc.detail},
+            status_code=exc.status_code,
+        )
 
     @app.middleware("http")
     async def no_cache(request, call_next):

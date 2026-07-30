@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} – Prämien-Tracker{% endblock %}
+{% block content %}
+
+<div class="card">
+  <div class="card-label">Fehler {{ code }}</div>
+  <p>{{ detail }}</p>
+  <a class="button secondary" href="overview">Zur Übersicht</a>
+</div>
+
+{% endblock %}

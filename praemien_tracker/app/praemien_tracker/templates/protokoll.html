@@ -10,7 +10,7 @@
     kompletten JSON der jeweiligen Zeile zu diesem Zeitpunkt. Bei neu
     angelegten oder gelöschten Deals ist darin auch das komplette JSON von
     Prämien/Bedingungen/Aufgaben/Links enthalten. Neueste zuerst.
-    {% if gesamt > limit %}Zeige die neuesten {{ limit }} von {{ gesamt }} Einträgen.{% endif %}
+    {% if seiten > 1 %}Seite {{ seite }} von {{ seiten }} ({{ gesamt }} Einträge).{% endif %}
   </p>
 </div>
 
@@ -47,6 +47,13 @@
       </tbody>
     </table>
   </div>
+  {% if seiten > 1 %}
+  <div class="blaettern">
+    {% if seite > 1 %}<a class="button secondary" href="protokoll?seite={{ seite - 1 }}">← Neuere</a>{% else %}<span></span>{% endif %}
+    <span>Seite {{ seite }} / {{ seiten }}</span>
+    {% if seite < seiten %}<a class="button secondary" href="protokoll?seite={{ seite + 1 }}">Ältere →</a>{% else %}<span></span>{% endif %}
+  </div>
+  {% endif %}
 </div>
 {% else %}
 <div class="card">

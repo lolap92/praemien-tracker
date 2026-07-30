@@ -37,6 +37,7 @@
 <div class="deals-karten">
   <ul class="deal-liste">
     {% for zeile in zeilen %}
+    <li>
     <a class="deal-zeile" href="deals/{{ zeile.deal.id }}/edit">
       <div class="titel">
         <div>
@@ -48,12 +49,13 @@
       <div class="betraege">
         <span class="chip status-{{ zeile.status }}">{{ status_labels[zeile.status] }}</span>
         <div class="track">
-          {% for i in range(5) %}
+          {% for i in range(status_order | length) %}
           <i class="{{ 'done' if i < zeile.status_index else ('on' if i == zeile.status_index else '') }}"></i>
           {% endfor %}
         </div>
       </div>
     </a>
+    </li>
     {% endfor %}
   </ul>
 </div>
@@ -69,8 +71,8 @@
       </thead>
       <tbody>
         {% for zeile in zeilen %}
-        <tr onclick="window.location='deals/{{ zeile.deal.id }}/edit'" style="cursor:pointer;">
-          <td class="bank">{{ zeile.deal.bank.name }}</td>
+        <tr>
+          <td class="bank"><a href="deals/{{ zeile.deal.id }}/edit">{{ zeile.deal.bank.name }}</a></td>
           <td>{{ zeile.deal.kontoart }}</td>
           <td>{{ zeile.deal.inhaber.name }}</td>
           <td class="geld">{{ zeile.kennzahlen.gesamt | eur }}</td>

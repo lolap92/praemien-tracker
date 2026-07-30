@@ -23,36 +23,30 @@
 </div>
 {% endif %}
 
-{% if not deal %}
-<div class="card toggle-json">
-  <div class="reihe">
-    <a class="button secondary" href="deals/new">Formular</a>
-    <a class="button secondary" href="#json-import">JSON einfügen</a>
-  </div>
-</div>
-{% endif %}
-
 <div class="sec-t">Konto</div>
 <div class="card">
+  {% if form_fehler %}
+  <div class="hinweis">{{ form_fehler }}</div>
+  {% endif %}
   <form action="{{ 'deals/' ~ deal.id if deal else 'deals/new' }}" method="post">
     <div class="reihe">
       <div class="feld">
         <label for="bank">Bank</label>
-        <input list="banken-liste" id="bank" name="bank" required value="{{ deal.bank.name if deal else '' }}">
+        <input list="banken-liste" id="bank" name="bank" required value="{{ deal.bank.name if deal else eingaben.get('bank', '') }}">
       </div>
       <div class="feld">
         <label for="inhaber">Inhaber</label>
-        <input list="inhaber-liste" id="inhaber" name="inhaber" required value="{{ deal.inhaber.name if deal else '' }}">
+        <input list="inhaber-liste" id="inhaber" name="inhaber" required value="{{ deal.inhaber.name if deal else eingaben.get('inhaber', '') }}">
       </div>
     </div>
     <div class="reihe">
       <div class="feld">
         <label for="kontoart">Kontoart</label>
-        <input list="kontoart-liste" id="kontoart" name="kontoart" required value="{{ deal.kontoart if deal else '' }}">
+        <input list="kontoart-liste" id="kontoart" name="kontoart" required value="{{ deal.kontoart if deal else eingaben.get('kontoart', '') }}">
       </div>
       <div class="feld">
         <label for="kontonummer">Kontonummer {{ "⚠ offen" if 'kontonummer' in offene_felder else "" }}</label>
-        <input type="text" id="kontonummer" name="kontonummer" value="{{ deal.kontonummer or '' if deal else '' }}">
+        <input type="text" id="kontonummer" name="kontonummer" value="{{ deal.kontonummer or '' if deal else eingaben.get('kontonummer', '') }}">
       </div>
     </div>
     <div class="checkbox-zeile feld">
@@ -81,7 +75,7 @@
         <input type="checkbox" id="kuendigung_bestaetigt" name="kuendigung_bestaetigt" {{ "checked" if deal.kuendigung_bestaetigt else "" }}>
         <label for="kuendigung_bestaetigt">Kündigung bestätigt</label>
       </div>
-      <div class="feld" id="kuendigung_hinweis">
+      <div class="feld">
         <label for="kuendigung_hinweis">Kündigung Anweisungen</label>
         <textarea id="kuendigung_hinweis" name="kuendigung_hinweis" placeholder="Wie kündige ich dieses Konto? (z. B. Online im Kundenportal, per Post, Formular nötig …)">{{ deal.kuendigung_hinweis or '' }}</textarea>
       </div>
@@ -119,18 +113,26 @@
 </div>
 
 {% if not deal %}
-<div class="sec-t">Deal per JSON anlegen</div>
-<div class="card" id="json-import">
-  {% if json_fehler %}
-  <div class="hinweis">Konnte JSON nicht verarbeiten: {{ json_fehler }}</div>
-  {% endif %}
-  <form action="deals/json-import" method="post">
-    <div class="feld">
-      <textarea name="json_text" rows="16" placeholder='{"bank": "Trade Republic", "kontoart": "Depot", "inhaber": "Max", ...}'>{{ json_text }}</textarea>
+<details class="json-import" id="json-import" {{ "open" if json_fehler else "" }}>
+  <summary>Stattdessen per JSON anlegen</summary>
+  <div class="card">
+    {% if json_fehler %}
+    <div class="hinweis">
+      Konnte JSON nicht verarbeiten:
+      <ul>
+        {% for zeile in json_fehler %}<li>{{ zeile }}</li>{% endfor %}
+      </ul>
     </div>
-    <button type="submit">JSON übernehmen</button>
-  </form>
-</div>
+    {% endif %}
+    <form action="deals/json-import" method="post">
+      <div class="feld">
+        <textarea name="json_text" rows="16" placeholder='{"bank": "Trade Republic", "kontoart": "Depot", "inhaber": "Max", ...}'>{{ json_text }}</textarea>
+      </div>
+      <p class="auto">Ein einzelnes Objekt oder eine Liste mehrerer Deals.</p>
+      <button type="submit">JSON übernehmen</button>
+    </form>
+  </div>
+</details>
 {% endif %}
 
 {% if deal %}
@@ -146,7 +148,7 @@
           <option value="bank" {{ "selected" if p.quelle == "bank" else "" }}>Bank</option>
         </select>
         <input type="text" name="betrag" style="flex:0 0 100px;" value="{{ p.betrag }}">
-        <input type="text" name="auszahlung_erwartet" style="flex:0 0 110px;" placeholder="JJJJ-MM" value="{{ p.auszahlung_erwartet or '' }}">
+        <input type="text" id="praemie_{{ p.id }}_auszahlung_erwartet" name="auszahlung_erwartet" style="flex:0 0 110px;" placeholder="JJJJ-MM" value="{{ p.auszahlung_erwartet or '' }}">
         <span class="checkbox-zeile" style="flex:0 0 auto;">
           <input type="checkbox" name="erhalten" id="praemie_{{ p.id }}_erhalten" {{ "checked" if p.erhalten else "" }}>
           <label for="praemie_{{ p.id }}_erhalten" style="margin:0;">erhalten</label>

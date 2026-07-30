@@ -264,7 +264,7 @@ def offene_felder(deal: Deal) -> list[OffenesFeld]:
             continue
         if not p.erhalten and not p.auszahlung_erwartet:
             offen.append(
-                OffenesFeld(feldname, f"Erwartete Auszahlung ({p.quelle}, {p.betrag} €)", p.id)
+                OffenesFeld(feldname, f"Erwartete Auszahlung ({quelle_label(p.quelle)}, {p.betrag} €)", p.id)
             )
 
     return offen

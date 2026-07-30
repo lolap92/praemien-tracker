@@ -43,8 +43,8 @@
       </thead>
       <tbody>
         {% for eintrag in pro_inhaber %}
-        <tr onclick="window.location='deals?inhaber_id={{ eintrag.inhaber.id }}'" style="cursor:pointer;">
-          <td class="bank">{{ eintrag.inhaber.name }}</td>
+        <tr>
+          <td class="bank"><a href="deals?inhaber_id={{ eintrag.inhaber.id }}">{{ eintrag.inhaber.name }}</a></td>
           <td class="geld" style="color: var(--received);">{{ eintrag.kennzahlen.erhalten | eur }}</td>
           <td class="geld" style="color: var(--open);">{{ eintrag.kennzahlen.offen | eur }}</td>
           <td class="geld">{{ eintrag.freibetrag_genutzt | eur }}</td>

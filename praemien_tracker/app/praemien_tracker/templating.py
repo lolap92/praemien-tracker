@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
 from .derived import quelle_label
@@ -36,7 +37,44 @@ def format_eur_ganz(value) -> str:
     return formatted.replace(",", ".")
 
 
+# Reihenfolge ist relevant: Der erste passende Eintrag gewinnt, deshalb steht
+# "deals/new" vor "deals".
+_TABS = [
+    ("deals/new", "deals/new"),
+    ("deals", "deals"),
+    ("todos", "todos"),
+    ("completeness", "completeness"),
+    ("sperrfristen", "sperrfristen"),
+    ("protokoll", "protokoll"),
+    ("overview", "overview"),
+]
+
+
+def nav_tab(request: Request) -> str:
+    """Welcher Navigationspunkt hervorgehoben wird.
+
+    Hinter Home-Assistant-Ingress trägt der Pfad ein wechselndes Präfix
+    (X-Ingress-Path), das hier zuerst abgeschnitten wird - eine Prüfung auf
+    das Pfadende allein trägt nicht, weil Unterseiten wie deals/3/edit
+    ebenfalls zum Deals-Tab gehören.
+    """
+    prefix = request.headers.get("X-Ingress-Path", "")
+    pfad = request.url.path
+    if prefix and pfad.startswith(prefix):
+        pfad = pfad[len(prefix) :]
+    pfad = pfad.strip("/")
+    if not pfad:
+        return "overview"
+    for anfang, tab in _TABS:
+        if pfad == anfang or pfad.startswith(anfang + "/"):
+            return tab
+    return ""
+
+
 templates.env.filters["eur"] = format_eur
 templates.env.filters["eur_ganz"] = format_eur_ganz
 templates.env.filters["datum"] = format_date
 templates.env.filters["quelle"] = quelle_label
+# Bewusst nicht "aktiver_tab": diesen Namen belegt der ToDo-Router schon
+# mit dem gewählten ToDo-Reiter, er würde den Helfer hier überschatten.
+templates.env.globals["nav_tab"] = nav_tab

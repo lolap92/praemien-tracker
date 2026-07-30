@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.8.0
+
+Sammelkorrektur aus dem Fachlichkeits-Review (Teil 1 von 3): ausschließlich
+Anzeige- und Robustheitsfehler, das fachliche Verhalten bleibt unverändert.
+Keine Datenbank-Migration nötig.
+
+- Fix: Der erste Balken der Pipeline ("Bedingungen") blieb ungefärbt - die
+  CSS-Klasse hieß anders als der Status.
+- Fix: Der Fortschrittsbalken in der Deal-Liste hatte nur fünf Segmente bei
+  sechs Status; abgeschlossene Deals zeigten deshalb keine aktuelle Position.
+- Fix: Das "+" in der Vollständigkeit sprang bei "Erwartete Auszahlung" ins
+  Leere, weil das Eingabefeld keine ID trug.
+- Fix: Die Vollständigkeit zeigte die Prämien-Quelle klein ("spartanien")
+  statt wie überall sonst großgeschrieben.
+- Fix: Ein Filter mit unsinnigem Wert (z. B. `?inhaber_id=abc`) führte zu
+  einem Serverfehler statt ihn zu übergehen. Gleiches gilt jetzt für die
+  Seitenangabe im Protokoll.
+- Fix: Eine unbekannte Deal-ID (alter Link, zweiter Tab) zeigt eine
+  Fehlerseite mit Hinweis statt eines Serverfehlers.
+- Fix: Eine Eingabe aus reinen Leerzeichen legte einen Deal mit leerer Bank
+  an - das Formular meldet nun, welches Feld fehlt.
+- Fix: Doppelt vergebene HTML-ID im Deal-Formular entfernt.
+- Fix: Die Navigation markierte hinter Ingress keinen Reiter; Unterseiten wie
+  ein geöffneter Deal gehören jetzt sichtbar zum Reiter "Deals".
+- JSON-Anlage: Es lässt sich jetzt auch eine **Liste** mehrerer Deals in
+  einem Durchgang einfügen. Fehler werden als lesbare Liste in Deutsch
+  gemeldet ("Deal 2: kontoart fehlt") statt als technischer Rohtext.
+- JSON-Anlage ist ein echter Auf-/Zuschalter statt zweier Schaltflächen, die
+  nur wie einer aussahen.
+- Import: Randleerzeichen werden entfernt - bisher entstanden über den
+  Import Kontoarten wie " Depot", die der Formularweg so nicht erzeugt hat.
+- Import: Die "nicht nötig"-Häkchen aus der Vollständigkeit lassen sich
+  mitgeben (`uebersprungene_felder`).
+- Protokoll: Seitenweise Anzeige (200 Einträge je Seite) statt einer einzigen
+  sehr langen Tabelle; ältere Einträge sind jetzt überhaupt erreichbar.
+- Datenbank: Fremdschlüssel werden jetzt durchgesetzt, damit keine Prämien
+  oder Bedingungen ohne zugehörigen Deal entstehen können.
+- Tabellenzeilen sind per Tastatur erreichbar, Listen-Markup korrigiert.
+- Intern: erste Testabdeckung für die abgeleiteten Sichten (34 Tests),
+  veraltete FastAPI-Startschnittstelle ersetzt.
+
 ## 1.7.1
 
 - Deals-Filter: das native Mehrfachauswahl-Feld (große, unformatierte

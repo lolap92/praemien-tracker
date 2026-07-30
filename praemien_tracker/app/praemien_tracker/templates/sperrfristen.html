@@ -32,6 +32,7 @@
   <div class="card-label">Gekündigt, aber ohne Kündigungsmonat</div>
   <ul class="deal-liste">
     {% for d in ohne_datum %}
+    <li>
     <a class="deal-zeile" href="deals/{{ d.id }}/edit">
       <div class="titel">
         <div>
@@ -40,6 +41,7 @@
         </div>
       </div>
     </a>
+    </li>
     {% endfor %}
   </ul>
 </div>

@@ -261,7 +261,7 @@ main {
   margin-top: 0.1rem;
 }
 
-.pipe-bar-cond {
+.pipe-bar-bedingungen {
   background: var(--st-cond);
 }
 .pipe-bar-praemie_warten {
@@ -1150,6 +1150,64 @@ table.pc-tabelle tr:hover {
   margin-bottom: 1rem;
   font-size: 0.88rem;
   color: var(--st-wait);
+}
+
+.hinweis ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+}
+
+/* ---------- JSON-Anlage (echter Auf-/Zuschalter) ---------- */
+
+.json-import {
+  margin-top: 1.4rem;
+}
+
+.json-import > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 20px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.json-import > summary::-webkit-details-marker {
+  display: none;
+}
+
+.json-import > summary::after {
+  content: "▾";
+  font-size: 0.65rem;
+  color: var(--ink-faint);
+}
+
+.json-import[open] > summary {
+  border-color: var(--accent);
+  color: var(--ink);
+  margin-bottom: 0.8rem;
+}
+
+.json-import[open] > summary::after {
+  content: "▴";
+}
+
+/* ---------- Protokoll-Blaetterung ---------- */
+
+.blaettern {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
 }
 
 /* ---------- Protokoll ---------- */

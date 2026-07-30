@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Form, Query, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.orm import Session, joinedload
 
 from .. import derived
@@ -18,6 +18,28 @@ from ..schemas import DealImport
 from ..templating import templates
 
 router = APIRouter()
+
+
+def _hole_deal(db: Session, deal_id: int) -> Deal:
+    """Deal oder 404 - statt eines Stacktrace, wenn eine ID nicht (mehr)
+    existiert, etwa aus einem alten Lesezeichen oder einem zweiten Tab."""
+    deal = db.get(Deal, deal_id)
+    if deal is None:
+        raise HTTPException(status_code=404, detail=f"Deal {deal_id} existiert nicht.")
+    return deal
+
+
+def _als_int(werte: list[str]) -> list[int]:
+    """Nicht-numerische Filterwerte werden übergangen, statt die Seite mit
+    einem Fehler abzubrechen - erreichbar über alte Links oder von Hand
+    getippte URLs."""
+    ergebnis = []
+    for wert in werte:
+        try:
+            ergebnis.append(int(wert.strip()))
+        except (ValueError, AttributeError):
+            continue
+    return ergebnis
 
 
 def _deal_query(db: Session):
@@ -39,8 +61,8 @@ def deals_list(
     q: str | None = None,
     db: Session = Depends(get_db),
 ):
-    inhaber_ids = [int(v) for v in inhaber_id if v.strip()]
-    status_werte = [s for s in status if s.strip()]
+    inhaber_ids = _als_int(inhaber_id)
+    status_werte = [s for s in status if s.strip() in derived.STATUS_INDEX]
 
     deals = _deal_query(db).join(Bank).order_by(Bank.name, Deal.kontoart).all()
 
@@ -89,8 +111,16 @@ def deals_export(db: Session = Depends(get_db)):
     )
 
 
-@router.get("/deals/new")
-def deal_new_form(request: Request, db: Session = Depends(get_db)):
+def _neu_formular(
+    request: Request,
+    db: Session,
+    *,
+    form_fehler: str | None = None,
+    json_fehler: list[str] | None = None,
+    json_text: str = "",
+    eingaben: dict | None = None,
+    status_code: int = 200,
+):
     return templates.TemplateResponse(
         "deal_form.html",
         {
@@ -100,10 +130,18 @@ def deal_new_form(request: Request, db: Session = Depends(get_db)):
             "inhaber_liste": db.query(Inhaber).order_by(Inhaber.name).all(),
             "status": None,
             "offene_felder": [],
-            "json_fehler": None,
-            "json_text": "",
+            "form_fehler": form_fehler,
+            "json_fehler": json_fehler,
+            "json_text": json_text,
+            "eingaben": eingaben or {},
         },
+        status_code=status_code,
     )
+
+
+@router.get("/deals/new")
+def deal_new_form(request: Request, db: Session = Depends(get_db)):
+    return _neu_formular(request, db)
 
 
 @router.post("/deals/new")
@@ -113,61 +151,115 @@ def deal_new_create(
     inhaber: str = Form(...),
     kontoart: str = Form(...),
     kontonummer: str = Form(""),
-    kuendbar_ab: str = Form(""),
-    freibetrag: str = Form(""),
-    kommentar: str = Form(""),
     zugangsdaten_gespeichert: str = Form(""),
-    praemien_auf_sparkonto: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    eingaben = {
+        "bank": bank.strip(),
+        "inhaber": inhaber.strip(),
+        "kontoart": kontoart.strip(),
+        "kontonummer": kontonummer.strip(),
+    }
+    # required im HTML lässt reine Leerzeichen durch - ohne diese Prüfung
+    # entstünde eine Bank mit leerem Namen, die wegen unique anschließend
+    # jede weitere Leereingabe einsammelt.
+    fehlend = [
+        label
+        for feld, label in (("bank", "Bank"), ("inhaber", "Inhaber"), ("kontoart", "Kontoart"))
+        if not eingaben[feld]
+    ]
+    if fehlend:
+        return _neu_formular(
+            request,
+            db,
+            form_fehler="Bitte ausfüllen: " + ", ".join(fehlend) + ".",
+            eingaben=eingaben,
+            status_code=400,
+        )
+
     deal = Deal(
-        bank=get_or_create_bank(db, bank),
-        inhaber=get_or_create_inhaber(db, inhaber),
-        kontoart=kontoart.strip(),
-        kontonummer=kontonummer.strip() or None,
-        kuendbar_ab=parse_date(kuendbar_ab),
-        freibetrag=parse_decimal(freibetrag),
-        kommentar=kommentar.strip() or None,
+        bank=get_or_create_bank(db, eingaben["bank"]),
+        inhaber=get_or_create_inhaber(db, eingaben["inhaber"]),
+        kontoart=eingaben["kontoart"],
+        kontonummer=eingaben["kontonummer"] or None,
         zugangsdaten_gespeichert=zugangsdaten_gespeichert == "on",
-        praemien_auf_sparkonto=(praemien_auf_sparkonto == "on") if praemien_auf_sparkonto else None,
     )
     db.add(deal)
     db.commit()
     return redirect(request, f"deals/{deal.id}/edit")
 
 
+def _lesbare_fehler(exc: ValidationError, mit_index: bool) -> list[str]:
+    """Aus dem Pydantic-Fehlerobjekt kurze deutsche Zeilen bauen - der rohe
+    str(exc) ist ein technischer Dump mit englischen Feldnamen und einem Link
+    auf errors.pydantic.dev."""
+    texte = {
+        "missing": "fehlt",
+        "string_type": "muss Text sein",
+        "int_parsing": "muss eine Zahl sein",
+        "bool_parsing": "muss true oder false sein",
+        "decimal_parsing": "muss eine Zahl sein",
+        "date_from_datetime_parsing": "ist kein gültiges Datum (erwartet JJJJ-MM-TT)",
+        "date_parsing": "ist kein gültiges Datum (erwartet JJJJ-MM-TT)",
+    }
+    zeilen = []
+    for fehler in exc.errors():
+        pfad = [str(teil) for teil in fehler["loc"]]
+        if mit_index and pfad and pfad[0].isdigit():
+            vorsatz = f"Deal {int(pfad[0]) + 1}: "
+            pfad = pfad[1:]
+        else:
+            vorsatz = ""
+        feld = " → ".join(pfad) or "Eingabe"
+        zeilen.append(f"{vorsatz}{feld} {texte.get(fehler['type'], fehler['msg'])}")
+    return zeilen
+
+
 @router.post("/deals/json-import")
 def deal_json_import(request: Request, json_text: str = Form(...), db: Session = Depends(get_db)):
-    banken = db.query(Bank).order_by(Bank.name).all()
-    inhaber_liste = db.query(Inhaber).order_by(Inhaber.name).all()
-
     try:
         rohdaten = json.loads(json_text)
-        daten = DealImport.model_validate(rohdaten)
-    except (json.JSONDecodeError, ValidationError) as exc:
-        return templates.TemplateResponse(
-            "deal_form.html",
-            {
-                "request": request,
-                "deal": None,
-                "banken": banken,
-                "inhaber_liste": inhaber_liste,
-                "status": None,
-                "offene_felder": [],
-                "json_fehler": str(exc),
-                "json_text": json_text,
-            },
+    except json.JSONDecodeError as exc:
+        return _neu_formular(
+            request,
+            db,
+            json_fehler=[f"Kein gültiges JSON (Zeile {exc.lineno}, Spalte {exc.colno}): {exc.msg}"],
+            json_text=json_text,
             status_code=400,
         )
 
-    deal = build_deal_from_import(db, daten)
+    # Eine Liste ist ebenso zulässig wie ein einzelnes Objekt, damit sich
+    # mehrere Deals in einem Durchgang anlegen lassen.
+    ist_liste = isinstance(rohdaten, list)
+    try:
+        if ist_liste:
+            # Über den TypeAdapter validiert, damit der Fehlerpfad die Position
+            # in der Liste enthält und die Meldung sagen kann, welcher Deal.
+            deals = TypeAdapter(list[DealImport]).validate_python(rohdaten)
+        else:
+            deals = [DealImport.model_validate(rohdaten)]
+    except ValidationError as exc:
+        return _neu_formular(
+            request, db, json_fehler=_lesbare_fehler(exc, ist_liste), json_text=json_text, status_code=400
+        )
+
+    if not deals:
+        return _neu_formular(
+            request, db, json_fehler=["Die Liste enthält keinen Deal."], json_text=json_text, status_code=400
+        )
+
+    angelegt = [build_deal_from_import(db, daten) for daten in deals]
     db.commit()
-    return redirect(request, f"deals/{deal.id}/edit")
+    if len(angelegt) == 1:
+        return redirect(request, f"deals/{angelegt[0].id}/edit")
+    return redirect(request, "deals")
 
 
 @router.get("/deals/{deal_id}/edit")
 def deal_edit_form(request: Request, deal_id: int, db: Session = Depends(get_db)):
-    deal = _deal_query(db).filter(Deal.id == deal_id).one()
+    deal = _deal_query(db).filter(Deal.id == deal_id).one_or_none()
+    if deal is None:
+        raise HTTPException(status_code=404, detail=f"Deal {deal_id} existiert nicht.")
     return templates.TemplateResponse(
         "deal_form.html",
         {
@@ -204,7 +296,7 @@ def deal_update(
     zugangsdaten_gespeichert: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    deal = db.get(Deal, deal_id)
+    deal = _hole_deal(db, deal_id)
     deal.bank = get_or_create_bank(db, bank)
     deal.inhaber = get_or_create_inhaber(db, inhaber)
     deal.kontoart = kontoart.strip()
@@ -281,6 +373,7 @@ def praemie_add(
     auszahlung_erwartet: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    _hole_deal(db, deal_id)
     db.add(
         Praemie(
             deal_id=deal_id,
@@ -335,6 +428,7 @@ def bedingung_add(
     faellig_bis: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    _hole_deal(db, deal_id)
     db.add(Bedingung(deal_id=deal_id, beschreibung=beschreibung.strip(), faellig_bis=parse_date(faellig_bis)))
     db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
@@ -379,6 +473,7 @@ def deal_aufgabe_add(
     faellig_bis: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    _hole_deal(db, deal_id)
     db.add(Aufgabe(deal_id=deal_id, beschreibung=beschreibung.strip(), faellig_bis=parse_date(faellig_bis)))
     db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
@@ -417,6 +512,7 @@ def deal_aufgabe_delete(request: Request, deal_id: int, aufgabe_id: int, db: Ses
 
 @router.post("/deals/{deal_id}/urls")
 def url_add(request: Request, deal_id: int, url: str = Form(...), bezeichnung: str = Form(""), db: Session = Depends(get_db)):
+    _hole_deal(db, deal_id)
     db.add(DealUrl(deal_id=deal_id, url=url.strip(), bezeichnung=bezeichnung.strip() or None))
     db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
