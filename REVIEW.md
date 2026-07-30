@@ -11,6 +11,9 @@ Die Findings sind nach Umsetzbarkeit nummeriert:
 - **B1–B15** – vorher anschauen, weil eine fachliche Entscheidung,
   eine Datenmigration oder eine spürbare Verhaltensänderung dranhängt.
 
+**B5 wurde herausgenommen** – der Freibetrag wird separat verfolgt. Die
+Nummer bleibt frei, damit die übrigen IDs stabil bleiben.
+
 Die Spalte *Prio* in den Übersichtstabellen gibt den Schweregrad an:
 **hoch** = Datenverlust oder falsche fachliche Aussage, **mittel** =
 spürbar falsches Verhalten, **niedrig** = Politur.
@@ -49,10 +52,9 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B2 | hoch | Gekündigt + bestätigt, aber offene Bedingung → gilt gleichzeitig als „in Bearbeitung" und „gekündigt" | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
 | B3 | hoch | Deal ohne Prämien hängt unsichtbar in „Auf Prämie warten" – kein ToDo, keine Meldung | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
 | B4 | hoch | `auszahlung_erwartet` wird eingefordert, aber nie ausgewertet – keine Überfälligkeit | Ab wann gilt eine Prämie als überfällig? Neue ToDo-Kategorie oder Markierung? |
-| B5 | hoch | Freibetragssumme zählt gekündigte Deals mit, kein Bezug zum Sparer-Pauschbetrag | Nur aktive Deals? Grenze 1.000/2.000 € je Person pflegbar machen? Jahresbezug? |
 | B6 | mittel | „Stornieren" setzt `gekuendigt=True` → stornierte Deals verfälschen den Sperrfristen-Tab | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
-| B7 | mittel | Zugangsdaten-ToDo erscheint auch für abgeschlossene Deals | Ab welchem Status entfällt es – ab „gekündigt" oder ab „bestätigt"? |
-| B8 | mittel | Abhak-Routen invertieren; Doppelklick/Zurück-Button kippt „Prämie erhalten" zurück | Zielzustand mitschicken heißt auch: Checkboxen sollen den Ist-Zustand zeigen. Ändert die Bedienung spürbar |
+| B7 | mittel | Zugangsdaten-ToDo erscheint auch für abgeschlossene Deals | **Entschieden:** entfällt ab `gekuendigt`. Noch nicht umgesetzt |
+| B8 | hoch | Abhak-Routen invertieren statt zu setzen; eine doppelt ankommende Anfrage kippt den Wert zurück und überschreibt beim Kündigen den gepflegten Kündigungsmonat | Zielzustand mitschicken heißt auch: Checkboxen sollen den Ist-Zustand zeigen. Ändert die Bedienung spürbar |
 | B9 | mittel | Kündigungs-Hinweise greifen nur beim App-Start (neuer Deal bleibt leer) und überschreiben bewusst geleerte Felder | Beim Anlegen anwenden? Und wie „bewusst leer" von „nie gesetzt" unterscheiden? |
 | B10 | hoch | Bank/Inhaber case-sensitiv → „Comdirect"/„comdirect", „Max"/„max" werden zu je zwei Einträgen | Bestehende Dubletten müssen zusammengeführt werden – Datenmigration, nicht rückholbar |
 | B11 | hoch | `quelle` unvalidiert; „Bank" wird beim nächsten Speichern still zu „Spartanien" | Normalisierung ist trivial, aber vorhandene Zeilen müssen einmalig bereinigt werden – und unbekannte Werte künftig ablehnen heißt, Importe abzuweisen |
@@ -214,16 +216,6 @@ ist nicht gekommen → nachhaken, bevor die Frist der Bank abläuft").
 Bedingungen und manuelle Aufgaben haben eine `ueberfaellig`-Kennzeichnung,
 Prämien nicht – auch das ist eine Inkonsistenz innerhalb der ToDo-Liste.
 
-### B5 – Freibetrag ohne fachlichen Bezugsrahmen
-`overview.py` summiert `freibetrag` pro Inhaber als „genutzter Freibetrag".
-Zwei Probleme:
-
-1. **Abgeschlossene und gekündigte Deals zählen mit.** Ein 2024 gekündigtes
-   Konto belegt in der Anzeige weiterhin Freibetrag.
-2. **Kein Abgleich mit dem Sparer-Pauschbetrag** (1.000 € / 2.000 € bei
-   Zusammenveranlagung) und kein Jahresbezug. Über alle Banken hinweg mehr
-   Freistellungsaufträge zu erteilen als zulässig ist der klassische Fehler
-   in diesem Anwendungsfall – die App könnte ihn erkennen, warnt aber nicht.
 
 ### B6 – „Stornieren" missbraucht `gekuendigt`
 `deal_stornieren()` setzt `gekuendigt=True` und `kuendigung_bestaetigt=True`.
@@ -277,15 +269,66 @@ status: abgeschlossen | ToDos: [('Zugangsdaten', '… Zugangsdaten sichern')]
 und bestätigtes Konto ist es gegenstandslos und bläht die Liste dauerhaft
 auf.
 
-### B8 – Toggle-Routen sind nicht idempotent
-Alle Abhak-Routen in `routers/todos.py` invertieren (`a.erledigt = not
-a.erledigt`). Zusammen mit den Checkboxen in `todos.html`, die **immer
-unchecked gerendert** werden und per `requestSubmit()` abschicken, heißt
-das: Ein Doppelklick, ein „Zurück"-Button oder ein Reload nach dem Redirect
-kippt „Prämie erhalten" wieder auf `false` – ohne jede Rückmeldung. Die
-Checkbox zeigt außerdem nie den tatsächlichen Zustand an.
+**Entschieden:** Das ToDo entfällt **ab `gekuendigt`** – nicht erst ab
+`kuendigung_bestaetigt`. Sobald das Konto gekündigt ist, müssen die
+Zugangsdaten nicht mehr gesichert werden.
 
-*Empfehlung:* Zielzustand mitschicken (`wert=on|off`) statt invertieren.
+### B8 – Abhak-Routen invertieren, statt einen Zustand zu setzen [V]
+Alle Abhak-Routen in `routers/todos.py` kippen den Wert um, statt ihn zu
+setzen:
+
+```python
+p.erhalten = not p.erhalten          # todos.py:153
+```
+
+Dadurch hängt das Ergebnis davon ab, **wie oft** die Route aufgerufen
+wurde, nicht davon, was der Nutzer wollte. Zweimal dieselbe Anfrage:
+
+```
+Ausgangslage:  praemie.erhalten=False   gekuendigt=True   gekuendigt_im_monat='03.25'
+1. POST:       praemie.erhalten=True
+2. POST:       praemie.erhalten=False        ← Prämie gilt wieder als offen
+```
+
+**Der teurere Fall ist `kuendigen-toggle`** (`todos.py:159`): Beim Anhaken
+setzt die Route zusätzlich den aktuellen Monat, beim Abhaken räumt sie ihn
+aber nicht wieder weg. Zweimal ausgelöst, landet man deshalb nicht beim
+Ausgangszustand:
+
+```
+1. POST:  gekuendigt=False  gekuendigt_im_monat='03.25'   (Monat bleibt stehen)
+2. POST:  gekuendigt=True   gekuendigt_im_monat='07.26'   ← manuell gepflegter Wert weg
+```
+
+Der von Hand eingetragene Kündigungsmonat wird also mit dem heutigen
+überschrieben – und genau dieser Wert speist die Sperrfristen-Auswertung.
+Aus „vor 16 Monaten gekündigt, grün" wird lautlos „vor 0 Monaten, rot".
+Deshalb Prio **hoch** statt mittel.
+
+**Korrektur zur ersten Fassung dieses Reviews:** Dort stand, auch ein
+*Reload* nach dem Abhaken kippe den Wert zurück. Das stimmt nicht – die
+Routen antworten mit `303` auf ein `GET /todos` (Post/Redirect/Get),
+ein Neuladen wiederholt also nur das GET. Verifiziert:
+
+```
+POST /todos/praemien/1/toggle → 303, Location: /todos?tab=praemie
+```
+
+Realistisch bleiben: Doppel-Tap auf dem Handy, eine vom Webview oder vom
+Netz wiederholte Anfrage, und der Zurück-Button, der die veraltete Liste
+zeigt, in der der Posten noch offen aussieht – ein zweiter Klick darauf
+macht die erste Aktion zunichte. Im normalen Ablauf funktioniert das
+Abhaken; die Konstruktion ist an den Rändern fragil, nicht grundsätzlich
+kaputt.
+
+Dazu kommt: Die Checkboxen in `todos.html` werden **immer unchecked**
+gerendert (`todos.html:91` u. a.). Das fällt bisher nicht auf, weil ein
+erledigter Posten aus der Liste verschwindet – es sind faktisch Buttons in
+Checkbox-Optik.
+
+*Empfehlung:* Zielzustand mitschicken (`wert=on|off`) statt invertieren,
+beim Abhaken von „gekündigt" den Monat wieder leeren und einen bereits
+gesetzten Monat nicht überschreiben.
 
 ### B9 – Kündigungs-Hinweise: greifen zu spät und überschreiben Geleertes [V]
 Zwei getrennte Defekte in `kuendigung_hinweise.py`:
@@ -566,8 +609,8 @@ der Nachfolger ist der `lifespan`-Kontextmanager.
    einmaliger Bereinigung der bestehenden Daten. Hier gehen bis dahin still
    und ohne Meldung Daten kaputt.
 4. **B2** – Status-Pipeline korrigieren.
-5. **B4 / B5** – überfällige Prämien und Freibetragsgrenze: die zwei
-   fachlichen Funktionen, die dem Anwendungsfall am meisten fehlen.
+5. **B4** – überfällige Prämien: die fachliche Funktion, die dem
+   Anwendungsfall am meisten fehlt.
 6. **B9 / A16** – Kündigungs-Hinweise beim Anlegen statt beim Start,
    Massenimport und lesbare Fehlermeldungen.
 7. **B14 / B15 / A17** – Zeitbasis, Backup-Strategie, Tests.
