@@ -51,10 +51,10 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B1 | niedrig | Vollständigkeit mahnt „Kündbar ab" an, obwohl ein leeres Feld eine gültige Aussage ist („keine Sperrfrist") | Feld aus `WUENSCHENSWERTE_FELDER` nehmen, oder die Erinnerung bewusst behalten? |
 | B2 | hoch | Gekündigt + bestätigt, aber offene Bedingung → gilt gleichzeitig als „in Bearbeitung" und „gekündigt" | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
 | B3 | hoch | Deal ohne Prämien hängt unsichtbar in „Auf Prämie warten" – kein ToDo, keine Meldung | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
-| B4 | hoch | `auszahlung_erwartet` wird eingefordert, aber nie ausgewertet – keine Überfälligkeit | Ab wann gilt eine Prämie als überfällig? Neue ToDo-Kategorie oder Markierung? |
+| B4 | hoch | `auszahlung_erwartet` wird eingefordert, aber nie ausgewertet – keine Überfälligkeit | **Nicht** durch „Zu prüfen" abgedeckt, siehe Detailabschnitt. Offen: ab wann überfällig? |
 | B6 | mittel | „Stornieren" setzt `gekuendigt=True` → stornierte Deals verfälschen den Sperrfristen-Tab | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
 | B7 | mittel | Zugangsdaten-ToDo erscheint auch für abgeschlossene Deals | **Entschieden:** entfällt ab `gekuendigt`. Noch nicht umgesetzt |
-| B8 | hoch | Abhak-Routen invertieren statt zu setzen; eine doppelt ankommende Anfrage kippt den Wert zurück und überschreibt beim Kündigen den gepflegten Kündigungsmonat | Zielzustand mitschicken heißt auch: Checkboxen sollen den Ist-Zustand zeigen. Ändert die Bedienung spürbar |
+| B8 | hoch | Abhak-Routen invertieren statt zu setzen; eine doppelt ankommende Anfrage kippt den Wert zurück und überschreibt beim Kündigen den gepflegten Kündigungsmonat | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
 | B9 | mittel | Kündigungs-Hinweise greifen nur beim App-Start (neuer Deal bleibt leer) und überschreiben bewusst geleerte Felder | Beim Anlegen anwenden? Und wie „bewusst leer" von „nie gesetzt" unterscheiden? |
 | B10 | hoch | Bank/Inhaber case-sensitiv → „Comdirect"/„comdirect", „Max"/„max" werden zu je zwei Einträgen | Bestehende Dubletten müssen zusammengeführt werden – Datenmigration, nicht rückholbar |
 | B11 | hoch | `quelle` unvalidiert; „Bank" wird beim nächsten Speichern still zu „Spartanien" | Normalisierung ist trivial, aber vorhandene Zeilen müssen einmalig bereinigt werden – und unbekannte Werte künftig ablehnen heißt, Importe abzuweisen |
@@ -216,6 +216,32 @@ ist nicht gekommen → nachhaken, bevor die Frist der Bank abläuft").
 Bedingungen und manuelle Aufgaben haben eine `ueberfaellig`-Kennzeichnung,
 Prämien nicht – auch das ist eine Inkonsistenz innerhalb der ToDo-Liste.
 
+**Wird das nicht schon von „Zu prüfen" erledigt? Nein.** Die dortige Regel
+„Prämien nach Kündigung offen" greift nur bei `gekuendigt` – sie fängt den
+Fall ab, dass das Konto schon zu ist und trotzdem Geld fehlt. Der typische
+B4-Fall ist ein *laufender* Deal:
+
+| Fall | `gekuendigt` | von „Zu prüfen" erfasst? |
+|---|---|---|
+| Konto gekündigt, Prämie nie erhalten | ja | ja – Regel 2 |
+| Deal läuft, Prämie war für `2025-03` angekündigt, heute 07/2026 | nein | **nein** |
+
+Die zweite Zeile ist genau die, um die es geht – und sie fällt durch. Die
+beiden Befunde überschneiden sich also, decken sich aber nicht.
+
+**Vorschlag zur Auflösung:** keine neue Kategorie, sondern das bestehende
+ToDo „Auf Prämie warten" als überfällig markieren – so wie es Bedingungen
+und manuelle Aufgaben schon tun. `Todo.ueberfaellig` und die CSS-Klasse
+`.frist.ueberfaellig` gibt es bereits, es fehlt nur die Auswertung von
+`auszahlung_erwartet`. Der Hinweis steht dann dort, wo man ohnehin
+hinschaut, und „Zu prüfen" bleibt das, was es sein soll: Dinge, die man
+sich *irgendwann* ansieht, statt Dinge, die *jetzt* dringend werden.
+
+**Zu entscheiden:** ab wann überfällig – ab dem Monatsende des erwarteten
+Monats, oder mit Karenz (Banken zahlen erfahrungsgemäß spät)? Voraussetzung
+ist außerdem, dass `auszahlung_erwartet` überhaupt geparst wird; heute ist
+es reiner Freitext (siehe B12).
+
 
 ### B6 – „Stornieren" missbraucht `gekuendigt`
 `deal_stornieren()` setzt `gekuendigt=True` und `kuendigung_bestaetigt=True`.
@@ -326,9 +352,19 @@ gerendert (`todos.html:91` u. a.). Das fällt bisher nicht auf, weil ein
 erledigter Posten aus der Liste verschwindet – es sind faktisch Buttons in
 Checkbox-Optik.
 
-*Empfehlung:* Zielzustand mitschicken (`wert=on|off`) statt invertieren,
+**Entschieden:** Zielzustand mitschicken (`wert=on|off`) statt invertieren,
 beim Abhaken von „gekündigt" den Monat wieder leeren und einen bereits
-gesetzten Monat nicht überschreiben.
+gesetzten Monat beim Anhaken **nicht** überschreiben.
+
+*Nachtrag zur Einschätzung oben:* In der Tabelle stand zunächst, das ändere
+die Bedienung spürbar. Das war zu pessimistisch. Weil erledigte Posten aus
+der Liste verschwinden, ist jeder angezeigte Posten immer offen – die
+Checkbox sendet also konstant `wert=on`, und die Route setzt statt zu
+kippen. Die Oberfläche bleibt dabei exakt wie heute; die Checkboxen dürfen
+weiterhin leer gerendert werden. Einzig „Wieder öffnen" bei den erledigten
+Aufgaben (`todos.html:217`) schickt `wert=off`. Erst wenn erledigte Posten
+künftig angehakt stehen bleiben sollen, wird daraus eine UI-Änderung – das
+ist hier ausdrücklich nicht vorgesehen.
 
 ### B9 – Kündigungs-Hinweise: greifen zu spät und überschreiben Geleertes [V]
 Zwei getrennte Defekte in `kuendigung_hinweise.py`:
