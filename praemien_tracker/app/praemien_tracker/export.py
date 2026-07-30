@@ -13,6 +13,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from . import derived
 from .models import Deal
+from .templating import format_zeitpunkt
 
 
 def _autosize(ws: Worksheet) -> None:
@@ -81,8 +82,9 @@ def build_workbook(deals: list[Deal]) -> io.BytesIO:
                 float(kz.gesamt),
                 float(kz.erhalten),
                 float(kz.offen),
-                d.erstellt_am.strftime("%d.%m.%Y %H:%M") if d.erstellt_am else None,
-                d.geaendert_am.strftime("%d.%m.%Y %H:%M") if d.geaendert_am else None,
+                # in Ortszeit, wie im Protokoll - gespeichert ist UTC
+                format_zeitpunkt(d.erstellt_am) if d.erstellt_am else None,
+                format_zeitpunkt(d.geaendert_am) if d.geaendert_am else None,
             ]
         )
     _autosize(deals_ws)

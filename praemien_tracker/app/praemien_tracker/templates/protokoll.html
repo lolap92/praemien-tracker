@@ -28,7 +28,7 @@
       <tbody>
         {% for e in eintraege %}
         <tr>
-          <td class="geld">{{ e.zeitpunkt.strftime("%d.%m.%Y %H:%M:%S") }}</td>
+          <td class="geld">{{ e.zeitpunkt | zeitpunkt }}</td>
           <td>{{ e.tabelle }}</td>
           <td class="geld">{{ e.objekt_id }}</td>
           <td class="geld">

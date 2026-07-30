@@ -11,13 +11,17 @@ Ablauf beim Start (Konzept Abschnitt 7):
 
 from __future__ import annotations
 
+import datetime
 import logging
+import os
 import shutil
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from alembic import command
 from alembic.config import Config as AlembicConfig
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect
@@ -46,22 +50,49 @@ def _alembic_config() -> AlembicConfig:
     return cfg
 
 
+def _ausstehende_migration(cfg: AlembicConfig) -> str | None:
+    """Ziel-Revision, falls eine Migration ansteht - sonst None.
+
+    Ohne diese Prüfung würde bei *jedem* Start kopiert. Die Sicherung wäre
+    damit eine Momentaufnahme des letzten Starts statt des Zustands vor der
+    Migration: Ein einziger Neustart nach einem Datenverlust genügt, und die
+    Kopie enthält den kaputten Stand.
+    """
+    kopf = ScriptDirectory.from_config(cfg).get_current_head()
+    with engine.connect() as verbindung:
+        stand = MigrationContext.configure(verbindung).get_current_revision()
+    return kopf if stand != kopf else None
+
+
+def _sicherheitskopie(ziel_revision: str) -> None:
+    """Die Ziel-Revision steht im Dateinamen, damit eine spätere Migration die
+    vorige Sicherung nicht verdrängt und man der Datei ansieht, wovor sie
+    schützt."""
+    pfad = DB_BACKUP_PATH.with_name(f"{DB_PATH.name}.vor-{ziel_revision}.bak")
+    shutil.copy2(DB_PATH, pfad)
+    logger.info("Sicherheitskopie vor Migration %s erstellt: %s", ziel_revision, pfad)
+
+
 def run_migrations() -> None:
     db_existed = DB_PATH.exists()
     cfg = _alembic_config()
 
     if db_existed:
-        shutil.copy2(DB_PATH, DB_BACKUP_PATH)
-        logger.info("Sicherheitskopie erstellt: %s", DB_BACKUP_PATH)
-
         inspector = inspect(engine)
         if "alembic_version" not in inspector.get_table_names():
             logger.info("Bestehende Datenbank ohne Versionsstand - markiere als Baseline (head).")
+            _sicherheitskopie("baseline")
             command.stamp(cfg, "head")
             return
 
+        ziel = _ausstehende_migration(cfg)
+        if ziel is None:
+            logger.info("Keine Migration ausstehend, Datenbank auf aktuellem Stand.")
+            return
+
+        _sicherheitskopie(ziel)
         command.upgrade(cfg, "head")
-        logger.info("Migrationen angewendet, Datenbank auf aktuellem Stand.")
+        logger.info("Migrationen angewendet, Datenbank auf Stand %s.", ziel)
         with SessionLocal() as db:
             anzahl = backfill_kuendigung_hinweise(db)
             if anzahl:
@@ -76,8 +107,31 @@ def run_migrations() -> None:
         backfill_kuendigung_hinweise(db)
 
 
+def _zeitzone_protokollieren() -> None:
+    """Erkannte Zeitzone ins Log schreiben.
+
+    Zeitpunkte werden in UTC gespeichert und erst bei der Anzeige umgerechnet.
+    Kennt der Container keine Zeitzone, ist "Ortszeit" gleich UTC - das fällt
+    sonst nur als still falsche Uhrzeit im Protokoll auf. Betroffen ist nur
+    die Darstellung, die gespeicherten Daten bleiben korrekt.
+    """
+    jetzt = datetime.datetime.now().astimezone()
+    versatz = jetzt.utcoffset() or datetime.timedelta()
+    stunden = versatz.total_seconds() / 3600
+    name = os.environ.get("TZ") or jetzt.tzname() or "unbekannt"
+    if versatz:
+        logger.info("Zeitzone: %s (UTC%+g h) - Anzeige in Ortszeit, gespeichert wird UTC.", name, stunden)
+    else:
+        logger.warning(
+            "Zeitzone: %s, kein Versatz zu UTC. Falls die Uhrzeiten im Protokoll "
+            "abweichen, ist im Container keine Zeitzone gesetzt (TZ).",
+            name,
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _zeitzone_protokollieren()
     run_migrations()
     yield
 

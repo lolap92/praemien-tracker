@@ -57,6 +57,8 @@ def alle_praemien_erhalten(deal: Deal) -> bool:
 
 
 def ist_kuendbar(deal: Deal, heute: datetime.date | None = None) -> bool:
+    """Ein leeres kuendbar_ab bedeutet *keine Sperrfrist* - gekündigt werden
+    kann, sobald die Prämie da ist. Es heißt nicht "Datum unbekannt"."""
     heute = heute or datetime.date.today()
     return deal.kuendbar_ab is None or deal.kuendbar_ab <= heute
 
@@ -85,19 +87,38 @@ SPERRFRIST_ORANGE = "orange"
 SPERRFRIST_GRUEN = "gruen"
 
 
-def parse_gekuendigt_monat(wert: str | None) -> datetime.date | None:
-    """Parst das Freitextfeld gekuendigt_im_monat ('MM.YY' oder 'M.YY', z.B.
-    '07.26' oder '5.26') zum ersten Tag des jeweiligen Monats."""
+def parse_monat(wert: str | None) -> datetime.date | None:
+    """Monatsangabe zum ersten Tag des Monats.
+
+    Kanonisch ist ISO ('2026-07'); geschrieben wird nur dieses Format.
+    Gelesen wird zusätzlich das frühere 'MM.YY' bzw. 'M.YY', damit ein nach
+    der Umstellung übrig gebliebener Altwert - etwa aus einem eingespielten
+    Backup - nicht lautlos als "kein Datum" gilt und der Deal aus der
+    Sperrfristen-Auswertung fällt.
+    """
     if not wert:
         return None
-    teile = wert.strip().split(".")
-    if len(teile) != 2:
+    text = wert.strip()
+
+    if "-" in text:
+        teile = text.split("-")
+        if len(teile) != 2:
+            return None
+        try:
+            jahr, monat = int(teile[0]), int(teile[1])
+        except ValueError:
+            return None
+    elif "." in text:
+        teile = text.split(".")
+        if len(teile) != 2:
+            return None
+        try:
+            monat, jahr = int(teile[0]), int(teile[1])
+        except ValueError:
+            return None
+    else:
         return None
-    try:
-        monat = int(teile[0])
-        jahr = int(teile[1])
-    except ValueError:
-        return None
+
     if not (1 <= monat <= 12):
         return None
     if jahr < 100:
@@ -106,6 +127,15 @@ def parse_gekuendigt_monat(wert: str | None) -> datetime.date | None:
         return datetime.date(jahr, monat, 1)
     except ValueError:
         return None
+
+
+def format_monat(datum: datetime.date) -> str:
+    """Kanonische Schreibweise für gespeicherte Monatsangaben."""
+    return datum.strftime("%Y-%m")
+
+
+# Alter Name, solange noch Aufrufer darauf zeigen.
+parse_gekuendigt_monat = parse_monat
 
 
 def monate_seit_kuendigung(kuendigungsdatum: datetime.date, heute: datetime.date | None = None) -> int:
@@ -150,7 +180,20 @@ class Todo:
     elemente: list = field(default_factory=list)
 
 
-QUELLE_LABELS = {"spartanien": "Spartanien", "bank": "Bank"}
+QUELLE_SPARTANIEN = "spartanien"
+QUELLE_BANK = "bank"
+QUELLE_LABELS = {QUELLE_SPARTANIEN: "Spartanien", QUELLE_BANK: "Bank"}
+QUELLEN = tuple(QUELLE_LABELS)
+
+
+def normalisiere_quelle(wert: str | None) -> str | None:
+    """Auf die kanonische Schreibweise bringen. Fachlich gibt es nur diese
+    zwei Quellen, jeder abweichende Wert ist ein Schreibfehler - er wird
+    nicht stillschweigend zugeordnet, sondern als None zurückgegeben."""
+    if wert is None:
+        return None
+    normalisiert = wert.strip().lower()
+    return normalisiert if normalisiert in QUELLE_LABELS else None
 
 
 def quelle_label(quelle: str) -> str:
@@ -218,9 +261,10 @@ def alle_todos(
 
 # --- Vollständigkeits-Übersicht ---
 
+# "kuendbar_ab" steht hier bewusst nicht: ein leeres Feld ist keine Lücke,
+# sondern die Aussage "keine Sperrfrist" (siehe ist_kuendbar).
 WUENSCHENSWERTE_FELDER = {
     "kontonummer": "Kontonummer",
-    "kuendbar_ab": "Kündbar ab",
     "freibetrag": "Freibetrag",
 }
 

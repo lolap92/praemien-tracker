@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.9.0
+
+Sammelkorrektur aus dem Fachlichkeits-Review (Teil 2 von 3): Datenqualität
+und Zeitangaben. Enthält eine Datenmigration - vorher wird automatisch eine
+Sicherheitskopie angelegt.
+
+- **Prämien-Quelle wird geprüft.** Bisher wurde jeder Wert gespeichert, auch
+  "Bank" oder "Spartanien" mit großem Anfangsbuchstaben. Das Auswahlfeld im
+  Formular kennt solche Werte nicht - beim nächsten Speichern wurde daraus
+  stillschweigend "Spartanien", eine Bank-Prämie wechselte also unbemerkt die
+  Quelle. Schreibweise und Leerzeichen werden jetzt verziehen, unbekannte
+  Quellen abgelehnt. Vorhandene Einträge werden einmalig bereinigt.
+- **Ein Monatsformat für beides.** "Gekündigt im Monat" verwendet jetzt
+  dasselbe Format wie "Erwartete Auszahlung": `JJJJ-MM`, also z. B. `2026-07`.
+  Bestehende Werte werden automatisch umgestellt. Beide Felder werden beim
+  Speichern geprüft, statt eine falsch formatierte Eingabe später als
+  "fehlt" zu behandeln. Alte Angaben im Format `MM.JJ` bleiben lesbar.
+- **Uhrzeiten in Ortszeit.** Zeitstempel im Protokoll und im Excel-Export
+  wurden in UTC angezeigt, im Sommer also zwei Stunden zu früh. Gespeichert
+  bleibt UTC (eindeutig und ohne Migration), angezeigt wird Ortszeit. Beim
+  Start steht die erkannte Zeitzone im Add-on-Protokoll.
+- **"Kündbar ab" wird nicht mehr als fehlend angemahnt.** Ein leeres Feld
+  bedeutet "keine Sperrfrist" und ist damit eine Angabe, keine Lücke. Der
+  Anteil gepflegter Deals in der Vollständigkeit steigt dadurch.
+- **Sicherheitskopie nur noch vor echten Migrationen.** Bisher wurde bei
+  jedem Start kopiert, immer über dieselbe Datei. Ein einziger Neustart nach
+  einem versehentlichen Löschen genügte, und die Kopie enthielt den kaputten
+  Stand. Jetzt wird nur kopiert, wenn wirklich eine Migration ansteht, und
+  der Dateiname nennt die Ziel-Version (`praemien.db.vor-0005.bak`).
+
 ## 1.8.0
 
 Sammelkorrektur aus dem Fachlichkeits-Review (Teil 1 von 3): ausschließlich

@@ -162,7 +162,7 @@ def toggle_kuendigen(request: Request, deal_id: int, tab: str = Form(""), db: Se
     if deal:
         deal.gekuendigt = not deal.gekuendigt
         if deal.gekuendigt:
-            deal.gekuendigt_im_monat = datetime.date.today().strftime("%m.%y")
+            deal.gekuendigt_im_monat = derived.format_monat(datetime.date.today())
         db.commit()
     return _todos_redirect(request, tab)
 

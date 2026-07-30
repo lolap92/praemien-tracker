@@ -42,12 +42,31 @@ Die Datei enthält private Daten und darf nie ins öffentliche Repo gelangen
 ## Daten & Sicherheit
 
 - Alle Daten liegen ausschließlich lokal in `/data/praemien.db`.
-- Vor jeder Schema-Migration wird automatisch eine Kopie
-  (`praemien.db.bak`) angelegt.
+- Vor jeder Schema-Migration wird automatisch eine Kopie angelegt, benannt
+  nach der Ziel-Version (z. B. `praemien.db.vor-0005.bak`). Steht keine
+  Migration an, wird nichts kopiert - die Kopie bleibt so der Stand vor
+  der Änderung.
 - Die Datei liegt im persistenten Add-on-Verzeichnis und wird damit von den
   regulären Home-Assistant-Backups mit erfasst.
 - Es werden bewusst keine Zugangsdaten (Login/Passwort/TAN) gespeichert -
   nur ein Flag, ob diese im Passwortmanager gesichert sind.
+
+## Zeitangaben
+
+Zeitstempel (z. B. im Protokoll) werden intern in UTC gespeichert und in
+der Oberfläche in Ortszeit angezeigt. Das setzt voraus, dass der Container
+die Zeitzone kennt - siehe `Zeitzone prüfen` unten.
+
+Monatsangaben (Kündigungsmonat, erwartete Auszahlung) verwenden
+durchgängig das Format `JJJJ-MM`, z. B. `2026-07`.
+
+### Zeitzone prüfen
+
+Im Add-on-Protokoll steht beim Start eine Zeile mit der erkannten
+Zeitzone. Weicht die angezeigte Uhrzeit im Tab "Protokoll" von der
+tatsächlichen ab, ist im Container keine Zeitzone gesetzt - dann hilft ein
+`TZ`-Eintrag in der Add-on-Konfiguration. Die gespeicherten Daten sind
+davon nicht betroffen, es handelt sich nur um die Anzeige.
 
 ## Konfiguration
 

@@ -11,7 +11,14 @@ from sqlalchemy.orm import Session, joinedload
 from .. import derived
 from ..database import get_db
 from ..export import build_workbook
-from ..helpers import build_deal_from_import, get_or_create_bank, get_or_create_inhaber, parse_date, parse_decimal
+from ..helpers import (
+    build_deal_from_import,
+    get_or_create_bank,
+    get_or_create_inhaber,
+    monat_aus_formular,
+    parse_date,
+    parse_decimal,
+)
 from ..ingress import redirect
 from ..models import Aufgabe, Bank, Bedingung, Deal, DealUrl, Inhaber, Praemie
 from ..schemas import DealImport
@@ -27,6 +34,17 @@ def _hole_deal(db: Session, deal_id: int) -> Deal:
     if deal is None:
         raise HTTPException(status_code=404, detail=f"Deal {deal_id} existiert nicht.")
     return deal
+
+
+def _quelle_oder_400(wert: str) -> str:
+    """Nur die zwei fachlich existierenden Quellen zulassen. Ohne diese
+    Prüfung landet ein abweichender Wert in der Datenbank, das <select> im
+    Formular kennt ihn nicht - und beim nächsten Speichern wird daraus
+    stillschweigend "spartanien"."""
+    normalisiert = derived.normalisiere_quelle(wert)
+    if normalisiert is None:
+        raise HTTPException(status_code=400, detail=f"Unbekannte Prämien-Quelle: {wert!r}")
+    return normalisiert
 
 
 def _als_int(werte: list[str]) -> list[int]:
@@ -303,7 +321,7 @@ def deal_update(
     deal.kontonummer = kontonummer.strip() or None
     deal.kuendbar_ab = parse_date(kuendbar_ab)
     deal.gekuendigt = gekuendigt == "on"
-    deal.gekuendigt_im_monat = gekuendigt_im_monat.strip() or None
+    deal.gekuendigt_im_monat = monat_aus_formular(gekuendigt_im_monat)
     deal.kuendigung_bestaetigt = kuendigung_bestaetigt == "on"
     deal.kuendigung_hinweis = kuendigung_hinweis.strip() or None
     deal.kuendigung_hinweis_url = kuendigung_hinweis_url.strip() or None
@@ -377,10 +395,10 @@ def praemie_add(
     db.add(
         Praemie(
             deal_id=deal_id,
-            quelle=quelle,
+            quelle=_quelle_oder_400(quelle),
             betrag=parse_decimal(betrag) or 0,
             erhalten=erhalten == "on",
-            auszahlung_erwartet=auszahlung_erwartet.strip() or None,
+            auszahlung_erwartet=monat_aus_formular(auszahlung_erwartet),
         )
     )
     db.commit()
@@ -400,10 +418,10 @@ def praemie_update(
 ):
     p = db.get(Praemie, praemie_id)
     if p:
-        p.quelle = quelle
+        p.quelle = _quelle_oder_400(quelle)
         p.betrag = parse_decimal(betrag) or 0
         p.erhalten = erhalten == "on"
-        p.auszahlung_erwartet = auszahlung_erwartet.strip() or None
+        p.auszahlung_erwartet = monat_aus_formular(auszahlung_erwartet)
         db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
 

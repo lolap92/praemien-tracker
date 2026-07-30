@@ -81,8 +81,12 @@ dem Green.
 Änderungen am Datenmodell werden als neue Alembic-Migration unter
 `praemien_tracker/app/migrations/versions/` abgelegt. Beim nächsten
 Add-on-Start wendet die App ausstehende Migrationen automatisch an und legt
-vorher eine Sicherheitskopie (`praemien.db.bak`) an - zusätzlich zu den
-laufenden Home-Assistant-Backups.
+vorher eine Sicherheitskopie an - benannt nach der Ziel-Revision, z. B.
+`praemien.db.vor-0005.bak`, damit eine späte Migration die vorige Kopie
+nicht verdrängt. Steht keine Migration an, wird auch nichts kopiert; die
+Kopie bleibt damit der Stand *vor* der Änderung und wird nicht bei jedem
+Neustart überschrieben. Zusätzlich greifen die laufenden
+Home-Assistant-Backups, die `/data` mit erfassen.
 
 ## Lokale Entwicklung (ohne Home Assistant)
 

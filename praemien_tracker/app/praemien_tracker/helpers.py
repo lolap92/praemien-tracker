@@ -6,6 +6,7 @@ from decimal import Decimal, InvalidOperation
 
 from sqlalchemy.orm import Session
 
+from .derived import format_monat, parse_monat
 from .models import Aufgabe, Bank, Bedingung, Deal, DealUrl, Inhaber, Praemie
 from .schemas import DealImport
 
@@ -26,6 +27,17 @@ def parse_decimal(value: str | None) -> Decimal | None:
         return Decimal(value.replace(",", "."))
     except InvalidOperation:
         return None
+
+
+def monat_aus_formular(wert: str | None) -> str | None:
+    """Monatsangabe aus dem Formular auf ISO bringen. Nicht lesbare Eingaben
+    werden unverändert übernommen, damit die Eingabe des Nutzers nicht
+    verschwindet - sie fällt dann in "Zu prüfen" bzw. in der
+    Sperrfristen-Liste auf."""
+    if wert is None or not wert.strip():
+        return None
+    datum = parse_monat(wert)
+    return format_monat(datum) if datum else wert.strip()
 
 
 def get_or_create_bank(db: Session, name: str) -> Bank:

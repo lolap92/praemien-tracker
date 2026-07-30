@@ -104,7 +104,7 @@ def test_jeder_status_hat_ein_label_und_einen_index():
         ("07.26", datetime.date(2026, 7, 1)),
         ("5.26", datetime.date(2026, 5, 1)),
         ("03.2025", datetime.date(2025, 3, 1)),
-        ("2026-05", None),
+        ("2026-05", datetime.date(2026, 5, 1)),  # seit B12 kanonisch
         ("13.26", None),
         ("quatsch", None),
         ("", None),

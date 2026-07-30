@@ -1,3 +1,4 @@
+import datetime
 from pathlib import Path
 
 from fastapi import Request
@@ -21,6 +22,22 @@ def format_eur(value) -> str:
     formatted = f"{float(value):,.2f}"
     formatted = formatted.replace(",", "X").replace(".", ",").replace("X", ".")
     return f"{formatted} €"
+
+
+def format_zeitpunkt(value) -> str:
+    """Gespeicherte Zeitpunkte in Ortszeit ausgeben.
+
+    erstellt_am, geaendert_am und protokoll.zeitpunkt werden ueber
+    func.now() gefuellt, und SQLite liefert dafuer CURRENT_TIMESTAMP - das
+    ist immer UTC, unabhaengig von der Zeitzone des Containers. Gespeichert
+    bleibt UTC (eindeutig, monoton, keine Migration), umgerechnet wird erst
+    hier bei der Anzeige.
+    """
+    if value is None:
+        return "–"
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=datetime.timezone.utc)
+    return value.astimezone().strftime("%d.%m.%Y %H:%M:%S")
 
 
 def format_date(value) -> str:
@@ -74,6 +91,7 @@ def nav_tab(request: Request) -> str:
 templates.env.filters["eur"] = format_eur
 templates.env.filters["eur_ganz"] = format_eur_ganz
 templates.env.filters["datum"] = format_date
+templates.env.filters["zeitpunkt"] = format_zeitpunkt
 templates.env.filters["quelle"] = quelle_label
 # Bewusst nicht "aktiver_tab": diesen Namen belegt der ToDo-Router schon
 # mit dem gewählten ToDo-Reiter, er würde den Helfer hier überschatten.

@@ -59,11 +59,11 @@
       <legend>Kündigung</legend>
       <div class="reihe">
         <div class="feld">
-          <label for="kuendbar_ab">Kündbar ab {{ "⚠ offen" if 'kuendbar_ab' in offene_felder else "" }}</label>
+          <label for="kuendbar_ab">Kündbar ab <span class="auto">leer = keine Sperrfrist</span></label>
           <input type="date" id="kuendbar_ab" name="kuendbar_ab" value="{{ deal.kuendbar_ab.isoformat() if deal.kuendbar_ab else '' }}">
         </div>
         <div class="feld">
-          <label for="gekuendigt_im_monat">Gekündigt im Monat (z. B. 05.26)</label>
+          <label for="gekuendigt_im_monat">Gekündigt im Monat (z. B. 2026-05)</label>
           <input type="text" id="gekuendigt_im_monat" name="gekuendigt_im_monat" value="{{ deal.gekuendigt_im_monat or '' }}">
         </div>
       </div>
