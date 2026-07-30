@@ -11,8 +11,9 @@ Die Findings sind nach Umsetzbarkeit nummeriert:
 - **B1–B15** – vorher anschauen, weil eine fachliche Entscheidung,
   eine Datenmigration oder eine spürbare Verhaltensänderung dranhängt.
 
-**B5 wurde herausgenommen** – der Freibetrag wird separat verfolgt. Die
-Nummer bleibt frei, damit die übrigen IDs stabil bleiben.
+**B5 und B10 wurden herausgenommen** – der Freibetrag wird separat
+verfolgt, der case-sensitive Namensvergleich bleibt bewusst, wie er ist.
+Die Nummern bleiben frei, damit die übrigen IDs stabil bleiben.
 
 Die Spalte *Prio* in den Übersichtstabellen gibt den Schweregrad an:
 **hoch** = Datenverlust oder falsche fachliche Aussage, **mittel** =
@@ -56,7 +57,6 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B7 | mittel | Zugangsdaten-ToDo erscheint auch für abgeschlossene Deals | **Entschieden:** entfällt ab `gekuendigt`. Noch nicht umgesetzt |
 | B8 | hoch | Abhak-Routen invertieren statt zu setzen; eine doppelt ankommende Anfrage kippt den Wert zurück und überschreibt beim Kündigen den gepflegten Kündigungsmonat | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
 | B9 | mittel | Kündigungs-Hinweise greifen nur beim App-Start (neuer Deal bleibt leer) und überschreiben bewusst geleerte Felder | Beim Anlegen anwenden? Und wie „bewusst leer" von „nie gesetzt" unterscheiden? |
-| B10 | hoch | Bank/Inhaber case-sensitiv → „Comdirect"/„comdirect", „Max"/„max" werden zu je zwei Einträgen | Bestehende Dubletten müssen zusammengeführt werden – Datenmigration, nicht rückholbar |
 | B11 | hoch | `quelle` unvalidiert; „Bank" wird beim nächsten Speichern still zu „Spartanien" | Normalisierung ist trivial, aber vorhandene Zeilen müssen einmalig bereinigt werden – und unbekannte Werte künftig ablehnen heißt, Importe abzuweisen |
 | B12 | mittel | Zwei Monatsformate (`MM.YY` vs. `YYYY-MM`), beide ungeprüft | **Entschieden:** beide auf ISO `YYYY-MM`. Noch nicht umgesetzt |
 | B13 | mittel | Kein Duplikat-Schutz – zweimal dasselbe JSON = zwei Deals | Warnen oder blocken? Ist `(Bank, Kontoart, Inhaber)` wirklich eindeutig, oder gibt es legitim zwei gleiche Konten? |
@@ -468,38 +468,26 @@ Zwei getrennte Defekte in `kuendigung_hinweise.py`:
 Zusätzlich ist der Lookup ein exakter Tupel-Match auf
 `(bank.name, kontoart)`. Schreibweisen wie `BforBank` statt des hinterlegten
 `Bfor` oder `Girokonto ` mit Leerzeichen führen stillschweigend dazu, dass
-gar kein Hinweis gesetzt wird (siehe B10/A13).
+gar kein Hinweis gesetzt wird (siehe A13).
 
 ---
 
 ## 2. Importweg (JSON-Textfeld)
 
-### B10 – Bank und Inhaber werden case-sensitiv verglichen [V]
-Zwei Einfügevorgänge über `/deals/json-import`, einmal
-`"Comdirect"/"Depot"/"Max"`, einmal `"comdirect "/" Depot"/"max"`:
+
+### A13 – `kontoart` wird im Importpfad nicht getrimmt [V]
+Zwei Einfügevorgänge über `/deals/json-import`, einmal mit
+`"kontoart": "Depot"`, einmal mit `"kontoart": " Depot"`:
 
 ```
-Banken : ['Comdirect', 'comdirect']
-Inhaber: ['Max', 'max']
 Deal 1: bank='Comdirect' kontoart='Depot'   hinweis=False
 Deal 2: bank='comdirect' kontoart=' Depot'  hinweis=False
 ```
 
-`get_or_create_bank/-inhaber` vergleichen exakt. „Comdirect", „comdirect",
-„ComDirect" werden zu drei Banken, „Max" und „max" zu zwei Personen. Das
-zerlegt die Sperrfristen-Auswertung (deren ganzer Zweck der Vergleich pro
-Bank ist), die Pro-Inhaber-Tabelle inklusive Freibetragssumme und den
-Bank-Filter.
-
-*Empfehlung:* Vergleich über `func.lower(Bank.name)`. **Achtung:** bereits
-entstandene Dubletten müssen dabei zusammengeführt werden – das ist eine
-Datenmigration und nicht ohne Weiteres rückholbar, deshalb B statt A.
-
-### A13 – `kontoart` wird im Importpfad nicht getrimmt
-Im selben Testlauf (Ausgabe siehe B10): `build_deal_from_import()` übernimmt
-`kontoart` ungetrimmt (`' Depot'`), während der Formularpfad (`deals.py`)
-`.strip()` aufruft. Zwei Anlagewege, zwei Ergebnisse für dieselbe Eingabe.
-Folgefehler: Der Kündigungs-Hinweis findet `(' Depot')` nicht mehr.
+`build_deal_from_import()` übernimmt `kontoart` ungetrimmt, während der
+Formularpfad (`deals.py`) `.strip()` aufruft. Zwei Anlagewege, zwei
+Ergebnisse für dieselbe Eingabe. Folgefehler: Der Kündigungs-Hinweis findet
+`(' Depot')` nicht mehr.
 
 Der Fix gleicht den Importpfad nur an das bereits bestehende Verhalten des
 Formularpfads an – keine fachliche Entscheidung nötig.
@@ -765,9 +753,9 @@ der Nachfolger ist der `lifespan`-Kontextmanager.
    ein kleiner Diff, sofort sichtbarer Effekt.
 2. **A13 / A14** – Eingaben trimmen und Leereingaben ablehnen; stoppt das
    Entstehen weiterer kaputter Datensätze.
-3. **B11 / B10** – `quelle` und Namensvergleich normalisieren, inklusive
-   einmaliger Bereinigung der bestehenden Daten. Hier gehen bis dahin still
-   und ohne Meldung Daten kaputt.
+3. **B11** – `quelle` normalisieren, inklusive einmaliger Bereinigung der
+   bestehenden Zeilen. Hier gehen bis dahin still und ohne Meldung Daten
+   kaputt.
 4. **B2** – Status-Pipeline korrigieren.
 5. **B4** – überfällige Prämien: die fachliche Funktion, die dem
    Anwendungsfall am meisten fehlt.
