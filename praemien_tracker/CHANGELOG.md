@@ -121,6 +121,18 @@ Keine Datenbank-Migration nötig.
 - Tabellenzeilen sind per Tastatur erreichbar, Listen-Markup korrigiert.
 - Intern: erste Testabdeckung für die abgeleiteten Sichten (34 Tests),
   veraltete FastAPI-Startschnittstelle ersetzt.
+## 1.7.3
+
+- Caching: zusätzlich zu Cache-Control werden jetzt auch die Legacy-Header
+  Pragma und Expires gesetzt (für alle Seiten und statischen Dateien).
+  Ältere Android-Webviews werten Cache-Control teilweise nicht aus und
+  zeigten nach einem Update weiterhin die alte Oberfläche.
+
+## 1.7.2
+
+- Deals-Filter: Checkboxen im Inhaber-/Status-Dropdown im App-Design
+  (abgerundet, mit Häkchen) statt native OS-Checkbox - konsistent zum
+  restlichen Look, unabhängig vom Browser.
 
 ## 1.7.1
 

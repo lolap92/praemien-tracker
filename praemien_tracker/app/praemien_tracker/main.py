@@ -145,12 +145,19 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def no_cache(request, call_next):
-        """Verhindert, dass die HA-Companion-App (oder andere Webviews) HTML-Seiten
-        zwischenspeichert - sonst bleibt nach einem Add-on-Update die alte Seite
-        (mit veraltetem CSS-Link) sichtbar, obwohl der Server bereits die neue
-        Version ausliefert."""
+        """Verhindert, dass die HA-Companion-App (oder andere Webviews) Seiten oder
+        statische Dateien zwischenspeichert - sonst bleibt nach einem Add-on-Update
+        die alte Seite (mit veraltetem CSS) sichtbar, obwohl der Server bereits die
+        neue Version ausliefert.
+
+        Gilt durch die Middleware für alle Antworten, also auch für /static. Neben
+        Cache-Control werden zusätzlich die Legacy-Header Pragma und Expires gesetzt:
+        ältere Android-Webviews werten Cache-Control teilweise nicht aus und halten
+        sonst trotzdem an ihrer zwischengespeicherten Fassung fest."""
         response = await call_next(request)
-        response.headers["Cache-Control"] = "no-store"
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
         return response
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
