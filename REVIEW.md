@@ -45,7 +45,7 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 
 | # | Prio | Finding | Was zu entscheiden ist |
 |---|---|---|---|
-| B1 | hoch | Fehlendes „Kündbar ab" gilt als „sofort kündbar" → App empfiehlt Kündigung, während Vollständigkeit das Datum noch anmahnt | Soll unbekannt „nicht kündigen" heißen? Dann braucht die Pipeline einen siebten Zustand |
+| B1 | niedrig | Vollständigkeit mahnt „Kündbar ab" an, obwohl ein leeres Feld eine gültige Aussage ist („keine Sperrfrist") | Feld aus `WUENSCHENSWERTE_FELDER` nehmen, oder die Erinnerung bewusst behalten? |
 | B2 | hoch | Gekündigt + bestätigt, aber offene Bedingung → gilt gleichzeitig als „in Bearbeitung" und „gekündigt" | Ist `kuendigung_bestaetigt` das Abbruchkriterium, oder sollen offene Bedingungen sichtbar bleiben? |
 | B3 | hoch | Deal ohne Prämien hängt unsichtbar in „Auf Prämie warten" – kein ToDo, keine Meldung | Als offenes Feld melden oder eigener Status? |
 | B4 | hoch | `auszahlung_erwartet` wird eingefordert, aber nie ausgewertet – keine Überfälligkeit | Ab wann gilt eine Prämie als überfällig? Neue ToDo-Kategorie oder Markierung? |
@@ -79,19 +79,33 @@ strukturelle Inkonsistenz der App.
 
 ## 1. Fachlogik
 
-### B1 – Fehlendes „Kündbar ab" bedeutet „sofort kündigen"
-`derived.ist_kuendbar()` gibt bei `kuendbar_ab is None` **True** zurück.
-Sobald alle Prämien als erhalten markiert sind, springt so ein Deal auf
-Status *Kündigen* und erzeugt das ToDo „jetzt kündbar – kündigen" – obwohl
-die Mindesthaltedauer schlicht nicht erfasst ist. Gleichzeitig listet der
-Tab *Vollständigkeit* denselben Deal unter „Kündbar ab fehlt".
+### B1 – „Kündbar ab" wird angemahnt, obwohl leer eine Aussage ist [V]
+**Fachliche Regel (vom Nutzer bestätigt):** Ein leeres `kuendbar_ab`
+bedeutet *keine Sperrfrist* – gekündigt werden kann, sobald die Prämie da
+ist. Die Ableitung setzt das korrekt um:
 
-Die App fordert also an einer Stelle das Datum ein und behauptet an anderer
-Stelle, es sei egal. Fachlich ist das der teuerste Fehler der App: Beim
-Prämien-Hopping führt zu frühes Kündigen zum Verfall der Prämie.
+```
+leer, Prämie noch offen  -> praemie_warten
+leer, Prämie erhalten    -> kuendigen
+Datum künftig, erhalten  -> wartet_auf_kuendigung
+```
 
-*Empfehlung:* unbekanntes `kuendbar_ab` → eigener Zustand („Kündigungsdatum
-klären") statt „kündigen".
+Damit ist am Status nichts zu ändern. Übrig bleibt eine Inkonsistenz eine
+Ebene höher: `WUENSCHENSWERTE_FELDER` (`derived.py:221`) führt
+`kuendbar_ab` als Pflichtangabe, der Tab *Vollständigkeit* meldet also
+jeden Deal ohne Sperrfrist als lückenhaft – obwohl das Feld genau so
+gemeint ist. Verifiziert: beide Deals oben mit leerem Datum listen
+`kuendbar_ab` als offenes Feld.
+
+Praktisch heißt das: Für jeden sperrfristfreien Deal muss der Nutzer das
+Feld einmal manuell auf „nicht nötig" setzen (`skip-field`), damit der Tab
+Ruhe gibt.
+
+*Zu entscheiden:* `kuendbar_ab` aus `WUENSCHENSWERTE_FELDER` streichen (dann
+verschwindet die Erinnerung ganz) – oder sie bewusst behalten, weil man
+beim Anlegen eben doch kurz prüfen will, ob die Bank eine Frist vorsieht.
+Unabhängig davon lohnt es, die Regel im Docstring von `ist_kuendbar()`
+festzuhalten; aktuell steht sie nirgends.
 
 ### B2 – Status-Pipeline ist strikt sequenziell, die Realität nicht [V]
 `derived.status()` prüft in fester Reihenfolge. Ein Deal, der bereits
@@ -464,7 +478,7 @@ der Nachfolger ist der `lifespan`-Kontextmanager.
 3. **B11 / B10** – `quelle` und Namensvergleich normalisieren, inklusive
    einmaliger Bereinigung der bestehenden Daten. Hier gehen bis dahin still
    und ohne Meldung Daten kaputt.
-4. **B1 / B2** – Status-Pipeline korrigieren.
+4. **B2** – Status-Pipeline korrigieren.
 5. **B4 / B5** – überfällige Prämien und Freibetragsgrenze: die zwei
    fachlichen Funktionen, die dem Anwendungsfall am meisten fehlen.
 6. **B9 / A16** – Kündigungs-Hinweise beim Anlegen statt beim Start,
