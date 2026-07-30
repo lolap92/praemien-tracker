@@ -452,6 +452,17 @@ künftig angehakt stehen bleiben sollen, wird daraus eine UI-Änderung – das
 ist hier ausdrücklich nicht vorgesehen.
 
 ### B9 – Kündigungs-Hinweise: greifen zu spät und überschreiben Geleertes [V]
+
+Beide Defekte in einem Durchlauf, Bank „Comdirect" / Kontoart „Depot"
+(in `KUENDIGUNG_HINWEISE` hinterlegt):
+
+```
+1) Deal frisch angelegt      -> hinweis gesetzt? False
+2) Nach Add-on-Neustart      -> hinweis gesetzt? True
+3) Nutzer leert das Feld     -> hinweis gesetzt? False
+4) Nächster Neustart         -> hinweis gesetzt? True   ← ungewollt zurück
+```
+
 Zwei getrennte Defekte in `kuendigung_hinweise.py`:
 
 1. `backfill_kuendigung_hinweise()` läuft **ausschließlich beim Start** der
@@ -469,6 +480,32 @@ Zusätzlich ist der Lookup ein exakter Tupel-Match auf
 `(bank.name, kontoart)`. Schreibweisen wie `BforBank` statt des hinterlegten
 `Bfor` oder `Girokonto ` mit Leerzeichen führen stillschweigend dazu, dass
 gar kein Hinweis gesetzt wird (siehe A13).
+
+**Zu entscheiden – zwei Wege:**
+
+*Weg 1 – Hinweis ableiten statt speichern (empfohlen).* Der Vorschlagstext
+wird gar nicht mehr in den Deal geschrieben, sondern beim Anzeigen
+eingeblendet, solange das Feld leer ist. Damit lösen sich beide Defekte
+und die Schreibweisen-Falle auf einen Schlag: Es gibt keinen Zeitpunkt
+mehr, zu dem etwas „zu spät" passiert, und nichts kann überschrieben
+werden, weil nichts geschrieben wird. Das entspricht auch dem Prinzip der
+App – Fakten speichern, Ableitbares ableiten; der Kanon in
+`kuendigung_hinweise.py` ist Referenzwissen, kein Fakt über *diesen* Deal.
+Zu klären wäre, wie sich Export und Formular verhalten: Der Vorschlag
+müsste als solcher erkennbar sein (Platzhalter statt Inhalt) und beim
+ersten Bearbeiten in das Feld übernommen werden.
+
+*Weg 2 – beim Speichern befüllen und „bewusst leer" merken.* Der Backfill
+läuft zusätzlich beim Anlegen und beim Ändern von Bank/Kontoart. Damit ein
+geleertes Feld geleert bleibt, muss „vom Nutzer bewusst leer gelassen" von
+„nie gesetzt" unterscheidbar werden. Drei Varianten: leerer String statt
+`NULL` (keine Migration, bricht aber die sonst durchgehende
+`'' → None`-Konvention der App), eine eigene Spalte, oder ein Eintrag im
+bestehenden `uebersprungene_felder` – das ist bereits der etablierte
+Mechanismus für „bewusst nicht nötig" und käme ohne Migration aus.
+
+Der Schreibweisen-Punkt bleibt in beiden Wegen bestehen und wäre separat
+zu lösen (Lookup case-insensitiv und getrimmt).
 
 ---
 
