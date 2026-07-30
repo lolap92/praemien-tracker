@@ -58,7 +58,7 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B9 | mittel | Kündigungs-Hinweise greifen nur beim App-Start (neuer Deal bleibt leer) und überschreiben bewusst geleerte Felder | Beim Anlegen anwenden? Und wie „bewusst leer" von „nie gesetzt" unterscheiden? |
 | B10 | hoch | Bank/Inhaber case-sensitiv → „Comdirect"/„comdirect", „Max"/„max" werden zu je zwei Einträgen | Bestehende Dubletten müssen zusammengeführt werden – Datenmigration, nicht rückholbar |
 | B11 | hoch | `quelle` unvalidiert; „Bank" wird beim nächsten Speichern still zu „Spartanien" | Normalisierung ist trivial, aber vorhandene Zeilen müssen einmalig bereinigt werden – und unbekannte Werte künftig ablehnen heißt, Importe abzuweisen |
-| B12 | mittel | Zwei Monatsformate (`MM.YY` vs. `YYYY-MM`), beide ungeprüft | Auf ein Format vereinheitlichen? Betrifft bestehende Daten |
+| B12 | mittel | Zwei Monatsformate (`MM.YY` vs. `YYYY-MM`), beide ungeprüft | **Entschieden:** beide auf ISO `YYYY-MM`. Noch nicht umgesetzt |
 | B13 | mittel | Kein Duplikat-Schutz – zweimal dasselbe JSON = zwei Deals | Warnen oder blocken? Ist `(Bank, Kontoart, Inhaber)` wirklich eindeutig, oder gibt es legitim zwei gleiche Konten? |
 | B14 | mittel | Zeitstempel in UTC, Fälligkeiten lokal → Protokoll zeigt 2 h falsch | Nur die Anzeige umrechnen oder künftig lokal speichern? Bestehende Zeilen sind UTC |
 | B15 | niedrig | `praemien.db.bak` wird bei jedem Start überschrieben, nicht nur vor Migrationen | Wie viele Stände aufheben – Platz auf dem Green ist begrenzt |
@@ -544,6 +544,45 @@ Gibt der Nutzer bei `gekuendigt_im_monat` „2026-05" ein, liefert
 `parse_gekuendigt_monat()` `None` und der Deal verschwindet kommentarlos in
 die Liste „Gekündigt, aber ohne Kündigungsmonat" – ohne Hinweis, dass die
 Eingabe nur falsch formatiert war.
+
+**Entschieden:** `gekuendigt_im_monat` wird auf ISO `YYYY-MM` angeglichen,
+also auf das Format, das `auszahlung_erwartet` schon verwendet. Die oben
+beschriebene Fehleingabe wird damit nachträglich zur richtigen.
+
+Umzustellen sind:
+
+| Stelle | heute | künftig |
+|---|---|---|
+| `derived.parse_gekuendigt_monat()` | nur `MM.YY` / `M.YY` | ISO – **und** `MM.YY` weiter akzeptieren |
+| `todos.toggle_kuendigen()` (`todos.py:165`) | `strftime("%m.%y")` | `strftime("%Y-%m")` |
+| `deal_form.html:72` | Label „(z. B. 05.26)" | „(z. B. 2026-05)" |
+| Bestandsdaten | `'03.25'` | `'2025-03'` – Datenmigration |
+
+**Warum der Parser beide Formate weiter annehmen soll:** Bleibt nach der
+Migration irgendwo ein `MM.YY`-Wert stehen – etwa aus einem alten Backup –,
+liefert ein reiner ISO-Parser `None`. Der Deal fiele dann lautlos aus der
+Sperrfristen-Auswertung heraus, also genau in den Fehler, den B12 abstellen
+soll. Geschrieben wird ausschließlich ISO, gelesen wird tolerant.
+
+**Migration:** `parse_gekuendigt_monat()` kann für die Umstellung
+wiederverwendet werden. Werte, die weder als `MM.YY` noch als ISO lesbar
+sind, bleiben unangetastet und werden protokolliert, statt sie auf `NULL`
+zu setzen – lieber ein unlesbarer Rest, den man von Hand ansieht, als
+stillschweigend gelöschte Kündigungsdaten. Die Spalte ist `String(10)`,
+`YYYY-MM` braucht 7 Zeichen: keine Schemaänderung nötig, reine
+Datenmigration.
+
+**Empfehlung zur Umsetzung:** ein gemeinsames Paar `parse_monat()` /
+`format_monat()` in `helpers.py`, das beide Felder benutzen. Heute gibt es
+für `auszahlung_erwartet` überhaupt keinen Parser – der entsteht dabei
+gleich mit, und genau den braucht **B4** für die Ein-Monats-Karenz. Damit
+lassen sich beide Felder erstmals beim Speichern prüfen, statt falsche
+Eingaben erst später als „fehlt" auffallen zu lassen.
+
+*Nebenbei:* Alte Protokolleinträge enthalten weiterhin `MM.YY`-Werte in
+`alter_wert` und `json_snapshot`. Das ist korrekt so – sie geben den Stand
+von damals wieder – sollte aber bekannt sein, damit es später nicht als
+Fehler gelesen wird.
 
 ### A16 – Kein Massenimport, und die Fehlermeldung hilft nicht weiter [V]
 `/deals/json-import` akzeptiert ausschließlich ein einzelnes Deal-Objekt.
