@@ -976,10 +976,31 @@ Schema-Migration". Tatsächlich ist sie eine Momentaufnahme des letzten
 Starts – die Dokumentation weckt also mehr Vertrauen, als der Mechanismus
 trägt.
 
-*Empfehlung:* nur kopieren, wenn `command.upgrade` wirklich etwas zu tun
-hat (Vergleich `script.get_current_head()` gegen den Stand in der DB), und
-den Zeitstempel in den Dateinamen aufnehmen, damit eine neue Kopie die
-vorige nicht verdrängt.
+**Empfehlung:**
+
+1. **Nur kopieren, wenn wirklich eine Migration ansteht.** Vergleich der
+   aktuellen Revision in der Datenbank (`MigrationContext.get_current_revision()`)
+   gegen den Kopf der Skripte (`ScriptDirectory.get_current_head()`); sind
+   sie gleich, passiert nichts. Damit tut der Mechanismus genau das, was
+   README und DOCS.md ohnehin behaupten – und das Weiterrollen bei
+   gewöhnlichen Neustarts hört auf.
+2. **Ziel-Revision in den Dateinamen**, z. B. `praemien.db.vor-0005.bak`.
+   Dann verdrängt eine spätere Migration die vorige Sicherung nicht, und
+   man sieht der Datei an, wovor sie schützt. Migrationen sind selten
+   (bisher vier), ein Platzproblem entsteht dadurch nicht; wer sichergehen
+   will, behält die letzten drei.
+3. **Dokumentation korrigieren** – oder, nach Schritt 1, einfach zutreffend
+   werden lassen.
+
+**Bewusst nicht empfohlen:** den Mechanismus zu einem allgemeinen Backup
+auszubauen (rollierende Stände, Zeitplan). Dafür gibt es die
+Home-Assistant-Backups, die `/data` ohnehin mit erfassen – ein zweites
+Sicherungssystem im Add-on kostet Platz auf dem Green und schützt vor
+nichts Zusätzlichem. Für den häufigsten Unfall, das versehentliche Löschen
+eines Deals, liegt zudem bereits ein vollständiges JSON im Protokoll
+(`protokoll.py:138-154`, inklusive Prämien, Bedingungen, Aufgaben und
+Links) – daraus lässt sich ein Deal von Hand rekonstruieren, ohne die
+gesamte Datenbank zurückzurollen.
 
 ### A17 – Keine Tests
 Kein einziger Test im Repo. Bei einer App, deren Kern (`derived.py`) reine,
