@@ -56,7 +56,7 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B6 | mittel | „Stornieren" setzt `gekuendigt=True` → stornierte Deals verfälschen den Sperrfristen-Tab | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
 | B7 | mittel | Zugangsdaten-ToDo erscheint auch für abgeschlossene Deals | **Entschieden:** entfällt ab `gekuendigt`. Noch nicht umgesetzt |
 | B8 | hoch | Abhak-Routen invertieren statt zu setzen; eine doppelt ankommende Anfrage kippt den Wert zurück und überschreibt beim Kündigen den gepflegten Kündigungsmonat | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
-| B9 | mittel | Kündigungs-Hinweise greifen nur beim App-Start (neuer Deal bleibt leer) und überschreiben bewusst geleerte Felder | Beim Anlegen anwenden? Und wie „bewusst leer" von „nie gesetzt" unterscheiden? |
+| B9 | mittel | Kündigungs-Hinweise greifen nur beim App-Start (neuer Deal bleibt leer) und überschreiben bewusst geleerte Felder | **Entschieden:** einmalig beim Anlegen setzen, Start-Backfill entfällt. Noch nicht umgesetzt |
 | B11 | hoch | `quelle` unvalidiert; „Bank" wird beim nächsten Speichern still zu „Spartanien" | **Entschieden:** normalisieren, `Literal` im Schema, Bestand einmalig bereinigen. Noch nicht umgesetzt |
 | B12 | mittel | Zwei Monatsformate (`MM.YY` vs. `YYYY-MM`), beide ungeprüft | **Entschieden:** beide auf ISO `YYYY-MM`. Noch nicht umgesetzt |
 | B13 | mittel | Kein Duplikat-Schutz – zweimal dasselbe JSON = zwei Deals | Warnen oder blocken? Ist `(Bank, Kontoart, Inhaber)` wirklich eindeutig, oder gibt es legitim zwei gleiche Konten? |
@@ -481,31 +481,37 @@ Zusätzlich ist der Lookup ein exakter Tupel-Match auf
 `Bfor` oder `Girokonto ` mit Leerzeichen führen stillschweigend dazu, dass
 gar kein Hinweis gesetzt wird (siehe A13).
 
-**Zu entscheiden – zwei Wege:**
+**Entschieden:** Der Hinweis wird **einmalig beim Anlegen** des Deals
+gesetzt – und sonst nie. Kein Backfill beim App-Start mehr.
 
-*Weg 1 – Hinweis ableiten statt speichern (empfohlen).* Der Vorschlagstext
-wird gar nicht mehr in den Deal geschrieben, sondern beim Anzeigen
-eingeblendet, solange das Feld leer ist. Damit lösen sich beide Defekte
-und die Schreibweisen-Falle auf einen Schlag: Es gibt keinen Zeitpunkt
-mehr, zu dem etwas „zu spät" passiert, und nichts kann überschrieben
-werden, weil nichts geschrieben wird. Das entspricht auch dem Prinzip der
-App – Fakten speichern, Ableitbares ableiten; der Kanon in
-`kuendigung_hinweise.py` ist Referenzwissen, kein Fakt über *diesen* Deal.
-Zu klären wäre, wie sich Export und Formular verhalten: Der Vorschlag
-müsste als solcher erkennbar sein (Platzhalter statt Inhalt) und beim
-ersten Bearbeiten in das Feld übernommen werden.
+- `backfill_kuendigung_hinweise()` entfällt aus `run_migrations()` (beide
+  Aufrufstellen, `main.py:65` und `main.py:75`) und wird durch einen
+  einfachen Lookup `hinweis_fuer(bank_name, kontoart)` ersetzt.
+- Aufgerufen wird er beim Anlegen über das Formular (`deal_new_create()`)
+  **und** über den Import (`build_deal_from_import()`). Bringt der Import
+  bereits einen eigenen `kuendigung_hinweis` mit, hat der Vorrang.
+- Danach ist das Feld reine Nutzerhoheit: Wer es leert, bei dem bleibt es
+  leer.
 
-*Weg 2 – beim Speichern befüllen und „bewusst leer" merken.* Der Backfill
-läuft zusätzlich beim Anlegen und beim Ändern von Bank/Kontoart. Damit ein
-geleertes Feld geleert bleibt, muss „vom Nutzer bewusst leer gelassen" von
-„nie gesetzt" unterscheidbar werden. Drei Varianten: leerer String statt
-`NULL` (keine Migration, bricht aber die sonst durchgehende
-`'' → None`-Konvention der App), eine eigene Spalte, oder ein Eintrag im
-bestehenden `uebersprungene_felder` – das ist bereits der etablierte
-Mechanismus für „bewusst nicht nötig" und käme ohne Migration aus.
+**Was diese Entscheidung nebenbei auflöst:** Die Frage, wie sich „bewusst
+leer" von „nie gesetzt" unterscheiden lässt, entfällt vollständig. Weil
+nach dem Anlegen nichts mehr automatisch schreibt, braucht es weder einen
+Marker noch eine Spalte noch eine Migration. Der ursprünglich angedachte
+Eintrag in `uebersprungene_felder` wird nicht gebraucht.
 
-Der Schreibweisen-Punkt bleibt in beiden Wegen bestehen und wäre separat
-zu lösen (Lookup case-insensitiv und getrimmt).
+**Bewusst in Kauf genommen:**
+
+- *Neue Katalogeinträge erreichen bestehende Deals nicht mehr.* Bisher
+  konnte eine in `KUENDIGUNG_HINWEISE` nachgetragene Bank beim nächsten
+  Start noch auf vorhandene Deals wirken. Das fällt weg. Falls das später
+  stört, wäre ein Knopf „Vorschlag übernehmen" im Deal-Formular die
+  naheliegende Ergänzung – bewusst nicht Teil dieser Entscheidung.
+- *Ändert sich Bank oder Kontoart eines bestehenden Deals*, wird kein neuer
+  Vorschlag nachgezogen.
+- *Der exakte Tupel-Lookup bleibt, wie er ist.* Schreibweisen wie
+  `BforBank` statt `Bfor` führen weiterhin dazu, dass stillschweigend kein
+  Hinweis gesetzt wird. Für neu angelegte Deals ist das weniger heikel als
+  bisher, weil man das leere Feld direkt beim Anlegen sieht.
 
 ---
 
