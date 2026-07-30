@@ -11,9 +11,11 @@ Die Findings sind nach Umsetzbarkeit nummeriert:
 - **B1–B15** – vorher anschauen, weil eine fachliche Entscheidung,
   eine Datenmigration oder eine spürbare Verhaltensänderung dranhängt.
 
-**B5 und B10 wurden herausgenommen** – der Freibetrag wird separat
-verfolgt, der case-sensitive Namensvergleich bleibt bewusst, wie er ist.
-Die Nummern bleiben frei, damit die übrigen IDs stabil bleiben.
+**B10 wurde herausgenommen** – der case-sensitive Namensvergleich bleibt
+bewusst, wie er ist. Die Nummer bleibt frei, damit die übrigen IDs stabil
+bleiben. **B5** war zwischenzeitlich ebenfalls draußen und ist in
+reduziertem Umfang wieder aufgenommen (nur Jahresbezug, keine
+Pauschbetragsgrenze).
 
 Die Spalte *Prio* in den Übersichtstabellen gibt den Schweregrad an:
 **hoch** = Datenverlust oder falsche fachliche Aussage, **mittel** =
@@ -53,6 +55,7 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B2 | hoch | Gekündigt + bestätigt, aber offene Bedingung → gilt gleichzeitig als „in Bearbeitung" und „gekündigt" | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
 | B3 | hoch | Deal ohne Prämien hängt unsichtbar in „Auf Prämie warten" – kein ToDo, keine Meldung | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
 | B4 | hoch | `auszahlung_erwartet` wird eingefordert, aber nie ausgewertet – keine Überfälligkeit | **Entschieden**, siehe Detailabschnitt (nicht durch „Zu prüfen" abgedeckt). Noch nicht umgesetzt |
+| B5 | mittel | Freibetrag hat keinen Jahresbezug – die Übersicht summiert jahresübergreifend | **Entschieden:** Jahr am Deal erfassen, Bestand auf 2026, Übersicht zeigt aktuelles und Vorjahr. Noch nicht umgesetzt |
 | B6 | mittel | „Stornieren" setzt `gekuendigt=True` → stornierte Deals verfälschen den Sperrfristen-Tab | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
 | B7 | mittel | Zugangsdaten-ToDo erscheint auch für abgeschlossene Deals | **Entschieden:** entfällt ab `gekuendigt`. Noch nicht umgesetzt |
 | B8 | hoch | Abhak-Routen invertieren statt zu setzen; eine doppelt ankommende Anfrage kippt den Wert zurück und überschreibt beim Kündigen den gepflegten Kündigungsmonat | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
@@ -327,6 +330,52 @@ werden (B14).
 naheliegende Ergänzung, falls später einmal ausgewertet werden soll, wie
 lange Banken tatsächlich zahlen – bis dahin bleibt es weg.
 
+
+### B5 – Freibetrag ohne Jahresbezug
+`overview.py:45` summiert `freibetrag` pro Inhaber über **alle** Deals
+hinweg, ohne Bezug zu einem Kalenderjahr. Ein 2024 erteilter
+Freistellungsauftrag und einer aus 2026 landen in derselben Zahl – die
+Anzeige „genutzter Freibetrag" beantwortet damit keine sinnvolle Frage,
+weil der Sparer-Pauschbetrag pro Kalenderjahr gilt.
+
+**Entschieden – bewusst eng gefasst:**
+
+1. **Nur der Jahresbezug.** Kein Abgleich gegen die gesetzliche Grenze
+   (1.000 € / 2.000 €), keine Warnung bei Überschreitung. Das bleibt
+   außerhalb der App.
+2. **Alle Deals zählen mit, auch gekündigte und abgeschlossene.** Ein
+   Freistellungsauftrag ist im Jahr seiner Erteilung verbraucht,
+   unabhängig davon, ob das Konto inzwischen zu ist. (Der ursprüngliche
+   Vorschlag, geschlossene Deals auszunehmen, ist damit verworfen.)
+3. **Neues Feld** `Deal.freibetrag_jahr`, im Formular und im Import
+   pflegbar.
+4. **Migration:** Für alle bestehenden Deals mit gesetztem `freibetrag`
+   wird **2026** als Jahr eingetragen.
+5. **Übersicht:** Die Tabelle „Pro Inhaber" zeigt statt einer
+   Freibetragsspalte zwei – **laufendes Jahr** und **Vorjahr**, bestimmt
+   über `date.today().year` (Kalenderjahr, also lokal – siehe B14).
+
+**Zwei Punkte, die daraus folgen:**
+
+- *Direkt nach der Migration steht in der Vorjahresspalte überall 0 €.*
+  Weil Schritt 4 alle vorhandenen Freibeträge auf 2026 setzt, gibt es
+  zunächst keine Werte für 2025. Wer die Historie korrekt haben möchte,
+  müsste die betroffenen Deals einmal von Hand nachziehen. Das ist eine
+  Folge der Vorgabe, kein Fehler – sollte aber bekannt sein, damit die
+  leere Spalte nicht als Defekt gelesen wird.
+- *Ein Freibetrag gehört bei diesem Modell zu genau einem Jahr.* Läuft ein
+  Freistellungsauftrag über mehrere Jahre weiter, muss das Jahr am Deal
+  fortgeschrieben werden – und dabei geht der alte Stand verloren, weil es
+  nur ein Feld gibt. Die Vorjahresspalte wird dann rückwirkend leer.
+  Soll die Historie dauerhaft tragen, wäre eine eigene Tabelle
+  (`deal_id`, `jahr`, `betrag`) die passende Form. Das ist bewusst **nicht**
+  Teil dieser Entscheidung – hier festgehalten, falls die Vorjahresanzeige
+  später erwartet, dass sie stimmt.
+
+**Kleines Detail für die Umsetzung:** Wird ein Freibetrag ohne Jahr
+gespeichert, sollte das laufende Jahr eingesetzt werden, statt das Feld
+leer zu lassen – sonst taucht der Betrag in keiner der beiden Spalten auf
+und ist unsichtbar.
 
 ### B6 – „Stornieren" missbraucht `gekuendigt`
 `deal_stornieren()` setzt `gekuendigt=True` und `kuendigung_bestaetigt=True`.
