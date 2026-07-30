@@ -10,6 +10,35 @@ Du erfasst nur Fakten (Bank, Kontoart, Inhaber, Prämien, Bedingungen,
 Kündigungsdaten). Status, Kennzahlen und die ToDo-Liste berechnet die App
 automatisch daraus - sie werden nirgends redundant gepflegt.
 
+## Zu erledigen
+
+Die Liste ist nach Kategorien getrennt. Ganz rechts steht **Zu prüfen** -
+das sind keine Aufgaben, sondern Auffälligkeiten zum Nachsehen: Bedingungen
+oder Prämien, die nach der Kündigung noch offen stehen, Deals ohne erfasste
+Prämie, gekündigte Deals ohne Kündigungsmonat. Hakst du einen Hinweis ab,
+verschwindet er - er kommt aber zurück, wenn sich die Fakten dahinter
+ändern, etwa wenn eine weitere unbezahlte Prämie hinzukommt.
+
+Eine Prämie gilt als **überfällig**, wenn sie einen Monat nach dem
+erwarteten Auszahlungsmonat noch nicht da ist. Ist kein Monat hinterlegt,
+zählen zwei Monate ab der zuletzt erfüllten Bedingung.
+
+## Stornieren
+
+Ein Deal, der nicht zustande gekommen ist, wird über **Stornieren**
+abgeschlossen: offene Prämien werden auf 0 gesetzt, Bedingungen abgehakt.
+Ein stornierter Deal zählt *nicht* als gekündigt und erscheint deshalb auch
+nicht in den Sperrfristen - dort geht es darum, wann eine Bank wieder
+Neukunden-Ziel ist.
+
+## Freibetrag
+
+Der Freibetrag wird einem Kalenderjahr zugeordnet, weil der
+Sparer-Pauschbetrag pro Jahr gilt. Die Übersicht zeigt laufendes Jahr und
+Vorjahr getrennt. Beim Umstieg auf Version 2.0.0 werden alle vorhandenen
+Freibeträge dem Jahr 2026 zugerechnet; die Vorjahresspalte ist deshalb
+zunächst leer.
+
 ## Erste Schritte
 
 1. Add-on starten.

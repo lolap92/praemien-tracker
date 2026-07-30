@@ -48,7 +48,19 @@ class Deal(Base):
     gekuendigt: Mapped[bool] = mapped_column(Boolean, default=False)
     gekuendigt_im_monat: Mapped[str | None] = mapped_column(String(10), nullable=True)
     kuendigung_bestaetigt: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Deal ist nie zustande gekommen. Bewusst getrennt von gekuendigt: ein
+    # stornierter Deal darf nicht in der Sperrfristen-Auswertung auftauchen,
+    # denn dort geht es darum, wann eine Bank wieder Neukunden-Ziel ist.
+    storniert: Mapped[bool] = mapped_column(Boolean, default=False)
     freibetrag: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # Kalenderjahr, dem der Freistellungsauftrag zugerechnet wird - der
+    # Sparer-Pauschbetrag gilt pro Jahr, eine jahresuebergreifende Summe
+    # beantwortet keine sinnvolle Frage.
+    freibetrag_jahr: Mapped[int | None] = mapped_column(nullable=True)
+    # Geprüfte Auffälligkeiten als JSON {regel: signatur}. Die Signatur hält
+    # den Zustand fest, der geprüft wurde - ändern sich die Fakten, passt sie
+    # nicht mehr und der Hinweis erscheint erneut (siehe derived.pruefpunkte).
+    pruefung_geprueft: Mapped[str | None] = mapped_column(Text, nullable=True)
     praemien_auf_sparkonto: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     kontonummer: Mapped[str | None] = mapped_column(String(50), nullable=True)
     zugangsdaten_gespeichert: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -99,6 +111,10 @@ class Bedingung(Base):
     beschreibung: Mapped[str] = mapped_column(String(255))
     erfuellt: Mapped[bool] = mapped_column(Boolean, default=False)
     faellig_bis: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+    # Wann erfüllt wurde - Bezugspunkt für die Überfälligkeit einer Prämie,
+    # solange kein Auszahlungsdatum hinterlegt ist. Kalenderdatum, weil in
+    # Monaten gerechnet wird. Wird beim Zurücknehmen wieder geleert.
+    erfuellt_am: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
 
     deal: Mapped["Deal"] = relationship(back_populates="bedingungen")
 

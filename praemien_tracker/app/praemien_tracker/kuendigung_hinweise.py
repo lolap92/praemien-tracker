@@ -1,19 +1,19 @@
 """Recherchierte Kündigungsanleitungen je Bank + Kontoart.
 
-Wird bei jedem Start automatisch auf Deals angewendet, die noch nicht
-gekündigt sind und noch keine eigene Kündigung-Anweisung tragen (siehe
-backfill_kuendigung_hinweise). Bereits gesetzte oder vom Nutzer bearbeitete
-Werte werden nie überschrieben - der Nutzer bleibt jederzeit Quelle der
-Wahrheit, das hier ist nur ein Vorschlag für den Start.
+Wird **einmalig beim Anlegen** eines Deals als Vorschlag eingesetzt (siehe
+hinweis_fuer). Danach ist das Feld reine Nutzerhoheit: Wer es leert, bei dem
+bleibt es leer.
+
+Früher lief das als Backfill bei jedem App-Start. Das hatte zwei Nachteile:
+Ein neu angelegter Deal bekam seinen Hinweis erst beim nächsten Neustart -
+also gerade dann nicht, wenn man ihn braucht. Und ein bewusst geleertes Feld
+war von "nie gesetzt" nicht unterscheidbar, sodass der Standardtext beim
+nächsten Start wieder darin stand.
 
 Quellen siehe jeweilige Bank-URL.
 """
 
 from __future__ import annotations
-
-from sqlalchemy.orm import Session, joinedload
-
-from .models import Deal
 
 KUENDIGUNG_HINWEISE: dict[tuple[str, str], tuple[str, str]] = {
     ("Bfor", "Kreditkarte"): (
@@ -89,19 +89,6 @@ KUENDIGUNG_HINWEISE: dict[tuple[str, str], tuple[str, str]] = {
 }
 
 
-def backfill_kuendigung_hinweise(db: Session) -> int:
-    deals = (
-        db.query(Deal)
-        .options(joinedload(Deal.bank))
-        .filter(Deal.gekuendigt.is_(False), Deal.kuendigung_hinweis.is_(None))
-        .all()
-    )
-    anzahl = 0
-    for deal in deals:
-        eintrag = KUENDIGUNG_HINWEISE.get((deal.bank.name, deal.kontoart))
-        if eintrag:
-            deal.kuendigung_hinweis, deal.kuendigung_hinweis_url = eintrag
-            anzahl += 1
-    if anzahl:
-        db.commit()
-    return anzahl
+def hinweis_fuer(bank_name: str, kontoart: str) -> tuple[str, str] | None:
+    """Vorschlag für (Anweisung, Link) oder None, wenn nichts hinterlegt ist."""
+    return KUENDIGUNG_HINWEISE.get((bank_name, kontoart))

@@ -18,17 +18,20 @@ def sperrfristen_view(request: Request, db: Session = Depends(get_db)):
     deals = (
         db.query(Deal)
         .options(joinedload(Deal.bank), joinedload(Deal.inhaber))
-        .filter(Deal.gekuendigt.is_(True))
+        # Stornierte Deals sind nie zustande gekommen - sie gehören nicht in eine
+        # Auswertung darüber, wann eine Bank wieder Neukunden-Ziel ist.
+        .filter(Deal.gekuendigt.is_(True), Deal.storniert.is_(False))
         .all()
     )
 
     heute = datetime.date.today()
     zeilen = []
-    ohne_datum = []
     for d in deals:
-        kuendigungsdatum = derived.parse_gekuendigt_monat(d.gekuendigt_im_monat)
+        # Ohne auswertbaren Monat erscheint der Deal unter "Zu prüfen" statt
+        # hier in einer zweiten Liste - derselbe Hinweis lebte sonst an zwei
+        # Stellen.
+        kuendigungsdatum = derived.parse_monat(d.gekuendigt_im_monat)
         if kuendigungsdatum is None:
-            ohne_datum.append(d)
             continue
         monate = derived.monate_seit_kuendigung(kuendigungsdatum, heute)
         zeilen.append(
@@ -41,13 +44,11 @@ def sperrfristen_view(request: Request, db: Session = Depends(get_db)):
         )
 
     zeilen.sort(key=lambda z: z["kuendigungsdatum"])
-    ohne_datum.sort(key=lambda d: (d.bank.name, d.kontoart, d.inhaber.name))
 
     return templates.TemplateResponse(
         "sperrfristen.html",
         {
             "request": request,
             "zeilen": zeilen,
-            "ohne_datum": ohne_datum,
         },
     )

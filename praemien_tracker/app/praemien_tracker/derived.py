@@ -66,7 +66,19 @@ def ist_kuendbar(deal: Deal, heute: datetime.date | None = None) -> bool:
 def status(deal: Deal) -> str:
     """Sechsstufige Pipeline (Konzept Abschnitt 6, erweitert um 'Auf
     Kündigung warten' für den Fall, dass alles erledigt ist, aber
-    kuendbar_ab noch in der Zukunft liegt)."""
+    kuendbar_ab noch in der Zukunft liegt).
+
+    Zwei Zustände sind *terminal* und werden vor allem anderen geprüft: ein
+    stornierter Deal und ein gekündigter mit bestätigter Kündigung. Sonst
+    galt ein längst abgeschlossener Deal wegen einer nie abgehakten Bedingung
+    weiter als 'in Bearbeitung' - er stand gleichzeitig in der ToDo-Liste und
+    in den Sperrfristen. Offene Bedingungen verschwinden dadurch nicht,
+    sie erscheinen unter 'Zu prüfen' (siehe pruefpunkte).
+    """
+    if deal.storniert:
+        return STATUS_ABGESCHLOSSEN
+    if deal.gekuendigt and deal.kuendigung_bestaetigt:
+        return STATUS_ABGESCHLOSSEN
     if not bedingungen_erfuellt(deal):
         return STATUS_BEDINGUNGEN
     if not alle_praemien_erhalten(deal):
@@ -75,9 +87,7 @@ def status(deal: Deal) -> str:
         if not ist_kuendbar(deal):
             return STATUS_WARTET_AUF_KUENDIGUNG
         return STATUS_KUENDIGEN
-    if not deal.kuendigung_bestaetigt:
-        return STATUS_BESTAETIGUNG_WARTEN
-    return STATUS_ABGESCHLOSSEN
+    return STATUS_BESTAETIGUNG_WARTEN
 
 
 # --- Sperrfristen ---
@@ -223,21 +233,33 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
             )
     elif s == STATUS_PRAEMIE_WARTEN:
         offene = [p for p in deal.praemien if not p.erhalten]
+        ueberfaellig = any(praemie_ueberfaellig(deal, p, heute) for p in offene)
         if len(offene) == 1:
             p = offene[0]
             text = f"{bezeichnung}: Prämie prüfen ({quelle_label(p.quelle)}, {p.betrag} €)"
             if p.auszahlung_erwartet:
                 text += f" – erwartet {p.auszahlung_erwartet}"
-            todos.append(Todo("Auf Prämie warten", text, deal, elemente=offene))
+            if ueberfaellig:
+                text += " – überfällig, bei der Bank nachhaken"
+            todos.append(Todo("Auf Prämie warten", text, deal, None, ueberfaellig, offene))
         elif offene:
-            todos.append(Todo("Auf Prämie warten", f"{bezeichnung}: {len(offene)} Prämien offen", deal, elemente=offene))
+            text = f"{bezeichnung}: {len(offene)} Prämien offen"
+            if ueberfaellig:
+                text += " – davon überfällig"
+            todos.append(Todo("Auf Prämie warten", text, deal, None, ueberfaellig, offene))
     elif s == STATUS_KUENDIGEN:
         todos.append(Todo("Kündigen", f"{bezeichnung}: jetzt kündbar – kündigen", deal, deal.kuendbar_ab))
     elif s == STATUS_BESTAETIGUNG_WARTEN:
         todos.append(Todo("Bestätigung warten", f"{bezeichnung}: Kündigung bestätigen lassen", deal))
 
-    if not deal.zugangsdaten_gespeichert:
+    # Für ein gekündigtes Konto sind die Zugangsdaten gegenstandslos - das
+    # ToDo hing bisher unabhängig vom Status am Deal und blieb selbst bei
+    # abgeschlossenen Deals dauerhaft stehen.
+    if not deal.zugangsdaten_gespeichert and not deal.gekuendigt and not deal.storniert:
         todos.append(Todo("Zugangsdaten", f"{bezeichnung}: Zugangsdaten sichern", deal))
+
+    for punkt in pruefpunkte(deal, heute):
+        todos.append(Todo("Zu prüfen", f"{bezeichnung}: {punkt.text}", deal, elemente=[punkt]))
 
     return todos
 
@@ -257,6 +279,164 @@ def alle_todos(
         prefix = f"{a.deal.bank.name} · {a.deal.inhaber.name}: " if a.deal else ""
         todos.append(Todo("Manuelle Aufgaben", f"{prefix}{a.beschreibung}", a.deal, a.faellig_bis, ueberfaellig, [a]))
     return todos
+
+
+# --- Überfällige Prämien ---
+#
+# Das zentrale Signal beim Prämien-Hopping: die Prämie ist nicht gekommen,
+# also nachhaken, bevor die Frist der Bank abläuft. Bewusst keine eigene
+# ToDo-Kategorie, sondern eine Markierung am bestehenden ToDo "Auf Prämie
+# warten" - so wie Bedingungen und Aufgaben es schon haben.
+
+KARENZ_MIT_DATUM_MONATE = 1
+KARENZ_OHNE_DATUM_MONATE = 2
+
+
+def monat_plus(datum: datetime.date, monate: int) -> datetime.date:
+    """Monate addieren, ohne auf externe Bibliotheken zurückzugreifen. Der Tag
+    wird auf die Länge des Zielmonats begrenzt (31.01. + 1 Monat = 28.02.)."""
+    gesamt = datum.month - 1 + monate
+    jahr = datum.year + gesamt // 12
+    monat = gesamt % 12 + 1
+    if monat == 12:
+        naechster = datetime.date(jahr + 1, 1, 1)
+    else:
+        naechster = datetime.date(jahr, monat + 1, 1)
+    letzter_tag = (naechster - datetime.timedelta(days=1)).day
+    return datetime.date(jahr, monat, min(datum.day, letzter_tag))
+
+
+def praemie_faellig_ab(deal: Deal, praemie) -> datetime.date | None:
+    """Ab wann eine noch offene Prämie als überfällig gilt - None, wenn es
+    keinen Bezugspunkt gibt.
+
+    Mit hinterlegtem Auszahlungsmonat: Ende dieses Monats plus ein Monat
+    Karenz, weil Banken erfahrungsgemäß spät zahlen. Ohne Auszahlungsmonat:
+    zwei Monate nach der zuletzt erfüllten Bedingung - ab dann schuldet die
+    Bank die Prämie. Hat ein Deal überhaupt keine Bedingungen, gibt es keinen
+    Anker; dann wird nicht markiert (die Vollständigkeit mahnt das fehlende
+    Auszahlungsdatum ohnehin an).
+    """
+    if praemie.erhalten:
+        return None
+
+    if praemie.auszahlung_erwartet:
+        erwartet = parse_monat(praemie.auszahlung_erwartet)
+        if erwartet is None:
+            return None
+        # erster Tag des Monats nach der Karenz
+        return monat_plus(erwartet, KARENZ_MIT_DATUM_MONATE + 1)
+
+    if not deal.bedingungen or not all(b.erfuellt for b in deal.bedingungen):
+        return None
+    zeitpunkte = [b.erfuellt_am for b in deal.bedingungen if b.erfuellt_am]
+    if not zeitpunkte:
+        return None
+    return monat_plus(max(zeitpunkte), KARENZ_OHNE_DATUM_MONATE)
+
+
+def praemie_ueberfaellig(deal: Deal, praemie, heute: datetime.date | None = None) -> bool:
+    heute = heute or datetime.date.today()
+    ab = praemie_faellig_ab(deal, praemie)
+    return ab is not None and heute >= ab
+
+
+# --- Zu prüfen: querliegende Auffälligkeiten ---
+#
+# Kein siebter Pipeline-Status: "zu prüfen" ist keine Stufe im Lebenszyklus,
+# sondern ein loser Faden. Ein gekündigter, bestätigter Deal mit offener
+# Bedingung *ist* abgeschlossen - status() bleibt deshalb einwertig, und ein
+# Deal kann gleichzeitig "Abgeschlossen" und "zu prüfen" sein.
+
+PRUEF_BEDINGUNGEN_OFFEN = "bedingungen_offen"
+PRUEF_PRAEMIEN_OFFEN = "praemien_offen"
+PRUEF_KEINE_PRAEMIE = "keine_praemie"
+PRUEF_KUENDIGUNGSMONAT_FEHLT = "kuendigungsmonat_fehlt"
+
+PRUEF_TEXTE = {
+    PRUEF_BEDINGUNGEN_OFFEN: "Bedingungen nach der Kündigung noch offen",
+    PRUEF_PRAEMIEN_OFFEN: "Prämien nach der Kündigung noch nicht erhalten",
+    PRUEF_KEINE_PRAEMIE: "Keine Prämie erfasst",
+    PRUEF_KUENDIGUNGSMONAT_FEHLT: "Gekündigt, aber ohne auswertbaren Kündigungsmonat",
+}
+
+# Ein frisch angelegter Deal hat naturgemäß noch keine Prämien - die trägt man
+# erst danach ein. Ohne diese Schonfrist landet jeder neue Deal sofort in der
+# Liste.
+KEINE_PRAEMIE_SCHONFRIST = datetime.timedelta(hours=72)
+
+
+@dataclass
+class Pruefpunkt:
+    regel: str
+    text: str
+    signatur: str
+
+
+def _geprueft_liste(deal: Deal) -> dict[str, str]:
+    if not deal.pruefung_geprueft:
+        return {}
+    try:
+        werte = json.loads(deal.pruefung_geprueft)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+    return werte if isinstance(werte, dict) else {}
+
+
+def pruefung_abhaken(deal: Deal, regel: str, signatur: str) -> None:
+    """Merkt, dass diese Auffälligkeit in *diesem* Zustand angesehen wurde.
+    Gespeichert wird die Signatur, nicht bloß ein Häkchen - ändern sich die
+    Fakten, passt sie nicht mehr und der Hinweis kommt zurück."""
+    geprueft = _geprueft_liste(deal)
+    geprueft[regel] = signatur
+    deal.pruefung_geprueft = json.dumps(geprueft, sort_keys=True)
+
+
+def _offene_pruefpunkte(deal: Deal, heute: datetime.date) -> list[Pruefpunkt]:
+    punkte: list[Pruefpunkt] = []
+
+    if deal.gekuendigt and not deal.storniert:
+        offene_bedingungen = [b.id for b in deal.bedingungen if not b.erfuellt]
+        if offene_bedingungen:
+            punkte.append(
+                Pruefpunkt(
+                    PRUEF_BEDINGUNGEN_OFFEN,
+                    PRUEF_TEXTE[PRUEF_BEDINGUNGEN_OFFEN],
+                    ",".join(str(i) for i in sorted(offene_bedingungen)),
+                )
+            )
+        offene_praemien = [p.id for p in deal.praemien if not p.erhalten]
+        if offene_praemien:
+            punkte.append(
+                Pruefpunkt(
+                    PRUEF_PRAEMIEN_OFFEN,
+                    PRUEF_TEXTE[PRUEF_PRAEMIEN_OFFEN],
+                    ",".join(str(i) for i in sorted(offene_praemien)),
+                )
+            )
+        if parse_monat(deal.gekuendigt_im_monat) is None:
+            punkte.append(
+                Pruefpunkt(
+                    PRUEF_KUENDIGUNGSMONAT_FEHLT,
+                    PRUEF_TEXTE[PRUEF_KUENDIGUNGSMONAT_FEHLT],
+                    deal.gekuendigt_im_monat or "",
+                )
+            )
+
+    if not deal.praemien and not deal.storniert:
+        angelegt = deal.erstellt_am
+        alt_genug = angelegt is None or (datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - angelegt) > KEINE_PRAEMIE_SCHONFRIST
+        if alt_genug:
+            punkte.append(Pruefpunkt(PRUEF_KEINE_PRAEMIE, PRUEF_TEXTE[PRUEF_KEINE_PRAEMIE], ""))
+
+    return punkte
+
+
+def pruefpunkte(deal: Deal, heute: datetime.date | None = None) -> list[Pruefpunkt]:
+    """Auffälligkeiten, die noch nicht in diesem Zustand abgehakt wurden."""
+    heute = heute or datetime.date.today()
+    geprueft = _geprueft_liste(deal)
+    return [p for p in _offene_pruefpunkte(deal, heute) if geprueft.get(p.regel) != p.signatur]
 
 
 # --- Vollständigkeits-Übersicht ---

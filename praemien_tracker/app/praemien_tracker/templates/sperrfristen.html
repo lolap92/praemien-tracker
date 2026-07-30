@@ -6,6 +6,8 @@
   <p style="color: var(--ink-soft); font-size: 0.88rem; margin: 0;">
     Monate seit Kündigung je Bank, Kontoart und Inhaber – hilfreich, um zu sehen,
     wann eine Bank wieder als Neukunde infrage kommt. Älteste Kündigung zuerst.
+    Stornierte Deals bleiben außen vor. Fehlt der Kündigungsmonat, steht der
+    Deal unter „Zu erledigen → Zu prüfen“.
   </p>
 </div>
 
@@ -24,26 +26,6 @@
 {% else %}
 <div class="card">
   <p class="leer">Noch keine gekündigten Deals mit auswertbarem Kündigungsdatum.</p>
-</div>
-{% endif %}
-
-{% if ohne_datum %}
-<div class="card">
-  <div class="card-label">Gekündigt, aber ohne Kündigungsmonat</div>
-  <ul class="deal-liste">
-    {% for d in ohne_datum %}
-    <li>
-    <a class="deal-zeile" href="deals/{{ d.id }}/edit">
-      <div class="titel">
-        <div>
-          <div class="bank">{{ d.bank.name }}</div>
-          <div class="meta">{{ d.kontoart }} · {{ d.inhaber.name }}</div>
-        </div>
-      </div>
-    </a>
-    </li>
-    {% endfor %}
-  </ul>
 </div>
 {% endif %}
 

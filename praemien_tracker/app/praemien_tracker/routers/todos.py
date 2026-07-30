@@ -22,8 +22,11 @@ KATEGORIE_SLUGS = {
     "Kündigen": "kuendigen",
     "Bestätigung warten": "bestaetigung",
     "Zugangsdaten": "zugangsdaten",
+    "Zu prüfen": "pruefen",
 }
 
+# "Zu prüfen" steht am Ende: das sind Dinge, die man sich ansieht, keine, die
+# jetzt zu tun sind.
 KATEGORIE_REIHENFOLGE = [
     "Manuelle Aufgaben",
     "Bedingungen",
@@ -31,12 +34,25 @@ KATEGORIE_REIHENFOLGE = [
     "Kündigen",
     "Bestätigung warten",
     "Zugangsdaten",
+    "Zu prüfen",
 ]
 
 # Format "<kategorie-slug>-<deal-id>", z.B. "bedingungen-6" - wird für die
 # id des <dialog>-Elements verwendet und daher vor der Wiederverwendung im
 # <script>-Block validiert.
 DIALOG_PARAM = re.compile(r"^[a-z]+-\d+$")
+
+
+def _ziel(wert: str, aktuell: bool) -> bool:
+    """Zielzustand aus dem Formular. Bisher wurde invertiert - damit hing das
+    Ergebnis davon ab, wie oft die Anfrage ankam, nicht davon, was gewollt
+    war. Ohne Angabe bleibt es beim Umschalten, damit alte Lesezeichen und
+    offene Seiten weiter funktionieren."""
+    if wert == "on":
+        return True
+    if wert == "off":
+        return False
+    return not aktuell
 
 
 def _todos_redirect(request: Request, tab: str = "", dialog: str = ""):
@@ -117,10 +133,12 @@ def create_aufgabe(
 
 
 @router.post("/todos/aufgaben/{aufgabe_id}/toggle")
-def toggle_aufgabe(request: Request, aufgabe_id: int, tab: str = Form(""), db: Session = Depends(get_db)):
+def toggle_aufgabe(
+    request: Request, aufgabe_id: int, tab: str = Form(""), wert: str = Form(""), db: Session = Depends(get_db)
+):
     aufgabe = db.get(Aufgabe, aufgabe_id)
     if aufgabe:
-        aufgabe.erledigt = not aufgabe.erledigt
+        aufgabe.erledigt = _ziel(wert, aufgabe.erledigt)
         db.commit()
     return _todos_redirect(request, tab)
 
@@ -136,50 +154,96 @@ def delete_aufgabe(request: Request, aufgabe_id: int, db: Session = Depends(get_
 
 @router.post("/todos/bedingungen/{bedingung_id}/toggle")
 def toggle_bedingung(
-    request: Request, bedingung_id: int, tab: str = Form(""), dialog: str = Form(""), db: Session = Depends(get_db)
+    request: Request,
+    bedingung_id: int,
+    tab: str = Form(""),
+    dialog: str = Form(""),
+    wert: str = Form(""),
+    db: Session = Depends(get_db),
 ):
     b = db.get(Bedingung, bedingung_id)
     if b:
-        b.erfuellt = not b.erfuellt
+        b.erfuellt = _ziel(wert, b.erfuellt)
+        # Zeitpunkt der Erfüllung ist der Bezugspunkt für die Überfälligkeit
+        # einer Prämie ohne Auszahlungsdatum - und wird beim Zurücknehmen
+        # wieder geleert, damit kein Datum ohne passenden Zustand stehenbleibt.
+        b.erfuellt_am = datetime.date.today() if b.erfuellt else None
         db.commit()
     return _todos_redirect(request, tab, dialog)
 
 
 @router.post("/todos/praemien/{praemie_id}/toggle")
 def toggle_praemie(
-    request: Request, praemie_id: int, tab: str = Form(""), dialog: str = Form(""), db: Session = Depends(get_db)
+    request: Request,
+    praemie_id: int,
+    tab: str = Form(""),
+    dialog: str = Form(""),
+    wert: str = Form(""),
+    db: Session = Depends(get_db),
 ):
     p = db.get(Praemie, praemie_id)
     if p:
-        p.erhalten = not p.erhalten
+        p.erhalten = _ziel(wert, p.erhalten)
         db.commit()
     return _todos_redirect(request, tab, dialog)
 
 
 @router.post("/todos/deals/{deal_id}/kuendigen-toggle")
-def toggle_kuendigen(request: Request, deal_id: int, tab: str = Form(""), db: Session = Depends(get_db)):
+def toggle_kuendigen(
+    request: Request, deal_id: int, tab: str = Form(""), wert: str = Form(""), db: Session = Depends(get_db)
+):
     deal = db.get(Deal, deal_id)
     if deal:
-        deal.gekuendigt = not deal.gekuendigt
+        deal.gekuendigt = _ziel(wert, deal.gekuendigt)
         if deal.gekuendigt:
-            deal.gekuendigt_im_monat = derived.format_monat(datetime.date.today())
+            # Einen gepflegten Monat nicht überschreiben: sonst ersetzt ein
+            # versehentliches Ent- und Wiederankreuzen das echte
+            # Kündigungsdatum durch heute - und verfälscht damit die
+            # Sperrfristen-Auswertung.
+            if not deal.gekuendigt_im_monat:
+                deal.gekuendigt_im_monat = derived.format_monat(datetime.date.today())
+        else:
+            deal.gekuendigt_im_monat = None
         db.commit()
     return _todos_redirect(request, tab)
 
 
 @router.post("/todos/deals/{deal_id}/bestaetigen-toggle")
-def toggle_bestaetigen(request: Request, deal_id: int, tab: str = Form(""), db: Session = Depends(get_db)):
+def toggle_bestaetigen(
+    request: Request, deal_id: int, tab: str = Form(""), wert: str = Form(""), db: Session = Depends(get_db)
+):
     deal = db.get(Deal, deal_id)
     if deal:
-        deal.kuendigung_bestaetigt = not deal.kuendigung_bestaetigt
+        deal.kuendigung_bestaetigt = _ziel(wert, deal.kuendigung_bestaetigt)
         db.commit()
     return _todos_redirect(request, tab)
 
 
 @router.post("/todos/deals/{deal_id}/zugangsdaten-toggle")
-def toggle_zugangsdaten(request: Request, deal_id: int, tab: str = Form(""), db: Session = Depends(get_db)):
+def toggle_zugangsdaten(
+    request: Request, deal_id: int, tab: str = Form(""), wert: str = Form(""), db: Session = Depends(get_db)
+):
     deal = db.get(Deal, deal_id)
     if deal:
-        deal.zugangsdaten_gespeichert = not deal.zugangsdaten_gespeichert
+        deal.zugangsdaten_gespeichert = _ziel(wert, deal.zugangsdaten_gespeichert)
+        db.commit()
+    return _todos_redirect(request, tab)
+
+
+@router.post("/todos/deals/{deal_id}/pruefung")
+def pruefung_abhaken(
+    request: Request,
+    deal_id: int,
+    regel: str = Form(...),
+    signatur: str = Form(""),
+    tab: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """Merkt, dass eine Auffälligkeit angesehen wurde. Setzt idempotent (kein
+    Umschalten) und speichert die Signatur des geprüften Zustands - ändern
+    sich die Fakten, erscheint der Hinweis erneut."""
+    deal = db.get(Deal, deal_id)
+    if deal and regel in derived.PRUEF_TEXTE:
+        derived.pruefung_abhaken(deal, regel, signatur)
         db.commit()
     return _todos_redirect(request, tab)

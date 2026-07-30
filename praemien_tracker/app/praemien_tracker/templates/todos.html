@@ -75,6 +75,7 @@
                 <form action="todos/bedingungen/{{ b.id }}/toggle" method="post" class="dialog-zeile">
                   <input type="hidden" name="tab" value="{{ slug }}">
                   <input type="hidden" name="dialog" value="bedingungen-{{ todo.deal.id }}">
+                  <input type="hidden" name="wert" value="on">
                   <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
                   <span>{{ b.beschreibung }}{% if b.faellig_bis %} <span class="frist">(bis {{ b.faellig_bis | datum }})</span>{% endif %}</span>
                 </form>
@@ -88,6 +89,7 @@
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/bedingungen/{{ todo.elemente[0].id }}/toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="wert" value="on">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
             <div class="ti-main">
@@ -113,6 +115,7 @@
                 <form action="todos/praemien/{{ p.id }}/toggle" method="post" class="dialog-zeile">
                   <input type="hidden" name="tab" value="{{ slug }}">
                   <input type="hidden" name="dialog" value="praemie-{{ todo.deal.id }}">
+                  <input type="hidden" name="wert" value="on">
                   <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
                   <span>{{ p.quelle | quelle }}, {{ p.betrag }} €{% if p.auszahlung_erwartet %} – erwartet {{ p.auszahlung_erwartet }}{% endif %}</span>
                 </form>
@@ -126,6 +129,7 @@
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/praemien/{{ todo.elemente[0].id }}/toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="wert" value="on">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
             <div class="ti-main">
@@ -137,6 +141,7 @@
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/deals/{{ todo.deal.id }}/kuendigen-toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="wert" value="on">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
             <div class="ti-main">
@@ -149,6 +154,7 @@
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/deals/{{ todo.deal.id }}/bestaetigen-toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="wert" value="on">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
             <div class="ti-main">
@@ -160,7 +166,22 @@
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/deals/{{ todo.deal.id }}/zugangsdaten-toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="wert" value="on">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
+            </form>
+            <div class="ti-main">
+              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+            </div>
+          </div>
+
+          {% elif kategorie == "Zu prüfen" %}
+          <div class="todo-item cat-{{ slug }}">
+            <form action="todos/deals/{{ todo.deal.id }}/pruefung" method="post" class="todo-check-form">
+              <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="regel" value="{{ todo.elemente[0].regel }}">
+              <input type="hidden" name="signatur" value="{{ todo.elemente[0].signatur }}">
+              <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()"
+                     title="Angesehen, passt so">
             </form>
             <div class="ti-main">
               <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
@@ -171,6 +192,7 @@
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/aufgaben/{{ todo.elemente[0].id }}/toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="wert" value="on">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
             <div class="ti-main">
@@ -215,6 +237,7 @@
     <li>
       <span style="flex:1; text-decoration: line-through; color: var(--ink-faint);">{{ a.beschreibung }}</span>
       <form class="inline" action="todos/aufgaben/{{ a.id }}/toggle" method="post">
+        <input type="hidden" name="wert" value="off">
         <button type="submit" class="secondary">Wieder öffnen</button>
       </form>
       <form class="inline" action="todos/aufgaben/{{ a.id }}/delete" method="post">

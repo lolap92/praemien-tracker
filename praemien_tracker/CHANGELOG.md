@@ -1,5 +1,56 @@
 # Changelog
 
+## 2.0.0
+
+Sammelkorrektur aus dem Fachlichkeits-Review (Teil 3 von 3): die fachliche
+Logik. Enthält eine Schema-Migration - vorher wird automatisch eine
+Sicherheitskopie angelegt.
+
+- **Neue Kategorie "Zu prüfen" unter Zu erledigen.** Sammelt lose Fäden, die
+  keine Stufe im Ablauf sind: Bedingungen oder Prämien, die nach der
+  Kündigung noch offen stehen; Deals ohne erfasste Prämie; gekündigte Deals
+  ohne auswertbaren Kündigungsmonat. Abgehakte Hinweise verschwinden, kommen
+  aber zurück, wenn sich die Fakten dahinter ändern - etwa wenn eine weitere
+  unbezahlte Prämie hinzukommt. Ein neu angelegter Deal wird 72 Stunden
+  geschont, damit er nicht sofort wegen fehlender Prämien auftaucht.
+- **Ein gekündigter und bestätigter Deal gilt als abgeschlossen.** Bisher
+  hielt eine einzige nie abgehakte Bedingung ihn in "Bedingungen" - er stand
+  gleichzeitig in der ToDo-Liste und in den Sperrfristen. Die offene
+  Bedingung wird dabei *nicht* stillschweigend abgehakt, sie erscheint unter
+  "Zu prüfen".
+- **Überfällige Prämien werden markiert.** Bisher war "erwartete Auszahlung"
+  nur eine Notiz. Jetzt fällt auf, wenn eine Prämie nicht gekommen ist: einen
+  Monat nach dem erwarteten Monat, oder - wenn kein Monat hinterlegt ist -
+  zwei Monate nach der zuletzt erfüllten Bedingung.
+- **Stornieren nutzt ein eigenes Feld.** Bisher wurde ein stornierter Deal als
+  "gekündigt" markiert und tauchte dadurch dauerhaft in den Sperrfristen auf,
+  obwohl er nie zustande gekommen ist. Prämien werden weiterhin auf 0 gesetzt
+  und Bedingungen abgehakt - ein stornierter Deal ist erledigt.
+- **Freibetrag mit Jahresangabe.** Der Sparer-Pauschbetrag gilt pro
+  Kalenderjahr; eine jahresübergreifende Summe beantwortete keine sinnvolle
+  Frage. Die Übersicht zeigt jetzt laufendes Jahr und Vorjahr getrennt.
+  Bestehende Freibeträge werden dem Jahr 2026 zugerechnet - die
+  Vorjahresspalte ist deshalb zunächst leer.
+- **Abhaken ist wiederholungssicher.** Die Häkchen in "Zu erledigen"
+  schalteten den Wert bisher um, statt ihn zu setzen. Eine doppelt
+  ankommende Anfrage machte damit die Aktion wieder zunichte. Besonders
+  unangenehm beim Kündigen: ein gepflegter Kündigungsmonat wurde durch den
+  heutigen ersetzt und verfälschte die Sperrfristen. Ein bereits gesetzter
+  Monat bleibt jetzt stehen; beim Zurücknehmen wird er geleert.
+- **Zugangsdaten-Hinweis endet mit der Kündigung.** Für ein gekündigtes Konto
+  ist er gegenstandslos, blieb aber dauerhaft in der Liste stehen.
+- **Hinweis auf denselben Deal.** Legt man eine Kombination aus Bank,
+  Kontoart und Inhaber erneut an, weist die App auf den früheren Deal hin -
+  mit Unterscheidung, ob dessen Sperrfrist schon abgelaufen ist. Bewusst nur
+  ein Hinweis: nach Ablauf der Sperrfrist ist die zweite Runde der Normalfall.
+- **Kündigungs-Anweisungen kommen beim Anlegen.** Bisher wurden sie erst beim
+  nächsten Neustart des Add-ons eingesetzt - also gerade dann nicht, wenn man
+  sie braucht. Und ein bewusst geleertes Feld füllte sich beim Start wieder
+  von selbst. Jetzt wird der Vorschlag einmalig beim Anlegen gesetzt, danach
+  bleibt das Feld unangetastet.
+- Der Sperrfristen-Tab führt keine zweite Liste mehr für Deals ohne
+  Kündigungsmonat; die stehen jetzt unter "Zu prüfen".
+
 ## 1.9.0
 
 Sammelkorrektur aus dem Fachlichkeits-Review (Teil 2 von 3): Datenqualität

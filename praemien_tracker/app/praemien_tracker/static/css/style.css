@@ -372,7 +372,8 @@ main {
 #todotab-praemie:checked ~ .todo-tabs-nav label[for="todotab-praemie"],
 #todotab-kuendigen:checked ~ .todo-tabs-nav label[for="todotab-kuendigen"],
 #todotab-bestaetigung:checked ~ .todo-tabs-nav label[for="todotab-bestaetigung"],
-#todotab-zugangsdaten:checked ~ .todo-tabs-nav label[for="todotab-zugangsdaten"] {
+#todotab-zugangsdaten:checked ~ .todo-tabs-nav label[for="todotab-zugangsdaten"],
+#todotab-pruefen:checked ~ .todo-tabs-nav label[for="todotab-pruefen"] {
   background: var(--ink);
   color: #fff;
   border-color: var(--ink);
@@ -383,7 +384,8 @@ main {
 #todotab-praemie:checked ~ .todo-tabs-nav label[for="todotab-praemie"] .num,
 #todotab-kuendigen:checked ~ .todo-tabs-nav label[for="todotab-kuendigen"] .num,
 #todotab-bestaetigung:checked ~ .todo-tabs-nav label[for="todotab-bestaetigung"] .num,
-#todotab-zugangsdaten:checked ~ .todo-tabs-nav label[for="todotab-zugangsdaten"] .num {
+#todotab-zugangsdaten:checked ~ .todo-tabs-nav label[for="todotab-zugangsdaten"] .num,
+#todotab-pruefen:checked ~ .todo-tabs-nav label[for="todotab-pruefen"] .num {
   color: rgba(255, 255, 255, 0.7);
 }
 
@@ -392,7 +394,8 @@ main {
 #todotab-praemie:checked ~ .todo-panels #panel-praemie,
 #todotab-kuendigen:checked ~ .todo-panels #panel-kuendigen,
 #todotab-bestaetigung:checked ~ .todo-panels #panel-bestaetigung,
-#todotab-zugangsdaten:checked ~ .todo-panels #panel-zugangsdaten {
+#todotab-zugangsdaten:checked ~ .todo-panels #panel-zugangsdaten,
+#todotab-pruefen:checked ~ .todo-panels #panel-pruefen {
   display: block;
 }
 
@@ -445,6 +448,9 @@ main {
 .tag-manuell {
   background: var(--accent);
 }
+.tag-pruefen {
+  background: var(--st-wait);
+}
 
 .todo-item {
   background: var(--surface-2);
@@ -481,6 +487,10 @@ main {
 .todo-item.cat-bestaetigung .check {
   border-color: var(--st-confirm);
 }
+.todo-item.cat-pruefen .check {
+  border-color: var(--st-wait);
+}
+
 .todo-item.cat-manuell .check {
   border-color: var(--accent);
 }
@@ -1150,6 +1160,16 @@ table.pc-tabelle tr:hover {
   margin-bottom: 1rem;
   font-size: 0.88rem;
   color: var(--st-wait);
+}
+
+.notiz {
+  background: rgba(120, 130, 150, 0.1);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
 }
 
 .hinweis ul {

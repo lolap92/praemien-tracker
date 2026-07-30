@@ -38,7 +38,7 @@
     <table class="pc-tabelle">
       <thead>
         <tr>
-          <th>Person</th><th>Erhalten</th><th>Offen</th><th>Freibetrag</th>
+          <th>Person</th><th>Erhalten</th><th>Offen</th><th>Freibetrag {{ jahr_heute }}</th><th>{{ vorjahr }}</th>
         </tr>
       </thead>
       <tbody>
@@ -47,7 +47,8 @@
           <td class="bank"><a href="deals?inhaber_id={{ eintrag.inhaber.id }}">{{ eintrag.inhaber.name }}</a></td>
           <td class="geld" style="color: var(--received);">{{ eintrag.kennzahlen.erhalten | eur }}</td>
           <td class="geld" style="color: var(--open);">{{ eintrag.kennzahlen.offen | eur }}</td>
-          <td class="geld">{{ eintrag.freibetrag_genutzt | eur }}</td>
+          <td class="geld">{{ eintrag.freibetrag_jahr | eur }}</td>
+          <td class="geld" style="color: var(--ink-faint);">{{ eintrag.freibetrag_vorjahr | eur }}</td>
         </tr>
         {% endfor %}
       </tbody>

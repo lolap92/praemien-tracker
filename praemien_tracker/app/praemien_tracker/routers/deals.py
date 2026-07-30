@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import json
 from decimal import Decimal
 
@@ -15,6 +16,7 @@ from ..helpers import (
     build_deal_from_import,
     get_or_create_bank,
     get_or_create_inhaber,
+    kuendigung_vorschlag,
     monat_aus_formular,
     parse_date,
     parse_decimal,
@@ -45,6 +47,16 @@ def _quelle_oder_400(wert: str) -> str:
     if normalisiert is None:
         raise HTTPException(status_code=400, detail=f"Unbekannte Prämien-Quelle: {wert!r}")
     return normalisiert
+
+
+def _freibetrag_jahr(eingabe: str, betrag) -> int | None:
+    try:
+        jahr = int(eingabe.strip())
+    except (ValueError, AttributeError):
+        jahr = None
+    if betrag is None:
+        return jahr
+    return jahr or datetime.date.today().year
 
 
 def _als_int(werte: list[str]) -> list[int]:
@@ -202,6 +214,7 @@ def deal_new_create(
         kontonummer=eingaben["kontonummer"] or None,
         zugangsdaten_gespeichert=zugangsdaten_gespeichert == "on",
     )
+    kuendigung_vorschlag(deal)
     db.add(deal)
     db.commit()
     return redirect(request, f"deals/{deal.id}/edit")
@@ -273,6 +286,42 @@ def deal_json_import(request: Request, json_text: str = Form(...), db: Session =
     return redirect(request, "deals")
 
 
+def _geschwister(db: Session, deal: Deal) -> list[dict]:
+    """Andere Deals mit derselben Kombination Bank/Kontoart/Inhaber.
+
+    Die Kombination ist fachlich *nicht* eindeutig: Nach Ablauf der Sperrfrist
+    zählt man bei derselben Bank wieder als Neukunde - eine zweite Runde ist
+    der Normalfall. Deshalb wird nur hingewiesen, nicht blockiert. Der Ton
+    richtet sich danach, wie der Vorgänger dasteht: ein noch laufender Deal
+    ist meist ein Versehen, ein lange gekündigter eine reguläre Wiederholung.
+    """
+    andere = (
+        db.query(Deal)
+        .filter(
+            Deal.id != deal.id,
+            Deal.bank_id == deal.bank_id,
+            Deal.inhaber_id == deal.inhaber_id,
+            Deal.kontoart == deal.kontoart,
+        )
+        .all()
+    )
+    heute = datetime.date.today()
+    zeilen = []
+    for anderer in andere:
+        kuendigungsdatum = derived.parse_monat(anderer.gekuendigt_im_monat)
+        if not anderer.gekuendigt or kuendigungsdatum is None:
+            stufe, hinweis = "warnung", "läuft noch – wahrscheinlich ein Versehen"
+        else:
+            monate = derived.monate_seit_kuendigung(kuendigungsdatum, heute)
+            sperrstufe = derived.sperrfrist_stufe(monate)
+            if sperrstufe == derived.SPERRFRIST_GRUEN:
+                stufe, hinweis = "info", f"gekündigt vor {monate} Monaten – Sperrfrist abgelaufen"
+            else:
+                stufe, hinweis = "warnung", f"erst vor {monate} Monaten gekündigt – Sperrfrist evtl. noch offen"
+        zeilen.append({"deal": anderer, "stufe": stufe, "hinweis": hinweis})
+    return zeilen
+
+
 @router.get("/deals/{deal_id}/edit")
 def deal_edit_form(request: Request, deal_id: int, db: Session = Depends(get_db)):
     deal = _deal_query(db).filter(Deal.id == deal_id).one_or_none()
@@ -288,6 +337,8 @@ def deal_edit_form(request: Request, deal_id: int, db: Session = Depends(get_db)
             "status": derived.status(deal),
             "status_labels": derived.STATUS_LABELS,
             "offene_felder": {f.feld for f in derived.offene_felder(deal)},
+            "geschwister": _geschwister(db, deal),
+            "jahr_heute": datetime.date.today().year,
             "json_fehler": None,
             "json_text": "",
         },
@@ -309,6 +360,7 @@ def deal_update(
     kuendigung_hinweis: str = Form(""),
     kuendigung_hinweis_url: str = Form(""),
     freibetrag: str = Form(""),
+    freibetrag_jahr: str = Form(""),
     praemien_auf_sparkonto: str = Form(""),
     kommentar: str = Form(""),
     zugangsdaten_gespeichert: str = Form(""),
@@ -326,6 +378,9 @@ def deal_update(
     deal.kuendigung_hinweis = kuendigung_hinweis.strip() or None
     deal.kuendigung_hinweis_url = kuendigung_hinweis_url.strip() or None
     deal.freibetrag = parse_decimal(freibetrag)
+    # Ohne Jahresangabe faellt der Betrag auf das laufende Jahr - sonst
+    # erscheint er in keiner der beiden Jahresspalten und ist unsichtbar.
+    deal.freibetrag_jahr = _freibetrag_jahr(freibetrag_jahr, deal.freibetrag)
     deal.praemien_auf_sparkonto = (praemien_auf_sparkonto == "on") if praemien_auf_sparkonto else None
     deal.kommentar = kommentar.strip() or None
     deal.zugangsdaten_gespeichert = zugangsdaten_gespeichert == "on"
@@ -351,21 +406,27 @@ async def deal_kuendigung_hinweis_update(request: Request, deal_id: int, db: Ses
 
 @router.post("/deals/{deal_id}/stornieren")
 def deal_stornieren(request: Request, deal_id: int, db: Session = Depends(get_db)):
-    """Storniert einen Deal: alle Bedingungen gelten als erfüllt, noch nicht
-    erhaltene Prämien werden auf 0 gesetzt und als erhalten markiert, der
-    Deal gilt als gekündigt und bestätigt - der Status springt damit
-    unabhängig vom bisherigen Stand auf 'Abgeschlossen'."""
-    deal = db.get(Deal, deal_id)
-    if deal:
-        for b in deal.bedingungen:
-            b.erfuellt = True
-        for p in deal.praemien:
-            if not p.erhalten:
-                p.betrag = Decimal("0")
-                p.erhalten = True
-        deal.gekuendigt = True
-        deal.kuendigung_bestaetigt = True
-        db.commit()
+    """Storniert einen Deal: der Vorgang ist nicht zustande gekommen.
+
+    Alle Bedingungen gelten als erfüllt und noch nicht erhaltene Prämien
+    werden auf 0 gesetzt - der zutreffende Betrag, denn es kam keine Prämie.
+    Der Deal wird über ein eigenes Feld als storniert markiert und *nicht*
+    mehr als gekündigt: sonst erschien er dauerhaft in der
+    Sperrfristen-Auswertung, obwohl es nichts zu sperren gibt.
+
+    Anders als bei einem echt gekündigten Konto werden offene Bedingungen
+    hier bewusst abgehakt - ein stornierter Deal ist erledigt und soll nicht
+    erneut unter "Zu prüfen" auftauchen.
+    """
+    deal = _hole_deal(db, deal_id)
+    for b in deal.bedingungen:
+        b.erfuellt = True
+    for p in deal.praemien:
+        if not p.erhalten:
+            p.betrag = Decimal("0")
+            p.erhalten = True
+    deal.storniert = True
+    db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
 
 

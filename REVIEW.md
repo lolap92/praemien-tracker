@@ -5,6 +5,9 @@ und Inkonsistenzen zwischen Code, UI und Dokumentation. Alle mit **[V]**
 markierten Punkte wurden gegen die laufende App bzw. eine echte SQLite-DB
 verifiziert, nicht nur aus dem Code abgeleitet.
 
+**Stand: alle Findings sind umgesetzt** - A1–A17 in Version 1.8.0,
+B1/B11/B12/B14/B15 in 1.9.0, B2–B9/B13 in 2.0.0.
+
 Die Findings sind nach Umsetzbarkeit nummeriert:
 
 - **A1–A17** – sofort umsetzbar, keine Änderung an der Fachlogik.
@@ -29,49 +32,48 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 
 | # | Prio | Finding | Stelle | Warum unbedenklich |
 |---|---|---|---|---|
-| A1 | mittel | Erster Pipeline-Balken farblos: Template rendert `pipe-bar-bedingungen`, CSS kennt nur `.pipe-bar-cond` | `style.css:264` | Reiner Namensdreher, ein Wort |
-| A2 | mittel | Fortschrittsbalken hat 5 statt 6 Segmente, „Abgeschlossen" zeigt nie eine Position | `deals_list.html:51` | `range(5)` → `range(status_order\|length)` |
-| A3 | mittel | „+"-Sprunglink der Vollständigkeit zeigt auf nicht existierende ID | `deal_form.html:149` | `id="praemie_{{p.id}}_auszahlung_erwartet"` ergänzen |
-| A4 | mittel | „spartanien" statt „Spartanien" in der Vollständigkeit | `derived.py:267` | `quelle_label()` anwenden, existiert bereits |
-| A5 | mittel | Doppelte DOM-ID `kuendigung_hinweis` (div + textarea) | `deal_form.html:84` | ID am `div` entfernen |
-| A6 | mittel | `?inhaber_id=abc` → 500 | `deals.py:42` | `int()` absichern, nicht-numerisch ignorieren |
-| A7 | niedrig | Nav-Aktivmarkierung greift unter Ingress nie, Regeln uneinheitlich | `base.html:15-21` | `aktiver_tab` aus der Route übergeben |
-| A8 | niedrig | `deal_new_create()` nimmt 4 Felder entgegen, die das Formular nie sendet | `deals.py:109` | Toter Code, ersatzlos raus |
-| A9 | niedrig | „Formular / JSON einfügen" sieht aus wie ein Umschalter, ist aber Reload + Ankersprung | `deal_form.html:29` | Reine UI-Politur |
-| A10 | niedrig | `<a>` direkt in `<ul>`, `onclick` auf `<tr>` (nicht tastaturbedienbar), 500 statt 404 bei unbekannter Deal-ID, Protokoll ohne Paginierung | mehrere Templates, `deals.py:170` | Markup/Robustheit, kein Verhalten betroffen |
-| A11 | niedrig | `@app.on_event("startup")` deprecated | `main.py:81` | 1:1-Ersatz durch `lifespan` |
-| A12 | mittel | `PRAGMA foreign_keys` ist aus → Waisen-Datensätze möglich | `database.py:6` | Verhindert nur neue Verstöße. Vorher einmal auf vorhandene Waisen prüfen |
-| A13 | hoch | `kontoart` wird im Importpfad nicht getrimmt, im Formularpfad schon | `helpers.py:58` | Gleicht Import an das bereits bestehende Verhalten an |
-| A14 | hoch | Eingabe aus lauter Leerzeichen legt Deal mit leerer Bank an | `deals.py:123` | Vor der Prüfung strippen, Leeres ablehnen. Braucht eine kleine Fehlermeldung im Formular |
-| A15 | niedrig | `uebersprungene_felder` nicht importierbar | `schemas.py:36` | Rein additives Feld |
-| A16 | mittel | Import nimmt nur ein Objekt (Liste → 400); Fehler kommt als roher Pydantic-Dump | `deals.py:139`, `deal_form.html:125` | Additiv, bestehendes Verhalten bleibt gültig |
-| A17 | niedrig | Keine Tests | – | Ergänzt nur, ändert nichts |
+| A1 | mittel | Erster Pipeline-Balken farblos: Template rendert `pipe-bar-bedingungen`, CSS kennt nur `.pipe-bar-cond` | `style.css:264` | Reiner Namensdreher, ein Wort · **Umgesetzt (1.8.0)** |
+| A2 | mittel | Fortschrittsbalken hat 5 statt 6 Segmente, „Abgeschlossen" zeigt nie eine Position | `deals_list.html:51` | `range(5)` → `range(status_order\|length)` · **Umgesetzt (1.8.0)** |
+| A3 | mittel | „+"-Sprunglink der Vollständigkeit zeigt auf nicht existierende ID | `deal_form.html:149` | `id="praemie_{{p.id}}_auszahlung_erwartet"` ergänzen · **Umgesetzt (1.8.0)** |
+| A4 | mittel | „spartanien" statt „Spartanien" in der Vollständigkeit | `derived.py:267` | `quelle_label()` anwenden, existiert bereits · **Umgesetzt (1.8.0)** |
+| A5 | mittel | Doppelte DOM-ID `kuendigung_hinweis` (div + textarea) | `deal_form.html:84` | ID am `div` entfernen · **Umgesetzt (1.8.0)** |
+| A6 | mittel | `?inhaber_id=abc` → 500 | `deals.py:42` | `int()` absichern, nicht-numerisch ignorieren · **Umgesetzt (1.8.0)** |
+| A7 | niedrig | Nav-Aktivmarkierung greift unter Ingress nie, Regeln uneinheitlich | `base.html:15-21` | `aktiver_tab` aus der Route übergeben · **Umgesetzt (1.8.0)** |
+| A8 | niedrig | `deal_new_create()` nimmt 4 Felder entgegen, die das Formular nie sendet | `deals.py:109` | Toter Code, ersatzlos raus · **Umgesetzt (1.8.0)** |
+| A9 | niedrig | „Formular / JSON einfügen" sieht aus wie ein Umschalter, ist aber Reload + Ankersprung | `deal_form.html:29` | Reine UI-Politur · **Umgesetzt (1.8.0)** |
+| A10 | niedrig | `<a>` direkt in `<ul>`, `onclick` auf `<tr>` (nicht tastaturbedienbar), 500 statt 404 bei unbekannter Deal-ID, Protokoll ohne Paginierung | mehrere Templates, `deals.py:170` | Markup/Robustheit, kein Verhalten betroffen · **Umgesetzt (1.8.0)** |
+| A11 | niedrig | `@app.on_event("startup")` deprecated | `main.py:81` | 1:1-Ersatz durch `lifespan` · **Umgesetzt (1.8.0)** |
+| A12 | mittel | `PRAGMA foreign_keys` ist aus → Waisen-Datensätze möglich | `database.py:6` | Verhindert nur neue Verstöße. Vorher einmal auf vorhandene Waisen prüfen · **Umgesetzt (1.8.0)** |
+| A13 | hoch | `kontoart` wird im Importpfad nicht getrimmt, im Formularpfad schon | `helpers.py:58` | Gleicht Import an das bereits bestehende Verhalten an · **Umgesetzt (1.8.0)** |
+| A14 | hoch | Eingabe aus lauter Leerzeichen legt Deal mit leerer Bank an | `deals.py:123` | Vor der Prüfung strippen, Leeres ablehnen. Braucht eine kleine Fehlermeldung im Formular · **Umgesetzt (1.8.0)** |
+| A15 | niedrig | `uebersprungene_felder` nicht importierbar | `schemas.py:36` | Rein additives Feld · **Umgesetzt (1.8.0)** |
+| A16 | mittel | Import nimmt nur ein Objekt (Liste → 400); Fehler kommt als roher Pydantic-Dump | `deals.py:139`, `deal_form.html:125` | Additiv, bestehendes Verhalten bleibt gültig · **Umgesetzt (1.8.0)** |
+| A17 | niedrig | Keine Tests | – | Ergänzt nur, ändert nichts · **Umgesetzt (1.8.0)** |
 
 ### B – vorher anschauen (fachliche Entscheidung)
 
 | # | Prio | Finding | Was zu entscheiden ist |
 |---|---|---|---|
-| B1 | niedrig | Vollständigkeit mahnt „Kündbar ab" an, obwohl ein leeres Feld eine gültige Aussage ist („keine Sperrfrist") | **Entschieden:** `kuendbar_ab` raus aus `WUENSCHENSWERTE_FELDER`. Noch nicht umgesetzt |
-| B2 | hoch | Gekündigt + bestätigt, aber offene Bedingung → gilt gleichzeitig als „in Bearbeitung" und „gekündigt" | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
-| B3 | hoch | Deal ohne Prämien hängt unsichtbar in „Auf Prämie warten" – kein ToDo, keine Meldung | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
-| B4 | hoch | `auszahlung_erwartet` wird eingefordert, aber nie ausgewertet – keine Überfälligkeit | **Entschieden**, siehe Detailabschnitt (nicht durch „Zu prüfen" abgedeckt). Noch nicht umgesetzt |
-| B5 | mittel | Freibetrag hat keinen Jahresbezug – die Übersicht summiert jahresübergreifend | **Entschieden:** Jahr am Deal erfassen, Bestand auf 2026, Übersicht zeigt aktuelles und Vorjahr. Noch nicht umgesetzt |
-| B6 | mittel | „Stornieren" setzt `gekuendigt=True` → stornierte Deals verfälschen den Sperrfristen-Tab | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
-| B7 | mittel | Zugangsdaten-ToDo erscheint auch für abgeschlossene Deals | **Entschieden:** entfällt ab `gekuendigt`. Noch nicht umgesetzt |
-| B8 | hoch | Abhak-Routen invertieren statt zu setzen; eine doppelt ankommende Anfrage kippt den Wert zurück und überschreibt beim Kündigen den gepflegten Kündigungsmonat | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
-| B9 | mittel | Kündigungs-Hinweise greifen nur beim App-Start (neuer Deal bleibt leer) und überschreiben bewusst geleerte Felder | **Entschieden:** einmalig beim Anlegen setzen, Start-Backfill entfällt. Noch nicht umgesetzt |
-| B11 | hoch | `quelle` unvalidiert; „Bank" wird beim nächsten Speichern still zu „Spartanien" | **Entschieden:** normalisieren, `Literal` im Schema, Bestand einmalig bereinigen. Noch nicht umgesetzt |
-| B12 | mittel | Zwei Monatsformate (`MM.YY` vs. `YYYY-MM`), beide ungeprüft | **Entschieden:** beide auf ISO `YYYY-MM`. Noch nicht umgesetzt |
-| B13 | mittel | Kein Duplikat-Schutz – zweimal dasselbe JSON = zwei Deals | **Entschieden:** warnen statt blocken, kein Unique-Constraint. Noch nicht umgesetzt |
-| B14 | mittel | Zeitpunkte werden ohne Umrechnung angezeigt → Protokoll und Export zeigen 2 h falsch | **Entschieden:** UTC speichern, nur im Frontend lokal anzeigen. Keine Migration. Noch nicht umgesetzt |
-| B15 | niedrig | `praemien.db.bak` wird bei jedem Start überschrieben, nicht nur vor Migrationen | **Entschieden:** nur vor echter Migration kopieren, Revision im Dateinamen. Noch nicht umgesetzt |
+| B1 | niedrig | Vollständigkeit mahnt „Kündbar ab" an, obwohl ein leeres Feld eine gültige Aussage ist („keine Sperrfrist") | **Entschieden:** `kuendbar_ab` raus aus `WUENSCHENSWERTE_FELDER`. **Umgesetzt** |
+| B2 | hoch | Gekündigt + bestätigt, aber offene Bedingung → gilt gleichzeitig als „in Bearbeitung" und „gekündigt" | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". **Umgesetzt** |
+| B3 | hoch | Deal ohne Prämien hängt unsichtbar in „Auf Prämie warten" – kein ToDo, keine Meldung | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". **Umgesetzt** |
+| B4 | hoch | `auszahlung_erwartet` wird eingefordert, aber nie ausgewertet – keine Überfälligkeit | **Entschieden**, siehe Detailabschnitt (nicht durch „Zu prüfen" abgedeckt). **Umgesetzt** |
+| B5 | mittel | Freibetrag hat keinen Jahresbezug – die Übersicht summiert jahresübergreifend | **Entschieden:** Jahr am Deal erfassen, Bestand auf 2026, Übersicht zeigt aktuelles und Vorjahr. **Umgesetzt** |
+| B6 | mittel | „Stornieren" setzt `gekuendigt=True` → stornierte Deals verfälschen den Sperrfristen-Tab | **Entschieden**, siehe Detailabschnitt. **Umgesetzt** |
+| B7 | mittel | Zugangsdaten-ToDo erscheint auch für abgeschlossene Deals | **Entschieden:** entfällt ab `gekuendigt`. **Umgesetzt** |
+| B8 | hoch | Abhak-Routen invertieren statt zu setzen; eine doppelt ankommende Anfrage kippt den Wert zurück und überschreibt beim Kündigen den gepflegten Kündigungsmonat | **Entschieden**, siehe Detailabschnitt. **Umgesetzt** |
+| B9 | mittel | Kündigungs-Hinweise greifen nur beim App-Start (neuer Deal bleibt leer) und überschreiben bewusst geleerte Felder | **Entschieden:** einmalig beim Anlegen setzen, Start-Backfill entfällt. **Umgesetzt** |
+| B11 | hoch | `quelle` unvalidiert; „Bank" wird beim nächsten Speichern still zu „Spartanien" | **Entschieden:** normalisieren, `Literal` im Schema, Bestand einmalig bereinigen. **Umgesetzt** |
+| B12 | mittel | Zwei Monatsformate (`MM.YY` vs. `YYYY-MM`), beide ungeprüft | **Entschieden:** beide auf ISO `YYYY-MM`. **Umgesetzt** |
+| B13 | mittel | Kein Duplikat-Schutz – zweimal dasselbe JSON = zwei Deals | **Entschieden:** warnen statt blocken, kein Unique-Constraint. **Umgesetzt** |
+| B14 | mittel | Zeitpunkte werden ohne Umrechnung angezeigt → Protokoll und Export zeigen 2 h falsch | **Entschieden:** UTC speichern, nur im Frontend lokal anzeigen. Keine Migration. **Umgesetzt** |
+| B15 | niedrig | `praemien.db.bak` wird bei jedem Start überschrieben, nicht nur vor Migrationen | **Entschieden:** nur vor echter Migration kopieren, Revision im Dateinamen. **Umgesetzt** |
 
 ---
 
-## Beschlossen: Bereich „Zu prüfen" (noch nicht umgesetzt)
+## Beschlossen: Bereich „Zu prüfen" (umgesetzt in 2.0.0)
 
-Abgestimmter Entwurf, der **B2** und **B3** gemeinsam auflöst. Hier nur
-festgehalten – im Code ist davon noch nichts geändert.
+Abgestimmter Entwurf, der **B2** und **B3** gemeinsam auflöst. Umgesetzt in Version 2.0.0.
 
 **Grundgedanke:** „Zu prüfen" ist keine Stufe im Lebenszyklus, sondern eine
 querliegende Auffälligkeit. Ein gekündigter, bestätigter Deal mit offener

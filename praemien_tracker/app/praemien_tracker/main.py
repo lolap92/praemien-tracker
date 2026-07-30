@@ -29,7 +29,6 @@ from sqlalchemy import inspect
 from . import protokoll  # noqa: F401  (registriert die Änderungsprotokoll-Events)
 from .config import DATABASE_URL, DB_BACKUP_PATH, DB_PATH
 from .database import SessionLocal, engine
-from .kuendigung_hinweise import backfill_kuendigung_hinweise
 from .routers import completeness, deals, overview, protokoll as protokoll_router, sperrfristen, todos
 from .seed import import_seed_data
 from .templating import STATIC_DIR, templates
@@ -93,10 +92,6 @@ def run_migrations() -> None:
         _sicherheitskopie(ziel)
         command.upgrade(cfg, "head")
         logger.info("Migrationen angewendet, Datenbank auf Stand %s.", ziel)
-        with SessionLocal() as db:
-            anzahl = backfill_kuendigung_hinweise(db)
-            if anzahl:
-                logger.info("Kündigung-Anweisungen für %d Deals vorgeschlagen.", anzahl)
         return
 
     command.upgrade(cfg, "head")
@@ -104,7 +99,6 @@ def run_migrations() -> None:
 
     with SessionLocal() as db:
         import_seed_data(db)
-        backfill_kuendigung_hinweise(db)
 
 
 def _zeitzone_protokollieren() -> None:

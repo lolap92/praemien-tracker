@@ -15,6 +15,16 @@
   <option value="Kreditkarte">
 </datalist>
 
+{% if deal and geschwister %}
+{% for g in geschwister %}
+<div class="{{ 'hinweis' if g.stufe == 'warnung' else 'notiz' }}">
+  Dieselbe Kombination gibt es schon:
+  <a href="deals/{{ g.deal.id }}/edit">{{ g.deal.bank.name }} · {{ g.deal.kontoart }} · {{ g.deal.inhaber.name }}</a>
+  – {{ g.hinweis }}.
+</div>
+{% endfor %}
+{% endif %}
+
 {% if deal %}
 <div class="form-status">
   <div class="card-label">Status</div>
@@ -91,6 +101,11 @@
         <div class="feld">
           <label for="freibetrag">Freibetrag (€) {{ "⚠ offen" if 'freibetrag' in offene_felder else "" }}</label>
           <input type="text" id="freibetrag" name="freibetrag" value="{{ deal.freibetrag if deal.freibetrag is not none else '' }}">
+        </div>
+        <div class="feld">
+          <label for="freibetrag_jahr">Für welches Jahr?</label>
+          <input type="number" id="freibetrag_jahr" name="freibetrag_jahr" min="2000" max="2100" step="1"
+                 placeholder="{{ jahr_heute }}" value="{{ deal.freibetrag_jahr if deal.freibetrag_jahr else '' }}">
         </div>
         <div class="feld">
           <label for="praemien_auf_sparkonto">Prämien auf Sparkonto</label>
@@ -255,7 +270,7 @@
 
 {% if status != "abgeschlossen" %}
 <div class="card">
-  <form action="deals/{{ deal.id }}/stornieren" method="post" onsubmit="return confirm('Deal stornieren? Noch nicht erhaltene Prämien werden auf 0 gesetzt, offene Bedingungen als erfüllt markiert und der Deal als abgeschlossen/gekündigt/bestätigt gekennzeichnet. Das lässt sich nur manuell rückgängig machen.');">
+  <form action="deals/{{ deal.id }}/stornieren" method="post" onsubmit="return confirm('Deal stornieren? Noch nicht erhaltene Prämien werden auf 0 gesetzt und offene Bedingungen als erfüllt markiert. Der Deal gilt dann als abgeschlossen, zählt aber nicht als gekündigt und erscheint deshalb nicht in den Sperrfristen. Das lässt sich nur manuell rückgängig machen.');">
     <button type="submit" class="secondary">Deal stornieren (auf abgeschlossen setzen)</button>
   </form>
 </div>

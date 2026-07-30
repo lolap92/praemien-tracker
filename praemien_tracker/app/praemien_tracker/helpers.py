@@ -7,6 +7,7 @@ from decimal import Decimal, InvalidOperation
 from sqlalchemy.orm import Session
 
 from .derived import format_monat, parse_monat
+from .kuendigung_hinweise import hinweis_fuer
 from .models import Aufgabe, Bank, Bedingung, Deal, DealUrl, Inhaber, Praemie
 from .schemas import DealImport
 
@@ -38,6 +39,20 @@ def monat_aus_formular(wert: str | None) -> str | None:
         return None
     datum = parse_monat(wert)
     return format_monat(datum) if datum else wert.strip()
+
+
+def kuendigung_vorschlag(deal: Deal) -> None:
+    """Recherchierten Kündigungsweg als Vorschlag setzen, falls für Bank und
+    Kontoart einer hinterlegt ist und der Deal noch keinen eigenen trägt.
+
+    Wird nur beim Anlegen aufgerufen. Danach gehört das Feld dem Nutzer -
+    ein geleertes Feld bleibt leer.
+    """
+    if deal.kuendigung_hinweis or deal.bank is None:
+        return
+    eintrag = hinweis_fuer(deal.bank.name, deal.kontoart)
+    if eintrag:
+        deal.kuendigung_hinweis, deal.kuendigung_hinweis_url = eintrag
 
 
 def get_or_create_bank(db: Session, name: str) -> Bank:
@@ -108,5 +123,6 @@ def build_deal_from_import(db: Session, daten: DealImport) -> Deal:
         deal.aufgaben.append(
             Aufgabe(beschreibung=a.beschreibung.strip(), erledigt=a.erledigt, faellig_bis=a.faellig_bis)
         )
+    kuendigung_vorschlag(deal)
     db.add(deal)
     return deal
