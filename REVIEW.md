@@ -48,7 +48,7 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 
 | # | Prio | Finding | Was zu entscheiden ist |
 |---|---|---|---|
-| B1 | niedrig | Vollständigkeit mahnt „Kündbar ab" an, obwohl ein leeres Feld eine gültige Aussage ist („keine Sperrfrist") | Feld aus `WUENSCHENSWERTE_FELDER` nehmen, oder die Erinnerung bewusst behalten? |
+| B1 | niedrig | Vollständigkeit mahnt „Kündbar ab" an, obwohl ein leeres Feld eine gültige Aussage ist („keine Sperrfrist") | **Entschieden:** `kuendbar_ab` raus aus `WUENSCHENSWERTE_FELDER`. Noch nicht umgesetzt |
 | B2 | hoch | Gekündigt + bestätigt, aber offene Bedingung → gilt gleichzeitig als „in Bearbeitung" und „gekündigt" | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
 | B3 | hoch | Deal ohne Prämien hängt unsichtbar in „Auf Prämie warten" – kein ToDo, keine Meldung | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
 | B4 | hoch | `auszahlung_erwartet` wird eingefordert, aber nie ausgewertet – keine Überfälligkeit | **Entschieden**, siehe Detailabschnitt (nicht durch „Zu prüfen" abgedeckt). Noch nicht umgesetzt |
@@ -160,11 +160,24 @@ Praktisch heißt das: Für jeden sperrfristfreien Deal muss der Nutzer das
 Feld einmal manuell auf „nicht nötig" setzen (`skip-field`), damit der Tab
 Ruhe gibt.
 
-*Zu entscheiden:* `kuendbar_ab` aus `WUENSCHENSWERTE_FELDER` streichen (dann
-verschwindet die Erinnerung ganz) – oder sie bewusst behalten, weil man
-beim Anlegen eben doch kurz prüfen will, ob die Bank eine Frist vorsieht.
-Unabhängig davon lohnt es, die Regel im Docstring von `ist_kuendbar()`
-festzuhalten; aktuell steht sie nirgends.
+**Entschieden:** `kuendbar_ab` wird aus `WUENSCHENSWERTE_FELDER` gestrichen.
+Übrig bleiben dort `kontonummer` und `freibetrag`. Zusätzlich sollte die
+Regel im Docstring von `ist_kuendbar()` festgehalten werden; aktuell steht
+sie nirgends im Code.
+
+Zwei erwartbare Nebenwirkungen, beide unkritisch:
+
+- Der Fortschritt im Vollständigkeits-Tab („x/y Deals gepflegt") springt
+  nach oben, weil viele Deals nur noch wegen dieses Feldes als unvollständig
+  galten. Das ist die beabsichtigte Korrektur, kein Fehler.
+- Deals, bei denen `kuendbar_ab` bereits von Hand auf „nicht nötig" gesetzt
+  wurde, tragen den Eintrag weiterhin in `uebersprungene_felder`. Er wird
+  dann nicht mehr ausgewertet – harmlose Altlast, die man beim nächsten
+  Datenschnitt mit entfernen kann, aber nicht muss.
+
+Damit ist B1 zwar formal eine fachliche Entscheidung gewesen, die Umsetzung
+selbst ist aber ein Einzeiler ohne Logikänderung – sie kann zusammen mit dem
+A-Block laufen.
 
 ### B2 – Status-Pipeline ist strikt sequenziell, die Realität nicht [V]
 `derived.status()` prüft in fester Reihenfolge. Ein Deal, der bereits
