@@ -50,7 +50,7 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B3 | hoch | Deal ohne Prämien hängt unsichtbar in „Auf Prämie warten" – kein ToDo, keine Meldung | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
 | B4 | hoch | `auszahlung_erwartet` wird eingefordert, aber nie ausgewertet – keine Überfälligkeit | Ab wann gilt eine Prämie als überfällig? Neue ToDo-Kategorie oder Markierung? |
 | B5 | hoch | Freibetragssumme zählt gekündigte Deals mit, kein Bezug zum Sparer-Pauschbetrag | Nur aktive Deals? Grenze 1.000/2.000 € je Person pflegbar machen? Jahresbezug? |
-| B6 | mittel | „Stornieren" setzt `gekuendigt=True` und überschreibt Prämienbeträge mit 0 | Eigenes Feld `storniert`? Migration + Sperrfristen-Filter betroffen |
+| B6 | mittel | „Stornieren" setzt `gekuendigt=True` → stornierte Deals verfälschen den Sperrfristen-Tab | **Entschieden:** eigenes Feld `storniert`. Offen: was mit offenen Bedingungen passiert, siehe unten |
 | B7 | mittel | Zugangsdaten-ToDo erscheint auch für abgeschlossene Deals | Ab welchem Status entfällt es – ab „gekündigt" oder ab „bestätigt"? |
 | B8 | mittel | Abhak-Routen invertieren; Doppelklick/Zurück-Button kippt „Prämie erhalten" zurück | Zielzustand mitschicken heißt auch: Checkboxen sollen den Ist-Zustand zeigen. Ändert die Bedienung spürbar |
 | B9 | mittel | Kündigungs-Hinweise greifen nur beim App-Start (neuer Deal bleibt leer) und überschreiben bewusst geleerte Felder | Beim Anlegen anwenden? Und wie „bewusst leer" von „nie gesetzt" unterscheiden? |
@@ -225,19 +225,45 @@ Zwei Probleme:
    Freistellungsaufträge zu erteilen als zulässig ist der klassische Fehler
    in diesem Anwendungsfall – die App könnte ihn erkennen, warnt aber nicht.
 
-### B6 – „Stornieren" missbraucht `gekuendigt` und überschreibt Fakten
-`deal_stornieren()` setzt `gekuendigt=True`, `kuendigung_bestaetigt=True`
-und **überschreibt offene Prämienbeträge mit 0**. Folgen:
+### B6 – „Stornieren" missbraucht `gekuendigt`
+`deal_stornieren()` setzt `gekuendigt=True` und `kuendigung_bestaetigt=True`.
+Der Deal erscheint damit dauerhaft im Sperrfristen-Tab unter „Gekündigt,
+aber ohne Kündigungsmonat" – obwohl er nie gekündigt, sondern nie zustande
+gekommen ist. Das verfälscht genau die Auswertung, die entscheidet, wann
+eine Bank wieder als Neukunden-Ziel taugt.
 
-- Der ursprünglich zugesagte Betrag ist aus dem Deal verschwunden (nur noch
-  im Protokoll rekonstruierbar).
-- Der Deal erscheint dauerhaft im Sperrfristen-Tab unter „Gekündigt, aber
-  ohne Kündigungsmonat" – obwohl er nie gekündigt, sondern nie zustande
-  gekommen ist. Das verfälscht genau die Auswertung, die entscheidet, wann
-  eine Bank wieder als Neukunden-Ziel taugt.
+**Nicht zu ändern:** Das Nullsetzen der offenen Prämienbeträge ist
+beabsichtigt und fachlich richtig – ein stornierter Deal hat schlicht keine
+Prämie gebracht, 0 ist der zutreffende Wert. Die ursprüngliche Zusage bleibt
+im Protokoll nachvollziehbar. (Ursprüngliche Kritik an dieser Stelle
+zurückgezogen.)
 
-*Empfehlung:* eigenes Feld `storniert` statt Umdeutung von `gekuendigt`;
-Beträge stehen lassen und in den Kennzahlen ausblenden.
+**Entschieden:** eigenes Feld `storniert` statt Umdeutung von `gekuendigt`.
+Daraus folgt:
+
+- `deal_stornieren()` setzt `storniert=True` und **nicht mehr** `gekuendigt`
+  / `kuendigung_bestaetigt`.
+- `derived.status()` behandelt `storniert` als terminal → „Abgeschlossen"
+  (zusammen mit der Terminal-Regel für `kuendigung_bestaetigt` aus B2).
+- Der Sperrfristen-Filter (`sperrfristen.py:21`) bekommt zusätzlich
+  `storniert.is_(False)` – damit ist der Tab automatisch sauber.
+- Neue Spalte + Alembic-Migration `0005`.
+
+**Noch offen – offene Bedingungen beim Stornieren:** Heute setzt
+`deal_stornieren()` alle Bedingungen auf `erfuellt=True`. Das war nötig,
+weil der Status sonst nicht auf „Abgeschlossen" springt. Mit einem eigenen
+`storniert`-Flag ist es nicht mehr nötig – und es widerspricht der
+Entscheidung aus B2, offene Bedingungen nach dem Abschluss nicht
+stillschweigend abzuhaken. Zwei Möglichkeiten:
+
+1. Bedingungen offen lassen (konsistent zu B2); der Deal taucht dann ggf.
+   unter „Zu prüfen" auf.
+2. Beim Stornieren weiterhin abhaken, weil ein stornierter Deal wirklich
+   erledigt ist und nicht noch einmal angeschaut werden muss.
+
+**Altbestand:** Bereits stornierte Deals sind nachträglich nicht sicher
+erkennbar – sie sehen aus wie normal gekündigte mit 0-€-Prämien. Sie müssten
+nach der Migration einmal von Hand als `storniert` markiert werden.
 
 ### B7 – Zugangsdaten-ToDo auch für abgeschlossene Deals [V]
 ```
