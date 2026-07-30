@@ -59,7 +59,7 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B9 | mittel | Kündigungs-Hinweise greifen nur beim App-Start (neuer Deal bleibt leer) und überschreiben bewusst geleerte Felder | **Entschieden:** einmalig beim Anlegen setzen, Start-Backfill entfällt. Noch nicht umgesetzt |
 | B11 | hoch | `quelle` unvalidiert; „Bank" wird beim nächsten Speichern still zu „Spartanien" | **Entschieden:** normalisieren, `Literal` im Schema, Bestand einmalig bereinigen. Noch nicht umgesetzt |
 | B12 | mittel | Zwei Monatsformate (`MM.YY` vs. `YYYY-MM`), beide ungeprüft | **Entschieden:** beide auf ISO `YYYY-MM`. Noch nicht umgesetzt |
-| B13 | mittel | Kein Duplikat-Schutz – zweimal dasselbe JSON = zwei Deals | Warnen oder blocken? Ist `(Bank, Kontoart, Inhaber)` wirklich eindeutig, oder gibt es legitim zwei gleiche Konten? |
+| B13 | mittel | Kein Duplikat-Schutz – zweimal dasselbe JSON = zwei Deals | **Entschieden:** warnen statt blocken, kein Unique-Constraint. Noch nicht umgesetzt |
 | B14 | mittel | Zeitstempel in UTC, Fälligkeiten lokal → Protokoll zeigt 2 h falsch | Nur die Anzeige umrechnen oder künftig lokal speichern? Bestehende Zeilen sind UTC |
 | B15 | niedrig | `praemien.db.bak` wird bei jedem Start überschrieben, nicht nur vor Migrationen | Wie viele Stände aufheben – Platz auf dem Green ist begrenzt |
 
@@ -677,8 +677,38 @@ unverändert weiter.
 ### B13 – Kein Duplikat-Schutz
 Der Import prüft nicht, ob `(bank, kontoart, inhaber)` bereits existiert.
 Zweimaliges Einfügen desselben JSON erzeugt zwei identische Deals, die sich
-in Pipeline und Kennzahlen doppelt niederschlagen. Es gibt auch keinen
-Unique-Constraint auf dieser Kombination.
+in Pipeline und Kennzahlen doppelt niederschlagen.
+
+**Fachliche Klarstellung:** `(Bank, Kontoart, Inhaber)` ist **nicht**
+eindeutig. Nach Ablauf der Sperrfrist zählt man bei derselben Bank wieder
+als Neukunde und macht denselben Deal erneut – das ist der Kern des
+Prämien-Hoppings, kein Fehlerfall. Ein **Unique-Constraint auf dieser
+Kombination ist damit ausgeschlossen**, ebenso ein automatisches Blocken
+beim Anlegen.
+
+**Entschieden:** Es wird lediglich **gewarnt**. Der Deal entsteht wie
+angefordert, zusätzlich weist die App auf die anderen Deals mit derselben
+Kombination hin.
+
+**Vorschlag zur Ausgestaltung** – die Warnung ist dann nützlich, wenn sie
+die Frage beantwortet, die man sich in dem Moment stellt: *Ist das eine
+zweite Runde oder ein Versehen?* Beides lässt sich aus vorhandenen Daten
+ableiten, ohne neue Felder:
+
+| Lage des bestehenden Deals | Lesart | Ton der Meldung |
+|---|---|---|
+| noch nicht gekündigt | läuft parallel – meist ein Versehen | deutliche Warnung |
+| gekündigt, Sperrfrist noch rot/orange (< 12 Monate) | zweite Runde vermutlich zu früh | Warnung mit Monatsangabe |
+| gekündigt, Sperrfrist grün (> 12 Monate) | reguläre Wiederholung | neutraler Hinweis |
+
+`derived.monate_seit_kuendigung()` und `derived.sperrfrist_stufe()` liefern
+das bereits, es braucht nur den Aufruf.
+
+Als Ort bietet sich das Deal-Formular an, nicht nur der Moment des
+Anlegens: ein abgeleiteter Hinweis, der die anderen Deals derselben
+Kombination samt Kündigungsmonat verlinkt. Der dient dann gleichzeitig als
+Querverweis zwischen den Runden – beim Prämien-Hopping die Information,
+die man ohnehin sucht, wenn man einen Deal wiederholt.
 
 ### A12 – Fremdschlüssel werden nicht durchgesetzt [V]
 ```
