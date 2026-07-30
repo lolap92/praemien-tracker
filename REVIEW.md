@@ -60,7 +60,7 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B11 | hoch | `quelle` unvalidiert; „Bank" wird beim nächsten Speichern still zu „Spartanien" | **Entschieden:** normalisieren, `Literal` im Schema, Bestand einmalig bereinigen. Noch nicht umgesetzt |
 | B12 | mittel | Zwei Monatsformate (`MM.YY` vs. `YYYY-MM`), beide ungeprüft | **Entschieden:** beide auf ISO `YYYY-MM`. Noch nicht umgesetzt |
 | B13 | mittel | Kein Duplikat-Schutz – zweimal dasselbe JSON = zwei Deals | **Entschieden:** warnen statt blocken, kein Unique-Constraint. Noch nicht umgesetzt |
-| B14 | mittel | Zeitstempel in UTC, Fälligkeiten lokal → Protokoll zeigt 2 h falsch | **Entschieden:** durchgängig lokale Zeit, Bestand einmalig umrechnen. Noch nicht umgesetzt |
+| B14 | mittel | Zeitpunkte werden ohne Umrechnung angezeigt → Protokoll und Export zeigen 2 h falsch | **Entschieden:** UTC speichern, nur im Frontend lokal anzeigen. Keine Migration. Noch nicht umgesetzt |
 | B15 | niedrig | `praemien.db.bak` wird bei jedem Start überschrieben, nicht nur vor Migrationen | Wie viele Stände aufheben – Platz auf dem Green ist begrenzt |
 
 ---
@@ -827,7 +827,7 @@ verhalten sie sich nicht wie eines.
 
 ## 4. Querschnitt
 
-### B14 – Zeitstempel in UTC, Fälligkeiten lokal [V]
+### B14 – Zeitpunkte werden ohne Umrechnung angezeigt [V]
 Mit `TZ=Europe/Berlin`:
 ```
 SQLite CURRENT_TIMESTAMP (erstellt_am, protokoll.zeitpunkt): 16:31:39
@@ -840,36 +840,54 @@ rechnet dagegen mit `datetime.date.today()`, also lokal. Das Protokoll zeigt
 im Sommer 2 Stunden falsch, und Fälligkeitsvergleiche laufen auf einer
 anderen Zeitbasis als die Zeitstempel.
 
-**Entschieden:** durchgängig lokale Zeit – speichern *und* anzeigen. Damit
-liegt alles auf derselben Basis wie `date.today()` in `derived.py`.
+**Entschieden:** **UTC speichern, nur im Frontend lokal anzeigen.**
+(Zwischenzeitlich war „durchgängig lokal speichern" gesetzt – nach
+Abwägung verworfen, Begründung unten.)
 
-Betroffen sind drei Spalten, alle über `func.now()` gefüllt:
-`Deal.erstellt_am`, `Deal.geaendert_am` (zusätzlich `onupdate`) und
-`ProtokollEintrag.zeitpunkt`. Statt `server_default=func.now()` /
-`onupdate=func.now()` setzt Python die Werte künftig selbst
-(`default=datetime.datetime.now`), sonst greift wieder SQLite und damit UTC.
+Damit ist die Änderung rein darstellungsseitig:
 
-**Die Bestandsumrechnung braucht die Zeitzonendatenbank, keinen festen
-Offset.** Die Differenz ist im Sommer zwei, im Winter eine Stunde – eine
-pauschale Verschiebung würde die Hälfte der vorhandenen Einträge falsch
-setzen. Jede Zeile ist also einzeln über `zoneinfo` umzurechnen.
+- Ein Jinja-Filter, der naive UTC-Werte in Ortszeit umrechnet, angewandt in
+  `protokoll.html:31` und im Excel-Export (`export.py:84-85`). Die
+  Spaltendefinitionen in `models.py` bleiben unangetastet.
+- Dass `func.now()` UTC liefert, sollte im Code ausdrücklich vermerkt sein –
+  es ist heute eine unkommentierte SQLite-Eigenschaft, über die schon einmal
+  jemand stolpern wird.
+- **Keine Datenmigration.** Der Bestand ist bereits UTC und bleibt gültig.
 
-**Vorher zu prüfen:** ob im Add-on-Container überhaupt eine Zeitzone
-gesetzt ist. Weder `Dockerfile` noch `run.sh` setzen `TZ`; der
-Home-Assistant-Supervisor gibt sie den Add-ons üblicherweise mit, verlassen
-sollte man sich darauf aber nicht. Ist `TZ` nicht gesetzt, ist „lokale
-Zeit" gleich UTC – die Umstellung liefe dann ins Leere, ohne dass es
-auffällt. Ein `TZ`-Eintrag in `config.yaml` oder ein Log-Hinweis beim Start
-schafft Sicherheit.
+**Warum UTC besser ist als lokale Speicherung:**
 
-**Bekannte Eigenheit:** Naive lokale Zeitstempel sind in der Nacht der
-Zeitumstellung im Oktober mehrdeutig – die Stunde zwischen 02:00 und 03:00
-gibt es zweimal. Für ein Änderungsprotokoll ist das verschmerzbar, sollte
-aber bekannt sein.
+1. *Der Fehlerfall ist harmlos.* Ist `TZ` im Container falsch oder nicht
+   gesetzt, zeigt die App eine falsche Uhrzeit an – die gespeicherten Daten
+   bleiben korrekt, und ein Konfigurationseintrag repariert die Anzeige
+   rückwirkend. Bei lokaler Speicherung wären alle in dieser Zeit
+   geschriebenen Zeitstempel dauerhaft falsch, ohne Möglichkeit, es
+   nachträglich zu erkennen.
+2. *Keine Mehrdeutigkeit.* In der Nacht der Zeitumstellung im Oktober gibt
+   es die Stunde von 02:00 bis 03:00 zweimal. Naive lokale Zeitstempel sind
+   dort nicht unterscheidbar, und das Protokoll kann scheinbar
+   zurücklaufen. UTC läuft streng monoton.
+3. *Sortierung bleibt korrekt.* `ORDER BY zeitpunkt DESC`
+   (`routers/protokoll.py:19`) stimmt mit UTC immer; mit lokalen Werten
+   wäre die Reihenfolge einmal im Jahr für eine Stunde falsch.
+4. *Keine Migration nötig* – und damit kein Risiko, den Bestand beim
+   Umrechnen zu beschädigen.
 
-*Nebeneffekt für B4:* Rechnet die Migration die Protokoll-Zeitstempel mit
-um, entfällt die dort beschriebene UTC-Umrechnung beim Backfill von
-`erfuellt_am` – die Werte liegen dann bereits lokal vor.
+**Präzisierung des Befunds:** Oben steht, Fälligkeitsvergleiche liefen „auf
+einer anderen Zeitbasis". Das ist als Mangel zu streng formuliert.
+`derived.py` vergleicht mit `date.today()` **Kalenderdaten** – `faellig_bis`
+ist ein Datum, kein Zeitpunkt, und gehört in die Zeitzone des Nutzers.
+Diese Mischung ist richtig so: Zeitpunkte in UTC, Kalenderdaten lokal. Der
+tatsächliche Defekt ist allein die **Anzeige von Zeitpunkten ohne
+Umrechnung**.
+
+**Bleibt zu prüfen:** ob im Container eine Zeitzone gesetzt ist – weder
+`Dockerfile` noch `run.sh` tun das. Das betrifft jetzt aber nur noch die
+Darstellung. Ein `TZ`-Eintrag in `config.yaml` oder eine
+Log-Zeile beim Start macht es sichtbar.
+
+*Für B4:* Beim Backfill von `erfuellt_am` aus dem Protokoll bleibt die
+UTC-Umrechnung nötig (dort beschrieben). `erfuellt_am` selbst sollte ein
+**Kalenderdatum** sein, nicht ein Zeitpunkt – gerechnet wird in Monaten.
 
 ### B15 – Sicherheitskopie wird bei jedem Start überschrieben [V]
 Die Kopie hängt am Start, nicht an der Migration – `main.py:48-62`:
