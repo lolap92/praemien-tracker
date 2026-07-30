@@ -46,8 +46,8 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | # | Prio | Finding | Was zu entscheiden ist |
 |---|---|---|---|
 | B1 | niedrig | Vollständigkeit mahnt „Kündbar ab" an, obwohl ein leeres Feld eine gültige Aussage ist („keine Sperrfrist") | Feld aus `WUENSCHENSWERTE_FELDER` nehmen, oder die Erinnerung bewusst behalten? |
-| B2 | hoch | Gekündigt + bestätigt, aber offene Bedingung → gilt gleichzeitig als „in Bearbeitung" und „gekündigt" | Ist `kuendigung_bestaetigt` das Abbruchkriterium, oder sollen offene Bedingungen sichtbar bleiben? |
-| B3 | hoch | Deal ohne Prämien hängt unsichtbar in „Auf Prämie warten" – kein ToDo, keine Meldung | Als offenes Feld melden oder eigener Status? |
+| B2 | hoch | Gekündigt + bestätigt, aber offene Bedingung → gilt gleichzeitig als „in Bearbeitung" und „gekündigt" | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
+| B3 | hoch | Deal ohne Prämien hängt unsichtbar in „Auf Prämie warten" – kein ToDo, keine Meldung | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
 | B4 | hoch | `auszahlung_erwartet` wird eingefordert, aber nie ausgewertet – keine Überfälligkeit | Ab wann gilt eine Prämie als überfällig? Neue ToDo-Kategorie oder Markierung? |
 | B5 | hoch | Freibetragssumme zählt gekündigte Deals mit, kein Bezug zum Sparer-Pauschbetrag | Nur aktive Deals? Grenze 1.000/2.000 € je Person pflegbar machen? Jahresbezug? |
 | B6 | mittel | „Stornieren" setzt `gekuendigt=True` und überschreibt Prämienbeträge mit 0 | Eigenes Feld `storniert`? Migration + Sperrfristen-Filter betroffen |
@@ -60,6 +60,63 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B13 | mittel | Kein Duplikat-Schutz – zweimal dasselbe JSON = zwei Deals | Warnen oder blocken? Ist `(Bank, Kontoart, Inhaber)` wirklich eindeutig, oder gibt es legitim zwei gleiche Konten? |
 | B14 | mittel | Zeitstempel in UTC, Fälligkeiten lokal → Protokoll zeigt 2 h falsch | Nur die Anzeige umrechnen oder künftig lokal speichern? Bestehende Zeilen sind UTC |
 | B15 | niedrig | `praemien.db.bak` wird bei jedem Start überschrieben, nicht nur vor Migrationen | Wie viele Stände aufheben – Platz auf dem Green ist begrenzt |
+
+---
+
+## Beschlossen: Bereich „Zu prüfen" (noch nicht umgesetzt)
+
+Abgestimmter Entwurf, der **B2** und **B3** gemeinsam auflöst. Hier nur
+festgehalten – im Code ist davon noch nichts geändert.
+
+**Grundgedanke:** „Zu prüfen" ist keine Stufe im Lebenszyklus, sondern eine
+querliegende Auffälligkeit. Ein gekündigter, bestätigter Deal mit offener
+Bedingung *ist* fachlich abgeschlossen – er hat nur einen losen Faden.
+`status()` bleibt deshalb einwertig, und ein Deal kann gleichzeitig
+„Abgeschlossen" und „zu prüfen" sein.
+
+**Entscheidungen:**
+
+1. **Verankerung:** neue Kategorie in *Zu erledigen*, kein eigener Tab und
+   kein siebter Pipeline-Status.
+2. **Status:** `kuendigung_bestaetigt` wird in `derived.status()` terminal –
+   der Deal zeigt dann „Abgeschlossen". Offene Bedingungen werden dabei
+   **nicht** automatisch auf erfüllt gesetzt (ausdrücklicher Wunsch), sie
+   erscheinen nur noch unter „Zu prüfen". Damit verschwindet der
+   Widerspruch, dass ein Deal gleichzeitig in der ToDo-Liste unter
+   „Bedingungen" und in den Sperrfristen als gekündigt steht.
+3. **Regeln**, alle vier aufzunehmen:
+
+| Regel | Bedingung | Herkunft |
+|---|---|---|
+| Bedingungen nach Kündigung offen | `gekuendigt` und mindestens eine Bedingung `not erfuellt` | B2 |
+| Prämien nach Kündigung offen | `gekuendigt` und mindestens eine Prämie `not erhalten` | neu – Konto zu, Geld nie geflossen |
+| Keine Prämie erfasst | `praemien` ist leer | B3 |
+| Gekündigt ohne Kündigungsmonat | `gekuendigt` und `parse_gekuendigt_monat()` liefert `None` | wandert aus dem Sperrfristen-Tab hierher |
+
+**Was bei der Umsetzung noch zu klären ist:**
+
+- **Abhaken braucht gespeicherten Zustand.** Damit ein geprüfter Deal die
+  Liste verlässt, ohne die Bedingung abzuhaken, muss „angesehen" pro Deal
+  und Regel gespeichert werden – neue Spalte + Alembic-Migration. Das weicht
+  das Prinzip „nur Fakten speichern, alles andere ableiten" auf; als Muster
+  bietet sich `uebersprungene_felder` an, das für die Vollständigkeit genau
+  das schon tut. Die Route sollte idempotent setzen, nicht togglen (vgl. B8).
+- **Frisch angelegte Deals** erfüllen „keine Prämie erfasst" sofort, weil die
+  Prämien erst danach eingetragen werden. Entweder als Rauschen akzeptieren
+  (abhakbar) oder die Regel erst ab einem gewissen Alter greifen lassen.
+- **Wiederauftauchen:** Ändern sich die Fakten nach dem Abhaken (z. B. neue
+  unbezahlte Prämie), bleibt der Marker gesetzt und die Auffälligkeit
+  versteckt. Für den Anfang vertretbar, sollte aber bewusst so entschieden
+  sein.
+- **Sperrfristen-Tab:** Die Liste „Gekündigt, aber ohne Kündigungsmonat"
+  (`sperrfristen.html:30-46`) entfällt dort, sobald die Regel greift – sonst
+  lebt derselbe Hinweis an zwei Stellen.
+- **CSS:** Die Tab-Umschaltung in `style.css:370-396` ist pro Slug
+  ausgeschrieben; der neue Slug muss in allen drei Selektorlisten sowie bei
+  `.tag-*` und `.cat-*` ergänzt werden.
+- **Nebeneffekt:** Die Regel „gekündigt ohne Kündigungsmonat" fängt auch
+  falsch formatierte Eingaben ab (`2026-05` statt `05.26`) und entschärft
+  damit einen Teil von **B12**.
 
 ---
 
