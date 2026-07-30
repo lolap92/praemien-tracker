@@ -511,10 +511,27 @@ unverändert als `'Bank'` in der Datenbank.
 
 Das `<select>` in `deal_form.html` kennt aber nur `spartanien` und `bank`.
 Bei einem abweichenden Wert ist **keine** Option selektiert, der Browser
-zeigt und sendet die erste Option. Wer also eine Prämie mit `"quelle":
-"Bank"` importiert und den Deal danach einmal speichert, hat still und
-leise eine **Spartanien**-Prämie – die Zuordnung, an der die Auswertung
-hängt, kippt ohne Meldung.
+zeigt und sendet die erste. Im echten Chromium nachgestellt – Import,
+Formular öffnen, „Speichern" klicken, ohne etwas zu ändern:
+
+```
+In der DB steht:      'Bank'
+Browser zeigt an:     'spartanien'   (selectedIndex 0, sichtbar „Spartanien")
+Nutzer klickt Speichern, ohne etwas zu ändern
+DB danach:            'spartanien'
+```
+
+Aus einer Bank-Prämie wird also eine Spartanien-Prämie, ohne Klick auf das
+Feld, ohne Warnung, ohne sichtbare Spur außer dem Protokolleintrag.
+
+**Zur Einordnung des Schadens:** Heute wertet keine Ansicht nach Quelle
+aus – die Zuordnung erscheint nur im Prämien-Blatt des Excel-Exports, im
+ToDo-Text und in der Zeile selbst. Der Fehler ist damit vorerst latent:
+Er verfälscht den Datenbestand und den Export, fällt aber in der App nicht
+auf. Er ist als *hoch* eingestuft, weil er still passiert und weil eine
+spätere Auswertung („wie viel kam eigentlich über Spartanien?") dann auf
+verfälschter Historie aufsetzt, die sich nicht mehr rekonstruieren lässt –
+außer mühsam aus dem Protokoll.
 
 *Empfehlung:* `Literal["spartanien","bank"]` im Schema, Normalisierung
 (`.strip().lower()`) im Import, Ablehnung unbekannter Werte in der Route.
