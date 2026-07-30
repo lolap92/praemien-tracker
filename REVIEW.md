@@ -51,7 +51,7 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B1 | niedrig | Vollständigkeit mahnt „Kündbar ab" an, obwohl ein leeres Feld eine gültige Aussage ist („keine Sperrfrist") | Feld aus `WUENSCHENSWERTE_FELDER` nehmen, oder die Erinnerung bewusst behalten? |
 | B2 | hoch | Gekündigt + bestätigt, aber offene Bedingung → gilt gleichzeitig als „in Bearbeitung" und „gekündigt" | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
 | B3 | hoch | Deal ohne Prämien hängt unsichtbar in „Auf Prämie warten" – kein ToDo, keine Meldung | **Entschieden**, siehe „Beschlossen: Bereich Zu prüfen". Noch nicht umgesetzt |
-| B4 | hoch | `auszahlung_erwartet` wird eingefordert, aber nie ausgewertet – keine Überfälligkeit | **Nicht** durch „Zu prüfen" abgedeckt, siehe Detailabschnitt. Offen: ab wann überfällig? |
+| B4 | hoch | `auszahlung_erwartet` wird eingefordert, aber nie ausgewertet – keine Überfälligkeit | **Entschieden**, siehe Detailabschnitt (nicht durch „Zu prüfen" abgedeckt). Noch nicht umgesetzt |
 | B6 | mittel | „Stornieren" setzt `gekuendigt=True` → stornierte Deals verfälschen den Sperrfristen-Tab | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
 | B7 | mittel | Zugangsdaten-ToDo erscheint auch für abgeschlossene Deals | **Entschieden:** entfällt ab `gekuendigt`. Noch nicht umgesetzt |
 | B8 | hoch | Abhak-Routen invertieren statt zu setzen; eine doppelt ankommende Anfrage kippt den Wert zurück und überschreibt beim Kündigen den gepflegten Kündigungsmonat | **Entschieden**, siehe Detailabschnitt. Noch nicht umgesetzt |
@@ -272,8 +272,47 @@ Version 1.6.0 fehlen die Einträge ganz; und seine Zeitstempel sind UTC
 plus Migration – für Altbestand einmalig aus dem Protokoll befüllbar,
 soweit vorhanden.
 
-**Offen:** (1) Welcher Anker ist gemeint – die letzte erfüllte *Bedingung*
-oder die zuletzt *erhaltene Prämie*? (2) Woher kommt das Datum?
+**Entschieden – Fall 2:** Anker ist die **zuletzt erfüllte Bedingung**;
+zwei Monate danach gilt eine noch offene Prämie als überfällig. Das Datum
+bekommt ein **eigenes Feld** `Bedingung.erfuellt_am` (neue Spalte +
+Migration), das beim Abhaken gesetzt wird. Der Altbestand wird einmalig aus
+dem Protokoll befüllt, soweit dort Einträge vorliegen.
+
+Damit ergibt sich die Regel:
+
+| Ausgangslage | überfällig ab |
+|---|---|
+| `auszahlung_erwartet` gesetzt | Ende des erwarteten Monats + 1 Monat |
+| kein Datum, Bedingungen vorhanden und alle erfüllt | `erfuellt_am` der zuletzt erfüllten Bedingung + 2 Monate |
+| kein Datum, **keine** Bedingungen hinterlegt | – siehe unten |
+
+**Detail 1 – Deals ohne Bedingungen.** `bedingungen_erfuellt()` liefert für
+eine leere Liste `True` („keine Bedingungen hinterlegt – gilt als erfüllt",
+`deal_form.html:194`). Dann gibt es aber auch kein `erfuellt_am`, an dem die
+Frist hängen könnte. Vorschlag: in diesem Fall **keine**
+Überfälligkeitsmarkierung – es gibt schlicht keinen Bezugspunkt. Die
+Vollständigkeit mahnt `auszahlung_erwartet` ohnehin an, der Nutzer wird also
+an derselben Stelle abgeholt. `deal.erstellt_am` wäre die Alternative,
+bildet aber nur ab, wann der Deal *erfasst* wurde – das kann Monate nach
+der Kontoeröffnung sein.
+
+**Detail 2 – Zurücknehmen.** Wird eine Bedingung wieder auf „offen"
+gesetzt, muss `erfuellt_am` mit geleert werden. Sonst entsteht dasselbe
+Muster wie bei `gekuendigt_im_monat` in B8: ein Datum, das stehen bleibt,
+obwohl der Zustand dazu nicht mehr passt.
+
+**Detail 3 – Backfill.** Aus dem Protokoll sind die Einträge mit
+`tabelle='Bedingung'`, `feld='erfuellt'`, `neuer_wert='True'` zu nehmen,
+je Bedingung der jüngste. Zwei Einschränkungen: Für vor Version 1.6.0
+erfüllte Bedingungen gibt es keine Einträge – die bleiben `NULL` und lösen
+damit keine Überfälligkeit aus (bewusst konservativ). Und die
+Protokoll-Zeitstempel sind UTC, müssen beim Backfill also umgerechnet
+werden (B14).
+
+*Nicht Teil dieser Entscheidung:* Ein symmetrisches
+`Praemie.erhalten_am` wird für diese Regel nicht gebraucht. Es wäre die
+naheliegende Ergänzung, falls später einmal ausgewertet werden soll, wie
+lange Banken tatsächlich zahlen – bis dahin bleibt es weg.
 
 
 ### B6 – „Stornieren" missbraucht `gekuendigt`
