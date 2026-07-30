@@ -64,7 +64,7 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B12 | mittel | Zwei Monatsformate (`MM.YY` vs. `YYYY-MM`), beide ungeprüft | **Entschieden:** beide auf ISO `YYYY-MM`. Noch nicht umgesetzt |
 | B13 | mittel | Kein Duplikat-Schutz – zweimal dasselbe JSON = zwei Deals | **Entschieden:** warnen statt blocken, kein Unique-Constraint. Noch nicht umgesetzt |
 | B14 | mittel | Zeitpunkte werden ohne Umrechnung angezeigt → Protokoll und Export zeigen 2 h falsch | **Entschieden:** UTC speichern, nur im Frontend lokal anzeigen. Keine Migration. Noch nicht umgesetzt |
-| B15 | niedrig | `praemien.db.bak` wird bei jedem Start überschrieben, nicht nur vor Migrationen | Wie viele Stände aufheben – Platz auf dem Green ist begrenzt |
+| B15 | niedrig | `praemien.db.bak` wird bei jedem Start überschrieben, nicht nur vor Migrationen | **Entschieden:** nur vor echter Migration kopieren, Revision im Dateinamen. Noch nicht umgesetzt |
 
 ---
 
@@ -976,7 +976,7 @@ Schema-Migration". Tatsächlich ist sie eine Momentaufnahme des letzten
 Starts – die Dokumentation weckt also mehr Vertrauen, als der Mechanismus
 trägt.
 
-**Empfehlung:**
+**Entschieden** – die folgende Empfehlung wird so übernommen:
 
 1. **Nur kopieren, wenn wirklich eine Migration ansteht.** Vergleich der
    aktuellen Revision in der Datenbank (`MigrationContext.get_current_revision()`)
