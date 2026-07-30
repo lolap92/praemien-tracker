@@ -60,7 +60,7 @@ spürbar falsches Verhalten, **niedrig** = Politur.
 | B11 | hoch | `quelle` unvalidiert; „Bank" wird beim nächsten Speichern still zu „Spartanien" | **Entschieden:** normalisieren, `Literal` im Schema, Bestand einmalig bereinigen. Noch nicht umgesetzt |
 | B12 | mittel | Zwei Monatsformate (`MM.YY` vs. `YYYY-MM`), beide ungeprüft | **Entschieden:** beide auf ISO `YYYY-MM`. Noch nicht umgesetzt |
 | B13 | mittel | Kein Duplikat-Schutz – zweimal dasselbe JSON = zwei Deals | **Entschieden:** warnen statt blocken, kein Unique-Constraint. Noch nicht umgesetzt |
-| B14 | mittel | Zeitstempel in UTC, Fälligkeiten lokal → Protokoll zeigt 2 h falsch | Nur die Anzeige umrechnen oder künftig lokal speichern? Bestehende Zeilen sind UTC |
+| B14 | mittel | Zeitstempel in UTC, Fälligkeiten lokal → Protokoll zeigt 2 h falsch | **Entschieden:** durchgängig lokale Zeit, Bestand einmalig umrechnen. Noch nicht umgesetzt |
 | B15 | niedrig | `praemien.db.bak` wird bei jedem Start überschrieben, nicht nur vor Migrationen | Wie viele Stände aufheben – Platz auf dem Green ist begrenzt |
 
 ---
@@ -840,14 +840,79 @@ rechnet dagegen mit `datetime.date.today()`, also lokal. Das Protokoll zeigt
 im Sommer 2 Stunden falsch, und Fälligkeitsvergleiche laufen auf einer
 anderen Zeitbasis als die Zeitstempel.
 
-### B15 – Sicherheitskopie wird bei jedem Start überschrieben
-`run_migrations()` kopiert `praemien.db` → `praemien.db.bak` bei **jedem**
-Start, auch wenn keine Migration ansteht. Wird ein Datenverlust erst nach
-zwei Neustarts bemerkt, ist die Sicherung längst mit dem kaputten Stand
-überschrieben. README/DOCS.md beschreiben sie als Absicherung „vor jeder
-Schema-Migration" – tatsächlich ist sie an den Start gekoppelt.
+**Entschieden:** durchgängig lokale Zeit – speichern *und* anzeigen. Damit
+liegt alles auf derselben Basis wie `date.today()` in `derived.py`.
+
+Betroffen sind drei Spalten, alle über `func.now()` gefüllt:
+`Deal.erstellt_am`, `Deal.geaendert_am` (zusätzlich `onupdate`) und
+`ProtokollEintrag.zeitpunkt`. Statt `server_default=func.now()` /
+`onupdate=func.now()` setzt Python die Werte künftig selbst
+(`default=datetime.datetime.now`), sonst greift wieder SQLite und damit UTC.
+
+**Die Bestandsumrechnung braucht die Zeitzonendatenbank, keinen festen
+Offset.** Die Differenz ist im Sommer zwei, im Winter eine Stunde – eine
+pauschale Verschiebung würde die Hälfte der vorhandenen Einträge falsch
+setzen. Jede Zeile ist also einzeln über `zoneinfo` umzurechnen.
+
+**Vorher zu prüfen:** ob im Add-on-Container überhaupt eine Zeitzone
+gesetzt ist. Weder `Dockerfile` noch `run.sh` setzen `TZ`; der
+Home-Assistant-Supervisor gibt sie den Add-ons üblicherweise mit, verlassen
+sollte man sich darauf aber nicht. Ist `TZ` nicht gesetzt, ist „lokale
+Zeit" gleich UTC – die Umstellung liefe dann ins Leere, ohne dass es
+auffällt. Ein `TZ`-Eintrag in `config.yaml` oder ein Log-Hinweis beim Start
+schafft Sicherheit.
+
+**Bekannte Eigenheit:** Naive lokale Zeitstempel sind in der Nacht der
+Zeitumstellung im Oktober mehrdeutig – die Stunde zwischen 02:00 und 03:00
+gibt es zweimal. Für ein Änderungsprotokoll ist das verschmerzbar, sollte
+aber bekannt sein.
+
+*Nebeneffekt für B4:* Rechnet die Migration die Protokoll-Zeitstempel mit
+um, entfällt die dort beschriebene UTC-Umrechnung beim Backfill von
+`erfuellt_am` – die Werte liegen dann bereits lokal vor.
+
+### B15 – Sicherheitskopie wird bei jedem Start überschrieben [V]
+Die Kopie hängt am Start, nicht an der Migration – `main.py:48-62`:
+
+```python
+db_existed = DB_PATH.exists()
+if db_existed:
+    shutil.copy2(DB_PATH, DB_BACKUP_PATH)   # bedingungslos, vor jeder Prüfung
+    ...
+    command.upgrade(cfg, "head")            # tut oft gar nichts
+```
+
+Zwei Eigenschaften wirken zusammen: Die Kopie liegt **vor** der Frage, ob
+überhaupt eine Migration aussteht, und das Ziel ist **immer derselbe Pfad**
+(`DB_BACKUP_PATH`, `config.py:21`), den `shutil.copy2` überschreibt. Jeder
+Start rollt die Sicherung also einen Schritt weiter.
+
+Nachgestellt – ohne jede ausstehende Migration:
+
+```
+Start 1 – DB angelegt, 1 Deal erfasst:
+   praemien.db: 1 Deals        praemien.db.bak: existiert nicht
+Start 2 – keine offene Migration, trotzdem kopiert:
+   praemien.db: 1 Deals        praemien.db.bak: 1 Deals
+Nutzer löscht den Deal versehentlich:
+   praemien.db: 0 Deals        praemien.db.bak: 1 Deals   ← Rettung wäre hier möglich
+Start 3 – Sicherheitskopie überschrieben:
+   praemien.db: 0 Deals        praemien.db.bak: 0 Deals   ← weg
+```
+
+Ein einziger Neustart zwischen Verlust und Bemerken genügt. Und Neustarts
+passieren im Add-on-Betrieb beiläufig: Add-on-Update, Home-Assistant-Neustart,
+Host-Reboot, Absturz mit automatischem Wiederanlauf.
+
+README und DOCS.md beschreiben die Kopie als Absicherung „vor jeder
+Schema-Migration". Tatsächlich ist sie eine Momentaufnahme des letzten
+Starts – die Dokumentation weckt also mehr Vertrauen, als der Mechanismus
+trägt.
+
 *Empfehlung:* nur kopieren, wenn `command.upgrade` wirklich etwas zu tun
-hat, und mit Zeitstempel im Dateinamen.
+hat (Vergleich `script.get_current_head()` gegen den Stand in der DB), und
+den Zeitstempel in den Dateinamen aufnehmen, damit eine neue Kopie die
+vorige nicht verdrängt.
 
 ### A17 – Keine Tests
 Kein einziger Test im Repo. Bei einer App, deren Kern (`derived.py`) reine,
