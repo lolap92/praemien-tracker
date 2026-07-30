@@ -237,10 +237,43 @@ und manuelle Aufgaben schon tun. `Todo.ueberfaellig` und die CSS-Klasse
 hinschaut, und „Zu prüfen" bleibt das, was es sein soll: Dinge, die man
 sich *irgendwann* ansieht, statt Dinge, die *jetzt* dringend werden.
 
-**Zu entscheiden:** ab wann überfällig – ab dem Monatsende des erwarteten
-Monats, oder mit Karenz (Banken zahlen erfahrungsgemäß spät)? Voraussetzung
-ist außerdem, dass `auszahlung_erwartet` überhaupt geparst wird; heute ist
-es reiner Freitext (siehe B12).
+**Entschieden – Fall 1 (`auszahlung_erwartet` gesetzt):** überfällig ab
+**einem Monat Karenz** nach dem erwarteten Monat. Banken zahlen
+erfahrungsgemäß spät; ein ToDo, das sofort rot wird, obwohl noch alles
+normal läuft, verliert seine Wirkung. Voraussetzung ist, dass
+`auszahlung_erwartet` überhaupt geparst wird – heute ist es reiner
+Freitext (siehe B12).
+
+**Fall 2 (kein Datum gesetzt): 2 Monate Karenz – aber der Bezugspunkt
+existiert nicht.** Gewünscht ist „2 Monate nach Erfüllung der letzten
+Prämie". Das ist mit dem heutigen Datenmodell **nicht berechenbar**:
+
+| Modell | Zustandsfeld | Datum dazu |
+|---|---|---|
+| `Bedingung` | `erfuellt` (Boolean) | **keins** – nur `faellig_bis` (Soll, nicht Ist) |
+| `Praemie` | `erhalten` (Boolean) | **keins** |
+| `Deal` | – | `erstellt_am`, `geaendert_am` |
+
+Die App speichert also *ob* etwas erfüllt/erhalten ist, nie *wann*.
+`geaendert_am` am Deal taugt nicht als Ersatz, weil es sich bei jeder
+beliebigen Änderung aktualisiert.
+
+Es gibt genau eine Stelle, an der der Zeitpunkt heute anfällt: das
+Protokoll. Verifiziert – das Abhaken einer Bedingung erzeugt
+
+```
+2026-07-30 05:56:38 | geaendert | feld=erfuellt | -> True
+```
+
+Das als Quelle für eine fachliche Ableitung zu nutzen, hat aber Haken: Das
+Protokoll ist ein Änderungsjournal, kein Faktenspeicher; für alles vor
+Version 1.6.0 fehlen die Einträge ganz; und seine Zeitstempel sind UTC
+(siehe B14). Sauberer wären eigene Felder `erfuellt_am` / `erhalten_am`
+plus Migration – für Altbestand einmalig aus dem Protokoll befüllbar,
+soweit vorhanden.
+
+**Offen:** (1) Welcher Anker ist gemeint – die letzte erfüllte *Bedingung*
+oder die zuletzt *erhaltene Prämie*? (2) Woher kommt das Datum?
 
 
 ### B6 – „Stornieren" missbraucht `gekuendigt`
