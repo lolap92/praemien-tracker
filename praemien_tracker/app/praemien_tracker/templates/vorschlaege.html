@@ -12,9 +12,13 @@
 <div class="card">
   {% if letzter_lauf %}
   <div class="vorschlag-lauf-status">
-    <span class="chip {{ 'lauf-erfolgreich' if letzter_lauf.erfolgreich else 'lauf-fehlgeschlagen' }}">
-      {{ '✓ Letzter Lauf erfolgreich' if letzter_lauf.erfolgreich else '✗ Letzter Lauf fehlgeschlagen' }}
-    </span>
+    {% if not letzter_lauf.erfolgreich %}
+    <span class="chip lauf-fehlgeschlagen">✗ Letzter Lauf fehlgeschlagen</span>
+    {% elif letzter_lauf.fehler %}
+    <span class="chip lauf-teilweise">⚠ Letzter Lauf teilweise erfolgreich</span>
+    {% else %}
+    <span class="chip lauf-erfolgreich">✓ Letzter Lauf erfolgreich</span>
+    {% endif %}
     <span class="lauf-zeitpunkt">{{ letzter_lauf.beendet_am | zeitpunkt }}</span>
   </div>
   <div class="lauf-kennzahlen">

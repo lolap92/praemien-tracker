@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.3.1
+
+Fehlerbehebung, die im echten Betrieb aufgefallen ist: spartanien war beim
+Live-Lauf nicht erreichbar, obwohl der Lauf als "erfolgreich" markiert
+wurde - beides ist jetzt korrigiert.
+
+- **spartanien-Abruf folgt jetzt Redirects.** `httpx` folgt
+  Weiterleitungen standardmäßig nicht; die reale Seite leitet
+  `/themen/bankprodukte/` auf `/themen` um, was bisher als Fehler
+  ("spartanien nicht erreichbar") protokolliert wurde. Relative Links auf
+  der Seite werden nach dem Redirect korrekt gegen die tatsächlich
+  geladene Ziel-URL aufgelöst (nicht mehr gegen die ursprünglich
+  konfigurierte). Betrifft auch den mydealz-Abruf, vorsorglich.
+- **Status-Anzeige unterscheidet jetzt "erfolgreich" von "teilweise
+  erfolgreich".** Bisher stand bei einem erfolgreichen Lauf mit einer
+  fehlgeschlagenen Einzelquelle (z. B. nur spartanien nicht erreichbar,
+  mydealz aber schon) trotzdem "✓ Letzter Lauf erfolgreich" direkt über der
+  Fehlermeldung - das war widersprüchlich. Ein Lauf mit Fehlertext zeigt
+  jetzt "⚠ Letzter Lauf teilweise erfolgreich"; komplett fehlgeschlagene
+  Läufe (Rollback) weiterhin "✗ Letzter Lauf fehlgeschlagen".
+
 ## 2.3.0
 
 Push-Benachrichtigung des KI-Deal-Finders ist jetzt konfigurierbar - keine

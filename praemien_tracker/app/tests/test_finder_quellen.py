@@ -1,9 +1,13 @@
-"""Reine Parse-Funktionen der Quellen (finder/quellen.py) - ohne Netzwerk,
-mit eingebetteten Beispiel-Fragmenten."""
+"""Quellen (finder/quellen.py): Parse-Funktionen mit eingebetteten
+Beispiel-Fragmenten sowie fetch_* gegen einen gefakten httpx.get - kein
+echtes Netzwerk."""
 
 from __future__ import annotations
 
-from praemien_tracker.finder.quellen import parse_mydealz_rss, parse_spartanien_html
+from types import SimpleNamespace
+
+from praemien_tracker.finder import quellen
+from praemien_tracker.finder.quellen import fetch_mydealz, fetch_spartanien, parse_mydealz_rss, parse_spartanien_html
 
 MYDEALZ_RSS_BEISPIEL = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel><title>mydealz - Verträge &amp; Finanzen</title>
@@ -61,3 +65,48 @@ def test_spartanien_html_verkraftet_unbekannte_struktur():
     """Geändertes Markup soll eine leere Liste liefern, keinen Fehler - der
     Lauf soll ohne diese Quelle weiterlaufen (siehe finder/lauf.py)."""
     assert parse_spartanien_html("<html><body><p>Nur Text, keine Angebote.</p></body></html>", "https://x") == []
+
+
+class _FakeAntwort:
+    def __init__(self, text: str, url: str):
+        self.text = text
+        self.url = url
+
+    def raise_for_status(self):
+        pass
+
+
+def test_fetch_mydealz_folgt_redirects(monkeypatch):
+    """httpx folgt Redirects standardmäßig nicht - ohne follow_redirects=True
+    würde raise_for_status() bei einer Weiterleitung fälschlich einen Fehler
+    werfen (genau das ist bei spartanien live passiert)."""
+    aufrufe = []
+    monkeypatch.setattr(
+        quellen.httpx,
+        "get",
+        lambda url, **kw: aufrufe.append((url, kw)) or _FakeAntwort("<rss></rss>", url),
+    )
+
+    fetch_mydealz("vertraege-finanzen")
+
+    assert aufrufe[0][1]["follow_redirects"] is True
+
+
+def test_fetch_spartanien_folgt_redirects_und_nutzt_ziel_url_als_basis(monkeypatch):
+    """Nach einem Redirect müssen relative Links gegen die tatsächlich
+    geladene (Ziel-)URL aufgelöst werden, nicht gegen die ursprünglich
+    konfigurierte."""
+    ziel_url = "https://www.spartanien.de/themen"
+    html = '<html><body><div class="angebot"><a href="/angebot/x">X-Bank 50 Euro</a></div></body></html>'
+    aufrufe = []
+    monkeypatch.setattr(
+        quellen.httpx,
+        "get",
+        lambda url, **kw: aufrufe.append((url, kw)) or _FakeAntwort(html, ziel_url),
+    )
+
+    funde = fetch_spartanien("https://www.spartanien.de/themen/bankprodukte/")
+
+    assert aufrufe[0][1]["follow_redirects"] is True
+    assert len(funde) == 1
+    assert funde[0].quelle_url == "https://www.spartanien.de/angebot/x"

@@ -169,6 +169,28 @@ def test_seite_zeigt_fehlgeschlagenen_lauf_mit_fehlertext(db):
     assert "mydealz nicht erreichbar: HTTP 500" in antwort.text
 
 
+def test_seite_zeigt_erfolgreichen_lauf_mit_teilfehler_als_teilweise_erfolgreich(db):
+    """erfolgreich=True heißt nur: kein Absturz - fällt eine Quelle einzeln
+    aus, ist das kein kompletter Fehlschlag, soll aber auch nicht wie ein
+    unauffälliger Lauf aussehen."""
+    db.add(
+        FinderLauf(
+            erfolgreich=True,
+            mydealz_geladen=30,
+            spartanien_geladen=0,
+            neu_gefunden=92,
+            uebersprungen=0,
+            fehler="spartanien nicht erreichbar: Redirect response '302 Found'",
+        )
+    )
+    db.commit()
+
+    antwort = client.get("/vorschlaege")
+    assert antwort.status_code == 200
+    assert "Letzter Lauf teilweise erfolgreich" in antwort.text
+    assert "spartanien nicht erreichbar" in antwort.text
+
+
 def test_seite_zeigt_nur_den_juengsten_lauf(db):
     db.add(FinderLauf(erfolgreich=False, fehler="alter Fehler"))
     db.commit()

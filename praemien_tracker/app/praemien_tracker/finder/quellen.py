@@ -59,7 +59,7 @@ def parse_mydealz_rss(xml_text: str) -> list[RohFund]:
 
 def fetch_mydealz(gruppe: str, *, timeout: float = 15.0) -> list[RohFund]:
     url = MYDEALZ_RSS_URL.format(gruppe=gruppe)
-    antwort = httpx.get(url, timeout=timeout, headers={"User-Agent": USER_AGENT})
+    antwort = httpx.get(url, timeout=timeout, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
     antwort.raise_for_status()
     return parse_mydealz_rss(antwort.text)
 
@@ -100,6 +100,6 @@ def parse_spartanien_html(html_text: str, basis_url: str) -> list[RohFund]:
 
 
 def fetch_spartanien(url: str, *, timeout: float = 15.0) -> list[RohFund]:
-    antwort = httpx.get(url, timeout=timeout, headers={"User-Agent": USER_AGENT})
+    antwort = httpx.get(url, timeout=timeout, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
     antwort.raise_for_status()
-    return parse_spartanien_html(antwort.text, url)
+    return parse_spartanien_html(antwort.text, str(antwort.url))
