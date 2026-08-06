@@ -15,6 +15,12 @@ Kündigungsweg pro Bank nicht offensichtlich ist. Über **Deals → Export**
 lässt sich der komplette Datenbestand als Excel-Datei (mehrere Sheets:
 Deals, Prämien, Bedingungen, Aufgaben, Links) herunterladen.
 
+**Erweiterung KI-Deal-Finder** (eigenes Konzeptdokument): ein täglicher
+Hintergrund-Lauf durchsucht mydealz und spartanien per Anthropic API nach
+neuen Neukunden-Prämien und schlägt echte Neuigkeiten im Tab **Vorschläge**
+vor - die KI *findet und extrahiert*, sie *entscheidet und speichert keine
+Fakten*. Details siehe `praemien_tracker/DOCS.md` → "KI-Deal-Finder".
+
 ## Stack
 
 - **Backend:** FastAPI (Python), server-gerenderte Jinja2-Templates
@@ -41,8 +47,9 @@ praemien-tracker/
             ├── models.py    # Fakten (SQLAlchemy-Modelle)
             ├── derived.py   # abgeleitete Sichten: Status, Kennzahlen, ToDos
             ├── seed.py      # einmaliger Import aus seed-data.json (Erststart)
-            ├── main.py      # FastAPI-App + Migrations-Startup
-            ├── routers/     # Übersicht, ToDos, Deals, Vollständigkeit
+            ├── main.py      # FastAPI-App + Migrations-Startup + Scheduler
+            ├── finder/      # KI-Deal-Finder: Quellen, Claude-Extraktion, Matching, täglicher Lauf
+            ├── routers/     # Übersicht, ToDos, Deals, Vorschläge, Vollständigkeit, …
             ├── templates/   # Jinja2-Templates
             └── static/      # CSS
 ```
@@ -99,6 +106,10 @@ export DATA_DIR=./data
 export CONFIG_DIR=./config
 uvicorn praemien_tracker.main:app --reload --port 8000
 ```
+
+Für den KI-Deal-Finder lokal zusätzlich `export ANTHROPIC_API_KEY=sk-ant-...`
+setzen (im Add-on selbst läuft das stattdessen über die Add-on-Option
+`anthropic_api_key`, siehe `praemien_tracker/DOCS.md`).
 
 Neue Migration nach einer Modelländerung erzeugen:
 

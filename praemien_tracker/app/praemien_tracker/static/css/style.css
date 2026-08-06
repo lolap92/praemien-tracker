@@ -1286,3 +1286,142 @@ table.pc-tabelle tr:hover {
   color: var(--danger);
   background: rgba(180, 70, 42, 0.12);
 }
+
+/* ---------- Vorschläge (KI-Deal-Finder) ---------- */
+
+.vorschlag-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin-bottom: 1rem;
+}
+
+.chip.status-vorgeschlagen {
+  color: var(--st-done);
+  background: rgba(27, 158, 119, 0.13);
+}
+.chip.status-zu_pruefen {
+  color: var(--st-wait);
+  background: rgba(185, 130, 47, 0.13);
+}
+.chip.status-automatisch_abgelehnt {
+  color: var(--ink-faint);
+  background: var(--surface-2);
+}
+
+.tag-vorgeschlagen {
+  background: var(--st-done);
+}
+.tag-zu_pruefen {
+  background: var(--st-wait);
+}
+.tag-automatisch_abgelehnt {
+  background: var(--ink-faint);
+}
+
+.vorschlag-karte {
+  border-left: 4px solid transparent;
+}
+.vorschlag-karte.status-vorgeschlagen {
+  border-left-color: var(--st-done);
+}
+.vorschlag-karte.status-zu_pruefen {
+  border-left-color: var(--st-wait);
+}
+.vorschlag-karte.status-automatisch_abgelehnt {
+  border-left-color: var(--ink-faint);
+  opacity: 0.85;
+}
+
+.vorschlag-titel {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.vorschlag-titel .bank {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.vorschlag-titel .meta {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  margin-top: 0.1rem;
+}
+
+.vorschlag-quelle {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(185, 130, 47, 0.14);
+  color: var(--st-wait);
+  width: fit-content;
+  margin-top: 0.6rem;
+}
+
+.vorschlag-begruendung {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: var(--surface-2);
+  margin-top: 0.6rem;
+}
+
+.vorschlag-begruendung.warn {
+  color: var(--st-wait);
+  background: rgba(185, 130, 47, 0.1);
+}
+
+.vorschlag-begruendung.abgelehnt {
+  color: var(--danger);
+  background: rgba(180, 70, 42, 0.1);
+}
+
+.vorschlag-bedingungen {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  font-size: 0.82rem;
+}
+
+.vorschlag-bedingungen li {
+  padding: 0.25rem 0;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.vorschlag-bedingungen li::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-top: 0.45rem;
+  flex-shrink: 0;
+}
+
+.vorschlag-bedingungen li.erfuellt::before {
+  background: var(--st-done);
+}
+.vorschlag-bedingungen li.zu_pruefen::before {
+  background: var(--st-wait);
+}
+.vorschlag-bedingungen li.nicht_erfuellt::before {
+  background: var(--danger);
+}
+
+.vorschlag-aktionen {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}

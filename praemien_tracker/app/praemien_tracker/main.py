@@ -22,6 +22,7 @@ from alembic import command
 from alembic.config import Config as AlembicConfig
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
+from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect
@@ -29,7 +30,16 @@ from sqlalchemy import inspect
 from . import protokoll  # noqa: F401  (registriert die Änderungsprotokoll-Events)
 from .config import DATABASE_URL, DB_BACKUP_PATH, DB_PATH
 from .database import SessionLocal, engine
-from .routers import completeness, deals, overview, protokoll as protokoll_router, sperrfristen, todos
+from .finder.lauf import geplanter_lauf
+from .routers import (
+    completeness,
+    deals,
+    overview,
+    protokoll as protokoll_router,
+    sperrfristen,
+    todos,
+    vorschlaege,
+)
 from .seed import import_seed_data
 from .templating import STATIC_DIR, templates
 
@@ -123,11 +133,24 @@ def _zeitzone_protokollieren() -> None:
         )
 
 
+def _scheduler_starten() -> BackgroundScheduler:
+    """Täglicher KI-Deal-Finder-Lauf, im selben Prozess wie die Web-App
+    (Konzept: kein zweiter Container/Cronjob). Uhrzeit bewusst nicht
+    konfigurierbar - die Add-on-Optionen betreffen die Fachlogik des Laufs
+    (Mindestprämie, Quellen), nicht seine Uhrzeit."""
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(geplanter_lauf, "cron", hour=6, minute=0, id="ki_deal_finder", misfire_grace_time=3600)
+    scheduler.start()
+    return scheduler
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _zeitzone_protokollieren()
     run_migrations()
+    scheduler = _scheduler_starten()
     yield
+    scheduler.shutdown(wait=False)
 
 
 def create_app() -> FastAPI:
@@ -168,6 +191,7 @@ def create_app() -> FastAPI:
     app.include_router(completeness.router)
     app.include_router(sperrfristen.router)
     app.include_router(protokoll_router.router)
+    app.include_router(vorschlaege.router)
 
     return app
 

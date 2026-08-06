@@ -39,6 +39,29 @@ Vorjahr getrennt. Beim Umstieg auf Version 2.0.0 werden alle vorhandenen
 Freibeträge dem Jahr 2026 zugerechnet; die Vorjahresspalte ist deshalb
 zunächst leer.
 
+## KI-Deal-Finder (Vorschläge)
+
+Ein täglicher Hintergrund-Lauf (06:00 Uhr) durchsucht mydealz (Gruppe
+"Verträge & Finanzen") und spartanien nach neuen Neukunden-Prämien und
+schlägt echte Neuigkeiten im Tab **Vorschläge** vor. Die KI *findet und
+extrahiert*, sie *entscheidet und speichert keine Fakten* - ein Vorschlag
+ist erst nach "Übernehmen" ein echter Deal. Voraussetzung ist ein eigener
+Anthropic-API-Key (siehe Konfiguration unten); ohne Key läuft die App wie
+gewohnt weiter, nur ohne Vorschläge.
+
+Jeder thematisch passende Fund wird angezeigt - auch automatisch abgelehnte,
+mit Begründung, zusammengeklappt am Seitenende. Bei Unsicherheit (z. B.
+unklare Sperrfrist) landet ein Fund unter "Zu prüfen" statt automatisch
+ausgeschlossen zu werden. Über den Button **Jetzt suchen** lässt sich ein
+Lauf jederzeit manuell anstoßen, z. B. um die Einrichtung zu testen.
+
+Ändert sich ein Angebot (z. B. eine höhere Prämie), entsteht bewusst ein
+neuer Vorschlag statt eines stillen Updates am alten - die Historie bleibt
+so nachvollziehbar. Ein unveränderter Fund wird dagegen nicht erneut
+vorgeschlagen, auch nicht nach dem Verwerfen.
+
+Die Suche gilt für **alle** Inhaber, auch minderjährige.
+
 ## Erste Schritte
 
 1. Add-on starten.
@@ -99,4 +122,17 @@ davon nicht betroffen, es handelt sich nur um die Anzeige.
 
 ## Konfiguration
 
-Das Add-on hat keine Optionen - es ist sofort einsatzbereit.
+Ohne jede Einstellung ist das Add-on sofort einsatzbereit - der
+KI-Deal-Finder bleibt dann einfach inaktiv. Für den KI-Deal-Finder gibt es
+folgende optionale Einstellungen (Add-on-Konfiguration in Home Assistant):
+
+| Option | Zweck | Default |
+|---|---|---|
+| `anthropic_api_key` | Eigener API-Key von [console.anthropic.com](https://console.anthropic.com) - **kein** claude.ai-Abo (Free/Pro/Max reichen nicht, das ist ein getrenntes Produkt). Ohne Key läuft die App normal weiter, nur ohne Vorschläge. | leer |
+| `anthropic_model` | Welches Claude-Modell für die Extraktion genutzt wird. | `claude-haiku-4-5` |
+| `mindestpraemie` | Prämien unterhalb dieses Betrags werden automatisch abgelehnt (mit Begründung, weiterhin sichtbar). | `50` |
+| `mydealz_gruppe` | mydealz-Gruppe für den RSS-Feed. | `vertraege-finanzen` |
+| `spartanien_url` | Ziel-URL für den spartanien-Parser. | `https://www.spartanien.de/themen/bankprodukte/` |
+
+Bei 1×/Tag und wenigen kurzen Texten liegen die tatsächlichen API-Kosten
+typischerweise im Cent-Bereich pro Monat.

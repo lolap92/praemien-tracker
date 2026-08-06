@@ -1,0 +1,250 @@
+"""Deterministische Prüfung der von der KI extrahierten Angaben gegen die
+Kriterien und die bestehenden Deals - gewöhnlicher, nachvollziehbarer
+Python-Code, keine KI-Entscheidung (Konzept Abschnitt 6, Schritt 5).
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
+
+from sqlalchemy.orm import Session
+
+from .. import derived
+from ..models import Bank, Deal, DealVorschlag, Inhaber
+from .extraktion import AngebotExtraktion
+from .quellen import RohFund
+
+STATUS_VORGESCHLAGEN = "vorgeschlagen"
+STATUS_ZU_PRUEFEN = "zu_pruefen"
+STATUS_ABGELEHNT = "automatisch_abgelehnt"
+STATUS_UEBERNOMMEN = "uebernommen"
+STATUS_VERWORFEN = "verworfen"
+
+EINSCHAETZUNG_ERFUELLT = "erfuellt"
+EINSCHAETZUNG_ZU_PRUEFEN = "zu_pruefen"
+EINSCHAETZUNG_NICHT_ERFUELLT = "nicht_erfuellt"
+
+
+@dataclass(frozen=True)
+class BedingungBewertung:
+    beschreibung: str
+    einschaetzung: str
+
+
+@dataclass(frozen=True)
+class MatchErgebnis:
+    """Ergebnis der Prüfung für einen Fund und einen Inhaber - alles, was
+    lauf.py braucht, um daraus eine deal_vorschlaege-Zeile zu bauen."""
+
+    status: str
+    ablehnungsgruende: str | None
+    praemie_betrag: Decimal
+    sperrfrist_monate: int | None
+    bedingungen: list[BedingungBewertung]
+    roh_json: str
+    inhalt_hash: str
+
+
+def _bank_finden(db: Session, bank_name: str) -> Bank | None:
+    """Freitext-Bankname gegen bestehende Banken abgleichen (nur Groß-/
+    Kleinschreibung und Randleerzeichen werden verziehen). Findet sich keine
+    passende Bank, gilt der Inhaber für diese Bank automatisch als
+    Neukunde - eine unscharfe Namenssuche wäre hier riskanter als ein
+    verpasster Treffer, der stattdessen einfach zu einem echten neuen
+    Bank-Datensatz beim Übernehmen führt."""
+    ziel = bank_name.strip().lower()
+    return next((b for b in db.query(Bank).all() if b.name.strip().lower() == ziel), None)
+
+
+def _sperrfrist_pruefen(
+    db: Session, bank: Bank | None, kontoart: str, inhaber_id: int, sperrfrist_monate: int | None
+) -> tuple[str, str | None]:
+    """Neukunden-/Sperrfrist-Kriterium prüfen. Liefert (einschaetzung, grund),
+    grund ist None bei "erfuellt"."""
+    if bank is None:
+        return EINSCHAETZUNG_ERFUELLT, None
+
+    # Stornierte Deals zählen nicht als "war schon Kunde" - sie sind nie
+    # zustande gekommen (siehe models.Deal.storniert).
+    bestehende = [
+        d
+        for d in db.query(Deal).filter(
+            Deal.bank_id == bank.id, Deal.inhaber_id == inhaber_id, Deal.storniert.is_(False)
+        )
+        if d.kontoart.strip().lower() == kontoart.strip().lower()
+    ]
+    if not bestehende:
+        return EINSCHAETZUNG_ERFUELLT, None
+
+    aktiv = [d for d in bestehende if not d.gekuendigt]
+    if aktiv:
+        return (
+            EINSCHAETZUNG_NICHT_ERFUELLT,
+            f"Ist bei {bank.name} ({kontoart}) bereits Kundin/Kunde, kein gekündigter Deal vorhanden.",
+        )
+
+    monate_werte = [d.gekuendigt_im_monat for d in bestehende if d.gekuendigt_im_monat]
+    if not monate_werte:
+        return (
+            EINSCHAETZUNG_ZU_PRUEFEN,
+            f"Bereits Kundin/Kunde bei {bank.name} ({kontoart}), Kündigungsmonat nicht erfasst.",
+        )
+
+    letzter_monat = max(monate_werte)
+    kuendigungsdatum = derived.parse_monat(letzter_monat)
+    if kuendigungsdatum is None:
+        return (
+            EINSCHAETZUNG_ZU_PRUEFEN,
+            f"Bereits Kundin/Kunde bei {bank.name} ({kontoart}), Kündigungsmonat nicht lesbar.",
+        )
+
+    if sperrfrist_monate is None:
+        return (
+            EINSCHAETZUNG_ZU_PRUEFEN,
+            f"Bereits Kundin/Kunde bei {bank.name} ({kontoart}) (gekündigt {letzter_monat}) - "
+            "im Angebotstext keine erkennbare Sperrfrist.",
+        )
+
+    vergangen = derived.monate_seit_kuendigung(kuendigungsdatum)
+    if vergangen >= sperrfrist_monate:
+        return EINSCHAETZUNG_ERFUELLT, None
+    return (
+        EINSCHAETZUNG_NICHT_ERFUELLT,
+        f"Sperrfrist von {sperrfrist_monate} Monaten noch nicht erreicht "
+        f"(gekündigt {letzter_monat}, davon {vergangen} Monate vergangen).",
+    )
+
+
+def _inhalt_hash(
+    bank_name: str,
+    kontoart: str,
+    praemie_betrag: Decimal,
+    sperrfrist_monate: int | None,
+    bedingungen: list[BedingungBewertung],
+) -> str:
+    """Fachlich relevante Felder zu einem stabilen Hash - Grundlage der
+    Dedup-Prüfung. Ändert sich einer dieser Werte (z.B. eine höhere Prämie),
+    entsteht bewusst ein neuer Datensatz statt eines stillen Updates, damit
+    die Historie nachvollziehbar bleibt."""
+    nutzlast = {
+        "bank_name": bank_name.strip().lower(),
+        "kontoart": kontoart.strip().lower(),
+        "praemie_betrag": str(praemie_betrag),
+        "sperrfrist_monate": sperrfrist_monate,
+        "bedingungen": sorted((b.beschreibung.strip().lower(), b.einschaetzung) for b in bedingungen),
+    }
+    rohtext = json.dumps(nutzlast, sort_keys=True, ensure_ascii=True)
+    return hashlib.sha256(rohtext.encode("utf-8")).hexdigest()
+
+
+def _praemie_betrag(wert: float) -> Decimal:
+    try:
+        return Decimal(str(round(wert, 2)))
+    except (InvalidOperation, ValueError, TypeError):
+        return Decimal("0")
+
+
+def bewerten(
+    db: Session,
+    fund: RohFund,
+    extraktion: AngebotExtraktion,
+    inhaber: Inhaber,
+    mindestpraemie: Decimal,
+) -> MatchErgebnis:
+    """Ein extrahiertes Angebot für einen Inhaber bewerten (Konzept
+    Abschnitt 6, Schritt 5)."""
+    praemie_betrag = _praemie_betrag(extraktion.praemie_betrag)
+    # Zwei getrennte Listen, keine gemeinsame: eine eindeutig verfehlte
+    # Bedingung lehnt automatisch ab, eine unklare macht nur "zu prüfen" -
+    # im Zweifel wird lieber vorgeschlagen als ausgeschlossen (Konzept,
+    # zentrale Idee). Beides in eine Liste zu werfen würde "zu prüfen" nicht
+    # von "abgelehnt" unterscheidbar machen.
+    ablehnung_gruende: list[str] = []
+    unklar_gruende: list[str] = []
+
+    # 1) Mindestprämie - deterministisch, kein Teil der Bedingungen-Liste.
+    if praemie_betrag < mindestpraemie:
+        ablehnung_gruende.append(f"Prämie {praemie_betrag} € liegt unter der Mindestprämie von {mindestpraemie} €.")
+
+    # 2) Neukunden-/Sperrfrist-Check.
+    bank = _bank_finden(db, extraktion.bank_name)
+    sperrfrist_einschaetzung, sperrfrist_grund = _sperrfrist_pruefen(
+        db, bank, extraktion.kontoart, inhaber.id, extraktion.sperrfrist_monate
+    )
+    if sperrfrist_einschaetzung == EINSCHAETZUNG_NICHT_ERFUELLT:
+        ablehnung_gruende.append(sperrfrist_grund)
+    elif sperrfrist_einschaetzung == EINSCHAETZUNG_ZU_PRUEFEN:
+        unklar_gruende.append(sperrfrist_grund)
+
+    # 3) Von der KI erkannte Einzel-Bedingungen (können mehrere sein - siehe
+    # VorschlagBedingung in models.py).
+    bedingungen = [
+        BedingungBewertung(b.beschreibung.strip(), b.einschaetzung) for b in extraktion.bedingungen
+    ]
+    for b in bedingungen:
+        if b.einschaetzung == EINSCHAETZUNG_NICHT_ERFUELLT:
+            ablehnung_gruende.append(f"Bedingung nicht erfüllbar: {b.beschreibung}")
+        elif b.einschaetzung == EINSCHAETZUNG_ZU_PRUEFEN:
+            unklar_gruende.append(f"Bedingung unklar: {b.beschreibung}")
+
+    if ablehnung_gruende:
+        status = STATUS_ABGELEHNT
+        gruende = ablehnung_gruende
+    elif unklar_gruende:
+        status = STATUS_ZU_PRUEFEN
+        gruende = unklar_gruende
+    else:
+        status = STATUS_VORGESCHLAGEN
+        gruende = []
+
+    # quelle "mydealz" wird beim Übernehmen auf "bank" gemappt (das
+    # Kernmodell kennt nur "spartanien" und "bank") - die tatsächliche
+    # Herkunft bleibt über die mitgegebene URL nachvollziehbar.
+    praemien_quelle = "spartanien" if fund.quelle == "spartanien" else "bank"
+    roh_json = json.dumps(
+        {
+            "bank": extraktion.bank_name.strip(),
+            "kontoart": extraktion.kontoart.strip(),
+            "inhaber": inhaber.name,
+            "praemien": [{"quelle": praemien_quelle, "betrag": str(praemie_betrag), "erhalten": False}],
+            "bedingungen": [
+                {"beschreibung": b.beschreibung, "erfuellt": b.einschaetzung == EINSCHAETZUNG_ERFUELLT}
+                for b in bedingungen
+            ],
+            "urls": [{"url": fund.quelle_url, "bezeichnung": f"{fund.quelle}-Angebot"}],
+        },
+        ensure_ascii=False,
+    )
+
+    return MatchErgebnis(
+        status=status,
+        ablehnungsgruende="; ".join(gruende) or None,
+        praemie_betrag=praemie_betrag,
+        sperrfrist_monate=extraktion.sperrfrist_monate,
+        bedingungen=bedingungen,
+        roh_json=roh_json,
+        inhalt_hash=_inhalt_hash(
+            extraktion.bank_name, extraktion.kontoart, praemie_betrag, extraktion.sperrfrist_monate, bedingungen
+        ),
+    )
+
+
+def ist_duplikat(db: Session, quelle_url: str, inhaber_id: int, inhalt_hash: str) -> bool:
+    """True, wenn für diese Quelle+Inhaber schon ein inhaltsgleicher Vorschlag
+    existiert - unabhängig von dessen Status (auch ein bereits übernommener
+    oder verworfener zählt, damit ein unveränderter Fund nicht erneut
+    auftaucht). Bei geänderten Daten (anderer Hash) greift diese Prüfung
+    bewusst nicht: dann entsteht ein neuer Datensatz."""
+    return (
+        db.query(DealVorschlag)
+        .filter(
+            DealVorschlag.quelle_url == quelle_url,
+            DealVorschlag.inhaber_id == inhaber_id,
+            DealVorschlag.inhalt_hash == inhalt_hash,
+        )
+        .first()
+        is not None
+    )

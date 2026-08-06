@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Vorschläge – Prämien-Tracker{% endblock %}
+{% block content %}
+
+<div class="card">
+  <p>Der KI-Deal-Finder durchsucht täglich mydealz und spartanien nach neuen Neukunden-Prämien und
+  gleicht sie mit euren bestehenden Deals ab. Jeder thematisch passende Fund erscheint hier –
+  auch automatisch abgelehnte, mit Begründung. Im Zweifel wird lieber vorgeschlagen als
+  ausgeschlossen.</p>
+  <form method="post" action="vorschlaege/jetzt-suchen" style="margin-top:0.8rem">
+    <button type="submit" class="secondary">Jetzt suchen</button>
+  </form>
+</div>
+
+<div class="vorschlag-meta">
+  <span class="chip status-vorgeschlagen">{{ vorgeschlagen | length }} vorgeschlagen</span>
+  <span class="chip status-zu_pruefen">{{ zu_pruefen | length }} zu prüfen</span>
+  <span class="chip status-automatisch_abgelehnt">{{ automatisch_abgelehnt | length }} abgelehnt</span>
+</div>
+
+{% if not vorgeschlagen and not zu_pruefen and not automatisch_abgelehnt %}
+<div class="card">
+  <p class="leer">Noch keine Vorschläge. Der nächste automatische Lauf erfolgt um 06:00 Uhr.</p>
+</div>
+{% endif %}
+
+{% macro bedingungen_liste(v) %}
+{% if v.bedingungen %}
+<ul class="vorschlag-bedingungen">
+  {% for b in v.bedingungen %}
+  <li class="{{ b.einschaetzung }}">{{ b.beschreibung }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endmacro %}
+
+{% if vorgeschlagen %}
+<div class="todo-gruppe-head">
+  <span class="tag tag-vorgeschlagen"></span>
+  <h3>Vorgeschlagen</h3>
+  <span class="num">Kriterien erfüllt</span>
+</div>
+{% for v in vorgeschlagen %}
+<div class="card vorschlag-karte status-vorgeschlagen">
+  <div class="vorschlag-titel">
+    <div>
+      <div class="bank">{{ v.bank_name }}</div>
+      <div class="meta">{{ v.kontoart }} · {{ v.inhaber.name }}</div>
+    </div>
+    <div class="geld d-amt">{{ v.praemie_betrag | eur }}</div>
+  </div>
+  <div class="vorschlag-quelle">{{ v.quelle }}</div>
+  {{ bedingungen_liste(v) }}
+  <form class="vorschlag-aktionen" method="post" action="vorschlaege/{{ v.id }}/uebernehmen">
+    <button type="submit">Übernehmen</button>
+    <button type="submit" class="secondary" formaction="vorschlaege/{{ v.id }}/verwerfen">Verwerfen</button>
+  </form>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if zu_pruefen %}
+<div class="todo-gruppe-head">
+  <span class="tag tag-zu_pruefen"></span>
+  <h3>Zu prüfen</h3>
+  <span class="num">unklar, manuell entscheiden</span>
+</div>
+{% for v in zu_pruefen %}
+<div class="card vorschlag-karte status-zu_pruefen">
+  <div class="vorschlag-titel">
+    <div>
+      <div class="bank">{{ v.bank_name }}</div>
+      <div class="meta">{{ v.kontoart }} · {{ v.inhaber.name }}</div>
+    </div>
+    <div class="geld d-amt">{{ v.praemie_betrag | eur }}</div>
+  </div>
+  <div class="vorschlag-quelle">{{ v.quelle }}</div>
+  {% if v.ablehnungsgruende %}
+  <div class="vorschlag-begruendung warn">⚠️ {{ v.ablehnungsgruende }}</div>
+  {% endif %}
+  {{ bedingungen_liste(v) }}
+  <form class="vorschlag-aktionen" method="post" action="vorschlaege/{{ v.id }}/uebernehmen">
+    <button type="submit">Übernehmen</button>
+    <button type="submit" class="secondary" formaction="vorschlaege/{{ v.id }}/verwerfen">Verwerfen</button>
+  </form>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if automatisch_abgelehnt %}
+<details class="json-import">
+  <summary>{{ automatisch_abgelehnt | length }} automatisch abgelehnte anzeigen</summary>
+  {% for v in automatisch_abgelehnt %}
+  <div class="card vorschlag-karte status-automatisch_abgelehnt">
+    <div class="vorschlag-titel">
+      <div>
+        <div class="bank">{{ v.bank_name }}</div>
+        <div class="meta">{{ v.kontoart }} · {{ v.inhaber.name }}</div>
+      </div>
+      <div class="geld d-amt">{{ v.praemie_betrag | eur }}</div>
+    </div>
+    <div class="vorschlag-quelle">{{ v.quelle }}</div>
+    {% if v.ablehnungsgruende %}
+    <div class="vorschlag-begruendung abgelehnt">{{ v.ablehnungsgruende }}</div>
+    {% endif %}
+    {{ bedingungen_liste(v) }}
+    <form class="vorschlag-aktionen" method="post" action="vorschlaege/{{ v.id }}/uebernehmen">
+      <button type="submit" class="secondary">Trotzdem übernehmen</button>
+      <button type="submit" class="secondary" formaction="vorschlaege/{{ v.id }}/verwerfen">Verwerfen</button>
+    </form>
+  </div>
+  {% endfor %}
+</details>
+{% endif %}
+
+{% endblock %}

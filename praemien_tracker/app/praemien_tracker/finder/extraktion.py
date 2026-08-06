@@ -1,0 +1,128 @@
+"""Rohtext über die Anthropic-API in strukturierte Felder übersetzen.
+
+Zweistufig, wie im Konzept festgelegt: zuerst ein Themen-Check (ist das
+überhaupt ein Konto-/Depot-Neukundenprämien-Angebot?), erst bei "ja" die
+teurere Struktur-Extraktion. Die KI übersetzt Text in Felder - ob ein Fund
+am Ende vorgeschlagen wird, entscheidet ausschließlich matching.py als
+gewöhnlicher, deterministischer Code.
+
+Der Anthropic-Client wird als Parameter übergeben (kein Modul-globaler
+Client) - so lässt sich diese Datei mit einem Fake-Client testen, ohne
+Netzwerk oder echten API-Key.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Literal, Protocol
+
+from pydantic import BaseModel
+
+logger = logging.getLogger("praemien_tracker.finder")
+
+
+class RelevanzErgebnis(BaseModel):
+    ist_relevant: bool
+
+
+class BedingungExtraktion(BaseModel):
+    beschreibung: str
+    # erfuellt: keine Hürde erkennbar. zu_pruefen: unklar formuliert.
+    # nicht_erfuellt: eindeutig eine Hürde (z.B. "Gehaltseingang zwingend
+    # erforderlich"). Sonstiger Geldeingang statt Gehalt zählt als erfuellt.
+    einschaetzung: Literal["erfuellt", "zu_pruefen", "nicht_erfuellt"]
+
+
+class AngebotExtraktion(BaseModel):
+    bank_name: str
+    kontoart: str
+    praemie_betrag: float
+    # Monate bis wieder Neukunde bei derselben Bank, aus dem Angebotstext.
+    # None, wenn im Text keine Sperrfrist erkennbar ist - wird in matching.py
+    # zu "zu_pruefen", nicht zu "automatisch_abgelehnt".
+    sperrfrist_monate: int | None = None
+    bedingungen: list[BedingungExtraktion]
+
+
+class AnthropicMessagesClient(Protocol):
+    """Nur der Ausschnitt der Anthropic-SDK-Oberfläche, den dieses Modul
+    braucht - erlaubt in Tests einen einfachen Fake statt eines echten
+    Clients."""
+
+    messages: object
+
+
+THEMEN_CHECK_PROMPT = """\
+Prüfe, ob der folgende Text ein Angebot für eine Neukunden-Prämie bei \
+Eröffnung eines Girokontos, Tagesgeldkontos, Depots oder einer Kreditkarte \
+(mit Prämie) beschreibt - im Unterschied zu z.B. Versicherungen, reinen \
+Gutscheincodes, Kreditkarten ohne Prämie oder anderen Themen.
+
+Text:
+{text}"""
+
+EXTRAKTION_PROMPT = """\
+Extrahiere aus dem folgenden Angebotstext für eine Bank-Neukunden-Prämie \
+die strukturierten Angaben.
+
+- bank_name: Name der Bank/des Instituts.
+- kontoart: Art des Kontos (z.B. "Girokonto", "Tagesgeld", "Depot", \
+"Kreditkarte").
+- praemie_betrag: Gesamte Prämiensumme in Euro als Zahl (nur die Zahl, ohne \
+Währungszeichen). Wenn mehrere Teilprämien genannt sind, die Summe.
+- sperrfrist_monate: Anzahl Monate, die seit einer vorherigen Kündigung bei \
+dieser Bank vergangen sein müssen, um wieder als Neukunde zu gelten - aus \
+Formulierungen wie "Kündigung darf nicht in den letzten 12 Monaten erfolgt \
+sein". Bei einer Mehrdeutigkeit wie "6 oder 12 Monate" die kürzere Zahl \
+übernehmen. Lässt sich aus dem Text keine Sperrfrist erkennen, dieses Feld \
+weglassen (null) - nicht raten.
+- bedingungen: Liste der einzelnen Bedingungen, die für die Prämie erfüllt \
+werden müssen (z.B. Mindesteinlage, Kontoeröffnung online, TAN-Verfahren \
+aktivieren, Anzahl Kartenzahlungen, Gehaltseingang, Vertragslaufzeit). Jede \
+Bedingung einzeln mit eigener beschreibung und einschaetzung:
+  - "erfuellt": keine erkennbare Hürde für einen typischen Neukunden (z.B. \
+"3 Kartenzahlungen im ersten Monat").
+  - "nicht_erfuellt": eindeutig eine Hürde laut Text, z.B. ein zwingend \
+geforderter regelmäßiger Gehaltseingang. Ein sonstiger regelmäßiger \
+Geldeingang (nicht zwingend Gehalt) zählt NICHT als Hürde, sondern als \
+"erfuellt".
+  - "zu_pruefen": unklar formuliert oder nicht eindeutig aus dem Text zu \
+beurteilen.
+Ist im Text keine Bedingung erkennbar, eine leere Liste zurückgeben.
+
+Angebotstext:
+{text}"""
+
+
+def ist_relevantes_angebot(client: AnthropicMessagesClient, roh_text: str, *, model: str) -> bool:
+    """Themen-Check: erst bei True lohnt sich die teurere Struktur-Extraktion."""
+    antwort = client.messages.parse(
+        model=model,
+        max_tokens=256,
+        messages=[{"role": "user", "content": THEMEN_CHECK_PROMPT.format(text=roh_text)}],
+        output_format=RelevanzErgebnis,
+    )
+    ergebnis = getattr(antwort, "parsed_output", None)
+    if ergebnis is None:
+        logger.warning("Themen-Check lieferte kein auswertbares Ergebnis (stop_reason=%s)", getattr(antwort, "stop_reason", "?"))
+        return False
+    return bool(ergebnis.ist_relevant)
+
+
+def extrahiere_angebot(client: AnthropicMessagesClient, roh_text: str, *, model: str) -> AngebotExtraktion | None:
+    """Struktur-Extraktion. None, wenn die KI kein auswertbares Ergebnis liefert
+    (z.B. Refusal) - der Fund wird dann in lauf.py übersprungen und geloggt,
+    nicht stillschweigend verworfen."""
+    antwort = client.messages.parse(
+        model=model,
+        max_tokens=2048,
+        messages=[{"role": "user", "content": EXTRAKTION_PROMPT.format(text=roh_text)}],
+        output_format=AngebotExtraktion,
+    )
+    ergebnis = getattr(antwort, "parsed_output", None)
+    if ergebnis is None:
+        logger.warning(
+            "Struktur-Extraktion lieferte kein auswertbares Ergebnis (stop_reason=%s)",
+            getattr(antwort, "stop_reason", "?"),
+        )
+    return ergebnis

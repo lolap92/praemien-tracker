@@ -1,5 +1,40 @@
 # Changelog
 
+## 2.1.0
+
+Erweiterung "KI-Deal-Finder" (eigenes Konzeptdokument, Ergänzung zum
+Grundkonzept): ein täglicher Hintergrund-Lauf durchsucht mydealz und
+spartanien nach neuen Neukunden-Prämien und schlägt echte Neuigkeiten im
+neuen Tab **Vorschläge** vor. Enthält eine Schema-Migration (zwei neue
+Tabellen) - vorher wird automatisch eine Sicherheitskopie angelegt.
+
+- **Neuer Tab "Vorschläge".** Jeder gefundene, thematisch passende Fund wird
+  angezeigt und nach Status gruppiert: vorgeschlagen (Kriterien eindeutig
+  erfüllt), zu prüfen (unklar, z. B. keine erkennbare Sperrfrist) und
+  automatisch abgelehnt (eingeklappt, mit Begründung, aber weiterhin
+  sichtbar und trotzdem übernehmbar). Die KI *findet und extrahiert*, sie
+  *entscheidet und speichert keine Fakten* - erst "Übernehmen" legt einen
+  echten Deal an, über denselben Mechanismus wie der bestehende JSON-Import.
+- **Mehrere Bedingungen pro Vorschlag**, nicht nur eine: Angebote bringen in
+  der Regel mehrere unabhängig zu bewertende Bedingungen mit (Mindesteinlage,
+  Gehaltseingang, Vertragslaufzeit, …) - analog zur bestehenden
+  Bedingungen-Liste je Deal.
+- **Push-Benachrichtigung** über die Home-Assistant-Core-API bei neuen
+  vorgeschlagenen oder zu prüfenden Funden (nicht bei rein automatisch
+  abgelehnten). Erfordert `homeassistant_api: true` im Add-on-Manifest
+  (neu).
+- **Neue Add-on-Optionen**: `anthropic_api_key`, `anthropic_model`,
+  `mindestpraemie`, `mydealz_gruppe`, `spartanien_url` - alle optional, ohne
+  API-Key bleibt der KI-Deal-Finder einfach inaktiv.
+- Die Suche gilt für alle Inhaber, auch minderjährige.
+- Ändert sich ein Angebot (z. B. eine höhere Prämie), entsteht ein neuer
+  Vorschlag statt eines stillen Updates - die Historie bleibt
+  nachvollziehbar. Ein inhaltlich unveränderter Fund wird nicht erneut
+  vorgeschlagen.
+- Ein Fund von mydealz wird beim Übernehmen als Prämien-Quelle "Bank"
+  angelegt (das Kernmodell kennt nur "Spartanien" und "Bank"); die
+  tatsächliche Herkunft bleibt über die mitgegebene URL nachvollziehbar.
+
 ## 2.0.0
 
 Sammelkorrektur aus dem Fachlichkeits-Review (Teil 3 von 3): die fachliche

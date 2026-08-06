@@ -142,6 +142,68 @@ class DealUrl(Base):
     deal: Mapped["Deal"] = relationship(back_populates="urls")
 
 
+class DealVorschlag(Base):
+    """KI-Fund einer Neukunden-Prämie, noch kein Fakt (Erweiterung KI-Deal-Finder).
+
+    Bewusst von DEAL getrennt: ein Fund ist erst nach "Übernehmen" ein Fakt.
+    `bank_name` bleibt Freitext (keine FK auf BANK) - die Auflösung zu einem
+    bestehenden oder neuen Bank-Datensatz passiert erst beim Übernehmen, über
+    denselben Mechanismus wie beim händischen JSON-Import (roh_json).
+    """
+
+    __tablename__ = "deal_vorschlaege"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    inhaber_id: Mapped[int] = mapped_column(ForeignKey("inhaber.id"), index=True)
+    quelle: Mapped[str] = mapped_column(String(20))  # "mydealz" | "spartanien"
+    quelle_url: Mapped[str] = mapped_column(String(500), index=True)
+    bank_name: Mapped[str] = mapped_column(String(100))
+    kontoart: Mapped[str] = mapped_column(String(50))
+    praemie_betrag: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    # Aus dem Angebotstext extrahiert, optional; bei Mehrdeutigkeit ("6 oder
+    # 12 Monate") wird die kürzere Angabe übernommen (siehe extraktion.py).
+    sperrfrist_monate: Mapped[int | None] = mapped_column(nullable=True)
+    # Klartext-Begründung(en), nur bei zu_pruefen/automatisch_abgelehnt gefüllt.
+    ablehnungsgruende: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Vollständiges JSON im Deal-Anlage-Format (schemas.DealImport) - wird
+    # beim Übernehmen unverändert an build_deal_from_import() gereicht.
+    roh_json: Mapped[str] = mapped_column(Text)
+    # Hash aus den fachlich relevanten Feldern (Prämie, Sperrfrist,
+    # Bedingungen) - Grundlage für die Dedup-Prüfung: bei geänderten Daten
+    # (z.B. höhere Prämie) entsteht bewusst ein neuer Datensatz statt eines
+    # stillen Updates, damit die Historie nachvollziehbar bleibt.
+    inhalt_hash: Mapped[str] = mapped_column(String(64), index=True)
+    gefunden_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
+    status: Mapped[str] = mapped_column(String(20), index=True)
+
+    inhaber: Mapped["Inhaber"] = relationship()
+    bedingungen: Mapped[list["VorschlagBedingung"]] = relationship(
+        back_populates="vorschlag", cascade="all, delete-orphan", order_by="VorschlagBedingung.id"
+    )
+
+
+class VorschlagBedingung(Base):
+    """Einzelne, von der KI erkannte Bedingung eines Vorschlags.
+
+    Bewusst als Liste (analog zu Bedingung auf DEAL) statt eines einzelnen
+    Freitextfelds: ein Angebot bringt in der Regel mehrere, unabhängig zu
+    bewertende Bedingungen mit (Mindesteinlage, Gehaltseingang,
+    Vertragslaufzeit, ...).
+    """
+
+    __tablename__ = "vorschlag_bedingungen"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    deal_vorschlag_id: Mapped[int] = mapped_column(ForeignKey("deal_vorschlaege.id"), index=True)
+    beschreibung: Mapped[str] = mapped_column(String(255))
+    # erfuellt | zu_pruefen | nicht_erfuellt - KI-Einschätzung je Bedingung.
+    # Nur "nicht_erfuellt" fließt in eine automatische Ablehnung ein, siehe
+    # matching.py.
+    einschaetzung: Mapped[str] = mapped_column(String(20))
+
+    vorschlag: Mapped["DealVorschlag"] = relationship(back_populates="bedingungen")
+
+
 class ProtokollEintrag(Base):
     """Änderungsprotokoll, automatisch über SQLAlchemy-Events befüllt (siehe
     protokoll.py) - kein manuelles Loggen in den Routen nötig. Bewusst ohne

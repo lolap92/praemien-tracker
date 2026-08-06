@@ -34,6 +34,7 @@ SEITEN = [
     ("todos", "todos"),
     ("deals", "deals"),
     ("deals/new", "deals/new"),
+    ("vorschlaege", "vorschlaege"),
     ("completeness", "completeness"),
     ("sperrfristen", "sperrfristen"),
     ("protokoll", "protokoll"),
