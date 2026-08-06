@@ -1470,6 +1470,33 @@ table.pc-tabelle tr:hover {
 
 .vorschlag-aktionen {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.6rem;
   margin-top: 0.8rem;
+  align-items: center;
+}
+
+.vorschlag-mitglieder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  margin-bottom: 0.2rem;
+}
+
+.vorschlag-mitglied {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.vorschlag-mitglied input[type="checkbox"] {
+  margin: 0;
+}
+
+.mitglied-begruendung {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
 }

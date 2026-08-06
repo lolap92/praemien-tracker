@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.4.0
+
+Vorschläge-Tab: Filter, Dedup über Inhaber hinweg und Mehrfach-Übernehmen.
+Keine Schema-Migration nötig.
+
+- **spartanien-Parser an die echte Seitenstruktur angepasst.** Jede Karte
+  ist ein `<article itemtype="http://schema.org/LocalBusiness">`
+  (schema.org-Microdata) und verlinkt zusätzlich über einen unsichtbaren
+  Anker ganz ohne Text - der bisherige Code nahm dessen leeren Titel und
+  überspringt dadurch jede Karte. Titel, Link und Beschreibung werden jetzt
+  gezielt aus `[itemprop="name"]`/`.description` gelesen, mit Rückfall auf
+  die bisherigen generischen Selektoren, falls sich das Markup erneut
+  ändert.
+- **Filter nach Quelle, Typ und Status.** Die Liste lässt sich nach
+  mydealz/spartanien, Erwachsene/Kinderdepot und Vorgeschlagen/Zu prüfen/
+  Abgelehnt eingrenzen.
+- **Ein Fund erscheint nur noch einmal**, auch wenn er für mehrere Inhaber
+  infrage kommt - vorher gab es eine Karte je Person. Die Karte zeigt jetzt
+  eine Checkbox je Name; ist der Fund für eine Person besser bewertet als
+  für eine andere (z. B. echter Neukunde vs. bereits Kundin), zählt beim
+  Einsortieren der bessere Fall, die abweichende Person zeigt ihren eigenen
+  Status mit Begründung direkt daneben.
+- **Übernehmen und Verwerfen wirken jetzt auf die ausgewählten Namen**, nicht
+  mehr zwingend auf alle: ein Fund lässt sich für mehrere Personen auf einmal
+  übernehmen (je ein Deal pro Auswahl), nicht ausgewählte bleiben offen
+  stehen.
+
 ## 2.3.1
 
 Fehlerbehebung, die im echten Betrieb aufgefallen ist: spartanien war beim

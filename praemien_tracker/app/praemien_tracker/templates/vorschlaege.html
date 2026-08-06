@@ -4,7 +4,7 @@
 
 <div class="card">
   <p>Der KI-Deal-Finder durchsucht täglich mydealz und spartanien nach neuen Neukunden-Prämien und
-  gleicht sie mit euren bestehenden Deals ab. Jeder thematisch passende Fund erscheint hier –
+  gleicht sie mit euren bestehenden Deals ab. Jeder thematisch passende Fund erscheint hier einmal –
   auch automatisch abgelehnte, mit Begründung. Im Zweifel wird lieber vorgeschlagen als
   ausgeschlossen.</p>
 </div>
@@ -58,6 +58,54 @@
   </form>
 </div>
 
+<form class="filterleiste" method="get" action="vorschlaege">
+  <details class="multi-filter">
+    <summary>Quelle{% if filter_quelle %} ({{ filter_quelle | length }}){% endif %}</summary>
+    <div class="multi-filter-panel">
+      <label>
+        <input type="checkbox" name="quelle" value="mydealz" {{ "checked" if "mydealz" in filter_quelle else "" }}>
+        mydealz
+      </label>
+      <label>
+        <input type="checkbox" name="quelle" value="spartanien" {{ "checked" if "spartanien" in filter_quelle else "" }}>
+        spartanien
+      </label>
+    </div>
+  </details>
+  <details class="multi-filter">
+    <summary>Typ{% if filter_typ %} ({{ filter_typ | length }}){% endif %}</summary>
+    <div class="multi-filter-panel">
+      <label>
+        <input type="checkbox" name="typ" value="erwachsen" {{ "checked" if "erwachsen" in filter_typ else "" }}>
+        Erwachsene
+      </label>
+      <label>
+        <input type="checkbox" name="typ" value="kind" {{ "checked" if "kind" in filter_typ else "" }}>
+        Kinderdepot
+      </label>
+    </div>
+  </details>
+  <details class="multi-filter">
+    <summary>Status{% if filter_status %} ({{ filter_status | length }}){% endif %}</summary>
+    <div class="multi-filter-panel">
+      <label>
+        <input type="checkbox" name="status" value="vorgeschlagen" {{ "checked" if "vorgeschlagen" in filter_status else "" }}>
+        Vorgeschlagen
+      </label>
+      <label>
+        <input type="checkbox" name="status" value="zu_pruefen" {{ "checked" if "zu_pruefen" in filter_status else "" }}>
+        Zu prüfen
+      </label>
+      <label>
+        <input type="checkbox" name="status" value="automatisch_abgelehnt" {{ "checked" if "automatisch_abgelehnt" in filter_status else "" }}>
+        Automatisch abgelehnt
+      </label>
+    </div>
+  </details>
+  <button type="submit" class="secondary">Filtern</button>
+  {% if filter_aktiv %}<a class="button secondary" href="vorschlaege">Zurücksetzen</a>{% endif %}
+</form>
+
 <div class="vorschlag-meta">
   <span class="chip status-vorgeschlagen">{{ vorgeschlagen | length }} vorgeschlagen</span>
   <span class="chip status-zu_pruefen">{{ zu_pruefen | length }} zu prüfen</span>
@@ -66,18 +114,39 @@
 
 {% if not vorgeschlagen and not zu_pruefen and not automatisch_abgelehnt %}
 <div class="card">
+  {% if filter_aktiv %}
+  <p class="leer">Keine Vorschläge passen zu den gewählten Filtern.</p>
+  {% else %}
   <p class="leer">Noch keine Vorschläge. Der nächste automatische Lauf erfolgt um 06:00 Uhr.</p>
+  {% endif %}
 </div>
 {% endif %}
 
-{% macro bedingungen_liste(v) %}
-{% if v.bedingungen %}
+{% macro bedingungen_liste(g) %}
+{% if g.bedingungen %}
 <ul class="vorschlag-bedingungen">
-  {% for b in v.bedingungen %}
+  {% for b in g.bedingungen %}
   <li class="{{ b.einschaetzung }}">{{ b.beschreibung }}</li>
   {% endfor %}
 </ul>
 {% endif %}
+{% endmacro %}
+
+{% macro mitglieder_liste(g) %}
+<div class="vorschlag-mitglieder">
+  {% for m in g.mitglieder %}
+  <label class="vorschlag-mitglied">
+    <input type="checkbox" name="vorschlag_ids" value="{{ m.id }}" checked>
+    <span>{{ m.inhaber.name }}</span>
+    {% if m.status != g.status %}
+    <span class="chip status-{{ m.status }}">{{ m.status | vorschlag_status }}</span>
+    {% endif %}
+    {% if m.ablehnungsgruende %}
+    <span class="mitglied-begruendung">{{ m.ablehnungsgruende }}</span>
+    {% endif %}
+  </label>
+  {% endfor %}
+</div>
 {% endmacro %}
 
 {% if vorgeschlagen %}
@@ -86,20 +155,21 @@
   <h3>Vorgeschlagen</h3>
   <span class="num">Kriterien erfüllt</span>
 </div>
-{% for v in vorgeschlagen %}
+{% for g in vorgeschlagen %}
 <div class="card vorschlag-karte status-vorgeschlagen">
   <div class="vorschlag-titel">
     <div>
-      <div class="bank">{{ v.bank_name }}</div>
-      <div class="meta">{{ v.kontoart }} · {{ v.inhaber.name }}</div>
+      <div class="bank">{{ g.bank_name }}</div>
+      <div class="meta">{{ g.kontoart }}</div>
     </div>
-    <div class="geld d-amt">{{ v.praemie_betrag | eur }}</div>
+    <div class="geld d-amt">{{ g.praemie_betrag | eur }}</div>
   </div>
-  <div class="vorschlag-quelle">{{ v.quelle }}</div>
-  {{ bedingungen_liste(v) }}
-  <form class="vorschlag-aktionen" method="post" action="vorschlaege/{{ v.id }}/uebernehmen">
+  <div class="vorschlag-quelle">{{ g.quelle }}</div>
+  {{ bedingungen_liste(g) }}
+  <form class="vorschlag-aktionen" method="post" action="vorschlaege/uebernehmen">
+    {{ mitglieder_liste(g) }}
     <button type="submit">Übernehmen</button>
-    <button type="submit" class="secondary" formaction="vorschlaege/{{ v.id }}/verwerfen">Verwerfen</button>
+    <button type="submit" class="secondary" formaction="vorschlaege/verwerfen">Verwerfen</button>
   </form>
 </div>
 {% endfor %}
@@ -111,23 +181,21 @@
   <h3>Zu prüfen</h3>
   <span class="num">unklar, manuell entscheiden</span>
 </div>
-{% for v in zu_pruefen %}
+{% for g in zu_pruefen %}
 <div class="card vorschlag-karte status-zu_pruefen">
   <div class="vorschlag-titel">
     <div>
-      <div class="bank">{{ v.bank_name }}</div>
-      <div class="meta">{{ v.kontoart }} · {{ v.inhaber.name }}</div>
+      <div class="bank">{{ g.bank_name }}</div>
+      <div class="meta">{{ g.kontoart }}</div>
     </div>
-    <div class="geld d-amt">{{ v.praemie_betrag | eur }}</div>
+    <div class="geld d-amt">{{ g.praemie_betrag | eur }}</div>
   </div>
-  <div class="vorschlag-quelle">{{ v.quelle }}</div>
-  {% if v.ablehnungsgruende %}
-  <div class="vorschlag-begruendung warn">⚠️ {{ v.ablehnungsgruende }}</div>
-  {% endif %}
-  {{ bedingungen_liste(v) }}
-  <form class="vorschlag-aktionen" method="post" action="vorschlaege/{{ v.id }}/uebernehmen">
+  <div class="vorschlag-quelle">{{ g.quelle }}</div>
+  {{ bedingungen_liste(g) }}
+  <form class="vorschlag-aktionen" method="post" action="vorschlaege/uebernehmen">
+    {{ mitglieder_liste(g) }}
     <button type="submit">Übernehmen</button>
-    <button type="submit" class="secondary" formaction="vorschlaege/{{ v.id }}/verwerfen">Verwerfen</button>
+    <button type="submit" class="secondary" formaction="vorschlaege/verwerfen">Verwerfen</button>
   </form>
 </div>
 {% endfor %}
@@ -136,23 +204,21 @@
 {% if automatisch_abgelehnt %}
 <details class="json-import">
   <summary>{{ automatisch_abgelehnt | length }} automatisch abgelehnte anzeigen</summary>
-  {% for v in automatisch_abgelehnt %}
+  {% for g in automatisch_abgelehnt %}
   <div class="card vorschlag-karte status-automatisch_abgelehnt">
     <div class="vorschlag-titel">
       <div>
-        <div class="bank">{{ v.bank_name }}</div>
-        <div class="meta">{{ v.kontoart }} · {{ v.inhaber.name }}</div>
+        <div class="bank">{{ g.bank_name }}</div>
+        <div class="meta">{{ g.kontoart }}</div>
       </div>
-      <div class="geld d-amt">{{ v.praemie_betrag | eur }}</div>
+      <div class="geld d-amt">{{ g.praemie_betrag | eur }}</div>
     </div>
-    <div class="vorschlag-quelle">{{ v.quelle }}</div>
-    {% if v.ablehnungsgruende %}
-    <div class="vorschlag-begruendung abgelehnt">{{ v.ablehnungsgruende }}</div>
-    {% endif %}
-    {{ bedingungen_liste(v) }}
-    <form class="vorschlag-aktionen" method="post" action="vorschlaege/{{ v.id }}/uebernehmen">
+    <div class="vorschlag-quelle">{{ g.quelle }}</div>
+    {{ bedingungen_liste(g) }}
+    <form class="vorschlag-aktionen" method="post" action="vorschlaege/uebernehmen">
+      {{ mitglieder_liste(g) }}
       <button type="submit" class="secondary">Trotzdem übernehmen</button>
-      <button type="submit" class="secondary" formaction="vorschlaege/{{ v.id }}/verwerfen">Verwerfen</button>
+      <button type="submit" class="secondary" formaction="vorschlaege/verwerfen">Verwerfen</button>
     </form>
   </div>
   {% endfor %}

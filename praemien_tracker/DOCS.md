@@ -62,6 +62,20 @@ vorgeschlagen, auch nicht nach dem Verwerfen.
 
 Die Suche gilt für **alle** Inhaber, auch minderjährige.
 
+**Ein Fund erscheint nur einmal.** Passt ein Angebot zu mehreren Inhabern
+(z. B. Alice und ein Kinderdepot), steht es als eine Karte da, mit einer
+Checkbox je Name statt einer eigenen Karte pro Person. Ist der Fund für eine
+Person ein echter Neukunden-Deal, für eine andere aber z. B. schon
+Bestandskunde, zählt beim Einsortieren der bessere Fall - die Karte landet
+unter "Vorgeschlagen", die betroffene Person zeigt daneben ihren
+abweichenden Status mit Begründung. Beim **Übernehmen** lassen sich gezielt
+ein oder mehrere Namen auswählen - für jede ausgewählte Person entsteht ein
+eigener Deal, nicht ausgewählte bleiben unverändert offen stehen. Dieselbe
+Auswahl gilt auch für **Verwerfen**.
+
+Über die Filterleiste lässt sich die Liste nach **Quelle** (mydealz/
+spartanien), **Typ** (Erwachsene/Kinderdepot) und **Status** eingrenzen.
+
 **API-Nutzung wird minimiert:** Bevor ein Fund an Claude geschickt wird,
 prüft die App anhand eines Rohtext-Abgleichs, ob dieselbe Quelle-URL mit
 demselben Text schon einmal geprüft wurde. Ein unverändertes Angebot löst

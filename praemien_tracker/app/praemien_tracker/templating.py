@@ -54,6 +54,20 @@ def format_eur_ganz(value) -> str:
     return formatted.replace(",", ".")
 
 
+_VORSCHLAG_STATUS_LABELS = {
+    "vorgeschlagen": "vorgeschlagen",
+    "zu_pruefen": "zu prüfen",
+    "automatisch_abgelehnt": "abgelehnt",
+}
+
+
+def format_vorschlag_status(status: str) -> str:
+    """Klartext für den je-Inhaber-Status einer VorschlagGruppe (siehe
+    routers/vorschlaege.py) - nur angezeigt, wenn er vom Gruppen-Status
+    abweicht, z.B. wenn ein Fund für eine Person schon Bestandskunde ist."""
+    return _VORSCHLAG_STATUS_LABELS.get(status, status)
+
+
 # Reihenfolge ist relevant: Der erste passende Eintrag gewinnt, deshalb steht
 # "deals/new" vor "deals".
 _TABS = [
@@ -94,6 +108,7 @@ templates.env.filters["eur_ganz"] = format_eur_ganz
 templates.env.filters["datum"] = format_date
 templates.env.filters["zeitpunkt"] = format_zeitpunkt
 templates.env.filters["quelle"] = quelle_label
+templates.env.filters["vorschlag_status"] = format_vorschlag_status
 # Bewusst nicht "aktiver_tab": diesen Namen belegt der ToDo-Router schon
 # mit dem gewählten ToDo-Reiter, er würde den Helfer hier überschatten.
 templates.env.globals["nav_tab"] = nav_tab

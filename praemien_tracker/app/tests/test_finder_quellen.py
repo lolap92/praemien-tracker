@@ -61,6 +61,41 @@ def test_spartanien_html_wird_geparst():
     assert "Depotuebertrag" in funde[0].text
 
 
+SPARTANIEN_HTML_ECHT = """
+<article class="Finanzen  " id="aktion394" data-id="394" itemscope="" itemtype="http://schema.org/LocalBusiness">
+  <a name="394"></a>
+  <a title="Link zum Deal Santander BestGiro" href="https://www.spartanien.de/Santander+BestGiro"></a>
+  <section>
+    <header>
+      <a href="https://www.spartanien.de/Santander+BestGiro" style="text-decoration:none">
+        <h3 itemprop="name">Santander BestGiro</h3>
+      </a>
+    </header>
+    <p class="description" itemprop="description">
+      Eroeffne das kostenlose Santander BestGiro Girokonto und sichere dir 50 EUR von Spartanien
+      fuer die reine kostenlose Kontoeroeffnung. Zusaetzlich gibt es 250 EUR Bonus von der Santander!
+    </p>
+    <a href="https://www.spartanien.de/Santander+BestGiro">
+      <figure><div class="voucher"><strong>50 EUR</strong></div></figure>
+    </a>
+  </section>
+</article>
+"""
+
+
+def test_spartanien_html_wird_geparst_mit_echter_kartenstruktur():
+    """Regressionstest fuer den realen Aufbau: jede Karte verlinkt zuerst
+    ueber einen unsichtbaren Anker ganz ohne Text - vor der Korrektur wurde
+    dieser als Titel-Link genommen, was jede Karte mangels Titel
+    uebersprungen hat (0 Funde im echten Betrieb)."""
+    funde = parse_spartanien_html(SPARTANIEN_HTML_ECHT, "https://www.spartanien.de/themen")
+    assert len(funde) == 1
+    assert funde[0].quelle_url == "https://www.spartanien.de/Santander+BestGiro"
+    assert funde[0].titel == "Santander BestGiro"
+    assert "Santander BestGiro" in funde[0].text
+    assert "250 EUR" in funde[0].text
+
+
 def test_spartanien_html_verkraftet_unbekannte_struktur():
     """Geändertes Markup soll eine leere Liste liefern, keinen Fehler - der
     Lauf soll ohne diese Quelle weiterlaufen (siehe finder/lauf.py)."""

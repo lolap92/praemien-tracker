@@ -67,31 +67,45 @@ def fetch_mydealz(gruppe: str, *, timeout: float = 15.0) -> list[RohFund]:
 def parse_spartanien_html(html_text: str, basis_url: str) -> list[RohFund]:
     """Angebotsliste in RohFund-Objekte übersetzen.
 
-    Ohne offiziellen Feed ist die Struktur eine Annahme über gängige
-    Auszeichnung (Artikel-/Karten-Elemente mit einem Link). Passt keiner der
-    Selektoren, liefert die Funktion bewusst eine leere Liste statt eines
-    Fehlers - ein geändertes Markup soll den ganzen Lauf nicht zum Absturz
-    bringen, sondern nur diese eine Quelle für den Tag leer lassen. Der
-    tatsächliche Aufbau der Seite sollte nach der ersten Einrichtung geprüft
-    und die Selektoren bei Bedarf angepasst werden.
+    Jede Karte ist ein `<article itemtype="http://schema.org/LocalBusiness">`
+    (schema.org-Microdata, an echtem Markup verifiziert) - deutlich
+    zuverlässiger als eine Rate-Auswahl über generische Klassen. Passt dieser
+    Selektor nicht mehr (Markup erneut geändert), fällt die Funktion auf
+    tolerante generische Selektoren zurück statt mit einem Fehler
+    abzubrechen - eine leere Liste lässt nur diese eine Quelle für den Tag
+    leer, statt den ganzen Lauf zu stoppen.
+
+    Jede Karte verlinkt zusätzlich über einen unsichtbaren Anker ganz ohne
+    Text (nur ein "title"-Attribut) direkt vor dem eigentlichen Titel-Link -
+    der erste `<a href>` ist deshalb nicht zuverlässig der richtige; genommen
+    wird stattdessen der erste Link mit sichtbarem Text.
     """
     soup = BeautifulSoup(html_text, "html.parser")
-    kandidaten = soup.select("article, .angebot, .deal, [data-angebot], li.list-item")
+    kandidaten = soup.select('article[itemtype="http://schema.org/LocalBusiness"]')
+    if not kandidaten:
+        kandidaten = soup.select("article, .angebot, .deal, [data-angebot], li.list-item")
 
     funde: list[RohFund] = []
     gesehene_urls: set[str] = set()
     for eintrag in kandidaten:
-        link_tag = eintrag.find("a", href=True)
+        link_tag = next((a for a in eintrag.find_all("a", href=True) if a.get_text(strip=True)), None)
         if link_tag is None:
             continue
         link = str(httpx.URL(basis_url).join(link_tag["href"]))
         if link in gesehene_urls:
             continue
-        titel = link_tag.get_text(" ", strip=True)
-        text = eintrag.get_text(" ", strip=True)
-        if not titel or not text:
+
+        titel_tag = eintrag.select_one('[itemprop="name"]') or eintrag.find(["h2", "h3", "h4"])
+        titel = (titel_tag.get_text(" ", strip=True) if titel_tag else "") or link_tag.get_text(" ", strip=True)
+        beschreibung_tag = eintrag.select_one('.description, [itemprop="description"]')
+        beschreibung = (
+            beschreibung_tag.get_text(" ", strip=True) if beschreibung_tag else eintrag.get_text(" ", strip=True)
+        )
+        if not titel or not beschreibung:
             continue
+
         gesehene_urls.add(link)
+        text = beschreibung if beschreibung.startswith(titel) else f"{titel}. {beschreibung}"
         funde.append(RohFund(quelle="spartanien", quelle_url=link, titel=titel, text=text))
 
     if not funde:

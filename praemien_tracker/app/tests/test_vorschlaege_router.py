@@ -1,5 +1,5 @@
-"""routers/vorschlaege.py: Übernehmen/Verwerfen und die Gruppierung nach
-Status."""
+"""routers/vorschlaege.py: Gruppierung gleicher Funde, Filter, Mehrfach-
+Übernehmen/Verwerfen und die Laufstatus-Anzeige."""
 
 from __future__ import annotations
 
@@ -22,6 +22,15 @@ def inhaber(db):
     return eintrag
 
 
+@pytest.fixture()
+def zwei_inhaber(db):
+    Alice = Inhaber(name="Alice")
+    max_ = Inhaber(name="Max", ist_minderjaehrig=True)
+    db.add_all([Alice, max_])
+    db.commit()
+    return Alice, max_
+
+
 def _vorschlag(db, inhaber, status: str, **kwargs) -> DealVorschlag:
     daten = {
         "inhaber_id": inhaber.id,
@@ -33,10 +42,10 @@ def _vorschlag(db, inhaber, status: str, **kwargs) -> DealVorschlag:
         "sperrfrist_monate": None,
         "ablehnungsgruende": None,
         "roh_json": (
-            '{"bank": "C24", "kontoart": "Girokonto", "inhaber": "Alice", '
-            '"praemien": [{"quelle": "bank", "betrag": "125.00", "erhalten": false}], '
-            '"bedingungen": [], "urls": [{"url": "https://www.mydealz.de/x", "bezeichnung": "mydealz-Angebot"}]}'
-        ),
+            '{{"bank": "C24", "kontoart": "Girokonto", "inhaber": "{name}", '
+            '"praemien": [{{"quelle": "bank", "betrag": "125.00", "erhalten": false}}], '
+            '"bedingungen": [], "urls": [{{"url": "https://www.mydealz.de/x", "bezeichnung": "mydealz-Angebot"}}]}}'
+        ).format(name=inhaber.name),
         "inhalt_hash": "abc123",
         "status": status,
     }
@@ -59,10 +68,38 @@ def test_vorschlaege_seite_gruppiert_nach_status(db, inhaber):
     assert "1 abgelehnt" in antwort.text
 
 
+def test_gleicher_fund_fuer_mehrere_inhaber_erscheint_nur_einmal(db, zwei_inhaber):
+    """Zentrale Anforderung: derselbe Fund (gleiche quelle_url+inhalt_hash)
+    soll nicht einmal je Inhaber in der Liste auftauchen."""
+    Alice, max_ = zwei_inhaber
+    _vorschlag(db, Alice, "vorgeschlagen", inhalt_hash="gleich")
+    _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
+
+    antwort = client.get("/vorschlaege")
+    assert antwort.status_code == 200
+    assert "1 vorgeschlagen" in antwort.text
+    assert "Alice" in antwort.text
+    assert "Max" in antwort.text
+
+
+def test_gruppen_status_ist_der_beste_einzelstatus(db, zwei_inhaber):
+    """Ist der Fund für eine Person ein echter Neukunden-Deal, für eine
+    andere aber automatisch abgelehnt (z.B. schon Bestandskunde), soll die
+    Gruppe unter "Vorgeschlagen" auftauchen statt unter "Abgelehnt"."""
+    Alice, max_ = zwei_inhaber
+    _vorschlag(db, Alice, "vorgeschlagen", inhalt_hash="gleich")
+    _vorschlag(db, max_, "automatisch_abgelehnt", inhalt_hash="gleich", ablehnungsgruende="Bereits Kundin.")
+
+    antwort = client.get("/vorschlaege")
+    assert "1 vorgeschlagen" in antwort.text
+    assert "0 abgelehnt" in antwort.text
+    assert "Bereits Kundin." in antwort.text
+
+
 def test_uebernehmen_legt_deal_an_und_markiert_vorschlag(db, inhaber):
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
 
-    antwort = client.post(f"/vorschlaege/{vorschlag.id}/uebernehmen", follow_redirects=False)
+    antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
     assert antwort.status_code == 303
 
     db.refresh(vorschlag)
@@ -75,11 +112,48 @@ def test_uebernehmen_legt_deal_an_und_markiert_vorschlag(db, inhaber):
     assert deal.urls[0].url == "https://www.mydealz.de/x"
 
 
+def test_uebernehmen_mit_mehreren_ids_legt_fuer_jeden_ausgewaehlten_namen_einen_deal_an(db, zwei_inhaber):
+    Alice, max_ = zwei_inhaber
+    v_elli = _vorschlag(db, Alice, "vorgeschlagen", inhalt_hash="gleich")
+    v_max = _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
+
+    antwort = client.post(
+        "/vorschlaege/uebernehmen",
+        data={"vorschlag_ids": [v_elli.id, v_max.id]},
+        follow_redirects=False,
+    )
+    assert antwort.status_code == 303
+
+    db.refresh(v_elli)
+    db.refresh(v_max)
+    assert v_elli.status == "uebernommen"
+    assert v_max.status == "uebernommen"
+    assert db.query(Deal).count() == 2
+    namen = {d.inhaber.name for d in db.query(Deal).all()}
+    assert namen == {"Alice", "Max"}
+
+
+def test_uebernehmen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen(db, zwei_inhaber):
+    """Wird nur ein Name ausgewählt, bleibt der Vorschlag für die andere
+    Person offen und weiterhin sichtbar - kein automatisches Verwerfen."""
+    Alice, max_ = zwei_inhaber
+    v_elli = _vorschlag(db, Alice, "vorgeschlagen", inhalt_hash="gleich")
+    v_max = _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
+
+    client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [v_elli.id]}, follow_redirects=False)
+
+    db.refresh(v_elli)
+    db.refresh(v_max)
+    assert v_elli.status == "uebernommen"
+    assert v_max.status == "vorgeschlagen"
+    assert db.query(Deal).count() == 1
+
+
 def test_uebernehmen_funktioniert_auch_bei_automatisch_abgelehnt(db, inhaber):
     """Bewusstes Überstimmen laut Konzept - "Trotzdem übernehmen"."""
     vorschlag = _vorschlag(db, inhaber, "automatisch_abgelehnt")
 
-    antwort = client.post(f"/vorschlaege/{vorschlag.id}/uebernehmen", follow_redirects=False)
+    antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
     assert antwort.status_code == 303
     db.refresh(vorschlag)
     assert vorschlag.status == "uebernommen"
@@ -89,7 +163,7 @@ def test_uebernehmen_funktioniert_auch_bei_automatisch_abgelehnt(db, inhaber):
 def test_bereits_uebernommener_vorschlag_wird_nicht_doppelt_verarbeitet(db, inhaber):
     vorschlag = _vorschlag(db, inhaber, "uebernommen")
 
-    client.post(f"/vorschlaege/{vorschlag.id}/uebernehmen", follow_redirects=False)
+    client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
 
     assert db.query(Deal).count() == 0
 
@@ -97,7 +171,7 @@ def test_bereits_uebernommener_vorschlag_wird_nicht_doppelt_verarbeitet(db, inha
 def test_verwerfen_setzt_nur_den_status(db, inhaber):
     vorschlag = _vorschlag(db, inhaber, "zu_pruefen")
 
-    antwort = client.post(f"/vorschlaege/{vorschlag.id}/verwerfen", follow_redirects=False)
+    antwort = client.post("/vorschlaege/verwerfen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
     assert antwort.status_code == 303
 
     db.refresh(vorschlag)
@@ -105,22 +179,90 @@ def test_verwerfen_setzt_nur_den_status(db, inhaber):
     assert db.query(Deal).count() == 0
 
 
+def test_verwerfen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen(db, zwei_inhaber):
+    Alice, max_ = zwei_inhaber
+    v_elli = _vorschlag(db, Alice, "vorgeschlagen", inhalt_hash="gleich")
+    v_max = _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
+
+    client.post("/vorschlaege/verwerfen", data={"vorschlag_ids": [v_elli.id]}, follow_redirects=False)
+
+    db.refresh(v_elli)
+    db.refresh(v_max)
+    assert v_elli.status == "verworfen"
+    assert v_max.status == "vorgeschlagen"
+
+
 def test_verworfener_vorschlag_taucht_nicht_mehr_in_der_liste_auf(db, inhaber):
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
-    client.post(f"/vorschlaege/{vorschlag.id}/verwerfen", follow_redirects=False)
+    client.post("/vorschlaege/verwerfen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
 
     antwort = client.get("/vorschlaege")
     assert "0 vorgeschlagen" in antwort.text
 
 
-def test_unbekannter_vorschlag_liefert_404(db):
-    antwort = client.post("/vorschlaege/999999/uebernehmen")
-    assert antwort.status_code == 404
+def test_unbekannte_id_beim_uebernehmen_wird_ignoriert(db):
+    """Bulk-Aktion: eine einzelne unbekannte ID (z.B. veralteter Formular-
+    Stand) soll nicht die ganze Anfrage abbrechen."""
+    antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [999999]}, follow_redirects=False)
+    assert antwort.status_code == 303
+    assert client.get("/vorschlaege").status_code == 200
 
 
 def test_unbekannter_vorschlag_beim_verwerfen_wird_ignoriert(db):
-    antwort = client.post("/vorschlaege/999999/verwerfen", follow_redirects=False)
+    antwort = client.post("/vorschlaege/verwerfen", data={"vorschlag_ids": [999999]}, follow_redirects=False)
     assert antwort.status_code == 303
+
+
+def test_uebernehmen_ohne_auswahl_tut_nichts(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    antwort = client.post("/vorschlaege/uebernehmen", data={}, follow_redirects=False)
+    assert antwort.status_code == 303
+
+    db.refresh(vorschlag)
+    assert vorschlag.status == "vorgeschlagen"
+    assert db.query(Deal).count() == 0
+
+
+def test_filter_nach_quelle(db, inhaber):
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle="mydealz", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
+    _vorschlag(
+        db, inhaber, "vorgeschlagen", quelle="spartanien", quelle_url="https://www.spartanien.de/1", inhalt_hash="h2"
+    )
+
+    antwort = client.get("/vorschlaege", params={"quelle": "spartanien"})
+    assert antwort.status_code == 200
+    assert "1 vorgeschlagen" in antwort.text
+
+
+def test_filter_nach_typ_kind_zeigt_nur_minderjaehrige(db, zwei_inhaber):
+    Alice, max_ = zwei_inhaber
+    _vorschlag(db, Alice, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
+    _vorschlag(db, max_, "vorgeschlagen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2")
+
+    antwort = client.get("/vorschlaege", params={"typ": "kind"})
+    assert antwort.status_code == 200
+    assert "1 vorgeschlagen" in antwort.text
+    assert "Max" in antwort.text
+    assert "Alice" not in antwort.text
+
+
+def test_filter_nach_status(db, inhaber):
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
+    _vorschlag(db, inhaber, "zu_pruefen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2")
+
+    antwort = client.get("/vorschlaege", params={"status": "zu_pruefen"})
+    assert antwort.status_code == 200
+    assert "0 vorgeschlagen" in antwort.text
+    assert "1 zu prüfen" in antwort.text
+
+
+def test_ungueltiger_filterwert_wird_ignoriert(db, inhaber):
+    """Von Hand getippte oder veraltete Filterwerte in der URL sollen die
+    Seite nicht mit einem Fehler abbrechen."""
+    _vorschlag(db, inhaber, "vorgeschlagen")
+    antwort = client.get("/vorschlaege", params={"quelle": "unbekannt"})
+    assert antwort.status_code == 200
 
 
 def test_seite_ohne_bisherigen_lauf_zeigt_neutralen_hinweis(db):
