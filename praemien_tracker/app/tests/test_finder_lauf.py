@@ -10,7 +10,7 @@ import pytest
 from praemien_tracker.finder import lauf, matching, notify
 from praemien_tracker.finder.extraktion import AngebotExtraktion, BedingungExtraktion, RelevanzErgebnis
 from praemien_tracker.finder.quellen import RohFund
-from praemien_tracker.models import DealVorschlag, Inhaber
+from praemien_tracker.models import DealVorschlag, FinderLauf, Inhaber
 
 
 class FakeMessages:
@@ -118,3 +118,107 @@ def test_benachrichtigung_nur_bei_vorgeschlagen_oder_zu_pruefen(db, zwei_inhaber
     )
     lauf.taeglicher_lauf(db, client=client2)
     assert len(aufrufe) == 1
+
+
+def _letzter_lauf(db) -> FinderLauf:
+    return db.query(FinderLauf).order_by(FinderLauf.id.desc()).first()
+
+
+def test_erfolgreicher_lauf_protokolliert_zaehlerstaende(db, zwei_inhaber, monkeypatch):
+    monkeypatch.setattr(lauf, "fetch_mydealz", lambda gruppe, **kw: [
+        RohFund("mydealz", "https://mydealz.de/1", "t", "x"),
+        RohFund("mydealz", "https://mydealz.de/2", "t", "x"),
+    ])
+    monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [
+        RohFund("spartanien", "https://spartanien.de/1", "t", "x"),
+    ])
+    client = FakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]),
+    )
+
+    lauf.taeglicher_lauf(db, client=client)
+
+    protokoll = _letzter_lauf(db)
+    assert protokoll is not None
+    assert protokoll.erfolgreich is True
+    assert protokoll.mydealz_geladen == 2
+    assert protokoll.spartanien_geladen == 1
+    assert protokoll.neu_gefunden == 6  # 3 Funde x 2 Inhaber
+    assert protokoll.uebersprungen == 0
+    assert protokoll.fehler is None
+    assert protokoll.beendet_am is not None
+
+
+def test_ohne_client_wird_trotzdem_protokolliert(db, zwei_inhaber, monkeypatch):
+    monkeypatch.setattr(lauf.config, "ANTHROPIC_API_KEY", None)
+    lauf.taeglicher_lauf(db)
+
+    protokoll = _letzter_lauf(db)
+    assert protokoll is not None
+    assert protokoll.erfolgreich is True
+    assert "API-Key" in protokoll.fehler
+
+
+def test_fehlgeschlagene_quelle_wird_als_fehler_protokolliert(db, zwei_inhaber, monkeypatch):
+    def kaputt(*args, **kwargs):
+        raise RuntimeError("HTTP 500")
+
+    monkeypatch.setattr(lauf, "fetch_mydealz", kaputt)
+    monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [])
+    client = FakeClient(RelevanzErgebnis(ist_relevant=False), None)
+
+    zaehler = lauf.taeglicher_lauf(db, client=client)
+
+    assert zaehler["gefunden"] == 0
+    protokoll = _letzter_lauf(db)
+    # Der Lauf selbst läuft trotzdem durch (die andere Quelle funktioniert) -
+    # "erfolgreich", aber mit sichtbarem Fehlertext zur ausgefallenen Quelle.
+    assert protokoll.erfolgreich is True
+    assert protokoll.mydealz_geladen == 0
+    assert "mydealz" in protokoll.fehler
+    assert "HTTP 500" in protokoll.fehler
+
+
+def test_extraktionsfehler_wird_gezaehlt_und_protokolliert(db, zwei_inhaber, monkeypatch):
+    fund = RohFund("mydealz", "https://mydealz.de/kaputt", "t", "x")
+    _patch_quellen(monkeypatch, [fund])
+
+    class KaputteMessages:
+        def parse(self, *, output_format, **kwargs):
+            raise RuntimeError("API-Fehler")
+
+    class KaputterClient:
+        messages = KaputteMessages()
+
+    zaehler = lauf.taeglicher_lauf(db, client=KaputterClient())
+
+    assert zaehler["uebersprungen"] == 1
+    assert zaehler["gefunden"] == 0
+    protokoll = _letzter_lauf(db)
+    assert protokoll.erfolgreich is True
+    assert protokoll.uebersprungen == 1
+    assert "Themen-Check" in protokoll.fehler
+
+
+def test_unerwarteter_fehler_wird_zurueckgerollt_und_als_fehlgeschlagen_protokolliert(db, zwei_inhaber, monkeypatch):
+    """Ein Bug im Matching (o.ä.) darf weder halb gespeicherte Vorschläge
+    hinterlassen noch die Seite abstürzen lassen - stattdessen: rollback,
+    Lauf als fehlgeschlagen protokolliert."""
+    fund = RohFund("mydealz", "https://mydealz.de/bug", "t", "x")
+    _patch_quellen(monkeypatch, [fund])
+    client = FakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]),
+    )
+    monkeypatch.setattr(
+        matching, "bewerten", lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("Programmierfehler"))
+    )
+
+    zaehler = lauf.taeglicher_lauf(db, client=client)
+
+    assert zaehler["gefunden"] == 0
+    assert db.query(DealVorschlag).count() == 0
+    protokoll = _letzter_lauf(db)
+    assert protokoll.erfolgreich is False
+    assert "Programmierfehler" in protokoll.fehler

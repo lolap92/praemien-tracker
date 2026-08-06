@@ -7,6 +7,42 @@
   gleicht sie mit euren bestehenden Deals ab. Jeder thematisch passende Fund erscheint hier –
   auch automatisch abgelehnte, mit Begründung. Im Zweifel wird lieber vorgeschlagen als
   ausgeschlossen.</p>
+</div>
+
+<div class="card">
+  {% if letzter_lauf %}
+  <div class="vorschlag-lauf-status">
+    <span class="chip {{ 'lauf-erfolgreich' if letzter_lauf.erfolgreich else 'lauf-fehlgeschlagen' }}">
+      {{ '✓ Letzter Lauf erfolgreich' if letzter_lauf.erfolgreich else '✗ Letzter Lauf fehlgeschlagen' }}
+    </span>
+    <span class="lauf-zeitpunkt">{{ letzter_lauf.beendet_am | zeitpunkt }}</span>
+  </div>
+  <div class="lauf-kennzahlen">
+    <div>
+      <span class="lauf-wert">{{ letzter_lauf.mydealz_geladen }}</span>
+      <span class="lauf-label">mydealz geladen</span>
+    </div>
+    <div>
+      <span class="lauf-wert">{{ letzter_lauf.spartanien_geladen }}</span>
+      <span class="lauf-label">spartanien geladen</span>
+    </div>
+    <div>
+      <span class="lauf-wert">{{ letzter_lauf.neu_gefunden }}</span>
+      <span class="lauf-label">neu gefunden</span>
+    </div>
+    {% if letzter_lauf.uebersprungen %}
+    <div>
+      <span class="lauf-wert">{{ letzter_lauf.uebersprungen }}</span>
+      <span class="lauf-label">übersprungen</span>
+    </div>
+    {% endif %}
+  </div>
+  {% if letzter_lauf.fehler %}
+  <div class="vorschlag-begruendung abgelehnt">{{ letzter_lauf.fehler }}</div>
+  {% endif %}
+  {% else %}
+  <p class="leer">Noch kein Lauf durchgeführt.</p>
+  {% endif %}
   <form method="post" action="vorschlaege/jetzt-suchen" style="margin-top:0.8rem">
     <button type="submit" class="secondary">Jetzt suchen</button>
   </form>

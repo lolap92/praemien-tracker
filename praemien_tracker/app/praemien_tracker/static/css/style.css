@@ -1299,6 +1299,50 @@ table.pc-tabelle tr:hover {
   margin-bottom: 1rem;
 }
 
+.vorschlag-lauf-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.lauf-zeitpunkt {
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+}
+
+.lauf-kennzahlen {
+  display: flex;
+  gap: 1.4rem;
+  flex-wrap: wrap;
+}
+
+.lauf-kennzahlen .lauf-wert {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.lauf-kennzahlen .lauf-label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  margin-top: 0.1rem;
+}
+
+.chip.lauf-erfolgreich {
+  color: var(--st-done);
+  background: rgba(27, 158, 119, 0.13);
+}
+.chip.lauf-fehlgeschlagen {
+  color: var(--danger);
+  background: rgba(180, 70, 42, 0.12);
+}
+
 .chip.status-vorgeschlagen {
   color: var(--st-done);
   background: rgba(27, 158, 119, 0.13);

@@ -204,6 +204,29 @@ class VorschlagBedingung(Base):
     vorschlag: Mapped["DealVorschlag"] = relationship(back_populates="bedingungen")
 
 
+class FinderLauf(Base):
+    """Protokoll eines KI-Deal-Finder-Laufs - für die Statusanzeige im
+    Vorschläge-Tab (letzter Lauf erfolgreich? wie viele Funde je Quelle?
+    Fehler?). Bewusst eine eigene, schlanke Tabelle statt Wiederverwendung
+    von ProtokollEintrag: dort geht es um Änderungen an Fakten, hier um den
+    Lauf selbst - beides zu vermischen würde die Änderungshistorie
+    verunreinigen."""
+
+    __tablename__ = "finder_laeufe"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    gestartet_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
+    beendet_am: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
+    erfolgreich: Mapped[bool] = mapped_column(Boolean, default=False)
+    mydealz_geladen: Mapped[int] = mapped_column(default=0)
+    spartanien_geladen: Mapped[int] = mapped_column(default=0)
+    neu_gefunden: Mapped[int] = mapped_column(default=0)
+    uebersprungen: Mapped[int] = mapped_column(default=0)
+    # Klartext, mehrere Fehler mit "; " getrennt (Quellenausfall, einzelne
+    # Extraktionsfehler, unerwarteter Abbruch) - None, wenn alles glatt lief.
+    fehler: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class ProtokollEintrag(Base):
     """Änderungsprotokoll, automatisch über SQLAlchemy-Events befüllt (siehe
     protokoll.py) - kein manuelles Loggen in den Routen nötig. Bewusst ohne

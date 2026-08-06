@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from praemien_tracker.main import app
-from praemien_tracker.models import Deal, DealVorschlag, Inhaber
+from praemien_tracker.models import Deal, DealVorschlag, FinderLauf, Inhaber
 
 client = TestClient(app)
 
@@ -121,3 +121,60 @@ def test_unbekannter_vorschlag_liefert_404(db):
 def test_unbekannter_vorschlag_beim_verwerfen_wird_ignoriert(db):
     antwort = client.post("/vorschlaege/999999/verwerfen", follow_redirects=False)
     assert antwort.status_code == 303
+
+
+def test_seite_ohne_bisherigen_lauf_zeigt_neutralen_hinweis(db):
+    antwort = client.get("/vorschlaege")
+    assert antwort.status_code == 200
+    assert "Noch kein Lauf durchgeführt" in antwort.text
+
+
+def test_seite_zeigt_erfolgreichen_lauf(db):
+    db.add(
+        FinderLauf(
+            erfolgreich=True,
+            mydealz_geladen=5,
+            spartanien_geladen=2,
+            neu_gefunden=3,
+            uebersprungen=0,
+            fehler=None,
+        )
+    )
+    db.commit()
+
+    antwort = client.get("/vorschlaege")
+    assert antwort.status_code == 200
+    assert "Letzter Lauf erfolgreich" in antwort.text
+    assert ">5<" in antwort.text
+    assert ">2<" in antwort.text
+    assert ">3<" in antwort.text
+
+
+def test_seite_zeigt_fehlgeschlagenen_lauf_mit_fehlertext(db):
+    db.add(
+        FinderLauf(
+            erfolgreich=False,
+            mydealz_geladen=0,
+            spartanien_geladen=0,
+            neu_gefunden=0,
+            uebersprungen=0,
+            fehler="mydealz nicht erreichbar: HTTP 500",
+        )
+    )
+    db.commit()
+
+    antwort = client.get("/vorschlaege")
+    assert antwort.status_code == 200
+    assert "Letzter Lauf fehlgeschlagen" in antwort.text
+    assert "mydealz nicht erreichbar: HTTP 500" in antwort.text
+
+
+def test_seite_zeigt_nur_den_juengsten_lauf(db):
+    db.add(FinderLauf(erfolgreich=False, fehler="alter Fehler"))
+    db.commit()
+    db.add(FinderLauf(erfolgreich=True, fehler=None))
+    db.commit()
+
+    antwort = client.get("/vorschlaege")
+    assert "Letzter Lauf erfolgreich" in antwort.text
+    assert "alter Fehler" not in antwort.text

@@ -10,7 +10,7 @@ from ..finder import matching
 from ..finder.lauf import taeglicher_lauf
 from ..helpers import build_deal_from_import
 from ..ingress import redirect
-from ..models import DealVorschlag
+from ..models import DealVorschlag, FinderLauf
 from ..schemas import DealImport
 from ..templating import templates
 
@@ -36,6 +36,8 @@ def vorschlaege_view(request: Request, db: Session = Depends(get_db)):
     for v in alle:
         gruppen[v.status].append(v)
 
+    letzter_lauf = db.query(FinderLauf).order_by(FinderLauf.id.desc()).first()
+
     return templates.TemplateResponse(
         "vorschlaege.html",
         {
@@ -43,6 +45,7 @@ def vorschlaege_view(request: Request, db: Session = Depends(get_db)):
             "vorgeschlagen": gruppen[matching.STATUS_VORGESCHLAGEN],
             "zu_pruefen": gruppen[matching.STATUS_ZU_PRUEFEN],
             "automatisch_abgelehnt": gruppen[matching.STATUS_ABGELEHNT],
+            "letzter_lauf": letzter_lauf,
         },
     )
 
