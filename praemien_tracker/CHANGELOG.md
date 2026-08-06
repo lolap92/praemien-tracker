@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.3.0
+
+Push-Benachrichtigung des KI-Deal-Finders ist jetzt konfigurierbar - keine
+Schema-Migration nötig, nur zwei neue Add-on-Optionen.
+
+- **`benachrichtigungen_aktiv`** (Standard: an) schaltet die Push-
+  Benachrichtigung bei neuen Vorschlägen komplett ab, ohne den Lauf selbst
+  oder den Vorschläge-Tab zu beeinflussen.
+- **`notify_dienst`** (Standard: `notify`, also alle Geräte) adressiert
+  gezielt ein einzelnes Smartphone statt aller Geräte/Personen - der Name
+  ist der Home-Assistant-Dienst ohne `notify.`-Präfix, z. B.
+  `mobile_app_pixel_8`.
+
 ## 2.2.0
 
 Zwei Erweiterungen des KI-Deal-Finders (2.1.0): eine Status-Übersicht zum

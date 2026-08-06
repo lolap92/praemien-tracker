@@ -277,7 +277,12 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
     zu_benachrichtigen = zaehler[matching.STATUS_VORGESCHLAGEN] + zaehler[matching.STATUS_ZU_PRUEFEN]
     if zu_benachrichtigen:
         try:
-            notify.benachrichtigen(zaehler[matching.STATUS_VORGESCHLAGEN], zaehler[matching.STATUS_ZU_PRUEFEN])
+            notify.benachrichtigen(
+                zaehler[matching.STATUS_VORGESCHLAGEN],
+                zaehler[matching.STATUS_ZU_PRUEFEN],
+                aktiv=config.BENACHRICHTIGUNGEN_AKTIV,
+                dienst=config.NOTIFY_DIENST,
+            )
         except Exception:
             logger.exception("HA-Benachrichtigung fehlgeschlagen.")
 

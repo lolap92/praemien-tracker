@@ -2,9 +2,10 @@
 
 Setzt `homeassistant_api: true` im Add-on-Manifest voraus (config.yaml) -
 dann setzt der Supervisor die Umgebungsvariable SUPERVISOR_TOKEN automatisch,
-ein eigener Zugangsdaten-Eintrag ist nicht nötig. Sendet an den
-Standard-Benachrichtigungsdienst (notify.notify); welche Geräte/Personen das
-in Home Assistant erreicht, konfiguriert man dort, nicht hier.
+ein eigener Zugangsdaten-Eintrag ist nicht nötig. Welcher Dienst (und damit
+welches Gerät/welche Person) erreicht wird, ist über die Add-on-Option
+"notify_dienst" konfigurierbar; per "benachrichtigungen_aktiv" lässt sich die
+Benachrichtigung ganz abschalten.
 """
 
 from __future__ import annotations
@@ -16,17 +17,33 @@ import httpx
 
 logger = logging.getLogger("praemien_tracker.finder")
 
-SUPERVISOR_NOTIFY_URL = "http://supervisor/core/api/services/notify/notify"
+SUPERVISOR_NOTIFY_URL_VORLAGE = "http://supervisor/core/api/services/notify/{dienst}"
 
 
-def benachrichtigen(anzahl_vorgeschlagen: int, anzahl_zu_pruefen: int, *, timeout: float = 10.0) -> None:
+def benachrichtigen(
+    anzahl_vorgeschlagen: int,
+    anzahl_zu_pruefen: int,
+    *,
+    aktiv: bool = True,
+    dienst: str = "notify",
+    timeout: float = 10.0,
+) -> None:
     """Kurznachricht bei neuen vorgeschlagenen oder zu prüfenden Funden.
 
     Rein automatisch abgelehnte Funde lösen bewusst keine Benachrichtigung
     aus (Konzept Abschnitt 6, Schritt 7) - sie bleiben nur im Tab sichtbar.
-    Ohne SUPERVISOR_TOKEN (z.B. lokal außerhalb des Add-ons) wird nur
-    geloggt, kein Fehler.
+    Ohne SUPERVISOR_TOKEN (z.B. lokal außerhalb des Add-ons) oder bei
+    `aktiv=False` wird nur geloggt, kein Fehler.
     """
+    if not aktiv:
+        logger.info(
+            "Benachrichtigungen sind per Konfiguration deaktiviert - übersprungen: "
+            "%d vorgeschlagen, %d zu prüfen.",
+            anzahl_vorgeschlagen,
+            anzahl_zu_pruefen,
+        )
+        return
+
     token = os.environ.get("SUPERVISOR_TOKEN")
     if not token:
         logger.info(
@@ -45,7 +62,7 @@ def benachrichtigen(anzahl_vorgeschlagen: int, anzahl_zu_pruefen: int, *, timeou
     nachricht = "Prämien-Tracker: " + " · ".join(teile)
 
     antwort = httpx.post(
-        SUPERVISOR_NOTIFY_URL,
+        SUPERVISOR_NOTIFY_URL_VORLAGE.format(dienst=dienst or "notify"),
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         json={"title": "Prämien-Tracker", "message": nachricht},
         timeout=timeout,

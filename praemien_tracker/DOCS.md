@@ -143,6 +143,8 @@ folgende optionale Einstellungen (Add-on-Konfiguration in Home Assistant):
 | `mindestpraemie` | Prämien unterhalb dieses Betrags werden automatisch abgelehnt (mit Begründung, weiterhin sichtbar). | `50` |
 | `mydealz_gruppe` | mydealz-Gruppe für den RSS-Feed. | `vertraege-finanzen` |
 | `spartanien_url` | Ziel-URL für den spartanien-Parser. | `https://www.spartanien.de/themen/bankprodukte/` |
+| `benachrichtigungen_aktiv` | Push-Benachrichtigung bei neuen Vorschlägen ein-/ausschalten. | `true` |
+| `notify_dienst` | Home-Assistant-Notify-Dienst ohne `notify.`-Präfix, z. B. `mobile_app_pixel_8` für ein bestimmtes Smartphone (Gerätename siehe HA unter Einstellungen > Geräte & Dienste > das Handy > "Dienst" im Entwicklerwerkzeug). `notify` adressiert weiterhin alle Geräte. | `notify` |
 
 Bei 1×/Tag und wenigen kurzen Texten liegen die tatsächlichen API-Kosten
 typischerweise im Cent-Bereich pro Monat.

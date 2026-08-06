@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from praemien_tracker import config
 from praemien_tracker.finder import lauf, matching, notify
 from praemien_tracker.finder.extraktion import AngebotExtraktion, BedingungExtraktion, RelevanzErgebnis
 from praemien_tracker.finder.quellen import RohFund
@@ -115,7 +116,7 @@ def test_irrelevantes_angebot_erzeugt_keinen_vorschlag(db, zwei_inhaber, monkeyp
 
 def test_benachrichtigung_nur_bei_vorgeschlagen_oder_zu_pruefen(db, zwei_inhaber, monkeypatch):
     aufrufe = []
-    monkeypatch.setattr(notify, "benachrichtigen", lambda *a, **kw: aufrufe.append(a))
+    monkeypatch.setattr(notify, "benachrichtigen", lambda *a, **kw: aufrufe.append((a, kw)))
 
     # Nur automatisch abgelehnt (Praemie zu niedrig) -> keine Benachrichtigung.
     fund = RohFund("mydealz", "https://mydealz.de/klein", "t", "x")
@@ -136,6 +137,26 @@ def test_benachrichtigung_nur_bei_vorgeschlagen_oder_zu_pruefen(db, zwei_inhaber
     )
     lauf.taeglicher_lauf(db, client=client2)
     assert len(aufrufe) == 1
+
+
+def test_benachrichtigung_konfiguration_wird_durchgereicht(db, zwei_inhaber, monkeypatch):
+    monkeypatch.setattr(config, "BENACHRICHTIGUNGEN_AKTIV", False)
+    monkeypatch.setattr(config, "NOTIFY_DIENST", "mobile_app_pixel_8")
+    aufrufe = []
+    monkeypatch.setattr(notify, "benachrichtigen", lambda *a, **kw: aufrufe.append((a, kw)))
+
+    fund = RohFund("mydealz", "https://mydealz.de/gross", "t", "x")
+    _patch_quellen(monkeypatch, [fund])
+    client = FakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]),
+    )
+    lauf.taeglicher_lauf(db, client=client)
+
+    assert len(aufrufe) == 1
+    _, kwargs = aufrufe[0]
+    assert kwargs["aktiv"] is False
+    assert kwargs["dienst"] == "mobile_app_pixel_8"
 
 
 def _letzter_lauf(db) -> FinderLauf:

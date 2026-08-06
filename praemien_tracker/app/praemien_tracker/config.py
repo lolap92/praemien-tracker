@@ -61,3 +61,11 @@ ANTHROPIC_MODEL: str = _OPTIONEN.get("anthropic_model") or "claude-haiku-4-5"
 MINDESTPRAEMIE: Decimal = _mindestpraemie(_OPTIONEN.get("mindestpraemie", 50))
 MYDEALZ_GRUPPE: str = _OPTIONEN.get("mydealz_gruppe") or "vertraege-finanzen"
 SPARTANIEN_URL: str = _OPTIONEN.get("spartanien_url") or "https://www.spartanien.de/themen/bankprodukte/"
+
+# Benachrichtigung bei neuen Vorschlägen (Konzept Abschnitt 6). "notify_dienst"
+# ist der Home-Assistant-Dienstname ohne "notify."-Präfix - z.B.
+# "mobile_app_pixel_8", um gezielt ein Smartphone statt aller Geräte zu
+# erreichen (siehe Einstellungen > Personen > Gerät in HA für den genauen
+# Namen). Leer/"notify" adressiert weiterhin alle Geräte (notify.notify).
+BENACHRICHTIGUNGEN_AKTIV: bool = bool(_OPTIONEN.get("benachrichtigungen_aktiv", True))
+NOTIFY_DIENST: str = (_OPTIONEN.get("notify_dienst") or "notify").strip() or "notify"
