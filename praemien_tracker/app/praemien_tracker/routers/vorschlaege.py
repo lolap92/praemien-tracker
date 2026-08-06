@@ -20,7 +20,7 @@ logger = logging.getLogger("praemien_tracker.finder")
 # Reihenfolge der Statusgruppen wie im Konzept-Mockup: erst eindeutig
 # vorgeschlagene, dann zu prüfende, ganz unten (eingeklappt) die
 # automatisch abgelehnten.
-STATUS_OFFEN = [matching.STATUS_VORGESCHLAGEN, matching.STATUS_ZU_PRUEFEN, matching.STATUS_ABGELEHNT]
+STATUS_OFFEN = matching.STATUS_OFFEN
 
 
 @router.get("/vorschlaege")

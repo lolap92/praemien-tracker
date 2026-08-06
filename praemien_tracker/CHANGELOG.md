@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.2.0
+
+Zwei Erweiterungen des KI-Deal-Finders (2.1.0): eine Status-Übersicht zum
+letzten Lauf und eine deutliche Reduktion der Anthropic-API-Nutzung.
+Enthält eine Schema-Migration (zwei neue Tabellen, eine neue Spalte) -
+vorher wird automatisch eine Sicherheitskopie angelegt.
+
+- **Status-Übersicht im Vorschläge-Tab.** Zeigt zum letzten Lauf: erfolgreich
+  oder fehlgeschlagen, wie viele Funde je Quelle (mydealz/spartanien)
+  geladen wurden, wie viele davon neu sind, wie viele wegen Fehlern
+  übersprungen wurden - inklusive Klartext-Fehlermeldung, falls welche
+  auftraten (z. B. eine Quelle nicht erreichbar). `taeglicher_lauf()` wirft
+  jetzt nie mehr nach außen: ein unerwarteter Fehler führt zu einem
+  Rollback statt halb gespeicherter Vorschläge und wird als fehlgeschlagen
+  protokolliert.
+- **API-Nutzung deutlich reduziert.** Bevor ein Fund an Claude geschickt
+  wird, prüft die App per Rohtext-Hash, ob dieselbe Quelle-URL mit
+  demselben Text schon einmal geprüft wurde. Unveränderte Angebote lösen
+  dann keinen erneuten API-Aufruf mehr aus; ein bereits als thematisch
+  unpassend erkannter Fund wird dauerhaft übersprungen, ohne je wieder an
+  die API zu gehen. Nur ein geänderter Rohtext (z. B. ein bearbeiteter
+  Beitrag) löst eine erneute Prüfung aus. Die deterministische Bewertung
+  (Mindestprämie, Sperrfrist, Bedingungen) läuft trotzdem bei jedem Lauf
+  erneut, kostenlos und ohne API - eine inzwischen erreichte Sperrfrist
+  wird dadurch weiterhin erkannt, auch wenn sich am Angebot selbst nichts
+  geändert hat. Ein bereits vom Nutzer übernommener oder verworfener
+  Vorschlag wird dabei nie überschrieben.
+- Die Vorschläge-Übersicht zeigt zusätzlich, wie viele Funde je Lauf ganz
+  ohne API-Aufruf erledigt wurden.
+
 ## 2.1.0
 
 Erweiterung "KI-Deal-Finder" (eigenes Konzeptdokument, Ergänzung zum

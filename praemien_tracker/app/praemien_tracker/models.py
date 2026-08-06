@@ -204,6 +204,40 @@ class VorschlagBedingung(Base):
     vorschlag: Mapped["DealVorschlag"] = relationship(back_populates="bedingungen")
 
 
+class FinderFund(Base):
+    """Gedächtnis des KI-Deal-Finders je Rohquelle-URL - verhindert, dass ein
+    unverändertes Angebot bei jedem Lauf erneut gegen die Anthropic-API
+    geschickt wird. Themen-Check und Struktur-Extraktion sind die einzigen
+    kostenpflichtigen Schritte (siehe finder/lauf.py); beide werden
+    übersprungen, solange sich rohtext_hash seit dem letzten Lauf nicht
+    ändert.
+
+    War ein Fund thematisch nicht passend, wird das dauerhaft festgehalten
+    (ist_relevant=False, extraktion_json=None) - er geht dann bei künftigen
+    Läufen gar nicht mehr an die API, sondern wird direkt übersprungen.
+    Ändert sich der Rohtext unter derselben URL (z.B. ein bearbeiteter
+    mydealz-Beitrag), weicht der Hash ab und der Fund wird neu geprüft.
+    """
+
+    __tablename__ = "finder_funde"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    quelle: Mapped[str] = mapped_column(String(20))
+    quelle_url: Mapped[str] = mapped_column(String(500), unique=True, index=True)
+    rohtext_hash: Mapped[str] = mapped_column(String(64))
+    ist_relevant: Mapped[bool] = mapped_column(Boolean)
+    # Vollständiges Extraktionsergebnis (extraktion.AngebotExtraktion) als
+    # JSON - nur gefüllt, wenn ist_relevant. Wird bei unverändertem Rohtext
+    # wiederverwendet, damit auch das deterministische Matching (eine
+    # Sperrfrist kann mit der Zeit erfüllt werden, ohne dass sich am Angebot
+    # etwas ändert) weiterhin ohne neuen API-Aufruf läuft.
+    extraktion_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    erstmals_gesehen_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
+    zuletzt_gesehen_am: Mapped[datetime.datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
 class FinderLauf(Base):
     """Protokoll eines KI-Deal-Finder-Laufs - für die Statusanzeige im
     Vorschläge-Tab (letzter Lauf erfolgreich? wie viele Funde je Quelle?
@@ -222,6 +256,9 @@ class FinderLauf(Base):
     spartanien_geladen: Mapped[int] = mapped_column(default=0)
     neu_gefunden: Mapped[int] = mapped_column(default=0)
     uebersprungen: Mapped[int] = mapped_column(default=0)
+    # Funde, die dank finder_funde (Rohtext unverändert) ganz ohne
+    # API-Aufruf erledigt wurden - macht die Kostenersparnis sichtbar.
+    aus_cache: Mapped[int] = mapped_column(default=0)
     # Klartext, mehrere Fehler mit "; " getrennt (Quellenausfall, einzelne
     # Extraktionsfehler, unerwarteter Abbruch) - None, wenn alles glatt lief.
     fehler: Mapped[str | None] = mapped_column(Text, nullable=True)

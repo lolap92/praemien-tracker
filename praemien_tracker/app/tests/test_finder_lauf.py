@@ -3,6 +3,7 @@ gepatchten Quellen (kein Netzwerk)."""
 
 from __future__ import annotations
 
+import datetime
 from types import SimpleNamespace
 
 import pytest
@@ -27,6 +28,23 @@ class FakeMessages:
 class FakeClient:
     def __init__(self, relevanz: RelevanzErgebnis, extraktion: AngebotExtraktion | None):
         self.messages = FakeMessages(relevanz, extraktion)
+
+
+class ZaehlenderFakeClient:
+    """Wie FakeClient, zählt aber jeden Aufruf von messages.parse - damit
+    sich prüfen lässt, ob der Cache einen API-Aufruf tatsächlich einspart."""
+
+    def __init__(self, relevanz: RelevanzErgebnis, extraktion: AngebotExtraktion | None):
+        self.relevanz = relevanz
+        self.extraktion = extraktion
+        self.aufrufe = 0
+        self.messages = self
+
+    def parse(self, *, output_format, **kwargs):
+        self.aufrufe += 1
+        if output_format is RelevanzErgebnis:
+            return SimpleNamespace(parsed_output=self.relevanz, stop_reason="end_turn")
+        return SimpleNamespace(parsed_output=self.extraktion, stop_reason="end_turn")
 
 
 @pytest.fixture()
@@ -222,3 +240,171 @@ def test_unerwarteter_fehler_wird_zurueckgerollt_und_als_fehlgeschlagen_protokol
     protokoll = _letzter_lauf(db)
     assert protokoll.erfolgreich is False
     assert "Programmierfehler" in protokoll.fehler
+
+
+# ---------------------------------------------------------------------------
+# Cache: unveränderte/irrelevante Funde sollen keinen erneuten API-Aufruf
+# auslösen (siehe FinderFund in models.py).
+# ---------------------------------------------------------------------------
+
+
+def test_unveraenderter_fund_wird_beim_zweiten_lauf_nicht_erneut_an_die_api_geschickt(db, zwei_inhaber, monkeypatch):
+    fund = RohFund("mydealz", "https://mydealz.de/c24", "t", "immer derselbe Text")
+    _patch_quellen(monkeypatch, [fund])
+    client = ZaehlenderFakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]),
+    )
+
+    lauf.taeglicher_lauf(db, client=client)
+    aufrufe_nach_erstem_lauf = client.aufrufe
+    assert aufrufe_nach_erstem_lauf == 2  # Themen-Check + Struktur-Extraktion
+
+    zaehler = lauf.taeglicher_lauf(db, client=client)
+
+    assert client.aufrufe == aufrufe_nach_erstem_lauf  # keine weiteren API-Aufrufe
+    assert zaehler["aus_cache"] == 1
+    assert db.query(DealVorschlag).count() == 2  # unverändert - kein neuer Datensatz
+
+
+def test_irrelevanter_fund_wird_nie_wieder_an_die_api_geschickt(db, zwei_inhaber, monkeypatch):
+    fund = RohFund("mydealz", "https://mydealz.de/versicherung", "t", "Autoversicherung wechseln")
+    _patch_quellen(monkeypatch, [fund])
+    client = ZaehlenderFakeClient(RelevanzErgebnis(ist_relevant=False), None)
+
+    lauf.taeglicher_lauf(db, client=client)
+    assert client.aufrufe == 1  # nur der Themen-Check, keine Extraktion
+
+    zaehler = lauf.taeglicher_lauf(db, client=client)
+
+    assert client.aufrufe == 1  # beim zweiten Lauf gar kein API-Aufruf mehr
+    assert zaehler["aus_cache"] == 1
+    assert db.query(DealVorschlag).count() == 0
+
+
+def test_geaenderter_rohtext_loest_erneuten_api_aufruf_aus(db, zwei_inhaber, monkeypatch):
+    """Wird derselbe Beitrag bearbeitet (z.B. höhere Prämie), muss trotz
+    gleicher URL neu geprüft werden."""
+    client = ZaehlenderFakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]),
+    )
+
+    fund_v1 = RohFund("mydealz", "https://mydealz.de/c24", "t", "125 Euro Praemie")
+    _patch_quellen(monkeypatch, [fund_v1])
+    lauf.taeglicher_lauf(db, client=client)
+    assert client.aufrufe == 2
+
+    fund_v2 = RohFund("mydealz", "https://mydealz.de/c24", "t", "jetzt 150 Euro Praemie")
+    _patch_quellen(monkeypatch, [fund_v2])
+    lauf.taeglicher_lauf(db, client=client)
+
+    assert client.aufrufe == 4  # erneuter Themen-Check + Extraktion
+
+
+def test_kaputter_cache_eintrag_wird_neu_extrahiert_statt_den_lauf_abzubrechen(db, zwei_inhaber, monkeypatch):
+    from praemien_tracker.models import FinderFund
+
+    fund = RohFund("mydealz", "https://mydealz.de/c24", "t", "125 Euro Praemie")
+    _patch_quellen(monkeypatch, [fund])
+    db.add(
+        FinderFund(
+            quelle="mydealz",
+            quelle_url=fund.quelle_url,
+            rohtext_hash=lauf._rohtext_hash(fund.text),
+            ist_relevant=True,
+            extraktion_json="das ist kein gueltiges AngebotExtraktion-JSON",
+        )
+    )
+    db.commit()
+
+    client = ZaehlenderFakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]),
+    )
+
+    zaehler = lauf.taeglicher_lauf(db, client=client)
+
+    # Ein kaputter Cache-Eintrag wird wie ein Cache-Miss behandelt: kompletter
+    # Themen-Check + Extraktion, statt den Lauf abzubrechen.
+    assert client.aufrufe == 2
+    assert zaehler["gefunden"] == 2
+
+
+def test_sperrfrist_wird_trotz_cache_treffer_neu_bewertet(db, zwei_inhaber, monkeypatch):
+    """Kernanliegen: das Matching muss weiterlaufen, auch wenn dank Cache
+    kein API-Aufruf mehr nötig ist - sonst würde eine inzwischen erreichte
+    Sperrfrist nie sichtbar."""
+    from praemien_tracker.models import Bank, Deal
+
+    Alice = zwei_inhaber[0]
+    santander = Bank(name="Santander")
+    db.add(santander)
+    db.commit()
+    # Kündigung vor 11 Monaten - Sperrfrist von 12 Monaten noch nicht erreicht.
+    heute = datetime.date.today().replace(day=1)
+    jahr, monat = heute.year, heute.month - 11
+    while monat <= 0:
+        monat += 12
+        jahr -= 1
+    db.add(
+        Deal(
+            bank=santander,
+            inhaber=Alice,
+            kontoart="Girokonto",
+            gekuendigt=True,
+            gekuendigt_im_monat=f"{jahr:04d}-{monat:02d}",
+        )
+    )
+    db.commit()
+
+    fund = RohFund("mydealz", "https://mydealz.de/santander", "t", "Santander 100 Euro")
+    _patch_quellen(monkeypatch, [fund])
+    client = ZaehlenderFakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="Santander", kontoart="Girokonto", praemie_betrag=100.0, sperrfrist_monate=12, bedingungen=[]),
+    )
+
+    lauf.taeglicher_lauf(db, client=client)
+    eintrag = db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == Alice.id).one()
+    assert eintrag.status == matching.STATUS_ABGELEHNT
+
+    # Zeit vergeht: Kündigung liegt jetzt 13 statt 11 Monate zurück -
+    # Sperrfrist erreicht. Rohtext bleibt gleich, also kein neuer API-Aufruf.
+    eintrag_deal = db.query(Deal).filter(Deal.bank_id == santander.id).one()
+    jahr2, monat2 = heute.year, heute.month - 13
+    while monat2 <= 0:
+        monat2 += 12
+        jahr2 -= 1
+    eintrag_deal.gekuendigt_im_monat = f"{jahr2:04d}-{monat2:02d}"
+    db.commit()
+
+    zaehler = lauf.taeglicher_lauf(db, client=client)
+
+    assert client.aufrufe == 2  # weiterhin nur der allererste Themen-Check + Extraktion
+    assert zaehler["aktualisiert"] >= 1
+    db.refresh(eintrag)
+    assert eintrag.status == matching.STATUS_VORGESCHLAGEN
+    # Immer noch nur eine Zeile je Inhaber, kein Duplikat.
+    assert db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == Alice.id).count() == 1
+
+
+def test_status_wird_nicht_fuer_bereits_entschiedene_vorschlaege_ueberschrieben(db, zwei_inhaber, monkeypatch):
+    """Ein vom Nutzer übernommener oder verworfener Vorschlag darf durch eine
+    erneute Bewertung nicht wieder verändert werden."""
+    fund = RohFund("mydealz", "https://mydealz.de/klein", "t", "5 Euro Praemie")
+    _patch_quellen(monkeypatch, [fund])
+    client = ZaehlenderFakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="Klein-Bank", kontoart="Girokonto", praemie_betrag=5.0, bedingungen=[]),
+    )
+
+    lauf.taeglicher_lauf(db, client=client)
+    eintrag = db.query(DealVorschlag).first()
+    eintrag.status = matching.STATUS_VERWORFEN
+    db.commit()
+
+    lauf.taeglicher_lauf(db, client=client)
+
+    db.refresh(eintrag)
+    assert eintrag.status == matching.STATUS_VERWORFEN

@@ -5,14 +5,27 @@ Jeder gefundene, thematisch passende Fund wird für *jeden* Inhaber als eigene
 Zeile gespeichert und angezeigt - auch bei Nichterfüllung. Nichts wird
 stillschweigend verworfen (zentrale Idee des Konzepts).
 
+Bevor ein Rohfund gegen die Anthropic-API geschickt wird, prüft der Lauf
+gegen FinderFund (models.py), ob dieselbe Quelle-URL mit demselben Rohtext
+schon einmal geprüft wurde. Trifft das zu, entfällt der API-Aufruf: ein
+bereits als irrelevant erkannter Fund wird direkt übersprungen, ein bereits
+extrahiertes Angebot wird aus dem Cache übernommen. Nur wenn sich der
+Rohtext geändert hat (z.B. ein bearbeiteter Beitrag) oder die URL neu ist,
+wird tatsächlich Themen-Check und/oder Struktur-Extraktion aufgerufen. Das
+deterministische Matching läuft trotzdem bei jedem Lauf erneut, weil sich
+z.B. eine Sperrfrist rein durch Zeitablauf ändern kann, ohne dass sich am
+Angebot selbst etwas ändert.
+
 Jeder Aufruf von taeglicher_lauf() schreibt am Ende immer eine FinderLauf-
 Zeile (models.py) - Grundlage für die Statusanzeige im Vorschläge-Tab:
-erfolgreich?, wie viele Funde je Quelle, wie viele neu, welche Fehler.
+erfolgreich?, wie viele Funde je Quelle, wie viele neu, wie viele aus dem
+Cache ohne API-Aufruf, welche Fehler.
 """
 
 from __future__ import annotations
 
 import datetime
+import hashlib
 import logging
 from dataclasses import dataclass, field
 
@@ -21,8 +34,9 @@ from sqlalchemy.orm import Session
 
 from .. import config
 from ..database import SessionLocal
-from ..models import DealVorschlag, FinderLauf, Inhaber, VorschlagBedingung
+from ..models import DealVorschlag, FinderFund, FinderLauf, Inhaber, VorschlagBedingung
 from . import extraktion, matching, notify
+from .extraktion import AngebotExtraktion
 from .quellen import RohFund, fetch_mydealz, fetch_spartanien
 
 logger = logging.getLogger("praemien_tracker.finder")
@@ -65,6 +79,32 @@ def _rohfunde_holen() -> _QuellenErgebnis:
     return ergebnis
 
 
+def _rohtext_hash(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _cache_speichern(
+    db: Session,
+    bestehender: FinderFund | None,
+    fund: RohFund,
+    rohtext_hash: str,
+    *,
+    ist_relevant: bool,
+    extraktion_ergebnis: AngebotExtraktion | None,
+) -> None:
+    """Legt den Cache-Eintrag an oder aktualisiert ihn (quelle_url ist
+    eindeutig - bei geändertem Rohtext wird der bestehende Eintrag
+    überschrieben, nicht dupliziert)."""
+    eintrag = bestehender
+    if eintrag is None:
+        eintrag = FinderFund(quelle=fund.quelle, quelle_url=fund.quelle_url)
+        db.add(eintrag)
+    eintrag.rohtext_hash = rohtext_hash
+    eintrag.ist_relevant = ist_relevant
+    eintrag.extraktion_json = extraktion_ergebnis.model_dump_json() if extraktion_ergebnis is not None else None
+    eintrag.zuletzt_gesehen_am = datetime.datetime.utcnow()
+
+
 def _protokoll_speichern(db: Session, **werte) -> None:
     """Schreibt eine neue FinderLauf-Zeile. Läuft in einer eigenen kleinen
     Transaktion - wird nach einem db.rollback() im Hauptteil aufgerufen,
@@ -83,10 +123,12 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
     (Scheduler-Job oder "Jetzt suchen") abstürzen zu lassen."""
     zaehler = {
         "gefunden": 0,
+        "aktualisiert": 0,
         matching.STATUS_VORGESCHLAGEN: 0,
         matching.STATUS_ZU_PRUEFEN: 0,
         matching.STATUS_ABGELEHNT: 0,
         "uebersprungen": 0,
+        "aus_cache": 0,
     }
 
     aktiver_client = client if client is not None else _anthropic_client()
@@ -104,34 +146,89 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
 
     try:
         for fund in quellen.alle:
-            try:
-                relevant = extraktion.ist_relevantes_angebot(aktiver_client, fund.text, model=config.ANTHROPIC_MODEL)
-            except Exception as exc:
-                logger.exception("Themen-Check für %s fehlgeschlagen, Fund wird übersprungen.", fund.quelle_url)
-                fehlermeldungen.append(f"Themen-Check für {fund.quelle_url}: {exc}")
-                zaehler["uebersprungen"] += 1
-                continue
-            if not relevant:
-                continue
+            rohtext_hash = _rohtext_hash(fund.text)
+            cache_eintrag = db.query(FinderFund).filter(FinderFund.quelle_url == fund.quelle_url).one_or_none()
 
-            try:
-                extrahiert = extraktion.extrahiere_angebot(aktiver_client, fund.text, model=config.ANTHROPIC_MODEL)
-            except Exception as exc:
-                logger.exception("Struktur-Extraktion für %s fehlgeschlagen, Fund wird übersprungen.", fund.quelle_url)
-                fehlermeldungen.append(f"Extraktion für {fund.quelle_url}: {exc}")
-                zaehler["uebersprungen"] += 1
-                continue
-            if extrahiert is None:
-                fehlermeldungen.append(f"Extraktion für {fund.quelle_url} lieferte kein Ergebnis.")
-                zaehler["uebersprungen"] += 1
-                continue
+            aus_cache = False
+            extrahiert: AngebotExtraktion | None = None
+
+            if cache_eintrag is not None and cache_eintrag.rohtext_hash == rohtext_hash:
+                cache_eintrag.zuletzt_gesehen_am = datetime.datetime.utcnow()
+                if not cache_eintrag.ist_relevant:
+                    zaehler["aus_cache"] += 1
+                    continue
+                try:
+                    extrahiert = AngebotExtraktion.model_validate_json(cache_eintrag.extraktion_json)
+                    aus_cache = True
+                except Exception:
+                    # Fällt z.B. an, wenn sich die extrahierten Felder seit
+                    # einem App-Update geändert haben - kein API-Fehler,
+                    # einfach neu extrahieren statt an einem kaputten
+                    # Cache-Eintrag festzuhalten.
+                    logger.exception(
+                        "Gecachte Extraktion für %s ließ sich nicht lesen, wird neu geprüft.", fund.quelle_url
+                    )
+
+            if not aus_cache:
+                try:
+                    relevant = extraktion.ist_relevantes_angebot(
+                        aktiver_client, fund.text, model=config.ANTHROPIC_MODEL
+                    )
+                except Exception as exc:
+                    logger.exception("Themen-Check für %s fehlgeschlagen, Fund wird übersprungen.", fund.quelle_url)
+                    fehlermeldungen.append(f"Themen-Check für {fund.quelle_url}: {exc}")
+                    zaehler["uebersprungen"] += 1
+                    continue
+                if not relevant:
+                    _cache_speichern(
+                        db, cache_eintrag, fund, rohtext_hash, ist_relevant=False, extraktion_ergebnis=None
+                    )
+                    continue
+
+                try:
+                    extrahiert = extraktion.extrahiere_angebot(aktiver_client, fund.text, model=config.ANTHROPIC_MODEL)
+                except Exception as exc:
+                    logger.exception(
+                        "Struktur-Extraktion für %s fehlgeschlagen, Fund wird übersprungen.", fund.quelle_url
+                    )
+                    fehlermeldungen.append(f"Extraktion für {fund.quelle_url}: {exc}")
+                    zaehler["uebersprungen"] += 1
+                    continue
+                if extrahiert is None:
+                    fehlermeldungen.append(f"Extraktion für {fund.quelle_url} lieferte kein Ergebnis.")
+                    zaehler["uebersprungen"] += 1
+                    continue
+
+                _cache_speichern(
+                    db, cache_eintrag, fund, rohtext_hash, ist_relevant=True, extraktion_ergebnis=extrahiert
+                )
+            else:
+                zaehler["aus_cache"] += 1
 
             # Pro Inhaber eine eigene Zeile, weil Sperrfrist- und Neukunden-
             # Prüfung je Inhaber unterschiedlich ausfallen kann (Konzept
-            # Abschnitt 5).
+            # Abschnitt 5). Läuft bewusst auch bei einem Cache-Treffer erneut
+            # (kostet nichts, ist reiner Python-Code): eine Sperrfrist kann
+            # rein durch Zeitablauf erfüllt werden, ohne dass sich am
+            # Angebot etwas ändert.
             for inhaber in inhaber_liste:
                 match = matching.bewerten(db, fund, extrahiert, inhaber, config.MINDESTPRAEMIE)
-                if matching.ist_duplikat(db, fund.quelle_url, inhaber.id, match.inhalt_hash):
+                bestehend = matching.bestehenden_vorschlag_finden(
+                    db, fund.quelle_url, inhaber.id, match.inhalt_hash
+                )
+                if bestehend is not None:
+                    # Gleicher Inhalt wie zuvor - i.d.R. nichts zu tun. Nur
+                    # wenn sich die Bewertung rein durch Zeitablauf geändert
+                    # hat (z.B. eine Sperrfrist ist inzwischen erreicht, ohne
+                    # dass sich am Angebot etwas geändert hätte), wird die
+                    # bestehende, noch offene Zeile nachgezogen - ein bereits
+                    # vom Nutzer übernommener oder verworfener Vorschlag
+                    # bleibt unangetastet.
+                    if bestehend.status in matching.STATUS_OFFEN and bestehend.status != match.status:
+                        bestehend.status = match.status
+                        bestehend.ablehnungsgruende = match.ablehnungsgruende
+                        zaehler["aktualisiert"] += 1
+                        zaehler[match.status] = zaehler.get(match.status, 0) + 1
                     continue
 
                 vorschlag = DealVorschlag(
@@ -171,6 +268,7 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
         spartanien_geladen=len(quellen.spartanien_funde),
         neu_gefunden=zaehler["gefunden"],
         uebersprungen=zaehler["uebersprungen"],
+        aus_cache=zaehler["aus_cache"],
         fehler="; ".join(fehlermeldungen) or None,
     )
 
@@ -184,12 +282,15 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
             logger.exception("HA-Benachrichtigung fehlgeschlagen.")
 
     logger.info(
-        "KI-Deal-Finder-Lauf abgeschlossen: %d gefunden (%d vorgeschlagen, %d zu prüfen, %d abgelehnt, %d übersprungen).",
+        "KI-Deal-Finder-Lauf abgeschlossen: %d gefunden, %d Status aktualisiert (%d vorgeschlagen, "
+        "%d zu prüfen, %d abgelehnt insgesamt), %d übersprungen, %d aus Cache ohne API-Aufruf.",
         zaehler["gefunden"],
+        zaehler["aktualisiert"],
         zaehler[matching.STATUS_VORGESCHLAGEN],
         zaehler[matching.STATUS_ZU_PRUEFEN],
         zaehler[matching.STATUS_ABGELEHNT],
         zaehler["uebersprungen"],
+        zaehler["aus_cache"],
     )
     return zaehler
 

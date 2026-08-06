@@ -194,7 +194,7 @@ def test_dedup_erkennt_unveraenderten_fund(db, Alice):
     fund = RohFund("mydealz", "https://mydealz.de/x", "t", "x")
     ext = AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[])
     ergebnis = matching.bewerten(db, fund, ext, Alice, MINDESTPRAEMIE)
-    assert not matching.ist_duplikat(db, fund.quelle_url, Alice.id, ergebnis.inhalt_hash)
+    assert matching.bestehenden_vorschlag_finden(db, fund.quelle_url, Alice.id, ergebnis.inhalt_hash) is None
 
     db.add(
         DealVorschlag(
@@ -213,7 +213,9 @@ def test_dedup_erkennt_unveraenderten_fund(db, Alice):
     )
     db.commit()
 
-    assert matching.ist_duplikat(db, fund.quelle_url, Alice.id, ergebnis.inhalt_hash)
+    gefunden = matching.bestehenden_vorschlag_finden(db, fund.quelle_url, Alice.id, ergebnis.inhalt_hash)
+    assert gefunden is not None
+    assert gefunden.bank_name == "C24"
 
 
 def test_geaenderte_praemie_ist_kein_duplikat(db, Alice):
@@ -242,4 +244,4 @@ def test_geaenderte_praemie_ist_kein_duplikat(db, Alice):
     ext_neu = AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=150.0, bedingungen=[])
     ergebnis_neu = matching.bewerten(db, fund, ext_neu, Alice, MINDESTPRAEMIE)
     assert ergebnis_neu.inhalt_hash != ergebnis_alt.inhalt_hash
-    assert not matching.ist_duplikat(db, fund.quelle_url, Alice.id, ergebnis_neu.inhalt_hash)
+    assert matching.bestehenden_vorschlag_finden(db, fund.quelle_url, Alice.id, ergebnis_neu.inhalt_hash) is None

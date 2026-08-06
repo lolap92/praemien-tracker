@@ -36,6 +36,12 @@
       <span class="lauf-label">übersprungen</span>
     </div>
     {% endif %}
+    {% if letzter_lauf.aus_cache %}
+    <div>
+      <span class="lauf-wert">{{ letzter_lauf.aus_cache }}</span>
+      <span class="lauf-label">aus Cache, kein API-Aufruf</span>
+    </div>
+    {% endif %}
   </div>
   {% if letzter_lauf.fehler %}
   <div class="vorschlag-begruendung abgelehnt">{{ letzter_lauf.fehler }}</div>

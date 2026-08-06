@@ -62,6 +62,16 @@ vorgeschlagen, auch nicht nach dem Verwerfen.
 
 Die Suche gilt für **alle** Inhaber, auch minderjährige.
 
+**API-Nutzung wird minimiert:** Bevor ein Fund an Claude geschickt wird,
+prüft die App anhand eines Rohtext-Abgleichs, ob dieselbe Quelle-URL mit
+demselben Text schon einmal geprüft wurde. Ein unverändertes Angebot löst
+dann keinen erneuten API-Aufruf mehr aus - ein bereits als thematisch
+unpassend erkannter Fund (z. B. keine Bank-Prämie) wird dauerhaft
+übersprungen, ein bereits extrahiertes Angebot wird aus dem Cache
+wiederverwendet. Nur wenn sich der Rohtext ändert (z. B. ein bearbeiteter
+Beitrag), wird erneut geprüft. Die Übersicht im Vorschläge-Tab zeigt, wie
+viele Funde je Lauf ganz ohne API-Aufruf erledigt wurden.
+
 ## Erste Schritte
 
 1. Add-on starten.

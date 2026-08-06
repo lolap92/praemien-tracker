@@ -23,6 +23,10 @@ STATUS_ABGELEHNT = "automatisch_abgelehnt"
 STATUS_UEBERNOMMEN = "uebernommen"
 STATUS_VERWORFEN = "verworfen"
 
+# Noch nicht vom Nutzer entschieden - im Unterschied zu uebernommen/verworfen
+# darf lauf.py diese Zeilen bei einer erneuten Bewertung noch verändern.
+STATUS_OFFEN = (STATUS_VORGESCHLAGEN, STATUS_ZU_PRUEFEN, STATUS_ABGELEHNT)
+
 EINSCHAETZUNG_ERFUELLT = "erfuellt"
 EINSCHAETZUNG_ZU_PRUEFEN = "zu_pruefen"
 EINSCHAETZUNG_NICHT_ERFUELLT = "nicht_erfuellt"
@@ -232,12 +236,20 @@ def bewerten(
     )
 
 
-def ist_duplikat(db: Session, quelle_url: str, inhaber_id: int, inhalt_hash: str) -> bool:
-    """True, wenn für diese Quelle+Inhaber schon ein inhaltsgleicher Vorschlag
-    existiert - unabhängig von dessen Status (auch ein bereits übernommener
-    oder verworfener zählt, damit ein unveränderter Fund nicht erneut
-    auftaucht). Bei geänderten Daten (anderer Hash) greift diese Prüfung
-    bewusst nicht: dann entsteht ein neuer Datensatz."""
+def bestehenden_vorschlag_finden(
+    db: Session, quelle_url: str, inhaber_id: int, inhalt_hash: str
+) -> DealVorschlag | None:
+    """Liefert den Vorschlag mit identischem Inhalt (gleicher Hash) für diese
+    Quelle+Inhaber, falls vorhanden - unabhängig von dessen Status (auch ein
+    bereits übernommener oder verworfener zählt). Bei geänderten Daten
+    (anderer Hash, z.B. eine höhere Prämie) greift diese Prüfung bewusst
+    nicht: dann liefert sie None und es entsteht ein neuer Datensatz.
+
+    Ein Treffer heißt nicht zwangsläufig "nichts zu tun" - lauf.py nutzt ihn
+    auch, um den Status einer bestehenden, noch offenen Zeile nachzuziehen,
+    wenn sich die Bewertung rein durch Zeitablauf geändert hat (z.B. eine
+    Sperrfrist ist inzwischen erreicht, obwohl sich am Angebot selbst nichts
+    geändert hat und deshalb kein neuer API-Aufruf nötig war)."""
     return (
         db.query(DealVorschlag)
         .filter(
@@ -246,5 +258,4 @@ def ist_duplikat(db: Session, quelle_url: str, inhaber_id: int, inhalt_hash: str
             DealVorschlag.inhalt_hash == inhalt_hash,
         )
         .first()
-        is not None
     )
