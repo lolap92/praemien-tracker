@@ -18,7 +18,7 @@ MINDESTPRAEMIE = Decimal("50")
 
 
 @pytest.fixture()
-def Alice(db):
+def alice(db):
     inhaber = Inhaber(name="Alice")
     db.add(inhaber)
     db.commit()
@@ -34,7 +34,7 @@ def _monat_vor(monate: int, heute: datetime.date | None = None) -> str:
     return f"{jahr:04d}-{monat:02d}"
 
 
-def test_echter_neukunde_wird_vorgeschlagen(db, Alice):
+def test_echter_neukunde_wird_vorgeschlagen(db, alice):
     fund = RohFund("mydealz", "https://mydealz.de/c24", "t", "x")
     ext = AngebotExtraktion(
         bank_name="C24",
@@ -42,7 +42,7 @@ def test_echter_neukunde_wird_vorgeschlagen(db, Alice):
         praemie_betrag=125.0,
         bedingungen=[BedingungExtraktion(beschreibung="3 Kartenzahlungen", einschaetzung="erfuellt")],
     )
-    ergebnis = matching.bewerten(db, fund, ext, Alice, MINDESTPRAEMIE)
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
     assert ergebnis.status == matching.STATUS_VORGESCHLAGEN
     assert ergebnis.ablehnungsgruende is None
     # roh_json muss unverändert vom bestehenden JSON-Import validiert werden
@@ -50,15 +50,15 @@ def test_echter_neukunde_wird_vorgeschlagen(db, Alice):
     DealImport.model_validate_json(ergebnis.roh_json)
 
 
-def test_praemie_unter_mindestbetrag_wird_abgelehnt(db, Alice):
+def test_praemie_unter_mindestbetrag_wird_abgelehnt(db, alice):
     fund = RohFund("mydealz", "https://mydealz.de/norwegian", "t", "x")
     ext = AngebotExtraktion(bank_name="Bank Norwegian", kontoart="Kreditkarte", praemie_betrag=15.0, bedingungen=[])
-    ergebnis = matching.bewerten(db, fund, ext, Alice, MINDESTPRAEMIE)
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
     assert ergebnis.status == matching.STATUS_ABGELEHNT
     assert "Mindestprämie" in ergebnis.ablehnungsgruende
 
 
-def test_zwingender_gehaltseingang_wird_abgelehnt(db, Alice):
+def test_zwingender_gehaltseingang_wird_abgelehnt(db, alice):
     fund = RohFund("spartanien", "https://spartanien.de/consors", "t", "x")
     ext = AngebotExtraktion(
         bank_name="Consorsbank",
@@ -68,12 +68,12 @@ def test_zwingender_gehaltseingang_wird_abgelehnt(db, Alice):
             BedingungExtraktion(beschreibung="Gehaltseingang von mind. 1000€", einschaetzung="nicht_erfuellt")
         ],
     )
-    ergebnis = matching.bewerten(db, fund, ext, Alice, MINDESTPRAEMIE)
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
     assert ergebnis.status == matching.STATUS_ABGELEHNT
     assert "Gehaltseingang" in ergebnis.ablehnungsgruende
 
 
-def test_unklare_bedingung_fuehrt_zu_pruefen_nicht_zu_ablehnung(db, Alice):
+def test_unklare_bedingung_fuehrt_zu_pruefen_nicht_zu_ablehnung(db, alice):
     """Zentrale Idee des Konzepts: im Zweifel eher vorschlagen als
     ausschließen."""
     fund = RohFund("mydealz", "https://mydealz.de/unklar", "t", "x")
@@ -83,19 +83,19 @@ def test_unklare_bedingung_fuehrt_zu_pruefen_nicht_zu_ablehnung(db, Alice):
         praemie_betrag=100.0,
         bedingungen=[BedingungExtraktion(beschreibung="regelmäßiger Geldeingang", einschaetzung="zu_pruefen")],
     )
-    ergebnis = matching.bewerten(db, fund, ext, Alice, MINDESTPRAEMIE)
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
     assert ergebnis.status == matching.STATUS_ZU_PRUEFEN
     assert "unklar" in ergebnis.ablehnungsgruende.lower() or "regelmäßiger" in ergebnis.ablehnungsgruende
 
 
-def test_sperrfrist_noch_nicht_erreicht_wird_abgelehnt(db, Alice):
+def test_sperrfrist_noch_nicht_erreicht_wird_abgelehnt(db, alice):
     santander = Bank(name="Santander")
     db.add(santander)
     db.commit()
     db.add(
         Deal(
             bank=santander,
-            inhaber=Alice,
+            inhaber=alice,
             kontoart="Girokonto",
             gekuendigt=True,
             gekuendigt_im_monat=_monat_vor(3),
@@ -105,19 +105,19 @@ def test_sperrfrist_noch_nicht_erreicht_wird_abgelehnt(db, Alice):
 
     fund = RohFund("mydealz", "https://mydealz.de/santander", "t", "x")
     ext = AngebotExtraktion(bank_name="Santander", kontoart="Girokonto", praemie_betrag=100.0, sperrfrist_monate=12, bedingungen=[])
-    ergebnis = matching.bewerten(db, fund, ext, Alice, MINDESTPRAEMIE)
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
     assert ergebnis.status == matching.STATUS_ABGELEHNT
     assert "Sperrfrist" in ergebnis.ablehnungsgruende
 
 
-def test_sperrfrist_erreicht_wird_vorgeschlagen(db, Alice):
+def test_sperrfrist_erreicht_wird_vorgeschlagen(db, alice):
     santander = Bank(name="Santander")
     db.add(santander)
     db.commit()
     db.add(
         Deal(
             bank=santander,
-            inhaber=Alice,
+            inhaber=alice,
             kontoart="Girokonto",
             gekuendigt=True,
             gekuendigt_im_monat=_monat_vor(13),
@@ -127,78 +127,78 @@ def test_sperrfrist_erreicht_wird_vorgeschlagen(db, Alice):
 
     fund = RohFund("mydealz", "https://mydealz.de/santander", "t", "x")
     ext = AngebotExtraktion(bank_name="Santander", kontoart="Girokonto", praemie_betrag=100.0, sperrfrist_monate=12, bedingungen=[])
-    ergebnis = matching.bewerten(db, fund, ext, Alice, MINDESTPRAEMIE)
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
     assert ergebnis.status == matching.STATUS_VORGESCHLAGEN
 
 
-def test_unbekannte_sperrfrist_fuehrt_zu_pruefen(db, Alice):
+def test_unbekannte_sperrfrist_fuehrt_zu_pruefen(db, alice):
     bank = Bank(name="Testbank")
     db.add(bank)
     db.commit()
-    db.add(Deal(bank=bank, inhaber=Alice, kontoart="Girokonto", gekuendigt=True, gekuendigt_im_monat=_monat_vor(3)))
+    db.add(Deal(bank=bank, inhaber=alice, kontoart="Girokonto", gekuendigt=True, gekuendigt_im_monat=_monat_vor(3)))
     db.commit()
 
     fund = RohFund("mydealz", "https://mydealz.de/testbank", "t", "x")
     ext = AngebotExtraktion(bank_name="Testbank", kontoart="Girokonto", praemie_betrag=100.0, sperrfrist_monate=None, bedingungen=[])
-    ergebnis = matching.bewerten(db, fund, ext, Alice, MINDESTPRAEMIE)
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
     assert ergebnis.status == matching.STATUS_ZU_PRUEFEN
 
 
-def test_bereits_aktiver_kunde_ohne_kuendigung_wird_abgelehnt(db, Alice):
+def test_bereits_aktiver_kunde_ohne_kuendigung_wird_abgelehnt(db, alice):
     bank = Bank(name="Testbank")
     db.add(bank)
     db.commit()
-    db.add(Deal(bank=bank, inhaber=Alice, kontoart="Girokonto", gekuendigt=False))
+    db.add(Deal(bank=bank, inhaber=alice, kontoart="Girokonto", gekuendigt=False))
     db.commit()
 
     fund = RohFund("mydealz", "https://mydealz.de/testbank2", "t", "x")
     ext = AngebotExtraktion(bank_name="Testbank", kontoart="Girokonto", praemie_betrag=100.0, bedingungen=[])
-    ergebnis = matching.bewerten(db, fund, ext, Alice, MINDESTPRAEMIE)
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
     assert ergebnis.status == matching.STATUS_ABGELEHNT
     assert "bereits Kundin" in ergebnis.ablehnungsgruende
 
 
-def test_stornierter_deal_zaehlt_nicht_als_vorkunde(db, Alice):
+def test_stornierter_deal_zaehlt_nicht_als_vorkunde(db, alice):
     """Analog zum Kernmodell (Deal.storniert): ein Deal, der nie zustande kam,
     darf die Sperrfristen-Prüfung nicht beeinflussen."""
     bank = Bank(name="Testbank")
     db.add(bank)
     db.commit()
-    db.add(Deal(bank=bank, inhaber=Alice, kontoart="Girokonto", gekuendigt=True, storniert=True))
+    db.add(Deal(bank=bank, inhaber=alice, kontoart="Girokonto", gekuendigt=True, storniert=True))
     db.commit()
 
     fund = RohFund("mydealz", "https://mydealz.de/testbank3", "t", "x")
     ext = AngebotExtraktion(bank_name="Testbank", kontoart="Girokonto", praemie_betrag=100.0, bedingungen=[])
-    ergebnis = matching.bewerten(db, fund, ext, Alice, MINDESTPRAEMIE)
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
     assert ergebnis.status == matching.STATUS_VORGESCHLAGEN
 
 
-def test_mydealz_quelle_wird_beim_uebernehmen_auf_bank_gemappt(db, Alice):
+def test_mydealz_quelle_wird_beim_uebernehmen_auf_bank_gemappt(db, alice):
     fund = RohFund("mydealz", "https://mydealz.de/x", "t", "x")
     ext = AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[])
-    ergebnis = matching.bewerten(db, fund, ext, Alice, MINDESTPRAEMIE)
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
     daten = DealImport.model_validate_json(ergebnis.roh_json)
     assert daten.praemien[0].quelle == "bank"
     assert daten.urls[0].url == fund.quelle_url
 
 
-def test_spartanien_quelle_bleibt_spartanien(db, Alice):
+def test_spartanien_quelle_bleibt_spartanien(db, alice):
     fund = RohFund("spartanien", "https://spartanien.de/x", "t", "x")
     ext = AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[])
-    ergebnis = matching.bewerten(db, fund, ext, Alice, MINDESTPRAEMIE)
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
     daten = DealImport.model_validate_json(ergebnis.roh_json)
     assert daten.praemien[0].quelle == "spartanien"
 
 
-def test_dedup_erkennt_unveraenderten_fund(db, Alice):
+def test_dedup_erkennt_unveraenderten_fund(db, alice):
     fund = RohFund("mydealz", "https://mydealz.de/x", "t", "x")
     ext = AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[])
-    ergebnis = matching.bewerten(db, fund, ext, Alice, MINDESTPRAEMIE)
-    assert matching.bestehenden_vorschlag_finden(db, fund.quelle_url, Alice.id, ergebnis.inhalt_hash) is None
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
+    assert matching.bestehenden_vorschlag_finden(db, fund.quelle_url, alice.id, ergebnis.inhalt_hash) is None
 
     db.add(
         DealVorschlag(
-            inhaber_id=Alice.id,
+            inhaber_id=alice.id,
             quelle=fund.quelle,
             quelle_url=fund.quelle_url,
             bank_name=ext.bank_name,
@@ -213,20 +213,20 @@ def test_dedup_erkennt_unveraenderten_fund(db, Alice):
     )
     db.commit()
 
-    gefunden = matching.bestehenden_vorschlag_finden(db, fund.quelle_url, Alice.id, ergebnis.inhalt_hash)
+    gefunden = matching.bestehenden_vorschlag_finden(db, fund.quelle_url, alice.id, ergebnis.inhalt_hash)
     assert gefunden is not None
     assert gefunden.bank_name == "C24"
 
 
-def test_geaenderte_praemie_ist_kein_duplikat(db, Alice):
+def test_geaenderte_praemie_ist_kein_duplikat(db, alice):
     """Explizite Entscheidung: bei geänderten Daten (z.B. höhere Prämie)
     entsteht ein neuer Datensatz statt eines stillen Updates."""
     fund = RohFund("mydealz", "https://mydealz.de/x", "t", "x")
     ext_alt = AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[])
-    ergebnis_alt = matching.bewerten(db, fund, ext_alt, Alice, MINDESTPRAEMIE)
+    ergebnis_alt = matching.bewerten(db, fund, ext_alt, alice, MINDESTPRAEMIE)
     db.add(
         DealVorschlag(
-            inhaber_id=Alice.id,
+            inhaber_id=alice.id,
             quelle=fund.quelle,
             quelle_url=fund.quelle_url,
             bank_name=ext_alt.bank_name,
@@ -242,6 +242,6 @@ def test_geaenderte_praemie_ist_kein_duplikat(db, Alice):
     db.commit()
 
     ext_neu = AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=150.0, bedingungen=[])
-    ergebnis_neu = matching.bewerten(db, fund, ext_neu, Alice, MINDESTPRAEMIE)
+    ergebnis_neu = matching.bewerten(db, fund, ext_neu, alice, MINDESTPRAEMIE)
     assert ergebnis_neu.inhalt_hash != ergebnis_alt.inhalt_hash
-    assert matching.bestehenden_vorschlag_finden(db, fund.quelle_url, Alice.id, ergebnis_neu.inhalt_hash) is None
+    assert matching.bestehenden_vorschlag_finden(db, fund.quelle_url, alice.id, ergebnis_neu.inhalt_hash) is None

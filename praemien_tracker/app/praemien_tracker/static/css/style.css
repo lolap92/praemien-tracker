@@ -1436,23 +1436,61 @@ table.lauf-tabelle tr:hover {
   letter-spacing: -0.01em;
 }
 
-.vorschlag-titel .meta {
-  color: var(--ink-soft);
-  font-size: 0.8rem;
-  margin-top: 0.1rem;
+.vorschlag-titel-rechts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
 }
 
-.vorschlag-quelle {
+/* Öffnet die zugehörige Deal-Seite (mydealz/spartanien) in einem neuen Tab. */
+.vorschlag-link {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent-ink);
+  white-space: nowrap;
+  text-decoration: none;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+}
+.vorschlag-link:hover {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+.vorschlag-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.vorschlag-tag {
   display: inline-flex;
   align-items: center;
   font-size: 0.7rem;
   font-weight: 600;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
+  width: fit-content;
+}
+
+.vorschlag-tag.tag-mydealz,
+.vorschlag-tag.tag-spartanien {
   background: rgba(185, 130, 47, 0.14);
   color: var(--st-wait);
-  width: fit-content;
-  margin-top: 0.6rem;
+}
+
+.vorschlag-tag.tag-kontoart {
+  background: rgba(61, 90, 138, 0.12);
+  color: var(--st-confirm);
+}
+
+.vorschlag-tag.tag-kind {
+  background: rgba(15, 124, 103, 0.13);
+  color: var(--accent-ink);
 }
 
 .vorschlag-begruendung {

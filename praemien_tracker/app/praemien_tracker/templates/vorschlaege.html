@@ -92,7 +92,7 @@
       </label>
       <label>
         <input type="checkbox" name="typ" value="kind" {{ "checked" if "kind" in filter_typ else "" }}>
-        Kinderdepot
+        Für Kinder
       </label>
     </div>
   </details>
@@ -160,6 +160,35 @@
 </div>
 {% endmacro %}
 
+{% macro vorschlag_karte(g) %}
+<div class="card vorschlag-karte status-{{ g.status }}">
+  <div class="vorschlag-titel">
+    <div class="bank">{{ g.bank_name }}</div>
+    <div class="vorschlag-titel-rechts">
+      <a class="vorschlag-link" href="{{ g.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
+      <div class="geld d-amt">{{ g.praemie_betrag | eur }}</div>
+    </div>
+  </div>
+  <div class="vorschlag-tags">
+    <span class="vorschlag-tag tag-{{ g.quelle }}">{{ g.quelle }}</span>
+    {% if g.kontoart %}<span class="vorschlag-tag tag-kontoart">{{ g.kontoart }}</span>{% endif %}
+    {% if g.mitglieder | selectattr('inhaber.ist_minderjaehrig') | list %}
+    <span class="vorschlag-tag tag-kind">Auch für Kinder</span>
+    {% endif %}
+  </div>
+  {{ bedingungen_liste(g) }}
+  <form class="vorschlag-aktionen" method="post" action="vorschlaege/uebernehmen">
+    {{ mitglieder_liste(g) }}
+    {% if g.status == "automatisch_abgelehnt" %}
+    <button type="submit" class="secondary">Trotzdem übernehmen</button>
+    {% else %}
+    <button type="submit">Übernehmen</button>
+    {% endif %}
+    <button type="submit" class="secondary" formaction="vorschlaege/verwerfen">Verwerfen</button>
+  </form>
+</div>
+{% endmacro %}
+
 {% if vorgeschlagen %}
 <div class="todo-gruppe-head">
   <span class="tag tag-vorgeschlagen"></span>
@@ -167,22 +196,7 @@
   <span class="num">Kriterien erfüllt</span>
 </div>
 {% for g in vorgeschlagen %}
-<div class="card vorschlag-karte status-vorgeschlagen">
-  <div class="vorschlag-titel">
-    <div>
-      <div class="bank">{{ g.bank_name }}</div>
-      <div class="meta">{{ g.kontoart }}</div>
-    </div>
-    <div class="geld d-amt">{{ g.praemie_betrag | eur }}</div>
-  </div>
-  <div class="vorschlag-quelle">{{ g.quelle }}</div>
-  {{ bedingungen_liste(g) }}
-  <form class="vorschlag-aktionen" method="post" action="vorschlaege/uebernehmen">
-    {{ mitglieder_liste(g) }}
-    <button type="submit">Übernehmen</button>
-    <button type="submit" class="secondary" formaction="vorschlaege/verwerfen">Verwerfen</button>
-  </form>
-</div>
+{{ vorschlag_karte(g) }}
 {% endfor %}
 {% endif %}
 
@@ -193,22 +207,7 @@
   <span class="num">unklar, manuell entscheiden</span>
 </div>
 {% for g in zu_pruefen %}
-<div class="card vorschlag-karte status-zu_pruefen">
-  <div class="vorschlag-titel">
-    <div>
-      <div class="bank">{{ g.bank_name }}</div>
-      <div class="meta">{{ g.kontoart }}</div>
-    </div>
-    <div class="geld d-amt">{{ g.praemie_betrag | eur }}</div>
-  </div>
-  <div class="vorschlag-quelle">{{ g.quelle }}</div>
-  {{ bedingungen_liste(g) }}
-  <form class="vorschlag-aktionen" method="post" action="vorschlaege/uebernehmen">
-    {{ mitglieder_liste(g) }}
-    <button type="submit">Übernehmen</button>
-    <button type="submit" class="secondary" formaction="vorschlaege/verwerfen">Verwerfen</button>
-  </form>
-</div>
+{{ vorschlag_karte(g) }}
 {% endfor %}
 {% endif %}
 
@@ -216,22 +215,7 @@
 <details class="json-import">
   <summary>{{ automatisch_abgelehnt | length }} automatisch abgelehnte anzeigen</summary>
   {% for g in automatisch_abgelehnt %}
-  <div class="card vorschlag-karte status-automatisch_abgelehnt">
-    <div class="vorschlag-titel">
-      <div>
-        <div class="bank">{{ g.bank_name }}</div>
-        <div class="meta">{{ g.kontoart }}</div>
-      </div>
-      <div class="geld d-amt">{{ g.praemie_betrag | eur }}</div>
-    </div>
-    <div class="vorschlag-quelle">{{ g.quelle }}</div>
-    {{ bedingungen_liste(g) }}
-    <form class="vorschlag-aktionen" method="post" action="vorschlaege/uebernehmen">
-      {{ mitglieder_liste(g) }}
-      <button type="submit" class="secondary">Trotzdem übernehmen</button>
-      <button type="submit" class="secondary" formaction="vorschlaege/verwerfen">Verwerfen</button>
-    </form>
-  </div>
+  {{ vorschlag_karte(g) }}
   {% endfor %}
 </details>
 {% endif %}

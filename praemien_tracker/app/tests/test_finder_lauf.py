@@ -50,13 +50,13 @@ class ZaehlenderFakeClient:
 
 @pytest.fixture()
 def zwei_inhaber(db):
-    """Erwachsene und minderjährige Inhaber - der Lauf soll für *alle*
-    gelten, nicht nur Erwachsene (explizite Entscheidung, kein Filter)."""
-    Alice = Inhaber(name="Alice")
-    Max = Inhaber(name="Max", ist_minderjaehrig=True)
-    db.add_all([Alice, Max])
+    """Zwei erwachsene Inhaber - der Lauf legt je Inhaber eine eigene Zeile an
+    (siehe finder/lauf.py). Namen sind frei erfundene Test-Platzhalter."""
+    alice = Inhaber(name="Alice")
+    bob = Inhaber(name="Bob")
+    db.add_all([alice, bob])
     db.commit()
-    return [Alice, Max]
+    return [alice, bob]
 
 
 def _patch_quellen(monkeypatch, funde: list[RohFund]) -> None:
@@ -71,7 +71,7 @@ def test_lauf_ohne_client_tut_nichts(db, zwei_inhaber, monkeypatch):
     assert db.query(DealVorschlag).count() == 0
 
 
-def test_lauf_legt_pro_inhaber_eine_zeile_an_auch_fuer_kinder(db, zwei_inhaber, monkeypatch):
+def test_lauf_legt_pro_inhaber_eine_zeile_an(db, zwei_inhaber, monkeypatch):
     fund = RohFund("mydealz", "https://mydealz.de/c24", "C24 125 Euro", "Neukunden erhalten 125 Euro.")
     _patch_quellen(monkeypatch, [fund])
     client = FakeClient(
@@ -86,7 +86,51 @@ def test_lauf_legt_pro_inhaber_eine_zeile_an_auch_fuer_kinder(db, zwei_inhaber, 
     assert zaehler[matching.STATUS_VORGESCHLAGEN] == 2
     zeilen = db.query(DealVorschlag).all()
     inhaber_namen = {z.inhaber.name for z in zeilen}
-    assert inhaber_namen == {"Alice", "Max"}
+    assert inhaber_namen == {"Alice", "Bob"}
+
+
+def test_minderjaehrige_bekommen_nur_kinderdeals(db, monkeypatch):
+    """Einem minderjährigen Inhaber wird ein Angebot nur vorgeschlagen, wenn es
+    laut Extraktion (auch) für Kinder abschließbar ist (fuer_kinder=True).
+    Reine Erwachsenen-Angebote (Default fuer_kinder=False) erscheinen für das
+    Kind gar nicht - der Erwachsene bekommt sie normal."""
+    erwachsen = Inhaber(name="Alice")
+    kind = Inhaber(name="Kim", ist_minderjaehrig=True)
+    db.add_all([erwachsen, kind])
+    db.commit()
+
+    # Eindeutiger Marker im Rohtext (der Extraktions-Prompt selbst nennt
+    # "Junior-Depot" als Beispiel - deshalb ein Token, das nur im Fund steht).
+    erwachsenen_deal = RohFund("mydealz", "https://mydealz.de/giro", "t", "nur Erwachsene")
+    kinder_deal = RohFund("mydealz", "https://mydealz.de/junior", "t", "Angebot MARKER_KIND fuer Junge")
+    monkeypatch.setattr(lauf, "fetch_mydealz", lambda gruppe, **kw: [erwachsenen_deal, kinder_deal])
+    monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [])
+
+    class NachTextMessages:
+        def parse(self, *, output_format, messages, **kwargs):
+            text = messages[-1]["content"] if messages else ""
+            if output_format is RelevanzErgebnis:
+                return SimpleNamespace(parsed_output=RelevanzErgebnis(ist_relevant=True), stop_reason="end_turn")
+            ist_kinder = "MARKER_KIND" in text
+            return SimpleNamespace(
+                parsed_output=AngebotExtraktion(
+                    bank_name="Bank", kontoart="Depot" if ist_kinder else "Girokonto",
+                    praemie_betrag=125.0, fuer_kinder=ist_kinder, bedingungen=[],
+                ),
+                stop_reason="end_turn",
+            )
+
+    class NachTextClient:
+        messages = NachTextMessages()
+
+    lauf.taeglicher_lauf(db, client=NachTextClient())
+
+    zeilen = db.query(DealVorschlag).all()
+    # Erwachsener: beide Deals. Kind: nur der Junior-Deal.
+    erwachsenen_urls = {z.quelle_url for z in zeilen if z.inhaber_id == erwachsen.id}
+    kind_urls = {z.quelle_url for z in zeilen if z.inhaber_id == kind.id}
+    assert erwachsenen_urls == {"https://mydealz.de/giro", "https://mydealz.de/junior"}
+    assert kind_urls == {"https://mydealz.de/junior"}
 
 
 def test_doppelter_fund_in_einem_lauf_wird_nur_einmal_verarbeitet(db, zwei_inhaber, monkeypatch):
@@ -436,7 +480,7 @@ def test_sperrfrist_wird_trotz_cache_treffer_neu_bewertet(db, zwei_inhaber, monk
     Sperrfrist nie sichtbar."""
     from praemien_tracker.models import Bank, Deal
 
-    Alice = zwei_inhaber[0]
+    alice = zwei_inhaber[0]
     santander = Bank(name="Santander")
     db.add(santander)
     db.commit()
@@ -449,7 +493,7 @@ def test_sperrfrist_wird_trotz_cache_treffer_neu_bewertet(db, zwei_inhaber, monk
     db.add(
         Deal(
             bank=santander,
-            inhaber=Alice,
+            inhaber=alice,
             kontoart="Girokonto",
             gekuendigt=True,
             gekuendigt_im_monat=f"{jahr:04d}-{monat:02d}",
@@ -465,7 +509,7 @@ def test_sperrfrist_wird_trotz_cache_treffer_neu_bewertet(db, zwei_inhaber, monk
     )
 
     lauf.taeglicher_lauf(db, client=client)
-    eintrag = db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == Alice.id).one()
+    eintrag = db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == alice.id).one()
     assert eintrag.status == matching.STATUS_ABGELEHNT
 
     # Zeit vergeht: Kündigung liegt jetzt 13 statt 11 Monate zurück -
@@ -486,7 +530,7 @@ def test_sperrfrist_wird_trotz_cache_treffer_neu_bewertet(db, zwei_inhaber, monk
     db.refresh(eintrag)
     assert eintrag.status == matching.STATUS_VORGESCHLAGEN
     # Immer noch nur eine Zeile je Inhaber, kein Duplikat.
-    assert db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == Alice.id).count() == 1
+    assert db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == alice.id).count() == 1
 
 
 def test_status_wird_nicht_fuer_bereits_entschiedene_vorschlaege_ueberschrieben(db, zwei_inhaber, monkeypatch):

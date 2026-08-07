@@ -24,11 +24,11 @@ def inhaber(db):
 
 @pytest.fixture()
 def zwei_inhaber(db):
-    Alice = Inhaber(name="Alice")
+    alice = Inhaber(name="Alice")
     max_ = Inhaber(name="Max", ist_minderjaehrig=True)
-    db.add_all([Alice, max_])
+    db.add_all([alice, max_])
     db.commit()
-    return Alice, max_
+    return alice, max_
 
 
 def _vorschlag(db, inhaber, status: str, **kwargs) -> DealVorschlag:
@@ -68,11 +68,51 @@ def test_vorschlaege_seite_gruppiert_nach_status(db, inhaber):
     assert "1 abgelehnt" in antwort.text
 
 
+def test_karte_hat_deal_link_und_tags(db, inhaber):
+    _vorschlag(
+        db,
+        inhaber,
+        "vorgeschlagen",
+        quelle="spartanien",
+        quelle_url="https://www.spartanien.de/Santander+BestGiro",
+        kontoart="Tagesgeld",
+    )
+
+    antwort = client.get("/vorschlaege")
+    assert antwort.status_code == 200
+    # Link öffnet die Deal-Seite in einem neuen Tab.
+    assert 'href="https://www.spartanien.de/Santander+BestGiro"' in antwort.text
+    assert 'target="_blank"' in antwort.text
+    # Tags: Quelle und Kontoart.
+    assert "spartanien" in antwort.text
+    assert "Tagesgeld" in antwort.text
+
+
+def test_karte_zeigt_kinderdepot_tag_nur_bei_minderjaehrigem(db, zwei_inhaber):
+    """Ein Fund, der (auch) zu einem minderjährigen Inhaber passt, bekommt den
+    Kinderdepot-Tag; ein reiner Erwachsenen-Fund nicht."""
+    alice, max_ = zwei_inhaber
+    _vorschlag(db, max_, "vorgeschlagen", quelle_url="https://www.mydealz.de/kind", inhalt_hash="k1",
+               kontoart="Depot")
+    antwort = client.get("/vorschlaege")
+    # Gezielt auf den Karten-Tag prüfen ("Kinderdepot" steht auch im Filter).
+    assert "tag-kind" in antwort.text
+
+    # Neuer Lauf-Kontext: nur ein Erwachsener -> kein Kinderdepot-Tag.
+    from praemien_tracker.models import DealVorschlag as _DV
+
+    db.query(_DV).delete()
+    db.commit()
+    _vorschlag(db, alice, "vorgeschlagen", quelle_url="https://www.mydealz.de/erw", inhalt_hash="e1")
+    antwort2 = client.get("/vorschlaege")
+    assert "tag-kind" not in antwort2.text
+
+
 def test_gleicher_fund_fuer_mehrere_inhaber_erscheint_nur_einmal(db, zwei_inhaber):
     """Zentrale Anforderung: derselbe Fund (gleiche quelle_url+inhalt_hash)
     soll nicht einmal je Inhaber in der Liste auftauchen."""
-    Alice, max_ = zwei_inhaber
-    _vorschlag(db, Alice, "vorgeschlagen", inhalt_hash="gleich")
+    alice, max_ = zwei_inhaber
+    _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich")
     _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
 
     antwort = client.get("/vorschlaege")
@@ -86,8 +126,8 @@ def test_gruppen_status_ist_der_beste_einzelstatus(db, zwei_inhaber):
     """Ist der Fund für eine Person ein echter Neukunden-Deal, für eine
     andere aber automatisch abgelehnt (z.B. schon Bestandskunde), soll die
     Gruppe unter "Vorgeschlagen" auftauchen statt unter "Abgelehnt"."""
-    Alice, max_ = zwei_inhaber
-    _vorschlag(db, Alice, "vorgeschlagen", inhalt_hash="gleich")
+    alice, max_ = zwei_inhaber
+    _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich")
     _vorschlag(db, max_, "automatisch_abgelehnt", inhalt_hash="gleich", ablehnungsgruende="Bereits Kundin.")
 
     antwort = client.get("/vorschlaege")
@@ -113,8 +153,8 @@ def test_uebernehmen_legt_deal_an_und_markiert_vorschlag(db, inhaber):
 
 
 def test_uebernehmen_mit_mehreren_ids_legt_fuer_jeden_ausgewaehlten_namen_einen_deal_an(db, zwei_inhaber):
-    Alice, max_ = zwei_inhaber
-    v_elli = _vorschlag(db, Alice, "vorgeschlagen", inhalt_hash="gleich")
+    alice, max_ = zwei_inhaber
+    v_elli = _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich")
     v_max = _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
 
     antwort = client.post(
@@ -136,8 +176,8 @@ def test_uebernehmen_mit_mehreren_ids_legt_fuer_jeden_ausgewaehlten_namen_einen_
 def test_uebernehmen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen(db, zwei_inhaber):
     """Wird nur ein Name ausgewählt, bleibt der Vorschlag für die andere
     Person offen und weiterhin sichtbar - kein automatisches Verwerfen."""
-    Alice, max_ = zwei_inhaber
-    v_elli = _vorschlag(db, Alice, "vorgeschlagen", inhalt_hash="gleich")
+    alice, max_ = zwei_inhaber
+    v_elli = _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich")
     v_max = _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
 
     client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [v_elli.id]}, follow_redirects=False)
@@ -180,8 +220,8 @@ def test_verwerfen_setzt_nur_den_status(db, inhaber):
 
 
 def test_verwerfen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen(db, zwei_inhaber):
-    Alice, max_ = zwei_inhaber
-    v_elli = _vorschlag(db, Alice, "vorgeschlagen", inhalt_hash="gleich")
+    alice, max_ = zwei_inhaber
+    v_elli = _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich")
     v_max = _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
 
     client.post("/vorschlaege/verwerfen", data={"vorschlag_ids": [v_elli.id]}, follow_redirects=False)
@@ -236,8 +276,8 @@ def test_filter_nach_quelle(db, inhaber):
 
 
 def test_filter_nach_typ_kind_zeigt_nur_minderjaehrige(db, zwei_inhaber):
-    Alice, max_ = zwei_inhaber
-    _vorschlag(db, Alice, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
+    alice, max_ = zwei_inhaber
+    _vorschlag(db, alice, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
     _vorschlag(db, max_, "vorgeschlagen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2")
 
     antwort = client.get("/vorschlaege", params={"typ": "kind"})

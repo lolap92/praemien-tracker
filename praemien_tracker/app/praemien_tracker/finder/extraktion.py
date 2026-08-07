@@ -41,6 +41,13 @@ class AngebotExtraktion(BaseModel):
     # None, wenn im Text keine Sperrfrist erkennbar ist - wird in matching.py
     # zu "zu_pruefen", nicht zu "automatisch_abgelehnt".
     sperrfrist_monate: int | None = None
+    # Ob das Angebot (auch) für Minderjährige offensteht (z.B. Kinderdepot,
+    # Junior-Konto). Steuert in lauf.py, ob minderjährigen Inhabern der Fund
+    # überhaupt vorgeschlagen wird. Default False (konservativ): fehlt das
+    # Feld in einem alten Cache-Eintrag oder ist es unklar, gilt der Deal als
+    # nicht für Kinder - Erwachsenen-Angebote werden Kindern dann nicht
+    # vorgeschlagen.
+    fuer_kinder: bool = False
     bedingungen: list[BedingungExtraktion]
 
 
@@ -76,6 +83,11 @@ Formulierungen wie "Kündigung darf nicht in den letzten 12 Monaten erfolgt \
 sein". Bei einer Mehrdeutigkeit wie "6 oder 12 Monate" die kürzere Zahl \
 übernehmen. Lässt sich aus dem Text keine Sperrfrist erkennen, dieses Feld \
 weglassen (null) - nicht raten.
+- fuer_kinder: true nur, wenn das Angebot ausdrücklich (auch) für \
+Minderjährige/Kinder offensteht - z.B. ein Kinderdepot, Junior-Depot, \
+Junior-Konto oder Kinder-Tagesgeld, oder wenn der Text explizit sagt, dass \
+Minderjährige teilnehmen können. Im Zweifel false (die meisten \
+Neukunden-Prämien setzen Volljährigkeit voraus).
 - bedingungen: Liste der einzelnen Bedingungen, die für die Prämie erfüllt \
 werden müssen (z.B. Mindesteinlage, Kontoeröffnung online, TAN-Verfahren \
 aktivieren, Anzahl Kartenzahlungen, Gehaltseingang, Vertragslaufzeit). Jede \

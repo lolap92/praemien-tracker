@@ -243,6 +243,14 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
             neuer_vorschlag_fuer_fund = False
             aktualisiert_fuer_fund = False
             for inhaber in inhaber_liste:
+                # Minderjährigen wird ein Angebot nur vorgeschlagen, wenn es
+                # laut Text (auch) für Kinder abschließbar ist (z.B. Junior-
+                # Depot, Kinderkonto). Die meisten Neukunden-Prämien setzen
+                # Volljährigkeit voraus - steht nichts im Text, gilt der Deal
+                # als reines Erwachsenen-Angebot (extrahiert.fuer_kinder=False),
+                # und das Kind erscheint gar nicht erst als Auswahl.
+                if inhaber.ist_minderjaehrig and not extrahiert.fuer_kinder:
+                    continue
                 match = matching.bewerten(db, fund, extrahiert, inhaber, config.MINDESTPRAEMIE)
                 bestehend = matching.bestehenden_vorschlag_finden(
                     db, fund.quelle_url, inhaber.id, match.inhalt_hash

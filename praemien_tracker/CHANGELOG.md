@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.7.0
+
+Vorschlags-Karten mit Direktlink und mehr Tags, sowie eine gezieltere
+Behandlung von Angeboten für Minderjährige.
+
+- **„Deal öffnen"-Link je Karte** (oben rechts) öffnet die zugehörige
+  mydealz-/spartanien-Seite in einem neuen Browser-Tab.
+- **Mehr Tags je Karte:** zusätzlich zur Quelle nun auch die Kontoart
+  (z. B. Depot, Tagesgeld) und - falls zutreffend - „Auch für Kinder".
+- **Kinder bekommen nur Kinderdeals vorgeschlagen.** Einem minderjährigen
+  Inhaber wird ein Angebot nur noch dann vorgeschlagen, wenn es laut
+  Angebotstext (auch) für Kinder abschließbar ist (z. B. Junior-Depot,
+  Kinderkonto). Steht nichts dergleichen im Text, gilt der Deal als reines
+  Erwachsenen-Angebot und das Kind erscheint gar nicht erst als Auswahl. Der
+  frühere Filter/Tag „Kinderdepot" heißt jetzt „Für Kinder" bzw. „Auch für
+  Kinder".
+
 ## 2.6.0
 
 Die Statusanzeige im Vorschläge-Tab wurde überarbeitet, damit die Zahlen

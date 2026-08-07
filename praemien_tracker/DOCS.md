@@ -60,11 +60,18 @@ neuer Vorschlag statt eines stillen Updates am alten - die Historie bleibt
 so nachvollziehbar. Ein unveränderter Fund wird dagegen nicht erneut
 vorgeschlagen, auch nicht nach dem Verwerfen.
 
-Die Suche gilt für **alle** Inhaber, auch minderjährige.
+Die Suche gilt für **alle** Inhaber. Einem **minderjährigen** Inhaber wird ein
+Angebot allerdings nur dann vorgeschlagen, wenn es laut Angebotstext (auch)
+für Kinder abschließbar ist (z. B. Junior-Depot, Kinderkonto). Die meisten
+Neukunden-Prämien setzen Volljährigkeit voraus; steht nichts dergleichen im
+Text, gilt der Deal als reines Erwachsenen-Angebot und das Kind erscheint gar
+nicht erst als Auswahl. Karten mit einem passenden Kind sind mit **"Auch für
+Kinder"** gekennzeichnet.
 
 **Ein Fund erscheint nur einmal.** Passt ein Angebot zu mehreren Inhabern
-(z. B. Alice und ein Kinderdepot), steht es als eine Karte da, mit einer
-Checkbox je Name statt einer eigenen Karte pro Person. Ist der Fund für eine
+(z. B. ein Erwachsener und ein Kind bei einem Junior-Depot), steht es als eine
+Karte da, mit einer Checkbox je Name statt einer eigenen Karte pro Person. Ist
+der Fund für eine
 Person ein echter Neukunden-Deal, für eine andere aber z. B. schon
 Bestandskunde, zählt beim Einsortieren der bessere Fall - die Karte landet
 unter "Vorgeschlagen", die betroffene Person zeigt daneben ihren
@@ -74,7 +81,11 @@ eigener Deal, nicht ausgewählte bleiben unverändert offen stehen. Dieselbe
 Auswahl gilt auch für **Verwerfen**.
 
 Über die Filterleiste lässt sich die Liste nach **Quelle** (mydealz/
-spartanien), **Typ** (Erwachsene/Kinderdepot) und **Status** eingrenzen.
+spartanien), **Typ** (Erwachsene/Für Kinder) und **Status** eingrenzen.
+
+Jede Karte hat oben rechts einen **"Deal öffnen"**-Link, der die zugehörige
+mydealz-/spartanien-Seite in einem neuen Tab öffnet, sowie Tags für Quelle,
+Kontoart (z. B. Depot, Tagesgeld) und - falls zutreffend - "Auch für Kinder".
 
 **API-Nutzung wird minimiert:** Bevor ein Fund an Claude geschickt wird,
 prüft die App anhand eines Rohtext-Abgleichs, ob dieselbe Quelle-URL mit
