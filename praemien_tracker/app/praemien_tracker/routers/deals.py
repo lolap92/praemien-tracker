@@ -214,7 +214,7 @@ def deal_new_create(
         kontonummer=eingaben["kontonummer"] or None,
         zugangsdaten_gespeichert=zugangsdaten_gespeichert == "on",
     )
-    kuendigung_vorschlag(deal)
+    kuendigung_vorschlag(db, deal)
     db.add(deal)
     db.commit()
     return redirect(request, f"deals/{deal.id}/edit")
@@ -377,6 +377,7 @@ def deal_update(
     deal.kuendigung_bestaetigt = kuendigung_bestaetigt == "on"
     deal.kuendigung_hinweis = kuendigung_hinweis.strip() or None
     deal.kuendigung_hinweis_url = kuendigung_hinweis_url.strip() or None
+    deal.kuendigung_hinweis_ki = False
     deal.freibetrag = parse_decimal(freibetrag)
     # Ohne Jahresangabe faellt der Betrag auf das laufende Jahr - sonst
     # erscheint er in keiner der beiden Jahresspalten und ist unsichtbar.
@@ -400,6 +401,7 @@ async def deal_kuendigung_hinweis_update(request: Request, deal_id: int, db: Ses
     if deal:
         deal.kuendigung_hinweis = (daten.get("kuendigung_hinweis") or "").strip() or None
         deal.kuendigung_hinweis_url = (daten.get("kuendigung_hinweis_url") or "").strip() or None
+        deal.kuendigung_hinweis_ki = False
         db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
 

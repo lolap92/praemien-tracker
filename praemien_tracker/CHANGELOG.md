@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.5.0
+
+Kündigungsweg-Recherche per KI, wenn die fest hinterlegte Tabelle keinen
+Eintrag kennt. Enthält eine Schema-Migration (eine neue Tabelle, eine neue
+Spalte auf `deals`) - vorher wird automatisch eine Sicherheitskopie angelegt.
+
+- Findet die App beim Anlegen eines Deals keinen fest hinterlegten
+  Kündigungsweg für Bank+Kontoart, recherchiert sie einmalig per
+  Websuche (Claude, `web_search`-Tool) - nur mit konfiguriertem
+  Anthropic-API-Key, sonst bleibt das Feld wie bisher leer.
+- Das Ergebnis wird je Bank+Kontoart gecacht, um wiederholte API-Aufrufe zu
+  vermeiden - dieselbe Idee wie beim KI-Deal-Finder-Cache.
+- Ein KI-recherchierter Kündigungshinweis wird auf der Deal-Seite deutlich
+  als **"KI-recherchiert, bitte prüfen"** markiert, da er - anders als die
+  elf fest hinterlegten, von Hand geprüften Wege - ungeprüft ist. Die
+  Markierung verschwindet, sobald der Hinweis von Hand bearbeitet wird.
+
 ## 2.4.0
 
 Vorschläge-Tab: Filter, Dedup über Inhaber hinweg und Mehrfach-Übernehmen.

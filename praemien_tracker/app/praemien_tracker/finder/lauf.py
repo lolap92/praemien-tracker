@@ -33,6 +33,7 @@ import anthropic
 from sqlalchemy.orm import Session
 
 from .. import config
+from ..anthropic_client import anthropic_client as _anthropic_client_basis
 from ..database import SessionLocal
 from ..models import DealVorschlag, FinderFund, FinderLauf, Inhaber, VorschlagBedingung
 from . import extraktion, matching, notify
@@ -54,10 +55,10 @@ class _QuellenErgebnis:
 
 
 def _anthropic_client() -> anthropic.Anthropic | None:
-    if not config.ANTHROPIC_API_KEY:
+    client = _anthropic_client_basis()
+    if client is None:
         logger.warning("Kein Anthropic-API-Key hinterlegt (Add-on-Optionen) - KI-Deal-Finder übersprungen.")
-        return None
-    return anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    return client
 
 
 def _rohfunde_holen() -> _QuellenErgebnis:

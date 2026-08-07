@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -67,6 +67,12 @@ class Deal(Base):
     kommentar: Mapped[str | None] = mapped_column(Text, nullable=True)
     kuendigung_hinweis: Mapped[str | None] = mapped_column(Text, nullable=True)
     kuendigung_hinweis_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # True, solange kuendigung_hinweis unverändert aus einer KI-Websuche
+    # stammt (siehe kuendigung_recherche.py) - im Unterschied zu einem fest
+    # hinterlegten (kuendigung_hinweise.py) oder von Hand eingetragenen
+    # Hinweis. Wird beim manuellen Bearbeiten des Felds wieder auf False
+    # gesetzt, da es dann Nutzerhoheit ist.
+    kuendigung_hinweis_ki: Mapped[bool] = mapped_column(Boolean, default=False)
     # JSON-Liste von Feldnamen, die bewusst als "nicht nötig" abgehakt wurden
     uebersprungene_felder: Mapped[str | None] = mapped_column(Text, nullable=True)
     erstellt_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
@@ -236,6 +242,25 @@ class FinderFund(Base):
     zuletzt_gesehen_am: Mapped[datetime.datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
     )
+
+
+class KuendigungRecherche(Base):
+    """KI-recherchierter Kündigungsweg für eine Bank+Kontoart-Kombination, für
+    die KUENDIGUNG_HINWEISE (kuendigung_hinweise.py, fest hinterlegt) keinen
+    Eintrag kennt. Wird einmalig per Web-Search recherchiert (siehe
+    kuendigung_recherche.py) und danach für jeden weiteren Deal derselben
+    Kombination aus dem Cache übernommen statt erneut gegen die API zu gehen
+    - dieselbe Kostenersparnis-Idee wie FinderFund beim KI-Deal-Finder."""
+
+    __tablename__ = "kuendigung_recherchen"
+    __table_args__ = (UniqueConstraint("bank_name", "kontoart", name="uq_kuendigung_recherche_bank_kontoart"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    bank_name: Mapped[str] = mapped_column(String(100), index=True)
+    kontoart: Mapped[str] = mapped_column(String(50))
+    hinweis: Mapped[str] = mapped_column(Text)
+    hinweis_url: Mapped[str] = mapped_column(String(500))
+    recherchiert_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
 
 
 class FinderLauf(Base):

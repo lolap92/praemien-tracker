@@ -1347,6 +1347,13 @@ table.pc-tabelle tr:hover {
   background: rgba(185, 130, 47, 0.13);
 }
 
+.chip.chip-ki-recherchiert {
+  color: var(--st-wait);
+  background: rgba(185, 130, 47, 0.13);
+  font-weight: normal;
+  margin-left: 0.4rem;
+}
+
 .chip.status-vorgeschlagen {
   color: var(--st-done);
   background: rgba(27, 158, 119, 0.13);

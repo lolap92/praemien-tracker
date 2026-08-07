@@ -6,6 +6,7 @@ from decimal import Decimal, InvalidOperation
 
 from sqlalchemy.orm import Session
 
+from . import kuendigung_recherche
 from .derived import format_monat, parse_monat
 from .kuendigung_hinweise import hinweis_fuer
 from .models import Aufgabe, Bank, Bedingung, Deal, DealUrl, Inhaber, Praemie
@@ -41,18 +42,31 @@ def monat_aus_formular(wert: str | None) -> str | None:
     return format_monat(datum) if datum else wert.strip()
 
 
-def kuendigung_vorschlag(deal: Deal) -> None:
+def kuendigung_vorschlag(db: Session, deal: Deal) -> None:
     """Recherchierten Kündigungsweg als Vorschlag setzen, falls für Bank und
     Kontoart einer hinterlegt ist und der Deal noch keinen eigenen trägt.
 
+    Kennt KUENDIGUNG_HINWEISE (fest hinterlegt) keinen Eintrag, wird
+    zusätzlich einmalig per KI-Websuche recherchiert (kuendigung_recherche.py)
+    - nur, wenn ein Anthropic-API-Key konfiguriert ist, sonst bleibt das Feld
+    wie bisher leer. Ein so gesetzter Hinweis wird als KI-recherchiert
+    markiert (kuendigung_hinweis_ki), damit die Oberfläche ihn von den fest
+    hinterlegten, geprüften Einträgen unterscheiden kann.
+
     Wird nur beim Anlegen aufgerufen. Danach gehört das Feld dem Nutzer -
-    ein geleertes Feld bleibt leer.
+    ein geleertes oder überschriebenes Feld bleibt so, wie der Nutzer es
+    haben möchte (siehe deal_update()/deal_kuendigung_hinweis_update()).
     """
     if deal.kuendigung_hinweis or deal.bank is None:
         return
     eintrag = hinweis_fuer(deal.bank.name, deal.kontoart)
     if eintrag:
         deal.kuendigung_hinweis, deal.kuendigung_hinweis_url = eintrag
+        return
+    eintrag = kuendigung_recherche.hinweis_recherchieren(db, deal.bank.name, deal.kontoart)
+    if eintrag:
+        deal.kuendigung_hinweis, deal.kuendigung_hinweis_url = eintrag
+        deal.kuendigung_hinweis_ki = True
 
 
 def get_or_create_bank(db: Session, name: str) -> Bank:
@@ -123,6 +137,6 @@ def build_deal_from_import(db: Session, daten: DealImport) -> Deal:
         deal.aufgaben.append(
             Aufgabe(beschreibung=a.beschreibung.strip(), erledigt=a.erledigt, faellig_bis=a.faellig_bis)
         )
-    kuendigung_vorschlag(deal)
+    kuendigung_vorschlag(db, deal)
     db.add(deal)
     return deal

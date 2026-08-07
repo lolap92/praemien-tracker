@@ -86,7 +86,12 @@
         <label for="kuendigung_bestaetigt">Kündigung bestätigt</label>
       </div>
       <div class="feld">
-        <label for="kuendigung_hinweis">Kündigung Anweisungen</label>
+        <label for="kuendigung_hinweis">
+          Kündigung Anweisungen
+          {% if deal and deal.kuendigung_hinweis_ki %}
+          <span class="chip chip-ki-recherchiert" title="Von der KI per Websuche recherchiert, nicht manuell geprüft - vor Nutzung kontrollieren.">KI-recherchiert, bitte prüfen</span>
+          {% endif %}
+        </label>
         <textarea id="kuendigung_hinweis" name="kuendigung_hinweis" placeholder="Wie kündige ich dieses Konto? (z. B. Online im Kundenportal, per Post, Formular nötig …)">{{ deal.kuendigung_hinweis or '' }}</textarea>
       </div>
       <div class="feld">

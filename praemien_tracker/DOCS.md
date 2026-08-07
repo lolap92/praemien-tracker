@@ -86,6 +86,20 @@ wiederverwendet. Nur wenn sich der Rohtext ändert (z. B. ein bearbeiteter
 Beitrag), wird erneut geprüft. Die Übersicht im Vorschläge-Tab zeigt, wie
 viele Funde je Lauf ganz ohne API-Aufruf erledigt wurden.
 
+## Kündigungsweg-Recherche
+
+Beim Anlegen eines Deals schlägt die App automatisch einen Kündigungsweg vor,
+sofern für Bank und Kontoart einer bekannt ist. Für elf Banken ist der Weg
+fest hinterlegt und geprüft. Kennt die App keinen Eintrag, recherchiert sie
+- nur mit konfiguriertem Anthropic-API-Key - einmalig per Websuche und
+markiert das Ergebnis deutlich als **"KI-recherchiert, bitte prüfen"** auf
+der Deal-Seite, da es anders als die fest hinterlegten Wege ungeprüft ist.
+Dieselbe Bank+Kontoart-Kombination wird danach aus einem Cache wiederverwendet,
+ohne erneuten API-Aufruf. Ohne API-Key oder ohne verlässlichen Treffer bleibt
+das Feld wie bisher leer - der Nutzer trägt es dann selbst ein. Sobald das
+Feld von Hand bearbeitet wird, verschwindet die Markierung, denn ab dann
+gehört der Text dem Nutzer.
+
 ## Erste Schritte
 
 1. Add-on starten.
