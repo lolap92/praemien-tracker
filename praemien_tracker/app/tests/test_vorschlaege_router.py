@@ -83,8 +83,8 @@ def test_karte_hat_deal_link_und_tags(db, inhaber):
     # Link öffnet die Deal-Seite in einem neuen Tab.
     assert 'href="https://www.spartanien.de/Santander+BestGiro"' in antwort.text
     assert 'target="_blank"' in antwort.text
-    # Tags: Quelle und Kontoart.
-    assert "spartanien" in antwort.text
+    # Tags: Quelle (groß geschrieben) und Kontoart.
+    assert "Spartanien" in antwort.text
     assert "Tagesgeld" in antwort.text
 
 

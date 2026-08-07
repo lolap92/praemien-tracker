@@ -1422,57 +1422,71 @@ table.lauf-tabelle tr:hover {
   opacity: 0.85;
 }
 
-.vorschlag-titel {
+/* Kompakte Vorschlag-Karte: dichter Kopf, Fakten-Zeile, ausklappbare Bedingungen. */
+.vorschlag-karte {
+  padding: 0.8rem 0.9rem;
+  margin-bottom: 0.7rem;
+}
+
+.vk-kopf {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: baseline;
   gap: 0.6rem;
 }
 
-.vorschlag-titel .bank {
+.vk-titel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.5rem;
+  min-width: 0;
+}
+
+.vk-titel .bank {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 1rem;
   letter-spacing: -0.01em;
 }
 
-.vorschlag-titel-rechts {
+.vk-kontoart {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.vk-geld {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.35rem;
+  gap: 0.2rem;
   flex-shrink: 0;
 }
 
-/* Öffnet die zugehörige Deal-Seite (mydealz/spartanien) in einem neuen Tab. */
-.vorschlag-link {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--accent-ink);
-  white-space: nowrap;
-  text-decoration: none;
-  padding: 0.25rem 0.6rem;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-}
-.vorschlag-link:hover {
-  border-color: var(--accent);
-  background: var(--surface-2);
+.vk-geld .geld {
+  font-size: 1.05rem;
 }
 
-.vorschlag-tags {
+.vk-fakten {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.6rem;
+  align-items: center;
+  gap: 0.35rem 0.7rem;
+  margin-top: 0.5rem;
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+}
+
+.vk-fakt {
+  white-space: nowrap;
 }
 
 .vorschlag-tag {
   display: inline-flex;
   align-items: center;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  padding: 0.2rem 0.55rem;
+  padding: 0.12rem 0.5rem;
   border-radius: 999px;
   width: fit-content;
 }
@@ -1577,28 +1591,95 @@ table.lauf-tabelle tr:hover {
   background: var(--danger);
 }
 
+/* Bedingungen kompakt: eingeklappt nur Anzahl + Ampel-Status, Details per Klick. */
+.vk-details {
+  margin-top: 0.6rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.5rem;
+}
+
+.vk-details > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.vk-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.vk-details > summary::after {
+  content: "▾";
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-size: 0.7rem;
+}
+
+.vk-details[open] > summary::after {
+  content: "▴";
+}
+
+.vk-bed-anzahl {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.vk-bed-status {
+  font-weight: 600;
+}
+.vk-bed-status.erfuellt {
+  color: var(--st-done);
+}
+.vk-bed-status.zu_pruefen {
+  color: var(--st-wait);
+}
+.vk-bed-status.nicht_erfuellt {
+  color: var(--danger);
+}
+
+.vk-details .vorschlag-bedingungen {
+  margin-top: 0.4rem;
+}
+
 .vorschlag-aktionen {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-top: 0.8rem;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
   align-items: center;
 }
 
+.vorschlag-aktionen button,
+.vorschlag-aktionen .button {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+/* URL-Button ans rechte Ende der Aktionszeile (unten rechts). */
+.vk-deal-link {
+  margin-left: auto;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* Empfänger als kompakte, umbrechende Zeile statt gestapelt. */
 .vorschlag-mitglieder {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
   width: 100%;
-  margin-bottom: 0.2rem;
+  margin-top: 0.6rem;
 }
 
 .vorschlag-mitglied {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.82rem;
 }
 
 .vorschlag-mitglied input[type="checkbox"] {

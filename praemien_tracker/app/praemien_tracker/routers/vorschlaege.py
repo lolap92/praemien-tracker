@@ -41,6 +41,8 @@ class VorschlagGruppe:
     bank_name: str
     kontoart: str
     praemie_betrag: object
+    sperrfrist_monate: object
+    gefunden_am: object
     bedingungen: list
     praemien: list
     status: str
@@ -71,6 +73,8 @@ def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
                 bank_name=fuehrend.bank_name,
                 kontoart=fuehrend.kontoart,
                 praemie_betrag=fuehrend.praemie_betrag,
+                sperrfrist_monate=fuehrend.sperrfrist_monate,
+                gefunden_am=max(m.gefunden_am for m in mitglieder),
                 bedingungen=fuehrend.bedingungen,
                 praemien=fuehrend.praemien,
                 status=status,

@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.9.0
+
+Kompakteres, übersichtlicheres Design der Vorschlags-Karten mit mehr
+Entscheidungs-Infos auf einen Blick. Reine Anzeige-Änderung, keine Migration.
+
+- **Kompaktere Karten:** dichter Kopf (Bank + Kontoart als Untertitel +
+  Prämie), Empfänger als umbrechende Zeile statt gestapelt, engere Abstände.
+- **Mehr Infos sichtbar:** Fund-Datum und - falls vorhanden - Sperrfrist in
+  einer Fakten-Zeile.
+- **Bedingungen mit Ampel-Zusammenfassung:** eine Zeile zeigt Anzahl und
+  Status ("alle erfüllbar" / "1 zu prüfen" / "nicht erfüllbar"); die volle
+  Liste ist standardmäßig ausgeklappt und lässt sich einklappen.
+- **"Deal öffnen" als Button** unten rechts, im Stil von Übernehmen/Verwerfen.
+- **"Spartanien" wird durchgängig groß geschrieben** (Anzeige).
+
 ## 2.8.0
 
 Übersichtlichere Vorschlags-Karten. Enthält eine Schema-Migration (neue

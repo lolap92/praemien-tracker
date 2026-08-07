@@ -42,7 +42,7 @@ zunächst leer.
 ## KI-Deal-Finder (Vorschläge)
 
 Ein täglicher Hintergrund-Lauf (06:00 Uhr) durchsucht mydealz (Gruppe
-"Verträge & Finanzen") und spartanien nach neuen Neukunden-Prämien und
+"Verträge & Finanzen") und Spartanien nach neuen Neukunden-Prämien und
 schlägt echte Neuigkeiten im Tab **Vorschläge** vor. Die KI *findet und
 extrahiert*, sie *entscheidet und speichert keine Fakten* - ein Vorschlag
 ist erst nach "Übernehmen" ein echter Deal. Voraussetzung ist ein eigener
@@ -81,10 +81,10 @@ eigener Deal, nicht ausgewählte bleiben unverändert offen stehen. Dieselbe
 Auswahl gilt auch für **Verwerfen**.
 
 Über die Filterleiste lässt sich die Liste nach **Quelle** (mydealz/
-spartanien), **Typ** (Erwachsene/Für Kinder) und **Status** eingrenzen.
+Spartanien), **Typ** (Erwachsene/Für Kinder) und **Status** eingrenzen.
 
 Jede Karte hat oben rechts einen **"Deal öffnen"**-Link, der die zugehörige
-mydealz-/spartanien-Seite in einem neuen Tab öffnet, sowie Tags für Quelle,
+mydealz-/Spartanien-Seite in einem neuen Tab öffnet, sowie Tags für Quelle,
 Kontoart (z. B. Depot, Tagesgeld) und - falls zutreffend - "Auch für Kinder".
 Setzt sich die Prämie aus mehreren Teilen mit unterschiedlichen
 Voraussetzungen zusammen (z. B. 50 EUR von Spartanien für die Kontoeröffnung
@@ -190,7 +190,7 @@ folgende optionale Einstellungen (Add-on-Konfiguration in Home Assistant):
 | `anthropic_model` | Welches Claude-Modell für die Extraktion genutzt wird. | `claude-haiku-4-5` |
 | `mindestpraemie` | Prämien unterhalb dieses Betrags werden automatisch abgelehnt (mit Begründung, weiterhin sichtbar). | `50` |
 | `mydealz_gruppe` | mydealz-Gruppe für den RSS-Feed. | `vertraege-finanzen` |
-| `spartanien_url` | Ziel-URL für den spartanien-Parser. | `https://www.spartanien.de/` |
+| `spartanien_url` | Ziel-URL für den Spartanien-Parser. | `https://www.spartanien.de/` |
 | `benachrichtigungen_aktiv` | Push-Benachrichtigung bei neuen Vorschlägen ein-/ausschalten. | `true` |
 | `notify_dienst` | Home-Assistant-Notify-Dienst ohne `notify.`-Präfix, z. B. `mobile_app_pixel_8` für ein bestimmtes Smartphone (Gerätename siehe HA unter Einstellungen > Geräte & Dienste > das Handy > "Dienst" im Entwicklerwerkzeug). `notify` adressiert weiterhin alle Geräte. | `notify` |
 

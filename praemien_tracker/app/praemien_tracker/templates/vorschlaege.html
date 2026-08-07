@@ -72,7 +72,7 @@
       </label>
       <label>
         <input type="checkbox" name="quelle" value="spartanien" {{ "checked" if "spartanien" in filter_quelle else "" }}>
-        spartanien
+        Spartanien
       </label>
     </div>
   </details>
@@ -154,21 +154,28 @@
 {% endmacro %}
 
 {% macro vorschlag_karte(g) %}
+{% set n_pruefen = g.bedingungen | selectattr('einschaetzung', 'equalto', 'zu_pruefen') | list | length %}
+{% set n_nicht = g.bedingungen | selectattr('einschaetzung', 'equalto', 'nicht_erfuellt') | list | length %}
 <div class="card vorschlag-karte status-{{ g.status }}">
-  <div class="vorschlag-titel">
-    <div class="bank">{{ g.bank_name }}</div>
-    <div class="vorschlag-titel-rechts">
-      <a class="vorschlag-link" href="{{ g.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
-      <div class="geld d-amt">{{ g.praemie_betrag | eur }}</div>
+  <div class="vk-kopf">
+    <div class="vk-titel">
+      <span class="bank">{{ g.bank_name }}</span>
+      <span class="vk-kontoart">{{ g.kontoart }}</span>
+    </div>
+    <div class="vk-geld">
+      <span class="geld d-amt">{{ g.praemie_betrag | eur }}</span>
     </div>
   </div>
-  <div class="vorschlag-tags">
-    <span class="vorschlag-tag tag-{{ g.quelle }}">{{ g.quelle }}</span>
-    {% if g.kontoart %}<span class="vorschlag-tag tag-kontoart">{{ g.kontoart }}</span>{% endif %}
+
+  <div class="vk-fakten">
+    <span class="vorschlag-tag tag-{{ g.quelle }}">{{ g.quelle | quelle }}</span>
     {% if g.mitglieder | selectattr('inhaber.ist_minderjaehrig') | list %}
     <span class="vorschlag-tag tag-kind">Auch für Kinder</span>
     {% endif %}
+    <span class="vk-fakt">Gefunden {{ g.gefunden_am | datum }}</span>
+    {% if g.sperrfrist_monate %}<span class="vk-fakt">Sperrfrist {{ g.sperrfrist_monate }} Mon.</span>{% endif %}
   </div>
+
   {% if g.praemien | length > 1 %}
   <ul class="vorschlag-praemien">
     {% for p in g.praemien %}
@@ -180,15 +187,30 @@
     {% endfor %}
   </ul>
   {% endif %}
-  {{ bedingungen_liste(g) }}
-  <form class="vorschlag-aktionen" method="post" action="vorschlaege/uebernehmen">
+
+  {% if g.bedingungen %}
+  <details class="vk-details" open>
+    <summary>
+      <span class="vk-bed-anzahl">{{ g.bedingungen | length }} Bedingung{{ "en" if g.bedingungen | length != 1 else "" }}</span>
+      {% if n_nicht %}<span class="vk-bed-status nicht_erfuellt">{{ n_nicht }} nicht erfüllbar</span>
+      {% elif n_pruefen %}<span class="vk-bed-status zu_pruefen">{{ n_pruefen }} zu prüfen</span>
+      {% else %}<span class="vk-bed-status erfuellt">alle erfüllbar</span>{% endif %}
+    </summary>
+    {{ bedingungen_liste(g) }}
+  </details>
+  {% endif %}
+
+  <form class="vk-form" method="post" action="vorschlaege/uebernehmen">
     {{ mitglieder_liste(g) }}
-    {% if g.status == "automatisch_abgelehnt" %}
-    <button type="submit" class="secondary">Trotzdem übernehmen</button>
-    {% else %}
-    <button type="submit">Übernehmen</button>
-    {% endif %}
-    <button type="submit" class="secondary" formaction="vorschlaege/verwerfen">Verwerfen</button>
+    <div class="vorschlag-aktionen">
+      {% if g.status == "automatisch_abgelehnt" %}
+      <button type="submit" class="secondary">Trotzdem übernehmen</button>
+      {% else %}
+      <button type="submit">Übernehmen</button>
+      {% endif %}
+      <button type="submit" class="secondary" formaction="vorschlaege/verwerfen">Verwerfen</button>
+      <a class="button secondary vk-deal-link" href="{{ g.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
+    </div>
   </form>
 </div>
 {% endmacro %}
