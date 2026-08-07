@@ -53,6 +53,29 @@ def test_mydealz_rss_verkraftet_leeren_feed():
     assert parse_mydealz_rss(leer) == []
 
 
+def test_mydealz_rss_dedupliziert_denselben_link():
+    """Der Feed listet einen Deal gelegentlich doppelt (z.B. nach einem
+    Bump) - ohne Deduplizierung nach Link bricht taeglicher_lauf() mit
+    einem IntegrityError ab, weil quelle_url in finder_funde eindeutig ist."""
+    doppelt = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>mydealz</title>
+<item>
+<title>C24 Bank: 125&#8364; Neukunden-Praemie</title>
+<link>https://www.mydealz.de/gutscheine/c24-125-euro-123456</link>
+<description>Erster Eintrag</description>
+</item>
+<item>
+<title>C24 Bank: 125&#8364; Neukunden-Praemie (erneut gebumpt)</title>
+<link>https://www.mydealz.de/gutscheine/c24-125-euro-123456</link>
+<description>Zweiter Eintrag, gleicher Link</description>
+</item>
+</channel></rss>"""
+    funde = parse_mydealz_rss(doppelt)
+    assert len(funde) == 1
+    assert funde[0].quelle_url == "https://www.mydealz.de/gutscheine/c24-125-euro-123456"
+    assert "Erster Eintrag" in funde[0].text
+
+
 def test_spartanien_html_wird_geparst():
     funde = parse_spartanien_html(SPARTANIEN_HTML_BEISPIEL, "https://www.spartanien.de/themen/bankprodukte/")
     assert len(funde) == 1

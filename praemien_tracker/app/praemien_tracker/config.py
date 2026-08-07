@@ -60,7 +60,7 @@ ANTHROPIC_API_KEY: str | None = _OPTIONEN.get("anthropic_api_key") or os.environ
 ANTHROPIC_MODEL: str = _OPTIONEN.get("anthropic_model") or "claude-haiku-4-5"
 MINDESTPRAEMIE: Decimal = _mindestpraemie(_OPTIONEN.get("mindestpraemie", 50))
 MYDEALZ_GRUPPE: str = _OPTIONEN.get("mydealz_gruppe") or "vertraege-finanzen"
-SPARTANIEN_URL: str = _OPTIONEN.get("spartanien_url") or "https://www.spartanien.de/themen/bankprodukte/"
+SPARTANIEN_URL: str = _OPTIONEN.get("spartanien_url") or "https://www.spartanien.de/"
 
 # Benachrichtigung bei neuen Vorschlägen (Konzept Abschnitt 6). "notify_dienst"
 # ist der Home-Assistant-Dienstname ohne "notify."-Präfix - z.B.

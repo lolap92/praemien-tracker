@@ -146,7 +146,18 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
     fehlermeldungen = list(quellen.fehler)
 
     try:
+        bereits_verarbeitet: set[str] = set()
         for fund in quellen.alle:
+            # Bewusst zusätzlich zur Deduplizierung in den Parsern (z.B.
+            # quellen.parse_mydealz_rss): finder_funde.quelle_url ist
+            # eindeutig, ein doppelter Fund - egal aus welcher Quelle oder
+            # welchem Grund - würde sonst den ganzen Lauf mit einem
+            # IntegrityError abbrechen statt nur diesen einen Fund zu
+            # überspringen.
+            if fund.quelle_url in bereits_verarbeitet:
+                continue
+            bereits_verarbeitet.add(fund.quelle_url)
+
             rohtext_hash = _rohtext_hash(fund.text)
             cache_eintrag = db.query(FinderFund).filter(FinderFund.quelle_url == fund.quelle_url).one_or_none()
 

@@ -37,7 +37,11 @@ def parse_mydealz_rss(xml_text: str) -> list[RohFund]:
 
     Jedes Item liefert Titel, Link und eine HTML-Beschreibung - aus der
     Beschreibung wird der reine Text extrahiert (Tags entfernt), da die
-    KI-Extraktion mit Fließtext arbeitet, nicht mit Markup.
+    KI-Extraktion mit Fließtext arbeitet, nicht mit Markup. Der Feed listet
+    einzelne Deals gelegentlich doppelt (z.B. nach einem Bump) - ohne
+    Deduplizierung nach Link würde das doppelte API-Aufrufe für denselben
+    Fund auslösen und, da quelle_url in finder_funde eindeutig ist, den
+    ganzen Lauf mit einem IntegrityError abbrechen.
     """
     try:
         root = ET.fromstring(xml_text)
@@ -46,13 +50,15 @@ def parse_mydealz_rss(xml_text: str) -> list[RohFund]:
         return []
 
     funde: list[RohFund] = []
+    gesehene_urls: set[str] = set()
     for item in root.iter("item"):
         titel = (item.findtext("title") or "").strip()
         link = (item.findtext("link") or "").strip()
         beschreibung_html = item.findtext("description") or ""
         text = BeautifulSoup(beschreibung_html, "html.parser").get_text(" ", strip=True)
-        if not link or not titel:
+        if not link or not titel or link in gesehene_urls:
             continue
+        gesehene_urls.add(link)
         funde.append(RohFund(quelle="mydealz", quelle_url=link, titel=titel, text=text or titel))
     return funde
 

@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.5.1
+
+Fehlerbehebung, die im echten Betrieb aufgefallen ist: mydealz-Läufe konnten
+mit einem Datenbankfehler komplett abbrechen, sobald der Feed einen Deal
+doppelt listete.
+
+- **mydealz-RSS wird jetzt nach Link dedupliziert.** Listete der Feed
+  denselben Deal zweimal (z. B. nach einem Bump), versuchte die App, zwei
+  Cache-Einträge mit derselben (eindeutigen) Quelle-URL anzulegen - das
+  brach den kompletten Lauf mit `UNIQUE constraint failed` ab, auch für
+  alle anderen, unproblematischen Funde. Zusätzlich zur Behebung im
+  RSS-Parser schützt eine zweite Sperre direkt im Lauf davor, dass ein
+  doppelter Fund - unabhängig von der Ursache - je wieder den ganzen Lauf
+  mitreißt.
+- **Standard-URL für spartanien korrigiert** auf `https://www.spartanien.de/`
+  (statt der nicht mehr existierenden Unterseite `/themen/bankprodukte/`) -
+  betrifft nur Neuinstallationen ohne eigene Einstellung, wer die Option
+  bereits manuell gesetzt hat, ist davon nicht betroffen.
+
 ## 2.5.0
 
 Kündigungsweg-Recherche per KI, wenn die fest hinterlegte Tabelle keinen

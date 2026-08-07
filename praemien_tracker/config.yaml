@@ -1,5 +1,5 @@
 name: "Prämien-Tracker"
-version: "2.5.0"
+version: "2.5.1"
 slug: "praemien_tracker"
 description: "Private Übersicht und Verwaltung von Bank-Prämien-Deals"
 url: "https://github.com/lolap92/praemien-tracker"
@@ -23,7 +23,7 @@ options:
   anthropic_model: "claude-haiku-4-5"
   mindestpraemie: 50
   mydealz_gruppe: "vertraege-finanzen"
-  spartanien_url: "https://www.spartanien.de/themen/bankprodukte/"
+  spartanien_url: "https://www.spartanien.de/"
   benachrichtigungen_aktiv: true
   notify_dienst: "notify"
 schema:

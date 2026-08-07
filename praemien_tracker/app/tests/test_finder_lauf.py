@@ -88,6 +88,26 @@ def test_lauf_legt_pro_inhaber_eine_zeile_an_auch_fuer_kinder(db, zwei_inhaber, 
     assert inhaber_namen == {"Alice", "Max"}
 
 
+def test_doppelter_fund_in_einem_lauf_wird_nur_einmal_verarbeitet(db, zwei_inhaber, monkeypatch):
+    """Regressionstest: finder_funde.quelle_url ist eindeutig - taucht
+    dieselbe quelle_url zweimal in einem Lauf auf (z.B. weil eine Quelle
+    einen Deal doppelt listet), brach der ganze Lauf bisher mit einem
+    IntegrityError ab statt den doppelten Fund einfach zu überspringen."""
+    fund = RohFund("mydealz", "https://mydealz.de/doppelt", "C24 125 Euro", "Neukunden erhalten 125 Euro.")
+    monkeypatch.setattr(lauf, "fetch_mydealz", lambda gruppe, **kw: [fund, fund])
+    monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [])
+    client = ZaehlenderFakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]),
+    )
+
+    zaehler = lauf.taeglicher_lauf(db, client=client)
+
+    assert zaehler["gefunden"] == 2  # ein Fund (dedupliziert), zwei Inhaber
+    assert client.aufrufe == 2  # Themen-Check + Extraktion je einmal, nicht doppelt
+    assert db.query(DealVorschlag).count() == 2
+
+
 def test_lauf_ist_wiederholungssicher(db, zwei_inhaber, monkeypatch):
     """Zweiter Lauf mit identischem Fund darf keine weiteren Zeilen anlegen."""
     fund = RohFund("mydealz", "https://mydealz.de/c24", "t", "x")
