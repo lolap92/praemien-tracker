@@ -88,6 +88,29 @@ def test_karte_hat_deal_link_und_tags(db, inhaber):
     assert "Tagesgeld" in antwort.text
 
 
+def test_uebernehmen_button_orange_nur_bei_hinweisen(db, zwei_inhaber):
+    """Hat ein Inhaber der Gruppe einen abweichenden Status/Hinweis, wird der
+    Übernehmen-Button orange (Klasse 'warn'); ohne Hinweise bleibt er grün."""
+    alice, max_ = zwei_inhaber
+
+    # Mit Hinweis: alice vorgeschlagen, max abgelehnt (Begründung).
+    _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich", quelle_url="https://www.mydealz.de/a")
+    _vorschlag(db, max_, "automatisch_abgelehnt", inhalt_hash="gleich", quelle_url="https://www.mydealz.de/a",
+               ablehnungsgruende="Bereits Kundin.")
+    antwort = client.get("/vorschlaege")
+    assert 'class="warn"' in antwort.text
+
+    from praemien_tracker.models import DealVorschlag as _DV
+    db.query(_DV).delete()
+    db.commit()
+
+    # Ohne Hinweis: beide sauber vorgeschlagen -> kein 'warn'.
+    _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="sauber", quelle_url="https://www.mydealz.de/b")
+    _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="sauber", quelle_url="https://www.mydealz.de/b")
+    antwort2 = client.get("/vorschlaege")
+    assert 'class="warn"' not in antwort2.text
+
+
 def test_karte_zeigt_mehrere_teilpraemien_mit_bedingung(db, inhaber):
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen", praemie_betrag=Decimal("300.00"))
     vorschlag.praemien.append(VorschlagPraemie(betrag=Decimal("50.00"), geber="Spartanien", bedingung="für die Kontoeröffnung"))

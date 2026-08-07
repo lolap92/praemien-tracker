@@ -1007,6 +1007,11 @@ button.danger,
   background: var(--danger);
 }
 
+button.warn,
+.button.warn {
+  background: var(--st-wait);
+}
+
 .save-btn {
   width: 100%;
   padding: 0.85rem;
@@ -1450,9 +1455,11 @@ table.lauf-tabelle tr:hover {
   letter-spacing: -0.01em;
 }
 
-.vk-kontoart {
-  font-size: 0.8rem;
-  color: var(--ink-soft);
+.vk-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
 }
 
 .vk-geld {
@@ -1591,35 +1598,18 @@ table.lauf-tabelle tr:hover {
   background: var(--danger);
 }
 
-/* Bedingungen kompakt: eingeklappt nur Anzahl + Ampel-Status, Details per Klick. */
-.vk-details {
+/* Bedingungen immer sichtbar: Kopf mit Anzahl + Ampel-Status, darunter die Liste. */
+.vk-bedingungen {
   margin-top: 0.6rem;
   border-top: 1px solid var(--line);
   padding-top: 0.5rem;
 }
 
-.vk-details > summary {
-  list-style: none;
-  cursor: pointer;
+.vk-bed-kopf {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.8rem;
-}
-
-.vk-details > summary::-webkit-details-marker {
-  display: none;
-}
-
-.vk-details > summary::after {
-  content: "▾";
-  margin-left: auto;
-  color: var(--ink-faint);
-  font-size: 0.7rem;
-}
-
-.vk-details[open] > summary::after {
-  content: "▴";
 }
 
 .vk-bed-anzahl {
@@ -1640,8 +1630,14 @@ table.lauf-tabelle tr:hover {
   color: var(--danger);
 }
 
-.vk-details .vorschlag-bedingungen {
+.vk-bedingungen .vorschlag-bedingungen {
   margin-top: 0.4rem;
+}
+
+/* Übernehmen/Verwerfen/Deal öffnen nebeneinander; das Verwerfen-Formular
+   erzeugt keine eigene Box, damit sein Button in der Button-Zeile mitläuft. */
+.vk-inline-form {
+  display: contents;
 }
 
 .vorschlag-aktionen {
@@ -1652,41 +1648,80 @@ table.lauf-tabelle tr:hover {
   align-items: center;
 }
 
-.vorschlag-aktionen button,
-.vorschlag-aktionen .button {
-  padding: 0.4rem 0.9rem;
-  font-size: 0.85rem;
+.vorschlag-aktionen {
+  flex-wrap: nowrap;
 }
 
-/* URL-Button ans rechte Ende der Aktionszeile (unten rechts). */
-.vk-deal-link {
-  margin-left: auto;
+.vorschlag-aktionen button,
+.vorschlag-aktionen .button {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  justify-content: center;
+  padding: 0.45rem 0.4rem;
+  font-size: 0.8rem;
   text-decoration: none;
   white-space: nowrap;
 }
 
-/* Empfänger als kompakte, umbrechende Zeile statt gestapelt. */
-.vorschlag-mitglieder {
+/* Übernehmen-Dialog: Namen zum Auswählen + je Person ein Hinweis. */
+dialog.vk-dialog {
+  border: none;
+  border-radius: var(--radius);
+  padding: 1.2rem;
+  max-width: 420px;
+  width: 90vw;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+dialog.vk-dialog::backdrop {
+  background: rgba(15, 20, 25, 0.5);
+}
+
+dialog.vk-dialog h3 {
+  margin: 0 0 0.2rem;
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+
+.vk-dialog-frage {
+  margin: 0 0 0.9rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.vk-dialog-namen {
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 0.3rem 1rem;
-  width: 100%;
-  margin-top: 0.6rem;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1.1rem;
+}
+
+.vk-dialog-aktionen {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
 }
 
 .vorschlag-mitglied {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.4rem;
-  font-size: 0.82rem;
+  flex-wrap: wrap;
+  font-size: 0.88rem;
 }
 
 .vorschlag-mitglied input[type="checkbox"] {
   margin: 0;
 }
 
+.vk-name {
+  font-weight: 600;
+}
+
 .mitglied-begruendung {
   color: var(--ink-soft);
   font-size: 0.78rem;
+  width: 100%;
+  padding-left: 1.4rem;
 }

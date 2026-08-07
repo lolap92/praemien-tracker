@@ -136,23 +136,6 @@
 {% endif %}
 {% endmacro %}
 
-{% macro mitglieder_liste(g) %}
-<div class="vorschlag-mitglieder">
-  {% for m in g.mitglieder %}
-  <label class="vorschlag-mitglied">
-    <input type="checkbox" name="vorschlag_ids" value="{{ m.id }}" checked>
-    <span>{{ m.inhaber.name }}</span>
-    {% if m.status != g.status %}
-    <span class="chip status-{{ m.status }}">{{ m.status | vorschlag_status }}</span>
-    {% endif %}
-    {% if m.ablehnungsgruende %}
-    <span class="mitglied-begruendung">{{ m.ablehnungsgruende }}</span>
-    {% endif %}
-  </label>
-  {% endfor %}
-</div>
-{% endmacro %}
-
 {% macro vorschlag_karte(g) %}
 {% set n_pruefen = g.bedingungen | selectattr('einschaetzung', 'equalto', 'zu_pruefen') | list | length %}
 {% set n_nicht = g.bedingungen | selectattr('einschaetzung', 'equalto', 'nicht_erfuellt') | list | length %}
@@ -160,18 +143,21 @@
   <div class="vk-kopf">
     <div class="vk-titel">
       <span class="bank">{{ g.bank_name }}</span>
-      <span class="vk-kontoart">{{ g.kontoart }}</span>
     </div>
     <div class="vk-geld">
       <span class="geld d-amt">{{ g.praemie_betrag | eur }}</span>
     </div>
   </div>
 
-  <div class="vk-fakten">
+  <div class="vk-tags">
     <span class="vorschlag-tag tag-{{ g.quelle }}">{{ g.quelle | quelle }}</span>
+    {% if g.kontoart %}<span class="vorschlag-tag tag-kontoart">{{ g.kontoart }}</span>{% endif %}
     {% if g.mitglieder | selectattr('inhaber.ist_minderjaehrig') | list %}
     <span class="vorschlag-tag tag-kind">Auch für Kinder</span>
     {% endif %}
+  </div>
+
+  <div class="vk-fakten">
     <span class="vk-fakt">Gefunden {{ g.gefunden_am | datum }}</span>
     {% if g.sperrfrist_monate %}<span class="vk-fakt">Sperrfrist {{ g.sperrfrist_monate }} Mon.</span>{% endif %}
   </div>
@@ -189,29 +175,57 @@
   {% endif %}
 
   {% if g.bedingungen %}
-  <details class="vk-details" open>
-    <summary>
+  <div class="vk-bedingungen">
+    <div class="vk-bed-kopf">
       <span class="vk-bed-anzahl">{{ g.bedingungen | length }} Bedingung{{ "en" if g.bedingungen | length != 1 else "" }}</span>
       {% if n_nicht %}<span class="vk-bed-status nicht_erfuellt">{{ n_nicht }} nicht erfüllbar</span>
       {% elif n_pruefen %}<span class="vk-bed-status zu_pruefen">{{ n_pruefen }} zu prüfen</span>
       {% else %}<span class="vk-bed-status erfuellt">alle erfüllbar</span>{% endif %}
-    </summary>
+    </div>
     {{ bedingungen_liste(g) }}
-  </details>
+  </div>
   {% endif %}
 
-  <form class="vk-form" method="post" action="vorschlaege/uebernehmen">
-    {{ mitglieder_liste(g) }}
-    <div class="vorschlag-aktionen">
-      {% if g.status == "automatisch_abgelehnt" %}
-      <button type="submit" class="secondary">Trotzdem übernehmen</button>
-      {% else %}
-      <button type="submit">Übernehmen</button>
-      {% endif %}
-      <button type="submit" class="secondary" formaction="vorschlaege/verwerfen">Verwerfen</button>
-      <a class="button secondary vk-deal-link" href="{{ g.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
-    </div>
-  </form>
+  {% set kid = g.mitglieder[0].id %}
+  {% set ns = namespace(hinweise=false) %}
+  {% for m in g.mitglieder %}
+    {% if m.ablehnungsgruende or m.status != g.status %}{% set ns.hinweise = true %}{% endif %}
+  {% endfor %}
+  <div class="vorschlag-aktionen">
+    <button type="button" class="{{ 'warn' if ns.hinweise else '' }}" onclick="document.getElementById('dlg-uebernehmen-{{ kid }}').showModal()">
+      {{ "Trotzdem übernehmen" if g.status == "automatisch_abgelehnt" else "Übernehmen" }}
+    </button>
+    <form method="post" action="vorschlaege/verwerfen" class="vk-inline-form">
+      {% for m in g.mitglieder %}<input type="hidden" name="vorschlag_ids" value="{{ m.id }}">{% endfor %}
+      <button type="submit" class="secondary">Verwerfen</button>
+    </form>
+    <a class="button secondary" href="{{ g.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
+  </div>
+
+  <dialog id="dlg-uebernehmen-{{ kid }}" class="vk-dialog">
+    <h3>{{ g.bank_name }} · {{ g.kontoart }}</h3>
+    <p class="vk-dialog-frage">Für wen übernehmen?</p>
+    <form method="post" action="vorschlaege/uebernehmen">
+      <div class="vk-dialog-namen">
+        {% for m in g.mitglieder %}
+        <label class="vorschlag-mitglied">
+          <input type="checkbox" name="vorschlag_ids" value="{{ m.id }}" checked>
+          <span class="vk-name">{{ m.inhaber.name }}</span>
+          {% if m.status != g.status %}
+          <span class="chip status-{{ m.status }}">{{ m.status | vorschlag_status }}</span>
+          {% endif %}
+          {% if m.ablehnungsgruende %}
+          <span class="mitglied-begruendung">{{ m.ablehnungsgruende }}</span>
+          {% endif %}
+        </label>
+        {% endfor %}
+      </div>
+      <div class="vk-dialog-aktionen">
+        <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
+        <button type="submit">Übernehmen</button>
+      </div>
+    </form>
+  </dialog>
 </div>
 {% endmacro %}
 

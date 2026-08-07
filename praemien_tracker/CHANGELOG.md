@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.10.0
+
+Weitere Überarbeitung der Vorschlags-Karten. Reine Anzeige-Änderung, keine
+Migration.
+
+- **Übernehmen als Dialog:** Ein Klick auf **Übernehmen** öffnet einen
+  Dialog mit den Namen zum Auswählen und den zugehörigen Hinweisen je Person.
+  In der Kachel selbst gibt es keine Checkboxen mehr.
+- **Übernehmen-Button wird orange**, wenn es für einzelne Inhaber Hinweise
+  gibt (abweichender Status oder Begründung), sonst grün.
+- **Verwerfen** verwirft die ganze Karte (alle Namen), da die Einzelauswahl
+  in den Übernehmen-Dialog gewandert ist.
+- **Bedingungen sind immer sichtbar** (nicht mehr einklappbar).
+- **Übernehmen / Verwerfen / Deal öffnen** stehen nebeneinander in einer Reihe.
+- **Kontoart und "Auch für Kinder" wieder als Tags**.
+
 ## 2.9.0
 
 Kompakteres, übersichtlicheres Design der Vorschlags-Karten mit mehr
