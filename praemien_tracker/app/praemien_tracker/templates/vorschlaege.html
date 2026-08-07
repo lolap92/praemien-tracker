@@ -11,45 +11,56 @@
 
 <div class="card">
   {% if letzter_lauf %}
-  <div class="vorschlag-lauf-status">
-    {% if not letzter_lauf.erfolgreich %}
-    <span class="chip lauf-fehlgeschlagen">✗ Letzter Lauf fehlgeschlagen</span>
-    {% elif letzter_lauf.fehler %}
-    <span class="chip lauf-teilweise">⚠ Letzter Lauf teilweise erfolgreich</span>
-    {% else %}
-    <span class="chip lauf-erfolgreich">✓ Letzter Lauf erfolgreich</span>
-    {% endif %}
-    <span class="lauf-zeitpunkt">{{ letzter_lauf.beendet_am | zeitpunkt }}</span>
-  </div>
-  <div class="lauf-kennzahlen">
-    <div>
-      <span class="lauf-wert">{{ letzter_lauf.mydealz_geladen }}</span>
-      <span class="lauf-label">mydealz geladen</span>
+  <details class="lauf-details">
+    <summary class="vorschlag-lauf-status">
+      {% if not letzter_lauf.erfolgreich %}
+      <span class="chip lauf-fehlgeschlagen">✗ Letzter Lauf fehlgeschlagen</span>
+      {% elif letzter_lauf.fehler %}
+      <span class="chip lauf-teilweise">⚠ Letzter Lauf teilweise erfolgreich</span>
+      {% else %}
+      <span class="chip lauf-erfolgreich">✓ Letzter Lauf erfolgreich</span>
+      {% endif %}
+      <span class="lauf-zeitpunkt">{{ letzter_lauf.beendet_am | zeitpunkt }}</span>
+    </summary>
+
+    <div class="lauf-details-inhalt">
+      <div class="lauf-abschnitt-label">Dieser Lauf je Quelle</div>
+      <div class="tabelle-wrapper">
+        <table class="pc-tabelle lauf-tabelle">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Neue Vorschläge</th>
+              <th>Schon vorhanden</th>
+              <th>Aktualisiert</th>
+              <th>Aussortiert</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="bank">mydealz</td>
+              <td>{{ letzter_lauf.mydealz_neu }}</td>
+              <td>{{ letzter_lauf.mydealz_vorhanden }}</td>
+              <td>{{ letzter_lauf.mydealz_aktualisiert }}</td>
+              <td>{{ letzter_lauf.mydealz_rauschen }}</td>
+            </tr>
+            <tr>
+              <td class="bank">Spartanien</td>
+              <td>{{ letzter_lauf.spartanien_neu }}</td>
+              <td>{{ letzter_lauf.spartanien_vorhanden }}</td>
+              <td>{{ letzter_lauf.spartanien_aktualisiert }}</td>
+              <td>{{ letzter_lauf.spartanien_rauschen }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="lauf-tabelle-legende">„Aussortiert" = kein Bankdeal, doppelt gelistet oder Fehler.</p>
+
+      {% if letzter_lauf.fehler %}
+      <div class="vorschlag-begruendung abgelehnt">{{ letzter_lauf.fehler }}</div>
+      {% endif %}
     </div>
-    <div>
-      <span class="lauf-wert">{{ letzter_lauf.spartanien_geladen }}</span>
-      <span class="lauf-label">spartanien geladen</span>
-    </div>
-    <div>
-      <span class="lauf-wert">{{ letzter_lauf.neu_gefunden }}</span>
-      <span class="lauf-label">neu gefunden</span>
-    </div>
-    {% if letzter_lauf.uebersprungen %}
-    <div>
-      <span class="lauf-wert">{{ letzter_lauf.uebersprungen }}</span>
-      <span class="lauf-label">übersprungen</span>
-    </div>
-    {% endif %}
-    {% if letzter_lauf.aus_cache %}
-    <div>
-      <span class="lauf-wert">{{ letzter_lauf.aus_cache }}</span>
-      <span class="lauf-label">aus Cache, kein API-Aufruf</span>
-    </div>
-    {% endif %}
-  </div>
-  {% if letzter_lauf.fehler %}
-  <div class="vorschlag-begruendung abgelehnt">{{ letzter_lauf.fehler }}</div>
-  {% endif %}
+  </details>
   {% else %}
   <p class="leer">Noch kein Lauf durchgeführt.</p>
   {% endif %}

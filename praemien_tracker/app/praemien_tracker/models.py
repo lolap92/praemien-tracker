@@ -279,6 +279,23 @@ class FinderLauf(Base):
     erfolgreich: Mapped[bool] = mapped_column(Boolean, default=False)
     mydealz_geladen: Mapped[int] = mapped_column(default=0)
     spartanien_geladen: Mapped[int] = mapped_column(default=0)
+    # Aufschlüsselung je Quelle für die Tabelle im Vorschläge-Tab. Jeder
+    # geladene Fund landet in genau einer der vier Kategorien, die Summe je
+    # Quelle ergibt wieder <quelle>_geladen:
+    #   neu          = neues Bank-Angebot (neue Karte)
+    #   vorhanden    = bekanntes Bank-Angebot, unverändert
+    #   aktualisiert = bekanntes Bank-Angebot, Status durch Zeitablauf nachgezogen
+    #   rauschen     = kein Bank-Angebot, Duplikat oder Fehler ("nicht relevant, doppelt, etc.")
+    mydealz_neu: Mapped[int] = mapped_column(default=0)
+    mydealz_vorhanden: Mapped[int] = mapped_column(default=0)
+    mydealz_aktualisiert: Mapped[int] = mapped_column(default=0)
+    mydealz_rauschen: Mapped[int] = mapped_column(default=0)
+    spartanien_neu: Mapped[int] = mapped_column(default=0)
+    spartanien_vorhanden: Mapped[int] = mapped_column(default=0)
+    spartanien_aktualisiert: Mapped[int] = mapped_column(default=0)
+    spartanien_rauschen: Mapped[int] = mapped_column(default=0)
+    # Neue Angebote/Karten insgesamt (Summe über beide Quellen, = *_neu) -
+    # ein neuer Deal zählt genau einmal, unabhängig von der Zahl der Inhaber.
     neu_gefunden: Mapped[int] = mapped_column(default=0)
     uebersprungen: Mapped[int] = mapped_column(default=0)
     # Funde, die dank finder_funde (Rohtext unverändert) ganz ohne

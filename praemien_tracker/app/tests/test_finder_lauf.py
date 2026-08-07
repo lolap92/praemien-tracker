@@ -81,7 +81,8 @@ def test_lauf_legt_pro_inhaber_eine_zeile_an_auch_fuer_kinder(db, zwei_inhaber, 
 
     zaehler = lauf.taeglicher_lauf(db, client=client)
 
-    assert zaehler["gefunden"] == 2  # ein Fund, zwei Inhaber
+    assert zaehler["gefunden"] == 2  # zwei Zeilen (eine je Inhaber)
+    assert zaehler["neue_vorschlaege"] == 1  # aber nur ein neues Angebot / eine Karte
     assert zaehler[matching.STATUS_VORGESCHLAGEN] == 2
     zeilen = db.query(DealVorschlag).all()
     inhaber_namen = {z.inhaber.name for z in zeilen}
@@ -104,6 +105,7 @@ def test_doppelter_fund_in_einem_lauf_wird_nur_einmal_verarbeitet(db, zwei_inhab
     zaehler = lauf.taeglicher_lauf(db, client=client)
 
     assert zaehler["gefunden"] == 2  # ein Fund (dedupliziert), zwei Inhaber
+    assert _letzter_lauf(db).mydealz_rauschen == 1  # der zweite, identische Fund
     assert client.aufrufe == 2  # Themen-Check + Extraktion je einmal, nicht doppelt
     assert db.query(DealVorschlag).count() == 2
 
@@ -121,6 +123,10 @@ def test_lauf_ist_wiederholungssicher(db, zwei_inhaber, monkeypatch):
     lauf.taeglicher_lauf(db, client=client)
 
     assert db.query(DealVorschlag).count() == 2
+    # Zweiter Lauf: derselbe Fund ist bekannt und unverändert -> "vorhanden".
+    protokoll = _letzter_lauf(db)
+    assert protokoll.mydealz_neu == 0
+    assert protokoll.mydealz_vorhanden == 1
 
 
 def test_irrelevantes_angebot_erzeugt_keinen_vorschlag(db, zwei_inhaber, monkeypatch):
@@ -131,6 +137,7 @@ def test_irrelevantes_angebot_erzeugt_keinen_vorschlag(db, zwei_inhaber, monkeyp
     zaehler = lauf.taeglicher_lauf(db, client=client)
 
     assert zaehler["gefunden"] == 0
+    assert _letzter_lauf(db).mydealz_rauschen == 1  # kein Bank-Angebot -> Rauschen
     assert db.query(DealVorschlag).count() == 0
 
 
@@ -203,10 +210,61 @@ def test_erfolgreicher_lauf_protokolliert_zaehlerstaende(db, zwei_inhaber, monke
     assert protokoll.erfolgreich is True
     assert protokoll.mydealz_geladen == 2
     assert protokoll.spartanien_geladen == 1
-    assert protokoll.neu_gefunden == 6  # 3 Funde x 2 Inhaber
+    assert protokoll.neu_gefunden == 3  # 3 Angebote (je eine Karte), nicht 3x2 Zeilen
+    assert protokoll.mydealz_neu == 2
+    assert protokoll.spartanien_neu == 1
     assert protokoll.uebersprungen == 0
     assert protokoll.fehler is None
     assert protokoll.beendet_am is not None
+
+
+def test_geladene_funde_gehen_je_quelle_lueckenlos_auf(db, zwei_inhaber, monkeypatch):
+    """Kernanliegen der Tabelle: jeder geladene Fund landet je Quelle in genau
+    einer Kategorie (neu / vorhanden / aktualisiert / rauschen). Die Summe der
+    vier Kategorien muss wieder die Zahl der geladenen Funde ergeben - sonst
+    'passt es nicht zusammen'."""
+    relevant = RohFund("mydealz", "https://mydealz.de/gut", "t", "gutes Angebot")
+    irrelevant = RohFund("mydealz", "https://mydealz.de/versicherung", "t", "Autoversicherung")
+    doppelt = RohFund("mydealz", "https://mydealz.de/gut", "t", "gutes Angebot")  # gleiche URL wie relevant
+
+    monkeypatch.setattr(lauf, "fetch_mydealz", lambda gruppe, **kw: [relevant, irrelevant, doppelt])
+    monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [])
+
+    class GemischteMessages:
+        """relevant fuer /gut, irrelevant fuer /versicherung."""
+
+        def parse(self, *, output_format, messages, **kwargs):
+            text = messages[-1]["content"] if messages else ""
+            if output_format is RelevanzErgebnis:
+                ist_relevant = "Autoversicherung" not in text
+                return SimpleNamespace(parsed_output=RelevanzErgebnis(ist_relevant=ist_relevant), stop_reason="end_turn")
+            return SimpleNamespace(
+                parsed_output=AngebotExtraktion(
+                    bank_name="Gut-Bank", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]
+                ),
+                stop_reason="end_turn",
+            )
+
+    class GemischterClient:
+        messages = GemischteMessages()
+
+    zaehler = lauf.taeglicher_lauf(db, client=GemischterClient())
+
+    protokoll = _letzter_lauf(db)
+    geladen = protokoll.mydealz_geladen
+    assert geladen == 3
+    assert protokoll.mydealz_neu == 1  # nur /gut ist ein neues Bank-Angebot
+    assert protokoll.mydealz_vorhanden == 0
+    assert protokoll.mydealz_aktualisiert == 0
+    assert protokoll.mydealz_rauschen == 2  # /versicherung (nicht relevant) + /gut (doppelt)
+    summe = (
+        protokoll.mydealz_neu
+        + protokoll.mydealz_vorhanden
+        + protokoll.mydealz_aktualisiert
+        + protokoll.mydealz_rauschen
+    )
+    assert summe == geladen  # die vier Kategorien gehen lückenlos auf
+    assert zaehler["gefunden"] == 2  # ein relevanter Fund x zwei Inhaber
 
 
 def test_ohne_client_wird_trotzdem_protokolliert(db, zwei_inhaber, monkeypatch):
@@ -424,6 +482,7 @@ def test_sperrfrist_wird_trotz_cache_treffer_neu_bewertet(db, zwei_inhaber, monk
 
     assert client.aufrufe == 2  # weiterhin nur der allererste Themen-Check + Extraktion
     assert zaehler["aktualisiert"] >= 1
+    assert _letzter_lauf(db).mydealz_aktualisiert == 1  # ein Angebot nachgezogen
     db.refresh(eintrag)
     assert eintrag.status == matching.STATUS_VORGESCHLAGEN
     # Immer noch nur eine Zeile je Inhaber, kein Duplikat.

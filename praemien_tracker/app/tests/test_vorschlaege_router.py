@@ -277,7 +277,11 @@ def test_seite_zeigt_erfolgreichen_lauf(db):
             erfolgreich=True,
             mydealz_geladen=5,
             spartanien_geladen=2,
-            neu_gefunden=3,
+            mydealz_neu=3,
+            mydealz_vorhanden=1,
+            mydealz_rauschen=1,
+            spartanien_neu=2,
+            neu_gefunden=5,
             uebersprungen=0,
             fehler=None,
         )
@@ -287,9 +291,13 @@ def test_seite_zeigt_erfolgreichen_lauf(db):
     antwort = client.get("/vorschlaege")
     assert antwort.status_code == 200
     assert "Letzter Lauf erfolgreich" in antwort.text
-    assert ">5<" in antwort.text
-    assert ">2<" in antwort.text
-    assert ">3<" in antwort.text
+    # Tabelle: Quellen als Zeilen, die vier Kategorien als Spalten.
+    assert "mydealz" in antwort.text
+    assert "Spartanien" in antwort.text
+    assert "Neue Vorschläge" in antwort.text
+    assert "Schon vorhanden" in antwort.text
+    assert "Aktualisiert" in antwort.text
+    assert "Aussortiert" in antwort.text
 
 
 def test_seite_zeigt_fehlgeschlagenen_lauf_mit_fehlertext(db):

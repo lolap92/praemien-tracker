@@ -83,8 +83,13 @@ dann keinen erneuten API-Aufruf mehr aus - ein bereits als thematisch
 unpassend erkannter Fund (z. B. keine Bank-Prämie) wird dauerhaft
 übersprungen, ein bereits extrahiertes Angebot wird aus dem Cache
 wiederverwendet. Nur wenn sich der Rohtext ändert (z. B. ein bearbeiteter
-Beitrag), wird erneut geprüft. Die Übersicht im Vorschläge-Tab zeigt, wie
-viele Funde je Lauf ganz ohne API-Aufruf erledigt wurden.
+Beitrag), wird erneut geprüft.
+
+Die einklappbare Statuskarte oben im Vorschläge-Tab (Klick auf „Letzter Lauf
+…") zeigt je Quelle, was der letzte Lauf gefunden hat: wie viele Funde neue
+Vorschläge waren, schon vorhanden, aktualisiert oder aussortiert (kein
+Bankdeal, doppelt gelistet oder Fehler). Jeder geladene Fund landet in genau
+einer dieser vier Kategorien.
 
 ## Kündigungsweg-Recherche
 

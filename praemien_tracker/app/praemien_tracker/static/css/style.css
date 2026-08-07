@@ -1299,13 +1299,34 @@ table.pc-tabelle tr:hover {
   margin-bottom: 1rem;
 }
 
+/* Statuszeile ist die aufklappbare Zusammenfassung: eingeklappt zeigt sie nur
+   "Letzter Lauf ...", die Zahlen/Fehler erscheinen erst per Klick. */
 .vorschlag-lauf-status {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.6rem;
   flex-wrap: wrap;
+  cursor: pointer;
+  list-style: none;
+}
+
+.lauf-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.lauf-details > summary::after {
+  content: "▾ Details";
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+
+.lauf-details[open] > summary {
   margin-bottom: 0.8rem;
+}
+
+.lauf-details[open] > summary::after {
+  content: "▴ Zuklappen";
 }
 
 .lauf-zeitpunkt {
@@ -1314,24 +1335,34 @@ table.pc-tabelle tr:hover {
   font-family: var(--font-mono);
 }
 
-.lauf-kennzahlen {
-  display: flex;
-  gap: 1.4rem;
-  flex-wrap: wrap;
+/* Aufschlüsselung des letzten Laufs: Quellen als Zeilen, die vier Kategorien
+   (neu / vorhanden / aktualisiert / aussortiert) als Spalten. */
+table.lauf-tabelle {
+  max-width: 520px;
 }
 
-.lauf-kennzahlen .lauf-wert {
-  display: block;
+table.lauf-tabelle th:not(:first-child),
+table.lauf-tabelle td:not(:first-child) {
+  text-align: right;
   font-family: var(--font-mono);
-  font-size: 1.3rem;
-  font-weight: 600;
 }
 
-.lauf-kennzahlen .lauf-label {
-  display: block;
+table.lauf-tabelle tr:hover {
+  background: transparent;
+}
+
+.lauf-tabelle-legende {
+  margin: 0.4rem 0 0;
   font-size: 0.72rem;
-  color: var(--ink-soft);
-  margin-top: 0.1rem;
+  color: var(--ink-faint);
+}
+
+.lauf-abschnitt-label {
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 0.5rem;
 }
 
 .chip.lauf-erfolgreich {

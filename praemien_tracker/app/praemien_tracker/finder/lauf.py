@@ -27,6 +27,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import logging
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 
 import anthropic
@@ -123,7 +124,12 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
     nicht erfolgreicher Lauf protokolliert, statt die aufrufende Seite
     (Scheduler-Job oder "Jetzt suchen") abstürzen zu lassen."""
     zaehler = {
+        # gefunden = neu angelegte Vorschlags-Zeilen (eine je Inhaber) -
+        # internes Maß, das die Tests gegen die Zeilenanlage prüfen.
         "gefunden": 0,
+        # neue_vorschlaege = neue Angebote/Karten (eine je Fund, unabhängig
+        # von der Zahl der Inhaber) - ein neuer Deal zählt genau einmal.
+        "neue_vorschlaege": 0,
         "aktualisiert": 0,
         matching.STATUS_VORGESCHLAGEN: 0,
         matching.STATUS_ZU_PRUEFEN: 0,
@@ -131,6 +137,11 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
         "uebersprungen": 0,
         "aus_cache": 0,
     }
+
+    # Aufschlüsselung je Quelle für die Tabelle im Vorschläge-Tab. Jeder
+    # geladene Fund wird genau einer Kategorie zugeordnet (neu / vorhanden /
+    # aktualisiert / rauschen), die Summe je Quelle ergibt <quelle>_geladen.
+    kategorie: dict[str, Counter] = defaultdict(Counter)
 
     aktiver_client = client if client is not None else _anthropic_client()
     if aktiver_client is None:
@@ -155,6 +166,7 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
             # IntegrityError abbrechen statt nur diesen einen Fund zu
             # überspringen.
             if fund.quelle_url in bereits_verarbeitet:
+                kategorie[fund.quelle]["rauschen"] += 1
                 continue
             bereits_verarbeitet.add(fund.quelle_url)
 
@@ -168,6 +180,7 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
                 cache_eintrag.zuletzt_gesehen_am = datetime.datetime.utcnow()
                 if not cache_eintrag.ist_relevant:
                     zaehler["aus_cache"] += 1
+                    kategorie[fund.quelle]["rauschen"] += 1
                     continue
                 try:
                     extrahiert = AngebotExtraktion.model_validate_json(cache_eintrag.extraktion_json)
@@ -190,11 +203,13 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
                     logger.exception("Themen-Check für %s fehlgeschlagen, Fund wird übersprungen.", fund.quelle_url)
                     fehlermeldungen.append(f"Themen-Check für {fund.quelle_url}: {exc}")
                     zaehler["uebersprungen"] += 1
+                    kategorie[fund.quelle]["rauschen"] += 1
                     continue
                 if not relevant:
                     _cache_speichern(
                         db, cache_eintrag, fund, rohtext_hash, ist_relevant=False, extraktion_ergebnis=None
                     )
+                    kategorie[fund.quelle]["rauschen"] += 1
                     continue
 
                 try:
@@ -205,10 +220,12 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
                     )
                     fehlermeldungen.append(f"Extraktion für {fund.quelle_url}: {exc}")
                     zaehler["uebersprungen"] += 1
+                    kategorie[fund.quelle]["rauschen"] += 1
                     continue
                 if extrahiert is None:
                     fehlermeldungen.append(f"Extraktion für {fund.quelle_url} lieferte kein Ergebnis.")
                     zaehler["uebersprungen"] += 1
+                    kategorie[fund.quelle]["rauschen"] += 1
                     continue
 
                 _cache_speichern(
@@ -223,6 +240,8 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
             # (kostet nichts, ist reiner Python-Code): eine Sperrfrist kann
             # rein durch Zeitablauf erfüllt werden, ohne dass sich am
             # Angebot etwas ändert.
+            neuer_vorschlag_fuer_fund = False
+            aktualisiert_fuer_fund = False
             for inhaber in inhaber_liste:
                 match = matching.bewerten(db, fund, extrahiert, inhaber, config.MINDESTPRAEMIE)
                 bestehend = matching.bestehenden_vorschlag_finden(
@@ -240,6 +259,7 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
                         bestehend.status = match.status
                         bestehend.ablehnungsgruende = match.ablehnungsgruende
                         zaehler["aktualisiert"] += 1
+                        aktualisiert_fuer_fund = True
                         zaehler[match.status] = zaehler.get(match.status, 0) + 1
                     continue
 
@@ -263,7 +283,19 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
                 db.add(vorschlag)
 
                 zaehler["gefunden"] += 1
+                neuer_vorschlag_fuer_fund = True
                 zaehler[match.status] = zaehler.get(match.status, 0) + 1
+
+            # Jedes relevante Bank-Angebot zählt genau einmal (eine Karte, nicht
+            # eine Zeile je Person) - je nachdem, was in diesem Lauf passiert
+            # ist: ganz neu, ein Status nachgezogen, oder unverändert bekannt.
+            if neuer_vorschlag_fuer_fund:
+                zaehler["neue_vorschlaege"] += 1
+                kategorie[fund.quelle]["neu"] += 1
+            elif aktualisiert_fuer_fund:
+                kategorie[fund.quelle]["aktualisiert"] += 1
+            else:
+                kategorie[fund.quelle]["vorhanden"] += 1
 
         db.commit()
         erfolgreich = True
@@ -278,7 +310,15 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
         erfolgreich=erfolgreich,
         mydealz_geladen=len(quellen.mydealz_funde),
         spartanien_geladen=len(quellen.spartanien_funde),
-        neu_gefunden=zaehler["gefunden"],
+        mydealz_neu=kategorie["mydealz"]["neu"],
+        mydealz_vorhanden=kategorie["mydealz"]["vorhanden"],
+        mydealz_aktualisiert=kategorie["mydealz"]["aktualisiert"],
+        mydealz_rauschen=kategorie["mydealz"]["rauschen"],
+        spartanien_neu=kategorie["spartanien"]["neu"],
+        spartanien_vorhanden=kategorie["spartanien"]["vorhanden"],
+        spartanien_aktualisiert=kategorie["spartanien"]["aktualisiert"],
+        spartanien_rauschen=kategorie["spartanien"]["rauschen"],
+        neu_gefunden=zaehler["neue_vorschlaege"],
         uebersprungen=zaehler["uebersprungen"],
         aus_cache=zaehler["aus_cache"],
         fehler="; ".join(fehlermeldungen) or None,
@@ -299,8 +339,9 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
             logger.exception("HA-Benachrichtigung fehlgeschlagen.")
 
     logger.info(
-        "KI-Deal-Finder-Lauf abgeschlossen: %d gefunden, %d Status aktualisiert (%d vorgeschlagen, "
-        "%d zu prüfen, %d abgelehnt insgesamt), %d übersprungen, %d aus Cache ohne API-Aufruf.",
+        "KI-Deal-Finder-Lauf abgeschlossen: %d neue Vorschläge (%d Zeilen), %d Status aktualisiert "
+        "(%d vorgeschlagen, %d zu prüfen, %d abgelehnt insgesamt), %d übersprungen, %d aus Cache ohne API-Aufruf.",
+        zaehler["neue_vorschlaege"],
         zaehler["gefunden"],
         zaehler["aktualisiert"],
         zaehler[matching.STATUS_VORGESCHLAGEN],

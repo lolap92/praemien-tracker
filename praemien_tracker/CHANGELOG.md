@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.6.0
+
+Die Statusanzeige im Vorschläge-Tab wurde überarbeitet, damit die Zahlen
+nachvollziehbar zusammenpassen. Enthält eine Schema-Migration (acht neue
+Zähler-Spalten auf `finder_laeufe`) - vorher wird automatisch eine
+Sicherheitskopie angelegt.
+
+- **Statuskarte ist jetzt einklappbar.** Standardmäßig steht nur noch
+  „Letzter Lauf erfolgreich" mit Zeitpunkt; die Details erscheinen erst per
+  Klick auf den Statustext.
+- **Aufschlüsselung je Quelle als Tabelle.** Aufgeklappt zeigt eine kleine
+  Tabelle je Quelle (mydealz, Spartanien), wie viele Funde neue Vorschläge,
+  schon vorhanden, aktualisiert oder aussortiert (kein Bankdeal, doppelt,
+  Fehler) waren. Jeder geladene Fund landet in genau einer Kategorie, die
+  Summe je Quelle geht wieder auf die geladene Zahl auf - die frühere
+  Verwirrung „oben 73, darunter 72" entfällt.
+- **„Neue Vorschläge" zählt jetzt je Angebot, nicht je Inhaber.** Ein neuer
+  Deal, der zu mehreren Inhabern passt, steht in der Liste als eine Karte
+  und zählt entsprechend einmal - nicht mehr einmal pro Person.
+
 ## 2.5.1
 
 Fehlerbehebung, die im echten Betrieb aufgefallen ist: mydealz-Läufe konnten
