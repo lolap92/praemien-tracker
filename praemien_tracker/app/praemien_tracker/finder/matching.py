@@ -39,6 +39,17 @@ class BedingungBewertung:
 
 
 @dataclass(frozen=True)
+class PraemieBewertung:
+    """Eine einzelne Teilprämie eines Angebots (Betrag, Geber, Voraussetzung) -
+    nur zur Anzeige im Vorschlag. Die kanonische Quelle (spartanien/bank) für
+    den späteren Deal steckt in roh_json."""
+
+    betrag: Decimal
+    geber: str | None
+    bedingung: str | None
+
+
+@dataclass(frozen=True)
 class MatchErgebnis:
     """Ergebnis der Prüfung für einen Fund und einen Inhaber - alles, was
     lauf.py braucht, um daraus eine deal_vorschlaege-Zeile zu bauen."""
@@ -48,6 +59,7 @@ class MatchErgebnis:
     praemie_betrag: Decimal
     sperrfrist_monate: int | None
     bedingungen: list[BedingungBewertung]
+    praemien: list[PraemieBewertung]
     roh_json: str
     inhalt_hash: str
 
@@ -151,6 +163,27 @@ def _praemie_betrag(wert: float) -> Decimal:
         return Decimal("0")
 
 
+def _quelle_aus_geber(geber: str | None, fund_quelle: str) -> str:
+    """Freitext-Geber ("Spartanien", "Santander", ...) auf die kanonische
+    Quelle (spartanien/bank) abbilden. Nur Spartanien selbst zahlt als
+    "spartanien"; alles andere (die eigentliche Bank) ist "bank"."""
+    if geber and "spartanien" in geber.strip().lower():
+        return "spartanien"
+    return "bank"
+
+
+def _teilpraemien(extraktion: AngebotExtraktion, fund_quelle: str) -> list[PraemieBewertung]:
+    """Aus der Extraktion die Teilprämien für die Anzeige ableiten. Liefert die
+    KI eine Aufteilung, wird sie übernommen; sonst eine einzelne Prämie über
+    die Gesamtsumme (Geber/Bedingung dann unbekannt)."""
+    if extraktion.praemien:
+        return [
+            PraemieBewertung(_praemie_betrag(p.betrag), (p.geber or "").strip() or None, (p.wofuer or "").strip() or None)
+            for p in extraktion.praemien
+        ]
+    return [PraemieBewertung(_praemie_betrag(extraktion.praemie_betrag), None, None)]
+
+
 def bewerten(
     db: Session,
     fund: RohFund,
@@ -160,7 +193,8 @@ def bewerten(
 ) -> MatchErgebnis:
     """Ein extrahiertes Angebot für einen Inhaber bewerten (Konzept
     Abschnitt 6, Schritt 5)."""
-    praemie_betrag = _praemie_betrag(extraktion.praemie_betrag)
+    teilpraemien = _teilpraemien(extraktion, fund.quelle)
+    praemie_betrag = sum((p.betrag for p in teilpraemien), Decimal("0"))
     # Zwei getrennte Listen, keine gemeinsame: eine eindeutig verfehlte
     # Bedingung lehnt automatisch ab, eine unklare macht nur "zu prüfen" -
     # im Zweifel wird lieber vorgeschlagen als ausgeschlossen (Konzept,
@@ -204,16 +238,23 @@ def bewerten(
         status = STATUS_VORGESCHLAGEN
         gruende = []
 
-    # quelle "mydealz" wird beim Übernehmen auf "bank" gemappt (das
-    # Kernmodell kennt nur "spartanien" und "bank") - die tatsächliche
-    # Herkunft bleibt über die mitgegebene URL nachvollziehbar.
-    praemien_quelle = "spartanien" if fund.quelle == "spartanien" else "bank"
+    # Herkunft je Teilprämie: Spartanien zahlt als "spartanien", die
+    # eigentliche Bank als "bank" (das Kernmodell kennt nur diese zwei
+    # Quellen). Ohne KI-Aufteilung fällt alles auf die Fund-Quelle zurück.
+    if extraktion.praemien:
+        praemien_json = [
+            {"quelle": _quelle_aus_geber(p.geber, fund.quelle), "betrag": str(p.betrag), "erhalten": False}
+            for p in teilpraemien
+        ]
+    else:
+        fallback_quelle = "spartanien" if fund.quelle == "spartanien" else "bank"
+        praemien_json = [{"quelle": fallback_quelle, "betrag": str(praemie_betrag), "erhalten": False}]
     roh_json = json.dumps(
         {
             "bank": extraktion.bank_name.strip(),
             "kontoart": extraktion.kontoart.strip(),
             "inhaber": inhaber.name,
-            "praemien": [{"quelle": praemien_quelle, "betrag": str(praemie_betrag), "erhalten": False}],
+            "praemien": praemien_json,
             "bedingungen": [
                 {"beschreibung": b.beschreibung, "erfuellt": b.einschaetzung == EINSCHAETZUNG_ERFUELLT}
                 for b in bedingungen
@@ -229,6 +270,7 @@ def bewerten(
         praemie_betrag=praemie_betrag,
         sperrfrist_monate=extraktion.sperrfrist_monate,
         bedingungen=bedingungen,
+        praemien=teilpraemien,
         roh_json=roh_json,
         inhalt_hash=_inhalt_hash(
             extraktion.bank_name, extraktion.kontoart, praemie_betrag, extraktion.sperrfrist_monate, bedingungen

@@ -86,6 +86,10 @@ spartanien), **Typ** (Erwachsene/Für Kinder) und **Status** eingrenzen.
 Jede Karte hat oben rechts einen **"Deal öffnen"**-Link, der die zugehörige
 mydealz-/spartanien-Seite in einem neuen Tab öffnet, sowie Tags für Quelle,
 Kontoart (z. B. Depot, Tagesgeld) und - falls zutreffend - "Auch für Kinder".
+Setzt sich die Prämie aus mehreren Teilen mit unterschiedlichen
+Voraussetzungen zusammen (z. B. 50 EUR von Spartanien für die Kontoeröffnung
+plus 250 EUR von der Bank für den Kontowechselservice), werden diese
+Teilprämien mit Betrag, Geber und Bedingung einzeln aufgeführt.
 
 **API-Nutzung wird minimiert:** Bevor ein Fund an Claude geschickt wird,
 prüft die App anhand eines Rohtext-Abgleichs, ob dieselbe Quelle-URL mit

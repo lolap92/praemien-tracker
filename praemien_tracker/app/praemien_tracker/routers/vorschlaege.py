@@ -42,6 +42,7 @@ class VorschlagGruppe:
     kontoart: str
     praemie_betrag: object
     bedingungen: list
+    praemien: list
     status: str
     mitglieder: list[DealVorschlag]
 
@@ -71,6 +72,7 @@ def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
                 kontoart=fuehrend.kontoart,
                 praemie_betrag=fuehrend.praemie_betrag,
                 bedingungen=fuehrend.bedingungen,
+                praemien=fuehrend.praemien,
                 status=status,
                 mitglieder=mitglieder,
             )
@@ -93,7 +95,11 @@ def vorschlaege_view(
 
     alle = (
         db.query(DealVorschlag)
-        .options(joinedload(DealVorschlag.inhaber), joinedload(DealVorschlag.bedingungen))
+        .options(
+            joinedload(DealVorschlag.inhaber),
+            joinedload(DealVorschlag.bedingungen),
+            joinedload(DealVorschlag.praemien),
+        )
         .filter(DealVorschlag.status.in_(STATUS_OFFEN))
         .order_by(DealVorschlag.gefunden_am.desc())
         .all()

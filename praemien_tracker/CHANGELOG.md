@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.8.0
+
+Übersichtlichere Vorschlags-Karten. Enthält eine Schema-Migration (neue
+Tabelle `vorschlag_praemien`) - vorher wird automatisch eine Sicherheitskopie
+angelegt.
+
+- **Mehrere Teilprämien je Angebot werden einzeln ausgewiesen.** Setzt sich
+  die Gesamtprämie aus mehreren Teilen mit unterschiedlichen Voraussetzungen
+  zusammen (z. B. 50 EUR von Spartanien für die Kontoeröffnung plus 250 EUR
+  von der Bank für den Kontowechselservice), zeigt die Karte jede Teilprämie
+  mit Betrag, Geber und Bedingung. Beim Übernehmen entsteht daraus je
+  Teilprämie ein Eintrag mit der richtigen Quelle (Spartanien/Bank). Bei nur
+  einer Prämie bleibt die Karte schlicht wie bisher.
+- **Einleitungstext im Vorschläge-Tab entfernt.**
+
+Hinweis: Beides greift nur für **neu extrahierte** Angebote (neue Funde oder
+solche mit geändertem Text). Bereits im Cache liegende Angebote behalten ihre
+alte, einteilige Prämie, bis sich ihr Text ändert.
+
 ## 2.7.0
 
 Vorschlags-Karten mit Direktlink und mehr Tags, sowie eine gezieltere

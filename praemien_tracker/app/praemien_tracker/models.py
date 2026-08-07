@@ -186,6 +186,35 @@ class DealVorschlag(Base):
     bedingungen: Mapped[list["VorschlagBedingung"]] = relationship(
         back_populates="vorschlag", cascade="all, delete-orphan", order_by="VorschlagBedingung.id"
     )
+    praemien: Mapped[list["VorschlagPraemie"]] = relationship(
+        back_populates="vorschlag", cascade="all, delete-orphan", order_by="VorschlagPraemie.id"
+    )
+
+
+class VorschlagPraemie(Base):
+    """Einzelne Teilprämie eines Vorschlags mit eigener Bedingung.
+
+    Ein Angebot bringt häufig mehrere Prämien mit unterschiedlichen
+    Voraussetzungen mit (z.B. 50 EUR von Spartanien für die Kontoeröffnung
+    plus 250 EUR von der Bank für den Kontowechselservice). Damit das im
+    Vorschlag sichtbar bleibt, wird jede Teilprämie einzeln festgehalten -
+    analog zu VorschlagBedingung. `praemie_betrag` auf DealVorschlag bleibt
+    die Gesamtsumme für Anzeige und Mindestprämien-Prüfung.
+    """
+
+    __tablename__ = "vorschlag_praemien"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    deal_vorschlag_id: Mapped[int] = mapped_column(ForeignKey("deal_vorschlaege.id"), index=True)
+    betrag: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    # Wer die Teilprämie zahlt, Freitext aus dem Angebot (z.B. "Spartanien",
+    # "Santander"). Nur zur Anzeige; die kanonische Zuordnung spartanien/bank
+    # für den späteren Deal steckt in roh_json.
+    geber: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Wofür es diese Teilprämie gibt (z.B. "für die Kontoeröffnung").
+    bedingung: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    vorschlag: Mapped["DealVorschlag"] = relationship(back_populates="praemien")
 
 
 class VorschlagBedingung(Base):

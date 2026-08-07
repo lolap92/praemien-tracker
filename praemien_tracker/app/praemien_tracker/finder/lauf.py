@@ -36,7 +36,7 @@ from sqlalchemy.orm import Session
 from .. import config
 from ..anthropic_client import anthropic_client as _anthropic_client_basis
 from ..database import SessionLocal
-from ..models import DealVorschlag, FinderFund, FinderLauf, Inhaber, VorschlagBedingung
+from ..models import DealVorschlag, FinderFund, FinderLauf, Inhaber, VorschlagBedingung, VorschlagPraemie
 from . import extraktion, matching, notify
 from .extraktion import AngebotExtraktion
 from .quellen import RohFund, fetch_mydealz, fetch_spartanien
@@ -287,6 +287,12 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
                 for bewertung in match.bedingungen:
                     vorschlag.bedingungen.append(
                         VorschlagBedingung(beschreibung=bewertung.beschreibung, einschaetzung=bewertung.einschaetzung)
+                    )
+                for teilpraemie in match.praemien:
+                    vorschlag.praemien.append(
+                        VorschlagPraemie(
+                            betrag=teilpraemie.betrag, geber=teilpraemie.geber, bedingung=teilpraemie.bedingung
+                        )
                     )
                 db.add(vorschlag)
 

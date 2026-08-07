@@ -9,7 +9,7 @@ from decimal import Decimal
 import pytest
 
 from praemien_tracker.finder import matching
-from praemien_tracker.finder.extraktion import AngebotExtraktion, BedingungExtraktion
+from praemien_tracker.finder.extraktion import AngebotExtraktion, BedingungExtraktion, PraemieExtraktion
 from praemien_tracker.finder.quellen import RohFund
 from praemien_tracker.models import Bank, Deal, DealVorschlag, Inhaber
 from praemien_tracker.schemas import DealImport
@@ -48,6 +48,46 @@ def test_echter_neukunde_wird_vorgeschlagen(db, alice):
     # roh_json muss unverändert vom bestehenden JSON-Import validiert werden
     # können (Konzept: "Übernehmen" nutzt genau diesen Mechanismus).
     DealImport.model_validate_json(ergebnis.roh_json)
+
+
+def test_mehrere_teilpraemien_werden_aufgeschluesselt_und_summiert(db, alice):
+    """Beispiel Santander: 50 EUR von Spartanien für die Kontoeröffnung + 250
+    EUR von der Bank für den Kontowechselservice. Gesamtprämie = Summe, jede
+    Teilprämie einzeln (mit Geber/Bedingung) sichtbar, und im roh_json die
+    kanonische Quelle je Teilprämie (spartanien/bank)."""
+    fund = RohFund("spartanien", "https://www.spartanien.de/Santander+BestGiro", "t", "x")
+    ext = AngebotExtraktion(
+        bank_name="Santander",
+        kontoart="Girokonto",
+        praemie_betrag=300.0,
+        praemien=[
+            PraemieExtraktion(betrag=50.0, geber="Spartanien", wofuer="für die Kontoeröffnung"),
+            PraemieExtraktion(betrag=250.0, geber="Santander", wofuer="für den Kontowechselservice"),
+        ],
+        bedingungen=[],
+    )
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
+
+    assert ergebnis.praemie_betrag == Decimal("300.00")
+    assert len(ergebnis.praemien) == 2
+    assert ergebnis.praemien[0].betrag == Decimal("50.00")
+    assert ergebnis.praemien[0].geber == "Spartanien"
+    assert ergebnis.praemien[0].bedingung == "für die Kontoeröffnung"
+
+    daten = DealImport.model_validate_json(ergebnis.roh_json)
+    quellen = {(p.betrag, p.quelle) for p in daten.praemien}
+    assert quellen == {(Decimal("50"), "spartanien"), (Decimal("250"), "bank")}
+
+
+def test_einzelpraemie_ohne_aufteilung_bleibt_eine_zeile(db, alice):
+    """Ohne KI-Aufteilung (praemien leer) genau eine Teilprämie über die
+    Gesamtsumme - die Karte zeigt dann keine Aufschlüsselung."""
+    fund = RohFund("mydealz", "https://mydealz.de/c24", "t", "x")
+    ext = AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[])
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
+    assert ergebnis.praemie_betrag == Decimal("125.00")
+    assert len(ergebnis.praemien) == 1
+    assert ergebnis.praemien[0].geber is None
 
 
 def test_praemie_unter_mindestbetrag_wird_abgelehnt(db, alice):

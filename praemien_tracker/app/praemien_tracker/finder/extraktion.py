@@ -33,6 +33,19 @@ class BedingungExtraktion(BaseModel):
     einschaetzung: Literal["erfuellt", "zu_pruefen", "nicht_erfuellt"]
 
 
+class PraemieExtraktion(BaseModel):
+    """Eine einzelne Teilprämie eines Angebots. Ein Angebot bringt häufig
+    mehrere Prämien mit unterschiedlichen Voraussetzungen mit (z.B. 50 EUR von
+    Spartanien für die Kontoeröffnung plus 250 EUR von der Bank für den
+    Kontowechselservice)."""
+
+    betrag: float
+    # Wer die Prämie zahlt, aus dem Text (z.B. "Spartanien", "Santander").
+    geber: str
+    # Wofür es diese Teilprämie gibt (z.B. "für die Kontoeröffnung").
+    wofuer: str
+
+
 class AngebotExtraktion(BaseModel):
     bank_name: str
     kontoart: str
@@ -48,6 +61,11 @@ class AngebotExtraktion(BaseModel):
     # nicht für Kinder - Erwachsenen-Angebote werden Kindern dann nicht
     # vorgeschlagen.
     fuer_kinder: bool = False
+    # Einzelne Teilprämien mit je eigener Voraussetzung (z.B. 50 EUR von
+    # Spartanien für die Kontoeröffnung plus 250 EUR von der Bank für den
+    # Kontowechselservice). Leer lassen, wenn es nur eine einzige Prämie ohne
+    # sinnvolle Aufteilung gibt - dann zählt allein praemie_betrag.
+    praemien: list[PraemieExtraktion] = []
     bedingungen: list[BedingungExtraktion]
 
 
@@ -77,6 +95,13 @@ die strukturierten Angaben.
 "Kreditkarte").
 - praemie_betrag: Gesamte Prämiensumme in Euro als Zahl (nur die Zahl, ohne \
 Währungszeichen). Wenn mehrere Teilprämien genannt sind, die Summe.
+- praemien: Wenn sich die Gesamtprämie aus mehreren Teilprämien mit \
+unterschiedlichen Voraussetzungen zusammensetzt (z.B. "50 EUR von Spartanien \
+für die Kontoeröffnung" und "250 EUR von der Bank für den \
+Kontowechselservice"), jede Teilprämie einzeln auflisten mit: betrag (Zahl in \
+Euro), geber (wer zahlt, z.B. "Spartanien" oder der Bankname) und wofuer \
+(kurz, wofür es diese Teilprämie gibt). Gibt es nur eine einzige Prämie ohne \
+sinnvolle Aufteilung, eine leere Liste zurückgeben.
 - sperrfrist_monate: Anzahl Monate, die seit einer vorherigen Kündigung bei \
 dieser Bank vergangen sein müssen, um wieder als Neukunde zu gelten - aus \
 Formulierungen wie "Kündigung darf nicht in den letzten 12 Monaten erfolgt \

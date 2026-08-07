@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from praemien_tracker.main import app
-from praemien_tracker.models import Deal, DealVorschlag, FinderLauf, Inhaber
+from praemien_tracker.models import Deal, DealVorschlag, FinderLauf, Inhaber, VorschlagPraemie
 
 client = TestClient(app)
 
@@ -86,6 +86,20 @@ def test_karte_hat_deal_link_und_tags(db, inhaber):
     # Tags: Quelle und Kontoart.
     assert "spartanien" in antwort.text
     assert "Tagesgeld" in antwort.text
+
+
+def test_karte_zeigt_mehrere_teilpraemien_mit_bedingung(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen", praemie_betrag=Decimal("300.00"))
+    vorschlag.praemien.append(VorschlagPraemie(betrag=Decimal("50.00"), geber="Spartanien", bedingung="für die Kontoeröffnung"))
+    vorschlag.praemien.append(VorschlagPraemie(betrag=Decimal("250.00"), geber="Santander", bedingung="für den Kontowechselservice"))
+    db.commit()
+
+    antwort = client.get("/vorschlaege")
+    assert antwort.status_code == 200
+    assert "Spartanien" in antwort.text
+    assert "für die Kontoeröffnung" in antwort.text
+    assert "Santander" in antwort.text
+    assert "für den Kontowechselservice" in antwort.text
 
 
 def test_karte_zeigt_kinderdepot_tag_nur_bei_minderjaehrigem(db, zwei_inhaber):

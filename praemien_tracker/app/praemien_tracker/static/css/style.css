@@ -1512,6 +1512,39 @@ table.lauf-tabelle tr:hover {
   background: rgba(180, 70, 42, 0.1);
 }
 
+/* Aufschlüsselung mehrerer Teilprämien mit je eigener Voraussetzung. */
+.vorschlag-praemien {
+  list-style: none;
+  margin: 0.7rem 0 0;
+  padding: 0.5rem 0.7rem;
+  background: var(--surface-2);
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
+.vorschlag-praemien li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+}
+
+.vorschlag-praemien .praemie-betrag {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  min-width: 5rem;
+}
+
+.vorschlag-praemien .praemie-geber {
+  color: var(--st-confirm);
+  font-weight: 600;
+}
+
+.vorschlag-praemien .praemie-wofuer {
+  color: var(--ink-soft);
+}
+
 .vorschlag-bedingungen {
   list-style: none;
   margin: 0.6rem 0 0;

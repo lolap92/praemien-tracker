@@ -3,13 +3,6 @@
 {% block content %}
 
 <div class="card">
-  <p>Der KI-Deal-Finder durchsucht täglich mydealz und spartanien nach neuen Neukunden-Prämien und
-  gleicht sie mit euren bestehenden Deals ab. Jeder thematisch passende Fund erscheint hier einmal –
-  auch automatisch abgelehnte, mit Begründung. Im Zweifel wird lieber vorgeschlagen als
-  ausgeschlossen.</p>
-</div>
-
-<div class="card">
   {% if letzter_lauf %}
   <details class="lauf-details">
     <summary class="vorschlag-lauf-status">
@@ -176,6 +169,17 @@
     <span class="vorschlag-tag tag-kind">Auch für Kinder</span>
     {% endif %}
   </div>
+  {% if g.praemien | length > 1 %}
+  <ul class="vorschlag-praemien">
+    {% for p in g.praemien %}
+    <li>
+      <span class="praemie-betrag">{{ p.betrag | eur }}</span>
+      {% if p.geber %}<span class="praemie-geber">{{ p.geber }}</span>{% endif %}
+      {% if p.bedingung %}<span class="praemie-wofuer">{{ p.bedingung }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
   {{ bedingungen_liste(g) }}
   <form class="vorschlag-aktionen" method="post" action="vorschlaege/uebernehmen">
     {{ mitglieder_liste(g) }}
