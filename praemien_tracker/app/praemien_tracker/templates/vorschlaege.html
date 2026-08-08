@@ -242,51 +242,107 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
     <a class="button secondary" href="{{ g.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
   </div>
 
-  <dialog id="dlg-uebernehmen-{{ kid }}" class="vk-dialog">
-    <h3>{{ g.bank_name }} · {{ g.kontoart }}</h3>
-    <p class="vk-dialog-frage">Für wen übernehmen?</p>
-    <form method="post" action="vorschlaege/uebernehmen">
-      <div class="vk-dialog-namen">
-        {% for m in g.mitglieder %}
-        <label class="vorschlag-mitglied">
-          <input type="checkbox" name="vorschlag_ids" value="{{ m.id }}" checked>
-          <span class="vk-name">{{ m.inhaber.name }}</span>
-          {% if m.status != g.status %}
-          <span class="chip status-{{ m.status }}">{{ m.status | vorschlag_status }}</span>
-          {% endif %}
-          {% if m.ablehnungsgruende %}
-          <span class="mitglied-begruendung">{{ m.ablehnungsgruende }}</span>
-          {% endif %}
-        </label>
-        {% endfor %}
-      </div>
-      <div class="vk-dialog-aktionen">
-        <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
-        <button type="submit">Übernehmen</button>
-      </div>
-    </form>
-  </dialog>
+  {{ vorschlag_dialoge(g) }}
+</div>
+{% endmacro %}
 
-  <dialog id="dlg-verwerfen-{{ kid }}" class="vk-dialog">
-    <h3>{{ g.bank_name }} · {{ g.kontoart }}</h3>
-    <p class="vk-dialog-frage">Warum verwerfen? (Mehrfachauswahl möglich)</p>
-    <form method="post" action="vorschlaege/verwerfen" class="vk-verwerfen-form" onsubmit="return vkPruefeGrund(this)">
-      {% for m in g.mitglieder %}<input type="hidden" name="vorschlag_ids" value="{{ m.id }}">{% endfor %}
-      <div class="vk-dialog-gruende">
-        {% for code, label in verwerfen_gruende_optionen.items() %}
-        <label class="vorschlag-mitglied">
-          <input type="checkbox" name="gruende" value="{{ code }}">
-          <span>{{ label }}</span>
-        </label>
-        {% endfor %}
+{% macro vorschlag_dialoge(g, duplikat_verwerfen_ids=[]) %}
+{% set kid = g.mitglieder[0].id %}
+<dialog id="dlg-uebernehmen-{{ kid }}" class="vk-dialog">
+  <h3>{{ g.bank_name }} · {{ g.kontoart }}</h3>
+  <p class="vk-dialog-frage">Für wen übernehmen?</p>
+  <form method="post" action="vorschlaege/uebernehmen">
+    <div class="vk-dialog-namen">
+      {% for m in g.mitglieder %}
+      <label class="vorschlag-mitglied">
+        <input type="checkbox" name="vorschlag_ids" value="{{ m.id }}" checked>
+        <span class="vk-name">{{ m.inhaber.name }}</span>
+        {% if m.status != g.status %}
+        <span class="chip status-{{ m.status }}">{{ m.status | vorschlag_status }}</span>
+        {% endif %}
+        {% if m.ablehnungsgruende %}
+        <span class="mitglied-begruendung">{{ m.ablehnungsgruende }}</span>
+        {% endif %}
+      </label>
+      {% endfor %}
+    </div>
+    {% for vid in duplikat_verwerfen_ids %}<input type="hidden" name="verwerfen_duplikat_ids" value="{{ vid }}">{% endfor %}
+    <div class="vk-dialog-aktionen">
+      <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
+      <button type="submit">Übernehmen</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-verwerfen-{{ kid }}" class="vk-dialog">
+  <h3>{{ g.bank_name }} · {{ g.kontoart }}</h3>
+  <p class="vk-dialog-frage">Warum verwerfen? (Mehrfachauswahl möglich)</p>
+  <form method="post" action="vorschlaege/verwerfen" class="vk-verwerfen-form" onsubmit="return vkPruefeGrund(this)">
+    {% for m in g.mitglieder %}<input type="hidden" name="vorschlag_ids" value="{{ m.id }}">{% endfor %}
+    <div class="vk-dialog-gruende">
+      {% for code, label in verwerfen_gruende_optionen.items() %}
+      <label class="vorschlag-mitglied">
+        <input type="checkbox" name="gruende" value="{{ code }}">
+        <span>{{ label }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <p class="vk-dialog-fehler" hidden>Bitte mindestens einen Grund auswählen.</p>
+    <div class="vk-dialog-aktionen">
+      <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
+      <button type="submit">Verwerfen</button>
+    </div>
+  </form>
+</dialog>
+{% endmacro %}
+
+{% macro dup_gruppe_karte(d) %}
+{% set alle_ids = [] %}
+{% for f in d.funde %}{% for m in f.mitglieder %}{% set _ = alle_ids.append(m.id) %}{% endfor %}{% endfor %}
+<div class="card dup-gruppe status-{{ d.status }}">
+  <div class="dup-kopf">
+    <span class="dup-icon">{{ d.funde | length }}×</span>
+    <span class="bank">{{ d.bank_name }} · {{ d.kontoart }}</span>
+  </div>
+  <p class="dup-unterzeile">Gleiche Bank + Kontoart in {{ d.funde | length }} Fundstellen erkannt - vermutlich derselbe Deal.</p>
+
+  <div class="dup-quellen">
+    {% for f in d.funde %}
+    {% set fkid = f.mitglieder[0].id %}
+    <label class="dup-quelle">
+      <input type="radio" name="dupwahl-{{ alle_ids[0] }}" data-kid="{{ fkid }}" {{ "checked" if loop.first else "" }}>
+      <div class="dup-quelle-inhalt">
+        <div class="dup-quelle-kopf">
+          <span class="dup-quelle-name">{{ f.quelle | quelle }}</span>
+          <span class="dup-quelle-geld">{{ f.praemie_betrag | eur }}</span>
+        </div>
+        <div class="dup-quelle-fakten">
+          {% if f.sperrfrist_monate %}<span>Sperrfrist {{ f.sperrfrist_monate }} Mon.</span>{% endif %}
+          <span>Gefunden {{ f.gefunden_am | datum }}</span>
+          <a class="dup-quelle-link" href="{{ f.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
+        </div>
       </div>
-      <p class="vk-dialog-fehler" hidden>Bitte mindestens einen Grund auswählen.</p>
-      <div class="vk-dialog-aktionen">
-        <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
-        <button type="submit">Verwerfen</button>
-      </div>
-    </form>
-  </dialog>
+    </label>
+    {% endfor %}
+  </div>
+
+  <div class="dup-aktionen">
+    <span class="dup-hinweis-auto">Nicht gewählte Fundstellen werden beim Übernehmen automatisch <b>verworfen</b> (Grund: Duplikat).</span>
+    <div class="dup-aktionen-buttons">
+      <form method="post" action="vorschlaege/verwerfen" class="dup-alle-verwerfen-form">
+        {% for vid in alle_ids %}<input type="hidden" name="vorschlag_ids" value="{{ vid }}">{% endfor %}
+        <input type="hidden" name="gruende" value="duplikat">
+        <button type="submit" class="secondary">Alle verwerfen</button>
+      </form>
+      <button type="button" onclick="vkDupUebernehmen(this)">Ausgewählte übernehmen</button>
+    </div>
+  </div>
+
+  {% for f in d.funde %}
+  {% set andere_ids = [] %}
+  {% for f2 in d.funde %}{% if f2 is not sameas f %}{% for m in f2.mitglieder %}{% set _ = andere_ids.append(m.id) %}{% endfor %}{% endif %}{% endfor %}
+  {{ vorschlag_dialoge(f, duplikat_verwerfen_ids=andere_ids) }}
+  {% endfor %}
 </div>
 {% endmacro %}
 
@@ -329,7 +385,7 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
   <span class="num">Kriterien erfüllt</span>
 </div>
 {% for g in vorgeschlagen %}
-{{ vorschlag_karte(g) }}
+{{ dup_gruppe_karte(g) if g.funde is defined else vorschlag_karte(g) }}
 {% endfor %}
 {% endif %}
 
@@ -340,7 +396,7 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
   <span class="num">unklar, manuell entscheiden</span>
 </div>
 {% for g in zu_pruefen %}
-{{ vorschlag_karte(g) }}
+{{ dup_gruppe_karte(g) if g.funde is defined else vorschlag_karte(g) }}
 {% endfor %}
 {% endif %}
 
@@ -348,7 +404,7 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
 <details class="json-import" {{ "open" if "automatisch_abgelehnt" in filter_status else "" }}>
   <summary>{{ automatisch_abgelehnt | length }} automatisch abgelehnte anzeigen</summary>
   {% for g in automatisch_abgelehnt %}
-  {{ vorschlag_karte(g) }}
+  {{ dup_gruppe_karte(g) if g.funde is defined else vorschlag_karte(g) }}
   {% endfor %}
 </details>
 {% endif %}
@@ -368,6 +424,13 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
     var fehler = form.querySelector('.vk-dialog-fehler');
     if (!ausgewaehlt && fehler) { fehler.hidden = false; }
     return ausgewaehlt;
+  }
+
+  function vkDupUebernehmen(button) {
+    var gruppe = button.closest('.dup-gruppe');
+    var gewaehlt = gruppe.querySelector('input[type="radio"]:checked');
+    if (!gewaehlt) { return; }
+    document.getElementById('dlg-uebernehmen-' + gewaehlt.dataset.kid).showModal();
   }
 </script>
 

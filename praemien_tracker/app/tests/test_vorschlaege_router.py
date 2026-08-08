@@ -57,9 +57,12 @@ def _vorschlag(db, inhaber, status: str, **kwargs) -> DealVorschlag:
 
 
 def test_vorschlaege_seite_gruppiert_nach_status(db, inhaber):
-    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
-    _vorschlag(db, inhaber, "zu_pruefen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2")
-    _vorschlag(db, inhaber, "automatisch_abgelehnt", quelle_url="https://www.mydealz.de/3", inhalt_hash="h3")
+    # Drei unabhängige, unterschiedliche Banken - sonst würden sie ab dieser
+    # Version als quellenübergreifendes Duplikat gebündelt (siehe
+    # test_duplikat_gruppe.py) statt als drei getrennte Status-Karten.
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1", bank_name="Bank1")
+    _vorschlag(db, inhaber, "zu_pruefen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2", bank_name="Bank2")
+    _vorschlag(db, inhaber, "automatisch_abgelehnt", quelle_url="https://www.mydealz.de/3", inhalt_hash="h3", bank_name="Bank3")
 
     antwort = client.get("/vorschlaege")
     assert antwort.status_code == 200

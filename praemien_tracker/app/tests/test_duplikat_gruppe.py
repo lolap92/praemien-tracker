@@ -1,0 +1,183 @@
+"""routers/vorschlaege.py: quellenübergreifende Duplikat-Erkennung - gleiche
+Bank+Kontoart aus mehreren Fundstellen (z.B. mydealz und spartanien) werden
+zu einer Duplikat-Gruppe gebündelt, mit der Möglichkeit, eine Version zu
+übernehmen (verwirft die übrigen automatisch) oder alle zu verwerfen."""
+
+from __future__ import annotations
+
+from decimal import Decimal
+
+import pytest
+from fastapi.testclient import TestClient
+
+from praemien_tracker.main import app
+from praemien_tracker.models import Deal, DealVorschlag, Inhaber
+
+client = TestClient(app)
+
+
+@pytest.fixture()
+def inhaber(db):
+    eintrag = Inhaber(name="Alice")
+    db.add(eintrag)
+    db.commit()
+    return eintrag
+
+
+def _vorschlag(db, inhaber, status: str, **kwargs) -> DealVorschlag:
+    daten = {
+        "inhaber_id": inhaber.id,
+        "quelle": "mydealz",
+        "quelle_url": "https://www.mydealz.de/x",
+        "bank_name": "C24",
+        "kontoart": "Girokonto",
+        "praemie_betrag": Decimal("125.00"),
+        "sperrfrist_monate": None,
+        "ablehnungsgruende": None,
+        "roh_json": (
+            '{{"bank": "C24", "kontoart": "Girokonto", "inhaber": "{name}", '
+            '"praemien": [{{"quelle": "bank", "betrag": "125.00", "erhalten": false}}], '
+            '"bedingungen": [], "urls": [{{"url": "https://www.mydealz.de/x", "bezeichnung": "mydealz-Angebot"}}]}}'
+        ).format(name=inhaber.name),
+        "inhalt_hash": "abc123",
+        "status": status,
+    }
+    daten.update(kwargs)
+    eintrag = DealVorschlag(**daten)
+    db.add(eintrag)
+    db.commit()
+    return eintrag
+
+
+def test_zwei_quellen_gleiche_bank_werden_gebuendelt(db, inhaber):
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle="mydealz", quelle_url="https://www.mydealz.de/ing", inhalt_hash="h1",
+               bank_name="ING", praemie_betrag=Decimal("150.00"))
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle="spartanien", quelle_url="https://www.spartanien.de/ing", inhalt_hash="h2",
+               bank_name="ING", praemie_betrag=Decimal("175.00"))
+
+    antwort = client.get("/vorschlaege")
+    assert antwort.status_code == 200
+    assert "dup-gruppe" in antwort.text
+    assert "2×" in antwort.text
+    # Beide Prämienhöhen sichtbar, nicht nur eine.
+    assert "150,00 €" in antwort.text
+    assert "175,00 €" in antwort.text
+    assert "Ausgewählte übernehmen" in antwort.text
+    assert "Alle verwerfen" in antwort.text
+    # Wie bei der bestehenden Mehrpersonen-Bündelung zählt der Chip die
+    # gebündelte Karte nur einmal, nicht jede Quelle einzeln.
+    assert "1 vorgeschlagen" in antwort.text
+
+
+def test_drei_quellen_werden_gebuendelt(db, inhaber):
+    """Die Bündelung ist nicht auf mydealz/spartanien beschränkt - eine
+    dritte (oder vierte, fünfte, ...) Quelle wird genauso erkannt."""
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle="mydealz", quelle_url="https://www.mydealz.de/ing", inhalt_hash="h1",
+               bank_name="ING", praemie_betrag=Decimal("150.00"))
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle="spartanien", quelle_url="https://www.spartanien.de/ing", inhalt_hash="h2",
+               bank_name="ING", praemie_betrag=Decimal("175.00"))
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle="spartanien", quelle_url="https://www.bankkonditionen.invalid/ing", inhalt_hash="h3",
+               bank_name="ING", praemie_betrag=Decimal("160.00"))
+
+    antwort = client.get("/vorschlaege")
+    assert "3×" in antwort.text
+
+
+def test_unterschiedliche_bank_wird_nicht_gebuendelt(db, inhaber):
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1", bank_name="ING")
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2", bank_name="DKB")
+
+    antwort = client.get("/vorschlaege")
+    assert 'class="card dup-gruppe' not in antwort.text
+    assert "2 vorgeschlagen" in antwort.text
+
+
+def test_unterschiedliche_kontoart_wird_nicht_gebuendelt(db, inhaber):
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1",
+               bank_name="ING", kontoart="Girokonto")
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2",
+               bank_name="ING", kontoart="Depot")
+
+    antwort = client.get("/vorschlaege")
+    assert 'class="card dup-gruppe' not in antwort.text
+
+
+def test_bankname_normalisiert_erkannt(db, inhaber):
+    """Groß-/Kleinschreibung und Schreibweise-Unterschiede zwischen den
+    Quellen dürfen die Erkennung nicht verhindern (wie beim bestehenden
+    Bank-Abgleich, siehe derived.bank_name_normalisieren)."""
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1", bank_name="SMARTBROKER")
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2", bank_name="Smart Broker")
+
+    antwort = client.get("/vorschlaege")
+    assert "dup-gruppe" in antwort.text
+    assert "2×" in antwort.text
+
+
+def test_praemienhoehe_kein_kriterium(db, inhaber):
+    """Zentrale Anforderung: unterschiedliche Prämienhöhe je Quelle darf die
+    Bündelung nicht verhindern."""
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1",
+               bank_name="ING", praemie_betrag=Decimal("50.00"))
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2",
+               bank_name="ING", praemie_betrag=Decimal("500.00"))
+
+    antwort = client.get("/vorschlaege")
+    assert "dup-gruppe" in antwort.text
+
+
+def test_bester_status_bestimmt_die_sektion(db, inhaber):
+    """Ist eine Quelle vorgeschlagen, die andere automatisch abgelehnt, soll
+    die Gruppe unter 'Vorgeschlagen' auftauchen - gleiches Prinzip wie beim
+    bestehenden Mehrpersonen-Fund."""
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1", bank_name="ING")
+    _vorschlag(db, inhaber, "automatisch_abgelehnt", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2", bank_name="ING",
+               ablehnungsgruende="Bereits Kundin.")
+
+    antwort = client.get("/vorschlaege")
+    assert "1 vorgeschlagen" in antwort.text
+    assert "0 abgelehnt" in antwort.text
+
+
+def test_uebernehmen_verwirft_andere_quellen_automatisch(db, inhaber):
+    gewinner = _vorschlag(db, inhaber, "vorgeschlagen", quelle="mydealz", quelle_url="https://www.mydealz.de/ing",
+                           inhalt_hash="h1", bank_name="ING", praemie_betrag=Decimal("175.00"))
+    verlierer = _vorschlag(db, inhaber, "vorgeschlagen", quelle="spartanien", quelle_url="https://www.spartanien.de/ing",
+                            inhalt_hash="h2", bank_name="ING", praemie_betrag=Decimal("150.00"))
+
+    antwort = client.post(
+        "/vorschlaege/uebernehmen",
+        data={"vorschlag_ids": [gewinner.id], "verwerfen_duplikat_ids": [verlierer.id]},
+        follow_redirects=False,
+    )
+    assert antwort.status_code == 303
+
+    db.refresh(gewinner)
+    db.refresh(verlierer)
+    assert gewinner.status == "uebernommen"
+    assert verlierer.status == "verworfen"
+    assert verlierer.verwerfen_gruende == "duplikat"
+    assert db.query(Deal).count() == 1
+
+
+def test_uebernehmen_ohne_duplikat_ids_verhaelt_sich_wie_bisher(db, inhaber):
+    """Rückwärtskompatibel: ohne verwerfen_duplikat_ids (normale, nicht
+    gebündelte Karte) ändert sich am bisherigen Verhalten nichts."""
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+    assert antwort.status_code == 303
+    db.refresh(vorschlag)
+    assert vorschlag.status == "uebernommen"
+
+
+def test_alle_verwerfen_button_deckt_alle_quellen_ab(db, inhaber):
+    a = _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1", bank_name="ING")
+    b = _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2", bank_name="ING")
+
+    antwort = client.get("/vorschlaege")
+    # Das "Alle verwerfen"-Formular trägt beide IDs als verstecktes Feld, mit
+    # dem festen Grund "duplikat" statt eines Auswahl-Dialogs.
+    assert f'name="vorschlag_ids" value="{a.id}"' in antwort.text
+    assert f'name="vorschlag_ids" value="{b.id}"' in antwort.text
+    assert 'name="gruende" value="duplikat"' in antwort.text

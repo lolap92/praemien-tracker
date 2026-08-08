@@ -92,6 +92,17 @@ ihren abweichenden Status mit Begründung. Ein Klick auf **Übernehmen** öffnet
 einen Dialog zur Auswahl der Namen - für jede ausgewählte Person entsteht ein
 eigener Deal, nicht ausgewählte bleiben unverändert offen stehen.
 
+**Gleicher Deal aus mehreren Quellen wird gebündelt.** Findet die App
+dieselbe Bank+Kontoart in mehreren unabhängigen Fundstellen (z. B. einmal auf
+mydealz, einmal auf Spartanien - unabhängig von der Anzahl beteiligter
+Quellen), erscheint eine gemeinsame Duplikat-Karte statt mehrerer einzelner.
+Jede Fundstelle steht darin mit eigener Prämienhöhe, Sperrfrist und Link zur
+Auswahl - die Prämie selbst fließt bewusst nicht ins Erkennungskriterium ein,
+da sie sich je Quelle unterscheiden kann. Nach Auswahl einer Version über
+**"Ausgewählte übernehmen"** werden die übrigen Fundstellen automatisch mit
+Grund "Duplikat" verworfen; **"Alle verwerfen"** lehnt die ganze Gruppe ab,
+falls keine Version passt.
+
 Ein Klick auf **Verwerfen** öffnet ebenfalls einen Dialog: Hier wird - mit
 Mehrfachauswahl möglich - der Grund festgehalten (Duplikat, Bedingungen zu
 aufwendig, noch nicht wieder Neukunde). Ohne ausgewählten Grund lässt sich

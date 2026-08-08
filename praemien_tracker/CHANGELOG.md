@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.16.0
+
+**Quellenübergreifende Duplikat-Erkennung im KI-Deal-Finder.** Meldet eine
+Bank+Kontoart-Kombination in mehreren unabhängigen Fundstellen (z. B. einmal
+auf mydealz, einmal auf Spartanien), erscheint jetzt eine gemeinsame
+Duplikat-Karte statt mehrerer einzelner Vorschlags-Karten - funktioniert für
+beliebig viele beteiligte Quellen, nicht nur mydealz/Spartanien.
+
+- Jede Fundstelle steht in der Karte mit eigener Prämienhöhe, Sperrfrist und
+  Link zur Auswahl (Radio-Buttons) - die Prämie selbst ist bewusst kein
+  Erkennungskriterium, da sie sich je Quelle unterscheiden kann.
+- **"Ausgewählte übernehmen"** übernimmt die gewählte Version und verwirft
+  die übrigen Fundstellen automatisch mit Grund "Duplikat" - kein separater
+  Bestätigungsschritt nötig.
+- **"Alle verwerfen"** lehnt die ganze Gruppe auf einmal ab, falls keine der
+  gefundenen Versionen passt.
+- Die Zähler-Chips ("vorgeschlagen", "zu prüfen", "abgelehnt") zählen eine
+  Duplikat-Gruppe wie bisher schon bei mehreren Inhabern nur einmal, nicht je
+  Fundstelle einzeln.
+
 ## 2.15.0
 
 Notify-Konfiguration überarbeitet: mehrere Geräte statt nur eines möglich.

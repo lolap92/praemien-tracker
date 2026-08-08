@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from fastapi import APIRouter, Depends, Form, Query, Request
 from sqlalchemy.orm import Session, joinedload
 
+from .. import derived
 from ..config import DEMO_MODUS
 from ..database import get_db
 from ..finder import matching
@@ -92,6 +93,58 @@ def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
     return gruppen
 
 
+@dataclass
+class DuplikatGruppe:
+    """Mehrere VorschlagGruppen (=Funde) mit gleicher Bank+Kontoart, egal aus
+    welcher/welchen Quelle(n) - vermutlich derselbe Deal, nur unabhängig
+    voneinander gefunden (z.B. einmal auf mydealz, einmal auf spartanien,
+    ggf. mit abweichender Prämienhöhe je nach Quelle). Anders als bei
+    VorschlagGruppe bleibt jeder Fund ein eigener Datensatz mit eigenem
+    roh_json - die Bündelung ist reine Anzeige- und Aktions-Hilfe, damit sich
+    beim Übernehmen gezielt eine Version wählen und die übrigen als Duplikat
+    verwerfen lassen (Konzept: Nutzerfrage "gleicher Deal von mydealz und
+    spartanien - wie vergleichen und einen übernehmen?")."""
+
+    bank_name: str
+    kontoart: str
+    status: str
+    gefunden_am: object
+    funde: list[VorschlagGruppe]
+
+
+def _quellenuebergreifend_gruppieren(gruppen: list[VorschlagGruppe]) -> list[VorschlagGruppe | DuplikatGruppe]:
+    """Bündelt VorschlagGruppen mit identischer Bank+Kontoart (normalisiert
+    wie beim Bank-Abgleich) zu einer DuplikatGruppe. Die Prämienhöhe fließt
+    bewusst nicht ins Kriterium ein, da sie sich je Quelle unterscheiden
+    kann. Funktioniert unabhängig von der Anzahl beteiligter Quellen - ob 2
+    oder 5 Fundstellen denselben Deal melden, macht keinen Unterschied.
+    Einzelne, nicht betroffene Funde bleiben unverändert in der Liste."""
+    nach_schluessel: dict[tuple[str, str], list[VorschlagGruppe]] = {}
+    for g in gruppen:
+        schluessel = (derived.bank_name_normalisieren(g.bank_name), g.kontoart.strip().lower())
+        nach_schluessel.setdefault(schluessel, []).append(g)
+
+    ergebnis: list[VorschlagGruppe | DuplikatGruppe] = []
+    for mitglieder in nach_schluessel.values():
+        if len(mitglieder) == 1:
+            ergebnis.append(mitglieder[0])
+            continue
+        # Höchste Prämie zuerst (Vorauswahl) - bei Gleichstand der zuletzt gefundene Fund.
+        mitglieder = sorted(mitglieder, key=lambda g: (g.praemie_betrag, g.gefunden_am), reverse=True)
+        status = min((g.status for g in mitglieder), key=lambda s: _STATUS_PRIORITAET.get(s, 99))
+        ergebnis.append(
+            DuplikatGruppe(
+                bank_name=mitglieder[0].bank_name,
+                kontoart=mitglieder[0].kontoart,
+                status=status,
+                gefunden_am=max(g.gefunden_am for g in mitglieder),
+                funde=mitglieder,
+            )
+        )
+    ergebnis.sort(key=lambda item: item.gefunden_am, reverse=True)
+    return ergebnis
+
+
 def _nach_quelle_typ_filtern(
     vorschlaege: list[DealVorschlag], filter_quelle: list[str], filter_typ: list[str]
 ) -> list[DealVorschlag]:
@@ -118,20 +171,21 @@ class VorschlagZaehler:
 
 def zaehlen(db: Session) -> VorschlagZaehler:
     """Anzahl Vorschläge je Status, dedupliziert wie in der Ansicht (ein Fund
-    für mehrere Inhaber zählt nur einmal) - unabhängig von Quelle-/Typ-Filtern,
+    für mehrere Inhaber zählt nur einmal, mehrere Quellen desselben Deals
+    dank Duplikat-Bündelung ebenfalls) - unabhängig von Quelle-/Typ-Filtern,
     für die Kacheln auf der Übersicht."""
     lade_optionen = (joinedload(DealVorschlag.inhaber), joinedload(DealVorschlag.bedingungen), joinedload(DealVorschlag.praemien))
 
     offene = db.query(DealVorschlag).options(*lade_optionen).filter(DealVorschlag.status.in_(STATUS_OFFEN)).all()
-    offene_gruppen = _gruppieren(offene)
+    offene_anzeige = _quellenuebergreifend_gruppieren(_gruppieren(offene))
 
     verworfene = db.query(DealVorschlag).options(*lade_optionen).filter(DealVorschlag.status == matching.STATUS_VERWORFEN).all()
     verworfene_gruppen = _gruppieren(verworfene)
 
     return VorschlagZaehler(
-        vorgeschlagen=sum(1 for g in offene_gruppen if g.status == matching.STATUS_VORGESCHLAGEN),
-        zu_pruefen=sum(1 for g in offene_gruppen if g.status == matching.STATUS_ZU_PRUEFEN),
-        abgelehnt=sum(1 for g in offene_gruppen if g.status == matching.STATUS_ABGELEHNT),
+        vorgeschlagen=sum(1 for g in offene_anzeige if g.status == matching.STATUS_VORGESCHLAGEN),
+        zu_pruefen=sum(1 for g in offene_anzeige if g.status == matching.STATUS_ZU_PRUEFEN),
+        abgelehnt=sum(1 for g in offene_anzeige if g.status == matching.STATUS_ABGELEHNT),
         verworfen=len(verworfene_gruppen),
     )
 
@@ -182,9 +236,10 @@ def vorschlaege_view(
     # Zähler je Status - berücksichtigen Quelle/Typ, aber bewusst nicht den
     # Status-Filter selbst: sonst würden sich die Chips beim Anklicken auf
     # 0 zurücksetzen, weil die anderen Status dann herausgefiltert sind.
-    anzahl_vorgeschlagen = sum(1 for g in alle_gruppen if g.status == matching.STATUS_VORGESCHLAGEN)
-    anzahl_zu_pruefen = sum(1 for g in alle_gruppen if g.status == matching.STATUS_ZU_PRUEFEN)
-    anzahl_abgelehnt = sum(1 for g in alle_gruppen if g.status == matching.STATUS_ABGELEHNT)
+    alle_anzeige = _quellenuebergreifend_gruppieren(alle_gruppen)
+    anzahl_vorgeschlagen = sum(1 for g in alle_anzeige if g.status == matching.STATUS_VORGESCHLAGEN)
+    anzahl_zu_pruefen = sum(1 for g in alle_anzeige if g.status == matching.STATUS_ZU_PRUEFEN)
+    anzahl_abgelehnt = sum(1 for g in alle_anzeige if g.status == matching.STATUS_ABGELEHNT)
     anzahl_verworfen = len(verworfen_gruppen)
 
     gruppen = alle_gruppen
@@ -194,8 +249,8 @@ def vorschlaege_view(
     if filter_status and matching.STATUS_VERWORFEN not in filter_status:
         verworfen = []
 
-    eingeteilt: dict[str, list[VorschlagGruppe]] = {s: [] for s in STATUS_OFFEN}
-    for g in gruppen:
+    eingeteilt: dict[str, list[VorschlagGruppe | DuplikatGruppe]] = {s: [] for s in STATUS_OFFEN}
+    for g in _quellenuebergreifend_gruppieren(gruppen):
         eingeteilt[g.status].append(g)
 
     letzter_lauf = db.query(FinderLauf).order_by(FinderLauf.id.desc()).first()
@@ -223,14 +278,25 @@ def vorschlaege_view(
 
 
 @router.post("/vorschlaege/uebernehmen")
-def uebernehmen(request: Request, vorschlag_ids: list[int] = Form(default=[]), db: Session = Depends(get_db)):
+def uebernehmen(
+    request: Request,
+    vorschlag_ids: list[int] = Form(default=[]),
+    verwerfen_duplikat_ids: list[int] = Form(default=[]),
+    db: Session = Depends(get_db),
+):
     """Legt für jede ausgewählte Inhaber-Zeile einen eigenen Deal aus
     roh_json an - über denselben Mechanismus wie der händische JSON-Import
     (Konzept Abschnitt 7). Die Auswahl kommt aus den Checkboxen je Person in
     der Gruppen-Karte: ein Fund kann für mehrere Namen gleichzeitig
     übernommen werden. Auch aus "automatisch_abgelehnt" möglich, als
     bewusstes Überstimmen. Unbekannte oder bereits entschiedene IDs werden
-    übergangen statt die ganze Anfrage abzubrechen."""
+    übergangen statt die ganze Anfrage abzubrechen.
+
+    verwerfen_duplikat_ids kommt aus der Duplikat-Gruppe (siehe
+    DuplikatGruppe/dup_gruppe_karte): wählt der Nutzer dort eine Quelle zum
+    Übernehmen aus, werden die übrigen Quellen desselben Deals hier
+    automatisch mit Grund "Duplikat" verworfen - kein zusätzlicher
+    Bestätigungsschritt nötig."""
     for vorschlag_id in vorschlag_ids:
         vorschlag = db.get(DealVorschlag, vorschlag_id)
         if vorschlag is None or vorschlag.status not in STATUS_OFFEN:
@@ -238,6 +304,11 @@ def uebernehmen(request: Request, vorschlag_ids: list[int] = Form(default=[]), d
         daten = DealImport.model_validate_json(vorschlag.roh_json)
         build_deal_from_import(db, daten)
         vorschlag.status = matching.STATUS_UEBERNOMMEN
+    for vorschlag_id in verwerfen_duplikat_ids:
+        vorschlag = db.get(DealVorschlag, vorschlag_id)
+        if vorschlag is not None and vorschlag.status in STATUS_OFFEN:
+            vorschlag.status = matching.STATUS_VERWORFEN
+            vorschlag.verwerfen_gruende = matching.VERWERFEN_GRUND_DUPLIKAT
     db.commit()
     return redirect(request, "vorschlaege")
 

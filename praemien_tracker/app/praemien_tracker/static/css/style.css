@@ -1727,6 +1727,144 @@ table.lauf-tabelle tr:hover {
   opacity: 0.85;
 }
 
+/* ---------- Duplikat-Gruppe: gleicher Deal aus mehreren Fundstellen ---------- */
+
+.dup-gruppe {
+  border: 1.5px solid var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.dup-kopf {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dup-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.dup-kopf .bank {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.02rem;
+  letter-spacing: -0.01em;
+}
+
+.dup-unterzeile {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  margin: 0.15rem 0 0.9rem 30px;
+}
+
+.dup-quellen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.dup-quelle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+}
+
+.dup-quelle:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dup-quelle input[type="radio"] {
+  margin-top: 0.2rem;
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.dup-quelle-inhalt {
+  flex: 1;
+  min-width: 0;
+}
+
+.dup-quelle-kopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.dup-quelle-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.dup-quelle-geld {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.dup-quelle-fakten {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.65rem;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  margin-top: 0.25rem;
+}
+
+.dup-quelle-link {
+  font-size: 0.72rem;
+  color: var(--accent-ink);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.dup-aktionen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.dup-aktionen-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.dup-alle-verwerfen-form {
+  display: contents;
+}
+
+.dup-hinweis-auto {
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+
+.dup-hinweis-auto b {
+  color: var(--ink-soft);
+}
+
 .vorschlag-begruendung {
   font-size: 0.82rem;
   line-height: 1.5;
