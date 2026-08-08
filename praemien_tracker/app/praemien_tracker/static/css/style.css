@@ -291,6 +291,18 @@ main {
   padding: 0.3rem 0.6rem;
   border-radius: 8px;
   white-space: nowrap;
+  text-decoration: none;
+}
+
+/* Anklickbare Status-Chips im Vorschläge-Tab (a.chip) filtern beim Klick
+   direkt auf den jeweiligen Status - sichtbares Hover/Focus als Hinweis,
+   dass sie interaktiv sind, im Unterschied zu reinen Anzeige-Chips. */
+a.chip {
+  cursor: pointer;
+}
+a.chip:hover,
+a.chip:focus-visible {
+  filter: brightness(0.94);
 }
 
 .chip::before {
@@ -1404,6 +1416,10 @@ table.lauf-tabelle tr:hover {
 .chip.status-automatisch_abgelehnt {
   color: var(--ink-faint);
   background: var(--surface-2);
+}
+.chip.status-verworfen {
+  color: var(--danger);
+  background: rgba(180, 70, 42, 0.1);
 }
 
 .tag-vorgeschlagen {

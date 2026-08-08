@@ -407,13 +407,54 @@ def test_filter_nach_typ_kind_zeigt_nur_minderjaehrige(db, zwei_inhaber):
 
 
 def test_filter_nach_status(db, inhaber):
-    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
-    _vorschlag(db, inhaber, "zu_pruefen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2")
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1",
+               bank_name="VorgeschlagenBank")
+    _vorschlag(db, inhaber, "zu_pruefen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2",
+               bank_name="ZuPruefenBank")
 
     antwort = client.get("/vorschlaege", params={"status": "zu_pruefen"})
     assert antwort.status_code == 200
-    assert "0 vorgeschlagen" in antwort.text
+    # Die Chips zeigen weiterhin die Gesamtzahl je Status - unabhängig vom
+    # aktiven Status-Filter, sonst würden sie sich beim Anklicken auf 0
+    # zurücksetzen.
+    assert "1 vorgeschlagen" in antwort.text
     assert "1 zu prüfen" in antwort.text
+    # Nur "Zu prüfen" wird tatsächlich als Karten-Sektion angezeigt.
+    assert "ZuPruefenBank" in antwort.text
+    assert "VorgeschlagenBank" not in antwort.text
+
+
+def test_status_chips_sind_links_die_direkt_filtern(db, inhaber):
+    """Klick auf einen Status-Chip soll direkt auf den jeweiligen Status
+    filtern - die Chips sind deshalb Links auf vorschlaege?status=..."""
+    _vorschlag(db, inhaber, "vorgeschlagen")
+    antwort = client.get("/vorschlaege")
+    assert 'href="vorschlaege?status=vorgeschlagen"' in antwort.text
+    assert 'href="vorschlaege?status=zu_pruefen"' in antwort.text
+    assert 'href="vorschlaege?status=automatisch_abgelehnt"' in antwort.text
+    assert 'href="vorschlaege?status=verworfen"' in antwort.text
+
+
+def test_verworfen_ist_ueber_status_chip_und_filter_erreichbar(db, inhaber):
+    """Bisher gab es keine Möglichkeit, gezielt nach manuell verworfenen
+    Vorschlägen zu filtern - jetzt über den vierten Chip bzw. die
+    Status-Filterleiste (Wert "verworfen")."""
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen", bank_name="VerworfeneBank")
+    client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [vorschlag.id], "gruende": ["duplikat"]},
+        follow_redirects=False,
+    )
+
+    # Vierter Zähler ist immer sichtbar, auch ohne aktiven Filter.
+    antwort = client.get("/vorschlaege")
+    assert "1 verworfen" in antwort.text
+
+    # Gezielt gefiltert zeigt nur die Verworfen-Sektion (aufgeklappt) - die
+    # anderen (leeren) Sektionen erscheinen nicht.
+    gefiltert = client.get("/vorschlaege", params={"status": "verworfen"})
+    assert "VerworfeneBank" in gefiltert.text
+    assert '<details class="json-import" open>' in gefiltert.text
 
 
 def test_ungueltiger_filterwert_wird_ignoriert(db, inhaber):

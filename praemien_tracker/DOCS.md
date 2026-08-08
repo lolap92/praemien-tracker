@@ -100,7 +100,13 @@ eingeklappten Sektion, mit den gewählten Gründen als Kennzeichnung - und
 tauchen dank Dedup nicht erneut auf, solange sich am Fund nichts ändert.
 
 Über die Filterleiste lässt sich die Liste nach **Quelle** (mydealz/
-Spartanien), **Typ** (Erwachsene/Für Kinder) und **Status** eingrenzen.
+Spartanien), **Typ** (Erwachsene/Für Kinder) und **Status** eingrenzen -
+auch nach **Verworfen**, um manuell verworfene Funde gezielt wiederzufinden.
+Schneller geht's über die vier farbigen Zähler-Chips oberhalb der Liste
+("vorgeschlagen", "zu prüfen", "abgelehnt", "verworfen") - ein Klick filtert
+direkt auf den jeweiligen Status und klappt die passende Sektion automatisch
+auf. Die Chips zeigen dabei immer die Gesamtzahl (unter Berücksichtigung von
+Quelle/Typ), unabhängig davon, welcher Status gerade aktiv gefiltert ist.
 
 Jede Karte hat oben rechts einen **"Deal öffnen"**-Link, der die zugehörige
 mydealz-/Spartanien-Seite in einem neuen Tab öffnet, sowie Tags für Quelle,

@@ -133,19 +133,28 @@
         <input type="checkbox" name="status" value="automatisch_abgelehnt" {{ "checked" if "automatisch_abgelehnt" in filter_status else "" }}>
         Automatisch abgelehnt
       </label>
+      <label>
+        <input type="checkbox" name="status" value="verworfen" {{ "checked" if "verworfen" in filter_status else "" }}>
+        Verworfen
+      </label>
     </div>
   </details>
   <button type="submit" class="secondary">Filtern</button>
   {% if filter_aktiv %}<a class="button secondary" href="vorschlaege">Zurücksetzen</a>{% endif %}
 </form>
 
+{% macro status_href(status_wert) -%}
+vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{% endfor %}{% for t in filter_typ %}&typ={{ t }}{% endfor %}
+{%- endmacro %}
+
 <div class="vorschlag-meta">
-  <span class="chip status-vorgeschlagen">{{ vorgeschlagen | length }} vorgeschlagen</span>
-  <span class="chip status-zu_pruefen">{{ zu_pruefen | length }} zu prüfen</span>
-  <span class="chip status-automatisch_abgelehnt">{{ automatisch_abgelehnt | length }} abgelehnt</span>
+  <a class="chip status-vorgeschlagen" href="{{ status_href('vorgeschlagen') }}">{{ anzahl_vorgeschlagen }} vorgeschlagen</a>
+  <a class="chip status-zu_pruefen" href="{{ status_href('zu_pruefen') }}">{{ anzahl_zu_pruefen }} zu prüfen</a>
+  <a class="chip status-automatisch_abgelehnt" href="{{ status_href('automatisch_abgelehnt') }}">{{ anzahl_abgelehnt }} abgelehnt</a>
+  <a class="chip status-verworfen" href="{{ status_href('verworfen') }}">{{ anzahl_verworfen }} verworfen</a>
 </div>
 
-{% if not vorgeschlagen and not zu_pruefen and not automatisch_abgelehnt %}
+{% if not vorgeschlagen and not zu_pruefen and not automatisch_abgelehnt and not verworfen %}
 <div class="card">
   {% if filter_aktiv %}
   <p class="leer">Keine Vorschläge passen zu den gewählten Filtern.</p>
@@ -331,7 +340,7 @@
 {% endif %}
 
 {% if automatisch_abgelehnt %}
-<details class="json-import">
+<details class="json-import" {{ "open" if "automatisch_abgelehnt" in filter_status else "" }}>
   <summary>{{ automatisch_abgelehnt | length }} automatisch abgelehnte anzeigen</summary>
   {% for g in automatisch_abgelehnt %}
   {{ vorschlag_karte(g) }}
@@ -340,7 +349,7 @@
 {% endif %}
 
 {% if verworfen %}
-<details class="json-import">
+<details class="json-import" {{ "open" if "verworfen" in filter_status else "" }}>
   <summary>{{ verworfen | length }} verworfene anzeigen</summary>
   {% for g in verworfen %}
   {{ verworfen_karte(g) }}

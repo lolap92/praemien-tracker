@@ -23,6 +23,10 @@ logger = logging.getLogger("praemien_tracker.finder")
 # automatisch abgelehnten.
 STATUS_OFFEN = matching.STATUS_OFFEN
 _STATUS_PRIORITAET = {matching.STATUS_VORGESCHLAGEN: 0, matching.STATUS_ZU_PRUEFEN: 1, matching.STATUS_ABGELEHNT: 2}
+# Zusätzlich zu den drei offenen Status lässt sich auch nach "verworfen"
+# filtern (eigene Sektion, siehe vorschlaege_view) - fachlich kein "offener"
+# Status mehr, aber über dieselbe Status-Filterleiste erreichbar.
+STATUS_FILTERBAR = STATUS_OFFEN + (matching.STATUS_VERWORFEN,)
 
 QUELLEN = ("mydealz", "spartanien")
 TYPEN = ("erwachsen", "kind")
@@ -113,7 +117,7 @@ def vorschlaege_view(
 ):
     filter_quelle = [q for q in quelle if q in QUELLEN]
     filter_typ = [t for t in typ if t in TYPEN]
-    filter_status = [s for s in status if s in STATUS_OFFEN]
+    filter_status = [s for s in status if s in STATUS_FILTERBAR]
 
     lade_optionen = (
         joinedload(DealVorschlag.inhaber),
@@ -129,17 +133,13 @@ def vorschlaege_view(
         .all()
     )
     alle = _nach_quelle_typ_filtern(alle, filter_quelle, filter_typ)
+    alle_gruppen = _gruppieren(alle)
 
-    gruppen = _gruppieren(alle)
-    if filter_status:
-        gruppen = [g for g in gruppen if g.status in filter_status]
-
-    eingeteilt: dict[str, list[VorschlagGruppe]] = {s: [] for s in STATUS_OFFEN}
-    for g in gruppen:
-        eingeteilt[g.status].append(g)
-
-    # Manuell verworfene Vorschläge separat: eigene Sektion am Seitenende,
-    # mit den vom Nutzer ausgewählten Verwerfen-Gründen.
+    # Manuell verworfene Vorschläge separat abgefragt: eigene Sektion am
+    # Seitenende, mit den vom Nutzer ausgewählten Verwerfen-Gründen. Bleiben
+    # bewusst eine eigene Gruppierung statt mit STATUS_OFFEN vermischt zu
+    # werden - sonst würde ein für eine Person verworfener, für eine andere
+    # noch offener Fund nicht mehr getrennt sichtbar.
     verworfene_rows = (
         db.query(DealVorschlag)
         .options(*lade_optionen)
@@ -148,7 +148,26 @@ def vorschlaege_view(
         .all()
     )
     verworfene_rows = _nach_quelle_typ_filtern(verworfene_rows, filter_quelle, filter_typ)
-    verworfen = _gruppieren(verworfene_rows)
+    verworfen_gruppen = _gruppieren(verworfene_rows)
+
+    # Zähler je Status - berücksichtigen Quelle/Typ, aber bewusst nicht den
+    # Status-Filter selbst: sonst würden sich die Chips beim Anklicken auf
+    # 0 zurücksetzen, weil die anderen Status dann herausgefiltert sind.
+    anzahl_vorgeschlagen = sum(1 for g in alle_gruppen if g.status == matching.STATUS_VORGESCHLAGEN)
+    anzahl_zu_pruefen = sum(1 for g in alle_gruppen if g.status == matching.STATUS_ZU_PRUEFEN)
+    anzahl_abgelehnt = sum(1 for g in alle_gruppen if g.status == matching.STATUS_ABGELEHNT)
+    anzahl_verworfen = len(verworfen_gruppen)
+
+    gruppen = alle_gruppen
+    if filter_status:
+        gruppen = [g for g in gruppen if g.status in filter_status]
+    verworfen = verworfen_gruppen
+    if filter_status and matching.STATUS_VERWORFEN not in filter_status:
+        verworfen = []
+
+    eingeteilt: dict[str, list[VorschlagGruppe]] = {s: [] for s in STATUS_OFFEN}
+    for g in gruppen:
+        eingeteilt[g.status].append(g)
 
     letzter_lauf = db.query(FinderLauf).order_by(FinderLauf.id.desc()).first()
 
@@ -160,6 +179,10 @@ def vorschlaege_view(
             "zu_pruefen": eingeteilt[matching.STATUS_ZU_PRUEFEN],
             "automatisch_abgelehnt": eingeteilt[matching.STATUS_ABGELEHNT],
             "verworfen": verworfen,
+            "anzahl_vorgeschlagen": anzahl_vorgeschlagen,
+            "anzahl_zu_pruefen": anzahl_zu_pruefen,
+            "anzahl_abgelehnt": anzahl_abgelehnt,
+            "anzahl_verworfen": anzahl_verworfen,
             "verwerfen_gruende_optionen": matching.VERWERFEN_GRUENDE_LABELS,
             "letzter_lauf": letzter_lauf,
             "filter_quelle": filter_quelle,

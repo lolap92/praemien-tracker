@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.13.0
+
+Die vier Zähler-Chips oberhalb der Vorschläge-Liste ("vorgeschlagen",
+"zu prüfen", "abgelehnt") sind jetzt klickbar und filtern direkt auf den
+jeweiligen Status - die passende Sektion klappt dabei automatisch auf.
+
+- **Neuer vierter Chip "Verworfen".** Bisher gab es keine Möglichkeit,
+  gezielt nach manuell verworfenen Vorschlägen zu filtern - jetzt über den
+  Chip oder die Status-Filterleiste (neue Option "Verworfen").
+- Die Chips zeigen dabei immer die **Gesamtzahl** je Status (unter
+  Berücksichtigung von Quelle/Typ), unabhängig vom gerade aktiven
+  Status-Filter - vorher zeigten sie z. B. "0 vorgeschlagen", sobald nach
+  einem anderen Status gefiltert wurde.
+
 ## 2.12.2
 
 Fehlerbehebung: der Bestätigungsdialog von "Alle neu analysieren" blieb
