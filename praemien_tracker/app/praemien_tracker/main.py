@@ -37,6 +37,7 @@ from .routers import (
     overview,
     protokoll as protokoll_router,
     sperrfristen,
+    statistiken,
     todos,
     vorschlaege,
 )
@@ -192,6 +193,7 @@ def create_app() -> FastAPI:
     app.include_router(sperrfristen.router)
     app.include_router(protokoll_router.router)
     app.include_router(vorschlaege.router)
+    app.include_router(statistiken.router)
 
     return app
 

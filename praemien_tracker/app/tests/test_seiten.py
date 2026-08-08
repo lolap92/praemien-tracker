@@ -38,6 +38,7 @@ SEITEN = [
     ("completeness", "completeness"),
     ("sperrfristen", "sperrfristen"),
     ("protokoll", "protokoll"),
+    ("statistiken", "statistiken"),
 ]
 
 

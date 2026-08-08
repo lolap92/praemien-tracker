@@ -78,6 +78,7 @@ _TABS = [
     ("completeness", "completeness"),
     ("sperrfristen", "sperrfristen"),
     ("protokoll", "protokoll"),
+    ("statistiken", "statistiken"),
     ("overview", "overview"),
 ]
 
