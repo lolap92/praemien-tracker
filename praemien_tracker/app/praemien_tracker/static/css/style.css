@@ -1362,6 +1362,13 @@ table.lauf-tabelle tr:hover {
   color: var(--ink-faint);
 }
 
+.lauf-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
 .lauf-abschnitt-label {
   font-size: 0.66rem;
   letter-spacing: 0.06em;

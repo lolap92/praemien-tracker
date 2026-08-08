@@ -107,6 +107,31 @@ def _cache_speichern(
     eintrag.zuletzt_gesehen_am = datetime.datetime.utcnow()
 
 
+def _vorschlag_felder_setzen(
+    vorschlag: DealVorschlag, extrahiert: AngebotExtraktion, match: matching.MatchErgebnis
+) -> None:
+    """Setzt alle aus der Extraktion/Bewertung abgeleiteten Felder eines
+    Vorschlags - für neu angelegte Zeilen und, bei "Alle neu analysieren"
+    (ignoriere_cache), auch für bereits bestehende: der Inhalts-Hash allein
+    (Bank/Kontoart/Prämie/Sperrfrist/Bedingungen) erkennt keine Änderung an
+    Detailfeldern wie der Prämien-Aufschlüsselung oder den Bedingungstexten,
+    deshalb müssen die bei einer erzwungenen Neuprüfung explizit ersetzt
+    werden statt sich auf den Hash-Vergleich zu verlassen."""
+    vorschlag.bank_name = extrahiert.bank_name.strip()
+    vorschlag.kontoart = extrahiert.kontoart.strip()
+    vorschlag.praemie_betrag = match.praemie_betrag
+    vorschlag.sperrfrist_monate = match.sperrfrist_monate
+    vorschlag.ablehnungsgruende = match.ablehnungsgruende
+    vorschlag.roh_json = match.roh_json
+    vorschlag.status = match.status
+    vorschlag.bedingungen = [
+        VorschlagBedingung(beschreibung=b.beschreibung, einschaetzung=b.einschaetzung) for b in match.bedingungen
+    ]
+    vorschlag.praemien = [
+        VorschlagPraemie(betrag=p.betrag, geber=p.geber, bedingung=p.bedingung) for p in match.praemien
+    ]
+
+
 def _protokoll_speichern(db: Session, **werte) -> None:
     """Schreibt eine neue FinderLauf-Zeile. Läuft in einer eigenen kleinen
     Transaktion - wird nach einem db.rollback() im Hauptteil aufgerufen,
@@ -117,12 +142,21 @@ def _protokoll_speichern(db: Session, **werte) -> None:
     db.commit()
 
 
-def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -> dict[str, int]:
+def taeglicher_lauf(
+    db: Session, *, client: anthropic.Anthropic | None = None, ignoriere_cache: bool = False
+) -> dict[str, int]:
     """Führt einen kompletten Lauf aus und gibt Zähler zurück (fürs Logging
     und den manuellen "Jetzt suchen"-Button im Vorschläge-Tab). Wirft nie -
     ein unerwarteter Fehler wird abgefangen, zurückgerollt und als
     nicht erfolgreicher Lauf protokolliert, statt die aufrufende Seite
-    (Scheduler-Job oder "Jetzt suchen") abstürzen zu lassen."""
+    (Scheduler-Job oder "Jetzt suchen") abstürzen zu lassen.
+
+    ignoriere_cache=True (Button "Alle neu analysieren") überspringt den
+    Rohtext-Cache komplett: jeder aktuell gelistete Fund wird erneut per KI
+    geprüft, auch unverändert - und bestehende, noch offene Vorschläge werden
+    mit dem frischen Ergebnis überschrieben statt nur ihren Status
+    nachzuziehen. Kostet spürbar mehr API-Aufrufe als ein normaler Lauf,
+    deshalb nur auf ausdrücklichen Nutzerwunsch (Bestätigungsdialog)."""
     zaehler = {
         # gefunden = neu angelegte Vorschlags-Zeilen (eine je Inhaber) -
         # internes Maß, das die Tests gegen die Zeilenanlage prüfen.
@@ -176,7 +210,7 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
             aus_cache = False
             extrahiert: AngebotExtraktion | None = None
 
-            if cache_eintrag is not None and cache_eintrag.rohtext_hash == rohtext_hash:
+            if not ignoriere_cache and cache_eintrag is not None and cache_eintrag.rohtext_hash == rohtext_hash:
                 cache_eintrag.zuletzt_gesehen_am = datetime.datetime.utcnow()
                 if not cache_eintrag.ist_relevant:
                     zaehler["aus_cache"] += 1
@@ -256,14 +290,25 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
                     db, fund.quelle_url, inhaber.id, match.inhalt_hash
                 )
                 if bestehend is not None:
-                    # Gleicher Inhalt wie zuvor - i.d.R. nichts zu tun. Nur
-                    # wenn sich die Bewertung rein durch Zeitablauf geändert
-                    # hat (z.B. eine Sperrfrist ist inzwischen erreicht, ohne
-                    # dass sich am Angebot etwas geändert hätte), wird die
-                    # bestehende, noch offene Zeile nachgezogen - ein bereits
-                    # vom Nutzer übernommener oder verworfener Vorschlag
-                    # bleibt unangetastet.
-                    if bestehend.status in matching.STATUS_OFFEN and bestehend.status != match.status:
+                    if bestehend.status not in matching.STATUS_OFFEN:
+                        # Bereits vom Nutzer übernommen oder verworfen -
+                        # bleibt in jedem Fall unangetastet.
+                        continue
+                    if ignoriere_cache:
+                        # Erzwungene Neuprüfung: die Zeile komplett mit dem
+                        # frischen Ergebnis überschreiben, auch wenn sich der
+                        # Inhalts-Hash nicht geändert hat (z.B. weil jetzt
+                        # erstmals eine Prämien-Aufschlüsselung erkannt wurde).
+                        _vorschlag_felder_setzen(bestehend, extrahiert, match)
+                        zaehler["aktualisiert"] += 1
+                        aktualisiert_fuer_fund = True
+                        zaehler[match.status] = zaehler.get(match.status, 0) + 1
+                    elif bestehend.status != match.status:
+                        # Gleicher Inhalt wie zuvor - i.d.R. nichts zu tun.
+                        # Nur wenn sich die Bewertung rein durch Zeitablauf
+                        # geändert hat (z.B. eine Sperrfrist ist inzwischen
+                        # erreicht, ohne dass sich am Angebot etwas geändert
+                        # hätte), wird die Zeile nachgezogen.
                         bestehend.status = match.status
                         bestehend.ablehnungsgruende = match.ablehnungsgruende
                         zaehler["aktualisiert"] += 1
@@ -275,25 +320,9 @@ def taeglicher_lauf(db: Session, *, client: anthropic.Anthropic | None = None) -
                     inhaber_id=inhaber.id,
                     quelle=fund.quelle,
                     quelle_url=fund.quelle_url,
-                    bank_name=extrahiert.bank_name.strip(),
-                    kontoart=extrahiert.kontoart.strip(),
-                    praemie_betrag=match.praemie_betrag,
-                    sperrfrist_monate=match.sperrfrist_monate,
-                    ablehnungsgruende=match.ablehnungsgruende,
-                    roh_json=match.roh_json,
                     inhalt_hash=match.inhalt_hash,
-                    status=match.status,
                 )
-                for bewertung in match.bedingungen:
-                    vorschlag.bedingungen.append(
-                        VorschlagBedingung(beschreibung=bewertung.beschreibung, einschaetzung=bewertung.einschaetzung)
-                    )
-                for teilpraemie in match.praemien:
-                    vorschlag.praemien.append(
-                        VorschlagPraemie(
-                            betrag=teilpraemie.betrag, geber=teilpraemie.geber, bedingung=teilpraemie.bedingung
-                        )
-                    )
+                _vorschlag_felder_setzen(vorschlag, extrahiert, match)
                 db.add(vorschlag)
 
                 zaehler["gefunden"] += 1

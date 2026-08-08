@@ -57,10 +57,31 @@
   {% else %}
   <p class="leer">Noch kein Lauf durchgeführt.</p>
   {% endif %}
-  <form method="post" action="vorschlaege/jetzt-suchen" style="margin-top:0.8rem">
-    <button type="submit" class="secondary">Jetzt suchen</button>
-  </form>
+  <div class="lauf-buttons">
+    <form method="post" action="vorschlaege/jetzt-suchen">
+      <button type="submit" class="secondary">Jetzt suchen</button>
+    </form>
+    <button type="button" class="secondary" onclick="document.getElementById('dlg-neu-analysieren').showModal()">Alle neu analysieren</button>
+  </div>
 </div>
+
+<dialog id="dlg-neu-analysieren" class="vk-dialog">
+  <h3>Alle Angebote neu analysieren?</h3>
+  <p class="vk-dialog-frage">
+    Jeder aktuell gelistete Fund wird erneut per KI geprüft - auch wenn sich am
+    Angebotstext nichts geändert hat und er eigentlich aus dem Cache bedient
+    würde. Damit lassen sich bestehende Karten mit neuen Feldern auffrischen
+    (z. B. eine erst später eingeführte Prämien-Aufschlüsselung). Das kostet
+    spürbar mehr API-Aufrufe als "Jetzt suchen" und kann je nach Anzahl der
+    Funde eine Weile dauern.
+  </p>
+  <form method="post" action="vorschlaege/alle-neu-analysieren">
+    <div class="vk-dialog-aktionen">
+      <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
+      <button type="submit" class="warn">Ja, alle neu analysieren</button>
+    </div>
+  </form>
+</dialog>
 
 <form class="filterleiste" method="get" action="vorschlaege">
   <details class="multi-filter">

@@ -231,3 +231,18 @@ def jetzt_suchen(request: Request, db: Session = Depends(get_db)):
     except Exception:
         logger.exception("Manueller KI-Deal-Finder-Lauf fehlgeschlagen.")
     return redirect(request, "vorschlaege")
+
+
+@router.post("/vorschlaege/alle-neu-analysieren")
+def alle_neu_analysieren(request: Request, db: Session = Depends(get_db)):
+    """Erzwingt für jeden aktuell gelisteten Fund einen frischen API-Aufruf
+    (Cache übersprungen) und aktualisiert bestehende, noch offene Vorschläge
+    mit dem neuen Ergebnis - z.B. damit ältere Karten nachträglich eine
+    Prämien-Aufschlüsselung bekommen, die es bei ihrer ersten Prüfung noch
+    nicht gab. Der Bestätigungsdialog im Frontend macht auf die höheren
+    API-Kosten aufmerksam, bevor diese Route überhaupt aufgerufen wird."""
+    try:
+        taeglicher_lauf(db, ignoriere_cache=True)
+    except Exception:
+        logger.exception("Erzwungene Neuanalyse (KI-Deal-Finder) fehlgeschlagen.")
+    return redirect(request, "vorschlaege")

@@ -55,6 +55,14 @@ unklare Sperrfrist) landet ein Fund unter "Zu prüfen" statt automatisch
 ausgeschlossen zu werden. Über den Button **Jetzt suchen** lässt sich ein
 Lauf jederzeit manuell anstoßen, z. B. um die Einrichtung zu testen.
 
+Der Button **Alle neu analysieren** daneben erzwingt für jeden aktuell
+gelisteten Fund eine frische KI-Prüfung, auch wenn sich am Text nichts
+geändert hat und er sonst aus dem Cache bedient würde - z. B. um bestehende
+Karten mit später eingeführten Feldern nachträglich aufzufrischen. Das kostet
+spürbar mehr API-Aufrufe als ein normaler Lauf, deshalb erst nach
+Bestätigung in einem Dialog. Bereits übernommene oder verworfene Vorschläge
+bleiben dabei unangetastet.
+
 Ändert sich ein Angebot (z. B. eine höhere Prämie), entsteht bewusst ein
 neuer Vorschlag statt eines stillen Updates am alten - die Historie bleibt
 so nachvollziehbar. Ein unveränderter Fund wird dagegen nicht erneut

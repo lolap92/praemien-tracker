@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.12.0
+
+Neuer Button **"Alle neu analysieren"** neben "Jetzt suchen" im
+Vorschläge-Tab.
+
+- Erzwingt für jeden aktuell gelisteten Fund einen frischen KI-Aufruf,
+  auch wenn der Rohtext unverändert ist und normalerweise aus dem Cache
+  bedient würde. Bestehende, noch offene Vorschläge werden dabei mit dem
+  frischen Ergebnis überschrieben (z. B. um nachträglich eine
+  Prämien-Aufschlüsselung zu bekommen, die es bei der ersten Prüfung noch
+  nicht gab) - bereits übernommene oder verworfene Vorschläge bleiben
+  unangetastet.
+- Ein Klick öffnet zuerst einen Bestätigungsdialog, der auf die spürbar
+  höheren API-Kosten hinweist; erst ein zweiter, expliziter Klick löst den
+  Lauf aus.
+
 ## 2.11.0
 
 Begründungspflicht beim manuellen Verwerfen eines Vorschlags. Enthält eine

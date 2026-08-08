@@ -93,12 +93,19 @@ def test_uebernehmen_button_orange_nur_bei_hinweisen(db, zwei_inhaber):
     Übernehmen-Button orange (Klasse 'warn'); ohne Hinweise bleibt er grün."""
     alice, max_ = zwei_inhaber
 
+    # Der Übernehmen-Button ist speziell an "dlg-uebernehmen-" gebunden -
+    # dieses Muster prüfen statt einer bloßen 'class="warn"'-Suche über die
+    # ganze Seite, die auch auf andere Buttons (z.B. "Alle neu analysieren")
+    # anspringen könnte.
+    def _uebernehmen_button_ist_warn(html: str) -> bool:
+        return 'class="warn" onclick="document.getElementById(\'dlg-uebernehmen-' in html
+
     # Mit Hinweis: alice vorgeschlagen, max abgelehnt (Begründung).
     _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich", quelle_url="https://www.mydealz.de/a")
     _vorschlag(db, max_, "automatisch_abgelehnt", inhalt_hash="gleich", quelle_url="https://www.mydealz.de/a",
                ablehnungsgruende="Bereits Kundin.")
     antwort = client.get("/vorschlaege")
-    assert 'class="warn"' in antwort.text
+    assert _uebernehmen_button_ist_warn(antwort.text)
 
     from praemien_tracker.models import DealVorschlag as _DV
     db.query(_DV).delete()
@@ -108,7 +115,7 @@ def test_uebernehmen_button_orange_nur_bei_hinweisen(db, zwei_inhaber):
     _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="sauber", quelle_url="https://www.mydealz.de/b")
     _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="sauber", quelle_url="https://www.mydealz.de/b")
     antwort2 = client.get("/vorschlaege")
-    assert 'class="warn"' not in antwort2.text
+    assert not _uebernehmen_button_ist_warn(antwort2.text)
 
 
 def test_karte_zeigt_mehrere_teilpraemien_mit_bedingung(db, inhaber):
@@ -502,3 +509,27 @@ def test_seite_zeigt_nur_den_juengsten_lauf(db):
     antwort = client.get("/vorschlaege")
     assert "Letzter Lauf erfolgreich" in antwort.text
     assert "alter Fehler" not in antwort.text
+
+
+def test_seite_zeigt_alle_neu_analysieren_button_mit_bestaetigungsdialog(db):
+    antwort = client.get("/vorschlaege")
+    assert "Alle neu analysieren" in antwort.text
+    # Der Bestätigungsdialog erklärt die höheren API-Kosten, bevor die
+    # eigentliche Aktion (POST /vorschlaege/alle-neu-analysieren) ausgelöst wird.
+    assert "erneut per KI geprüft" in antwort.text
+    assert 'action="vorschlaege/alle-neu-analysieren"' in antwort.text
+
+
+def test_alle_neu_analysieren_ruft_lauf_mit_ignoriere_cache_auf(monkeypatch):
+    aufrufe = []
+
+    def fake_lauf(db_arg, *, ignoriere_cache=False):
+        aufrufe.append(ignoriere_cache)
+        return {}
+
+    monkeypatch.setattr("praemien_tracker.routers.vorschlaege.taeglicher_lauf", fake_lauf)
+
+    antwort = client.post("/vorschlaege/alle-neu-analysieren", follow_redirects=False)
+
+    assert antwort.status_code == 303
+    assert aufrufe == [True]

@@ -552,3 +552,89 @@ def test_status_wird_nicht_fuer_bereits_entschiedene_vorschlaege_ueberschrieben(
 
     db.refresh(eintrag)
     assert eintrag.status == matching.STATUS_VERWORFEN
+
+
+# ---------------------------------------------------------------------------
+# ignoriere_cache: "Alle neu analysieren"-Button - erzwingt für jeden Fund
+# einen frischen API-Aufruf und aktualisiert bestehende Zeilen mit dem neuen
+# Ergebnis, statt sich auf den unveränderten Inhalts-Hash zu verlassen.
+# ---------------------------------------------------------------------------
+
+
+def test_ignoriere_cache_ruft_api_trotz_cache_treffer_erneut_auf(db, zwei_inhaber, monkeypatch):
+    fund = RohFund("mydealz", "https://mydealz.de/c24", "t", "immer derselbe Text")
+    _patch_quellen(monkeypatch, [fund])
+    client = ZaehlenderFakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]),
+    )
+
+    lauf.taeglicher_lauf(db, client=client)
+    assert client.aufrufe == 2  # Themen-Check + Struktur-Extraktion
+
+    zaehler = lauf.taeglicher_lauf(db, client=client, ignoriere_cache=True)
+
+    assert client.aufrufe == 4  # trotz unverändertem Rohtext erneut geprüft
+    assert zaehler["aus_cache"] == 0
+    assert db.query(DealVorschlag).count() == 2  # keine Duplikate angelegt
+
+
+def test_ignoriere_cache_aktualisiert_bestehenden_vorschlag_mit_frischen_feldern(db, zwei_inhaber, monkeypatch):
+    """Kernanliegen von "Alle neu analysieren": eine bestehende Karte soll
+    z.B. eine neu erkannte Prämien-Aufschlüsselung bekommen, obwohl sich der
+    Inhalts-Hash (Bank/Kontoart/Betrag/Sperrfrist/Bedingungen) nicht
+    geändert hat und ein normaler Lauf die Zeile deshalb unangetastet
+    ließe."""
+    from praemien_tracker.finder.extraktion import PraemieExtraktion
+
+    fund = RohFund("spartanien", "https://www.spartanien.de/santander", "t", "Santander 300 Euro")
+    _patch_quellen(monkeypatch, [fund])
+    monkeypatch.setattr(lauf, "fetch_mydealz", lambda gruppe, **kw: [])
+    monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [fund])
+
+    ohne_split = AngebotExtraktion(bank_name="Santander", kontoart="Girokonto", praemie_betrag=300.0, bedingungen=[])
+    lauf.taeglicher_lauf(db, client=FakeClient(RelevanzErgebnis(ist_relevant=True), ohne_split))
+    vorher = db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == zwei_inhaber[0].id).one()
+    alter_hash = vorher.inhalt_hash
+    assert len(vorher.praemien) == 1
+    assert vorher.praemien[0].geber is None
+
+    mit_split = AngebotExtraktion(
+        bank_name="Santander",
+        kontoart="Girokonto",
+        praemie_betrag=300.0,
+        bedingungen=[],
+        praemien=[
+            PraemieExtraktion(betrag=50.0, geber="Spartanien", wofuer="für die Kontoeröffnung"),
+            PraemieExtraktion(betrag=250.0, geber="Santander", wofuer="für den Kontowechselservice"),
+        ],
+    )
+    lauf.taeglicher_lauf(db, client=FakeClient(RelevanzErgebnis(ist_relevant=True), mit_split), ignoriere_cache=True)
+
+    db.refresh(vorher)
+    assert vorher.inhalt_hash == alter_hash  # Hash unverändert - trotzdem aktualisiert
+    assert db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == zwei_inhaber[0].id).count() == 1
+    assert len(vorher.praemien) == 2
+    assert {p.geber for p in vorher.praemien} == {"Spartanien", "Santander"}
+
+
+def test_ignoriere_cache_laesst_entschiedene_vorschlaege_unangetastet(db, zwei_inhaber, monkeypatch):
+    fund = RohFund("mydealz", "https://mydealz.de/klein", "t", "5 Euro Praemie")
+    monkeypatch.setattr(lauf, "fetch_mydealz", lambda gruppe, **kw: [fund])
+    monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [])
+    client = FakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="Klein-Bank", kontoart="Girokonto", praemie_betrag=5.0, bedingungen=[]),
+    )
+
+    lauf.taeglicher_lauf(db, client=client)
+    eintrag = db.query(DealVorschlag).first()
+    eintrag.status = matching.STATUS_UEBERNOMMEN
+    eintrag.bank_name = "Von Hand geändert"
+    db.commit()
+
+    lauf.taeglicher_lauf(db, client=client, ignoriere_cache=True)
+
+    db.refresh(eintrag)
+    assert eintrag.status == matching.STATUS_UEBERNOMMEN
+    assert eintrag.bank_name == "Von Hand geändert"
