@@ -520,6 +520,9 @@ def test_seite_zeigt_alle_neu_analysieren_button_mit_bestaetigungsdialog(db):
     # eigentliche Aktion (POST /vorschlaege/alle-neu-analysieren) ausgelöst wird.
     assert "erneut per KI geprüft" in antwort.text
     assert 'action="vorschlaege/alle-neu-analysieren"' in antwort.text
+    # Der Dialog schließt sich sofort bei der Bestätigung, statt während der
+    # (potenziell langsamen) Anfrage offen hängen zu bleiben.
+    assert 'onsubmit="this.closest(\'dialog\').close()"' in antwort.text
 
 
 def test_alle_neu_analysieren_ruft_lauf_mit_ignoriere_cache_auf(monkeypatch):

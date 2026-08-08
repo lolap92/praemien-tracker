@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.12.2
+
+Fehlerbehebung: der Bestätigungsdialog von "Alle neu analysieren" blieb
+sichtbar offen stehen, solange die Anfrage lief (kann je nach Anzahl der
+Funde eine Weile dauern) - wirkte dadurch wie eingefroren. Der Dialog
+schließt sich jetzt sofort bei Bestätigung, unabhängig davon, wie lange die
+Anfrage im Hintergrund noch braucht.
+
 ## 2.12.1
 
 Fehlerbehebung: ein Bank-Name mit leicht abweichender Schreibweise (z. B.

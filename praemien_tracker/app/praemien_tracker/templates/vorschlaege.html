@@ -83,7 +83,7 @@
     spürbar mehr API-Aufrufe als "Jetzt suchen" und kann je nach Anzahl der
     Funde eine Weile dauern.
   </p>
-  <form method="post" action="vorschlaege/alle-neu-analysieren">
+  <form method="post" action="vorschlaege/alle-neu-analysieren" onsubmit="this.closest('dialog').close()">
     <div class="vk-dialog-aktionen">
       <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
       <button type="submit" class="warn">Ja, alle neu analysieren</button>
