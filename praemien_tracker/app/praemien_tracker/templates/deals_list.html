@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Deals – Prämien-Tracker{% endblock %}
+{% block appbar_title %}Deals{% endblock %}
+{% block appbar_actions %}
+<a class="icon-btn accent" href="deals/new">+ Neuer Deal</a>
+{% endblock %}
 {% block content %}
 
 <form class="filterleiste" method="get" action="deals">
@@ -29,7 +33,6 @@
   <button type="submit" class="secondary">Filtern</button>
   {% if filter_aktiv %}<a class="button secondary" href="deals">Zurücksetzen</a>{% endif %}
   <a class="button secondary" href="deals/export.xlsx">Export</a>
-  <a class="button" href="deals/new">+ Neuer Deal</a>
 </form>
 
 {% if zeilen %}

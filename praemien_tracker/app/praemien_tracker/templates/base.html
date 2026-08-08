@@ -9,23 +9,52 @@
 </head>
 <body>
 <div class="app">
-  <header class="top">
-    <h1>Prämien-Tracker</h1>
-    {% set tab = nav_tab(request) %}
-    <nav class="tabs">
-      <a href="overview" class="{{ 'active' if tab == 'overview' else '' }}">Übersicht</a>
-      <a href="todos" class="{{ 'active' if tab == 'todos' else '' }}">Zu erledigen</a>
-      <a href="deals" class="{{ 'active' if tab == 'deals' else '' }}">Deals</a>
-      <a href="deals/new" class="{{ 'active' if tab == 'deals/new' else '' }}">Neuer Deal</a>
-      <a href="vorschlaege" class="{{ 'active' if tab == 'vorschlaege' else '' }}">Vorschläge</a>
-      <a href="completeness" class="{{ 'active' if tab == 'completeness' else '' }}">Vollständigkeit</a>
-      <a href="sperrfristen" class="{{ 'active' if tab == 'sperrfristen' else '' }}">Sperrfristen</a>
-      <a href="protokoll" class="{{ 'active' if tab == 'protokoll' else '' }}">Protokoll</a>
+  {% set tab = nav_tab(request) %}
+  {% set nebenreiter = ('vorschlaege', 'completeness', 'sperrfristen', 'protokoll') %}
+  <header class="appbar">
+    <div class="ha-ctx">Home Assistant · Prämien-Tracker</div>
+    <div class="row">
+      <h1>{% block appbar_title %}Prämien-Tracker{% endblock %}</h1>
+      <div class="actions">
+        {% block appbar_actions %}{% endblock %}
+        <details class="nav-more {{ 'on' if tab in nebenreiter else '' }}">
+          <summary class="icon-btn">Mehr</summary>
+          <div class="nav-more-panel">
+            <a href="vorschlaege" class="{{ 'on' if tab == 'vorschlaege' else '' }}">Vorschläge</a>
+            <a href="completeness" class="{{ 'on' if tab == 'completeness' else '' }}">Vollständigkeit</a>
+            <a href="sperrfristen" class="{{ 'on' if tab == 'sperrfristen' else '' }}">Sperrfristen</a>
+            <a href="protokoll" class="{{ 'on' if tab == 'protokoll' else '' }}">Protokoll</a>
+          </div>
+        </details>
+      </div>
+    </div>
+    <nav class="desktop-nav">
+      <a href="overview" class="{{ 'on' if tab == 'overview' else '' }}">Übersicht</a>
+      <a href="todos" class="{{ 'on' if tab == 'todos' else '' }}">Zu erledigen</a>
+      <a href="deals" class="{{ 'on' if tab == 'deals' else '' }}">Deals</a>
     </nav>
   </header>
+
   <main>
     {% block content %}{% endblock %}
   </main>
+
+  <nav class="tabbar">
+    <div class="tab-inner">
+      <a class="tab {{ 'on' if tab == 'overview' else '' }}" href="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M4 20h16"/></svg>
+        <span class="lbl">Übersicht</span>
+      </a>
+      <a class="tab {{ 'on' if tab == 'todos' else '' }}" href="todos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12l3 3 5-6"/></svg>
+        <span class="lbl">Zu erledigen</span>
+      </a>
+      <a class="tab {{ 'on' if tab == 'deals' else '' }}" href="deals">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        <span class="lbl">Deals</span>
+      </a>
+    </div>
+  </nav>
 </div>
 </body>
 </html>

@@ -68,10 +68,10 @@ def format_vorschlag_status(status: str) -> str:
     return _VORSCHLAG_STATUS_LABELS.get(status, status)
 
 
-# Reihenfolge ist relevant: Der erste passende Eintrag gewinnt, deshalb steht
-# "deals/new" vor "deals".
+# Reihenfolge ist relevant: Der erste passende Eintrag gewinnt.
+# "deals/new" gehört fachlich zu "deals" (kein eigener Navigationspunkt mehr,
+# siehe base.html) und markiert deshalb bewusst den Deals-Reiter.
 _TABS = [
-    ("deals/new", "deals/new"),
     ("deals", "deals"),
     ("todos", "todos"),
     ("vorschlaege", "vorschlaege"),

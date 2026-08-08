@@ -11,6 +11,7 @@
   --line-strong: #d2d9d5;
   --accent: #0f7c67;
   --accent-ink: #0a5a4b;
+  --accent-soft: rgba(15, 124, 103, 0.12);
 
   --st-cond: #6b7a85;
   --st-wait: #b9822f;
@@ -57,47 +58,206 @@ a {
 .app {
   max-width: 980px;
   margin: 0 auto;
-  padding-bottom: 4rem;
+  padding-bottom: 4.5rem;
 }
 
-/* ---------- header + nav ---------- */
+/* ---------- header (appbar) + Navigation ----------
+   Struktur analog zum Budget-Tracker (selbes Add-on-Ökosystem, gleiche
+   Fonts/Tokens): helle sticky Appbar mit Kontext-Zeile + Seitentitel,
+   3 Hauptreiter (Übersicht/Zu erledigen/Deals) unten als Tabbar auf dem
+   Handy bzw. oben als Pill-Nav ab 720px, plus ein "Mehr"-Menü für die
+   selten gebrauchten Nebenfunktionen (Vorschläge, Vollständigkeit,
+   Sperrfristen, Protokoll) statt eigener Reiter dafür. */
 
-header.top {
-  background: var(--ink);
-  color: #fff;
-  padding: 1.1rem 1.25rem 0;
+.appbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 0.9rem 1.25rem 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
-header.top h1 {
-  margin: 0 0 0.9rem;
+.appbar .ha-ctx {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 0.3rem;
+}
+
+.appbar .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.appbar h1 {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   letter-spacing: -0.02em;
 }
 
-nav.tabs {
+.appbar .actions {
   display: flex;
-  gap: 1.1rem;
-  overflow-x: auto;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
-nav.tabs a {
-  display: inline-block;
-  padding: 0 0 0.7rem;
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.5rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-soft);
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.55);
-  border-bottom: 2px solid transparent;
+  cursor: pointer;
   white-space: nowrap;
-  font-size: 0.88rem;
+  list-style: none;
+}
+
+.icon-btn::-webkit-details-marker {
+  display: none;
+}
+
+.icon-btn.accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+nav.desktop-nav {
+  display: none;
+}
+
+/* "Mehr"-Menü: dieselbe Details/Summary-Mechanik wie die Filter auf der
+   Deals-Seite (.multi-filter) - kein JS nötig. */
+
+.nav-more {
+  position: relative;
+}
+
+.nav-more.on > summary {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.nav-more-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  padding: 0.4rem;
+  min-width: 180px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.nav-more-panel a {
+  display: block;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.nav-more-panel a:hover {
+  background: var(--surface-2);
+}
+
+.nav-more-panel a.on {
+  color: var(--ink);
+  background: var(--surface-2);
+  font-weight: 600;
+}
+
+/* Tabbar: fixe Fußzeile für Mobilgeräte (Standardfall bei Ingress) */
+
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  display: flex;
+  padding: 0.5rem 0.25rem calc(0.5rem + env(safe-area-inset-bottom));
+  z-index: 20;
+}
+
+.tabbar .tab-inner {
+  max-width: 620px;
+  margin: 0 auto;
+  display: flex;
+  width: 100%;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--ink-faint);
+  padding: 0.25rem 0;
+  text-decoration: none;
+}
+
+.tab svg {
+  width: 20px;
+  height: 20px;
+}
+
+.tab .lbl {
+  font-size: 0.62rem;
   font-weight: 500;
 }
 
-nav.tabs a.active {
-  color: #fff;
-  border-bottom-color: var(--accent);
-  font-weight: 600;
+.tab.on {
+  color: var(--accent);
+}
+
+@media (min-width: 720px) {
+  nav.desktop-nav {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.7rem;
+  }
+  nav.desktop-nav a {
+    padding: 0.5rem 0.9rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+    text-decoration: none;
+  }
+  nav.desktop-nav a.on {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+  .tabbar {
+    display: none;
+  }
+  .app {
+    padding-bottom: 1.5rem;
+  }
 }
 
 main {

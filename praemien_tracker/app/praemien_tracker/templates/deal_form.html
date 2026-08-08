@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ "Deal bearbeiten" if deal else "Neuer Deal" }} – Prämien-Tracker{% endblock %}
+{% block appbar_title %}{{ "Deal bearbeiten" if deal else "Neuer Deal" }}{% endblock %}
 {% block content %}
 
 <datalist id="banken-liste">

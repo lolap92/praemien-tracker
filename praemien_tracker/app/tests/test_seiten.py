@@ -33,7 +33,7 @@ SEITEN = [
     ("overview", "overview"),
     ("todos", "todos"),
     ("deals", "deals"),
-    ("deals/new", "deals/new"),
+    ("deals/new", "deals"),
     ("vorschlaege", "vorschlaege"),
     ("completeness", "completeness"),
     ("sperrfristen", "sperrfristen"),
@@ -66,7 +66,12 @@ def deal(db):
 
 
 def aktiver_reiter(html: str) -> str | None:
-    treffer = re.search(r'<a href="([a-z/]+)" class="active"', html)
+    """Findet den aktiven Reiter, egal ob er in der Desktop-Nav, der mobilen
+    Tabbar oder im "Mehr"-Menü steht. Die Tabbar-Variante trägt zusätzlich
+    die Klasse "tab" (class="tab on") und würde die einfache Suche nach
+    class="on" doppelt treffen - deshalb zählt hier nur das exakte class="on"
+    der Desktop-Nav- bzw. Mehr-Menü-Links."""
+    treffer = re.search(r'<a href="([a-z/]+)" class="on"', html)
     return treffer.group(1) if treffer else None
 
 
