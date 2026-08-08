@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.18.0
+
+**Täglicher Lauf abschaltbar.** Der automatische KI-Deal-Finder-Lauf um
+06:00 Uhr lässt sich jetzt über die neue Add-on-Option
+`taeglicher_lauf_aktiv` deaktivieren - z. B. um API-Kosten zu vermeiden, wenn
+der Lauf ausschließlich manuell über "Jetzt suchen" angestoßen werden soll.
+
 ## 2.17.0
 
 **Dritte Deal-Quelle: DealDoktor.** Der KI-Deal-Finder durchsucht jetzt

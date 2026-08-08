@@ -1,5 +1,5 @@
 name: "Prämien-Tracker"
-version: "2.17.0"
+version: "2.18.0"
 slug: "praemien_tracker"
 description: "Private Übersicht und Verwaltung von Bank-Prämien-Deals"
 url: "https://github.com/lolap92/praemien-tracker"
@@ -28,6 +28,7 @@ options:
   dealdoktor_feed_url: "https://www.dealdoktor.de/bonus-deals/feed/"
   benachrichtigungen_aktiv: true
   benachrichtigungsgeraete: "notify"
+  taeglicher_lauf_aktiv: true
 schema:
   demo_modus: "bool"
   anthropic_api_key: "password"
@@ -38,3 +39,4 @@ schema:
   dealdoktor_feed_url: "url"
   benachrichtigungen_aktiv: "bool"
   benachrichtigungsgeraete: "str"
+  taeglicher_lauf_aktiv: "bool"

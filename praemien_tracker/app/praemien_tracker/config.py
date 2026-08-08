@@ -94,3 +94,8 @@ DEALDOKTOR_FEED_URL: str = _OPTIONEN.get("dealdoktor_feed_url") or "https://www.
 # Leer/"notify" adressiert weiterhin alle Geräte (notify.notify).
 BENACHRICHTIGUNGEN_AKTIV: bool = bool(_OPTIONEN.get("benachrichtigungen_aktiv", True))
 NOTIFY_GERAETE: list[str] = _benachrichtigungsgeraete(_OPTIONEN.get("benachrichtigungsgeraete"))
+
+# Täglicher KI-Deal-Finder-Lauf um 06:00 Uhr - abschaltbar für Nutzer, die den
+# Lauf ausschließlich manuell ("Jetzt suchen") anstoßen wollen, z. B. um
+# API-Kosten zu vermeiden.
+TAEGLICHER_LAUF_AKTIV: bool = bool(_OPTIONEN.get("taeglicher_lauf_aktiv", True))

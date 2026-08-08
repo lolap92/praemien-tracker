@@ -12,3 +12,9 @@ configuration:
   benachrichtigungen_aktiv:
     name: Benachrichtigungen aktiv
     description: Push-Benachrichtigung bei neuen Vorschlägen ein- oder ausschalten.
+  taeglicher_lauf_aktiv:
+    name: Täglicher Lauf aktiv
+    description: >-
+      Automatischen KI-Deal-Finder-Lauf jeden Tag um 06:00 Uhr ein- oder
+      ausschalten. Bei Deaktivierung lässt sich der Lauf weiterhin jederzeit
+      manuell über "Jetzt suchen" anstoßen.

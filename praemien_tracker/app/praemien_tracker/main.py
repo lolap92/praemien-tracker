@@ -28,7 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect
 
 from . import protokoll  # noqa: F401  (registriert die Änderungsprotokoll-Events)
-from .config import DATABASE_URL, DB_BACKUP_PATH, DB_PATH, DEMO_MODUS
+from .config import DATABASE_URL, DB_BACKUP_PATH, DB_PATH, DEMO_MODUS, TAEGLICHER_LAUF_AKTIV
 from .database import SessionLocal, engine
 from .demo_seed import lade_demo_daten
 from .finder.lauf import geplanter_lauf
@@ -152,9 +152,12 @@ def _scheduler_starten() -> BackgroundScheduler:
     """Täglicher KI-Deal-Finder-Lauf, im selben Prozess wie die Web-App
     (Konzept: kein zweiter Container/Cronjob). Uhrzeit bewusst nicht
     konfigurierbar - die Add-on-Optionen betreffen die Fachlogik des Laufs
-    (Mindestprämie, Quellen), nicht seine Uhrzeit."""
+    (Mindestprämie, Quellen), nicht seine Uhrzeit. Ob er überhaupt läuft, ist
+    über die Option "taeglicher_lauf_aktiv" abschaltbar (z. B. um API-Kosten
+    zu vermeiden) - "Jetzt suchen" bleibt davon unberührt."""
     scheduler = BackgroundScheduler()
-    scheduler.add_job(geplanter_lauf, "cron", hour=6, minute=0, id="ki_deal_finder", misfire_grace_time=3600)
+    if TAEGLICHER_LAUF_AKTIV:
+        scheduler.add_job(geplanter_lauf, "cron", hour=6, minute=0, id="ki_deal_finder", misfire_grace_time=3600)
     scheduler.start()
     return scheduler
 

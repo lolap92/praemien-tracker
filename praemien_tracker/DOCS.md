@@ -255,6 +255,7 @@ folgende optionale Einstellungen (Add-on-Konfiguration in Home Assistant):
 | `dealdoktor_feed_url` | RSS-Feed-URL für den DealDoktor-Parser (WordPress-Feed, z. B. eine andere Kategorie). | `https://www.dealdoktor.de/bonus-deals/feed/` |
 | `benachrichtigungen_aktiv` | Push-Benachrichtigung bei neuen Vorschlägen ein-/ausschalten. | `true` |
 | `benachrichtigungsgeraete` ("Benachrichtigungsgeräte") | Home-Assistant-Notify-Dienst(e) ohne `notify.`-Präfix, z. B. `mobile_app_pixel_8` für ein bestimmtes Smartphone - mehrere Geräte durch Komma getrennt eintragen, z. B. `mobile_app_pixel_8, mobile_app_iphone_anna` (Gerätename siehe HA unter Einstellungen > Geräte & Dienste > das jeweilige Handy > "Dienst" im Entwicklerwerkzeug). `notify` adressiert weiterhin alle Geräte. | `notify` |
+| `taeglicher_lauf_aktiv` ("Täglicher Lauf aktiv") | Automatischen KI-Deal-Finder-Lauf um 06:00 Uhr ein-/ausschalten. Bei Deaktivierung bleibt "Jetzt suchen" weiterhin manuell nutzbar. | `true` |
 
 Bei 1×/Tag und wenigen kurzen Texten liegen die tatsächlichen API-Kosten
 typischerweise im Cent-Bereich pro Monat.
