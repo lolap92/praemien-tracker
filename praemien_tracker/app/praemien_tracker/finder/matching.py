@@ -27,6 +27,19 @@ STATUS_VERWORFEN = "verworfen"
 # darf lauf.py diese Zeilen bei einer erneuten Bewertung noch verändern.
 STATUS_OFFEN = (STATUS_VORGESCHLAGEN, STATUS_ZU_PRUEFEN, STATUS_ABGELEHNT)
 
+# Feste Gründe für ein manuelles Verwerfen (Mehrfachauswahl im Dialog) -
+# bewusst ein Enum statt Freitext, damit die Gründe später auswertbar bleiben
+# (z.B. "wie oft wird wegen zu aufwendiger Bedingungen verworfen?").
+VERWERFEN_GRUND_DUPLIKAT = "duplikat"
+VERWERFEN_GRUND_BEDINGUNGEN = "bedingungen_aufwendig"
+VERWERFEN_GRUND_NEUKUNDE = "noch_nicht_neukunde"
+VERWERFEN_GRUENDE_LABELS = {
+    VERWERFEN_GRUND_DUPLIKAT: "Duplikat",
+    VERWERFEN_GRUND_BEDINGUNGEN: "Bedingungen zu aufwendig",
+    VERWERFEN_GRUND_NEUKUNDE: "Noch nicht wieder Neukunde",
+}
+VERWERFEN_GRUENDE = tuple(VERWERFEN_GRUENDE_LABELS)
+
 EINSCHAETZUNG_ERFUELLT = "erfuellt"
 EINSCHAETZUNG_ZU_PRUEFEN = "zu_pruefen"
 EINSCHAETZUNG_NICHT_ERFUELLT = "nicht_erfuellt"
@@ -65,14 +78,15 @@ class MatchErgebnis:
 
 
 def _bank_finden(db: Session, bank_name: str) -> Bank | None:
-    """Freitext-Bankname gegen bestehende Banken abgleichen (nur Groß-/
-    Kleinschreibung und Randleerzeichen werden verziehen). Findet sich keine
-    passende Bank, gilt der Inhaber für diese Bank automatisch als
-    Neukunde - eine unscharfe Namenssuche wäre hier riskanter als ein
-    verpasster Treffer, der stattdessen einfach zu einem echten neuen
-    Bank-Datensatz beim Übernehmen führt."""
-    ziel = bank_name.strip().lower()
-    return next((b for b in db.query(Bank).all() if b.name.strip().lower() == ziel), None)
+    """Freitext-Bankname gegen bestehende Banken abgleichen - Groß-/
+    Kleinschreibung, Leerzeichen und Interpunktion werden ignoriert (z.B.
+    "SMARTBROKER" == "Smart Broker"), siehe derived.bank_name_normalisieren.
+    Findet sich keine passende Bank, gilt der Inhaber für diese Bank
+    automatisch als Neukunde - eine unscharfe Namenssuche darüber hinaus wäre
+    riskanter als ein verpasster Treffer, der stattdessen einfach zu einem
+    echten neuen Bank-Datensatz beim Übernehmen führt."""
+    ziel = derived.bank_name_normalisieren(bank_name)
+    return next((b for b in db.query(Bank).all() if derived.bank_name_normalisieren(b.name) == ziel), None)
 
 
 def _sperrfrist_pruefen(

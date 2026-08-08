@@ -1,5 +1,73 @@
 # Changelog
 
+## 2.13.0
+
+Die vier Zähler-Chips oberhalb der Vorschläge-Liste ("vorgeschlagen",
+"zu prüfen", "abgelehnt") sind jetzt klickbar und filtern direkt auf den
+jeweiligen Status - die passende Sektion klappt dabei automatisch auf.
+
+- **Neuer vierter Chip "Verworfen".** Bisher gab es keine Möglichkeit,
+  gezielt nach manuell verworfenen Vorschlägen zu filtern - jetzt über den
+  Chip oder die Status-Filterleiste (neue Option "Verworfen").
+- Die Chips zeigen dabei immer die **Gesamtzahl** je Status (unter
+  Berücksichtigung von Quelle/Typ), unabhängig vom gerade aktiven
+  Status-Filter - vorher zeigten sie z. B. "0 vorgeschlagen", sobald nach
+  einem anderen Status gefiltert wurde.
+
+## 2.12.2
+
+Fehlerbehebung: der Bestätigungsdialog von "Alle neu analysieren" blieb
+sichtbar offen stehen, solange die Anfrage lief (kann je nach Anzahl der
+Funde eine Weile dauern) - wirkte dadurch wie eingefroren. Der Dialog
+schließt sich jetzt sofort bei Bestätigung, unabhängig davon, wie lange die
+Anfrage im Hintergrund noch braucht.
+
+## 2.12.1
+
+Fehlerbehebung: ein Bank-Name mit leicht abweichender Schreibweise (z. B.
+"SMARTBROKER" im Angebot vs. selbst als "Smart Broker" angelegt) ließ die
+App fälschlich einen Neukunden-Deal statt einer bereits bestehenden
+Kundenbeziehung erkennen. Der Abgleich ignoriert jetzt Groß-/
+Kleinschreibung, Leerzeichen und Interpunktion - sowohl bei der
+Sperrfrist-/Neukunden-Prüfung im KI-Deal-Finder als auch beim Übernehmen
+eines Vorschlags (verhindert zusätzlich doppelte Bank-Datensätze für
+dieselbe Bank).
+
+Außerdem die Tabelle "Dieser Lauf je Quelle" überarbeitet: die
+Abschnittsüberschrift entfällt, die vier Kategorien stehen wieder als
+Zeilen mit mydealz/Spartanien/**Summe** als Spalten - passt jetzt ohne
+horizontales Scrollen auf den Bildschirm.
+
+## 2.12.0
+
+Neuer Button **"Alle neu analysieren"** neben "Jetzt suchen" im
+Vorschläge-Tab.
+
+- Erzwingt für jeden aktuell gelisteten Fund einen frischen KI-Aufruf,
+  auch wenn der Rohtext unverändert ist und normalerweise aus dem Cache
+  bedient würde. Bestehende, noch offene Vorschläge werden dabei mit dem
+  frischen Ergebnis überschrieben (z. B. um nachträglich eine
+  Prämien-Aufschlüsselung zu bekommen, die es bei der ersten Prüfung noch
+  nicht gab) - bereits übernommene oder verworfene Vorschläge bleiben
+  unangetastet.
+- Ein Klick öffnet zuerst einen Bestätigungsdialog, der auf die spürbar
+  höheren API-Kosten hinweist; erst ein zweiter, expliziter Klick löst den
+  Lauf aus.
+
+## 2.11.0
+
+Begründungspflicht beim manuellen Verwerfen eines Vorschlags. Enthält eine
+Schema-Migration (neue Spalte `deal_vorschlaege.verwerfen_gruende`) - vorher
+wird automatisch eine Sicherheitskopie angelegt.
+
+- **Verwerfen öffnet jetzt einen Dialog** mit Mehrfachauswahl-Checkboxen für
+  den Grund: **Duplikat**, **Bedingungen zu aufwendig**, **Noch nicht wieder
+  Neukunde**. Ohne ausgewählten Grund lässt sich nicht verwerfen (client- und
+  serverseitig abgesichert).
+- **Manuell verworfene Vorschläge** erscheinen jetzt in einer eigenen,
+  eingeklappten Sektion ganz unten im Vorschläge-Tab, mit den gewählten
+  Gründen als Kennzeichnung - bisher waren sie komplett unsichtbar.
+
 ## 2.10.0
 
 Weitere Überarbeitung der Vorschlags-Karten. Reine Anzeige-Änderung, keine

@@ -161,3 +161,19 @@ def test_loeschen_eines_deals_funktioniert_mit_fremdschluesseln(db):
     assert db.query(Deal).count() == 0
     for modell in (Praemie, Bedingung, Aufgabe, DealUrl):
         assert db.query(modell).count() == 0
+
+
+def test_bank_wird_beim_import_trotz_abweichender_schreibweise_wiederverwendet(db):
+    """get_or_create_bank soll "SMARTBROKER" und "Smart Broker" als dieselbe
+    Bank erkennen - sonst entstehen beim Übernehmen eines KI-Vorschlags mit
+    leicht abweichender Schreibweise doppelte Bank-Datensätze."""
+    from praemien_tracker.helpers import build_deal_from_import
+    from praemien_tracker.models import Bank
+
+    build_deal_from_import(db, DealImport(bank="Smart Broker", kontoart="Depot", inhaber="Max"))
+    db.commit()
+
+    build_deal_from_import(db, DealImport(bank="SMARTBROKER", kontoart="Girokonto", inhaber="Max"))
+    db.commit()
+
+    assert db.query(Bank).count() == 1

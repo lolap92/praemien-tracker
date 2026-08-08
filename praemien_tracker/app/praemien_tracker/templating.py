@@ -5,6 +5,7 @@ from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
 from .derived import quelle_label
+from .finder.matching import VERWERFEN_GRUENDE_LABELS
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -68,6 +69,14 @@ def format_vorschlag_status(status: str) -> str:
     return _VORSCHLAG_STATUS_LABELS.get(status, status)
 
 
+def format_verwerfen_gruende(value: str | None) -> list[str]:
+    """Komma-getrennte Grund-Codes (DealVorschlag.verwerfen_gruende) in eine
+    Liste von Klartext-Labels für die Chip-Anzeige übersetzen."""
+    if not value:
+        return []
+    return [VERWERFEN_GRUENDE_LABELS.get(code, code) for code in value.split(",") if code]
+
+
 # Reihenfolge ist relevant: Der erste passende Eintrag gewinnt.
 # "deals/new" gehört fachlich zu "deals" (kein eigener Navigationspunkt mehr,
 # siehe base.html) und markiert deshalb bewusst den Deals-Reiter.
@@ -110,6 +119,7 @@ templates.env.filters["datum"] = format_date
 templates.env.filters["zeitpunkt"] = format_zeitpunkt
 templates.env.filters["quelle"] = quelle_label
 templates.env.filters["vorschlag_status"] = format_vorschlag_status
+templates.env.filters["verwerfen_gruende"] = format_verwerfen_gruende
 # Bewusst nicht "aktiver_tab": diesen Namen belegt der ToDo-Router schon
 # mit dem gewählten ToDo-Reiter, er würde den Helfer hier überschatten.
 templates.env.globals["nav_tab"] = nav_tab

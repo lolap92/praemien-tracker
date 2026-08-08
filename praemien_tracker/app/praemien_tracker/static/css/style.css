@@ -451,6 +451,18 @@ main {
   padding: 0.3rem 0.6rem;
   border-radius: 8px;
   white-space: nowrap;
+  text-decoration: none;
+}
+
+/* Anklickbare Status-Chips im Vorschläge-Tab (a.chip) filtern beim Klick
+   direkt auf den jeweiligen Status - sichtbares Hover/Focus als Hinweis,
+   dass sie interaktiv sind, im Unterschied zu reinen Anzeige-Chips. */
+a.chip {
+  cursor: pointer;
+}
+a.chip:hover,
+a.chip:focus-visible {
+  filter: brightness(0.94);
 }
 
 .chip::before {
@@ -1512,6 +1524,10 @@ table.lauf-tabelle td:not(:first-child) {
   font-family: var(--font-mono);
 }
 
+table.lauf-tabelle td:last-child {
+  font-weight: 600;
+}
+
 table.lauf-tabelle tr:hover {
   background: transparent;
 }
@@ -1522,12 +1538,11 @@ table.lauf-tabelle tr:hover {
   color: var(--ink-faint);
 }
 
-.lauf-abschnitt-label {
-  font-size: 0.66rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  margin-bottom: 0.5rem;
+.lauf-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
 }
 
 .chip.lauf-erfolgreich {
@@ -1561,6 +1576,10 @@ table.lauf-tabelle tr:hover {
 .chip.status-automatisch_abgelehnt {
   color: var(--ink-faint);
   background: var(--surface-2);
+}
+.chip.status-verworfen {
+  color: var(--danger);
+  background: rgba(180, 70, 42, 0.1);
 }
 
 .tag-vorgeschlagen {
@@ -1672,6 +1691,19 @@ table.lauf-tabelle tr:hover {
 .vorschlag-tag.tag-kind {
   background: rgba(15, 124, 103, 0.13);
   color: var(--accent-ink);
+}
+
+.vorschlag-tag.tag-grund {
+  background: rgba(180, 70, 42, 0.1);
+  color: var(--danger);
+}
+
+.vk-gruende {
+  margin-top: 0.5rem;
+}
+
+.vorschlag-karte.status-verworfen {
+  opacity: 0.85;
 }
 
 .vorschlag-begruendung {
@@ -1850,11 +1882,18 @@ dialog.vk-dialog h3 {
   color: var(--ink-soft);
 }
 
-.vk-dialog-namen {
+.vk-dialog-namen,
+.vk-dialog-gruende {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
   margin-bottom: 1.1rem;
+}
+
+.vk-dialog-fehler {
+  margin: -0.6rem 0 0.9rem;
+  font-size: 0.8rem;
+  color: var(--danger);
 }
 
 .vk-dialog-aktionen {

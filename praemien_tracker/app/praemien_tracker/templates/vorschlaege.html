@@ -18,32 +18,40 @@
     </summary>
 
     <div class="lauf-details-inhalt">
-      <div class="lauf-abschnitt-label">Dieser Lauf je Quelle</div>
       <div class="tabelle-wrapper">
         <table class="pc-tabelle lauf-tabelle">
           <thead>
             <tr>
               <th></th>
-              <th>Neue Vorschläge</th>
-              <th>Schon vorhanden</th>
-              <th>Aktualisiert</th>
-              <th>Aussortiert</th>
+              <th>mydealz</th>
+              <th>Spartanien</th>
+              <th>Summe</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td class="bank">mydealz</td>
+              <td class="bank">Neue Vorschläge</td>
               <td>{{ letzter_lauf.mydealz_neu }}</td>
-              <td>{{ letzter_lauf.mydealz_vorhanden }}</td>
-              <td>{{ letzter_lauf.mydealz_aktualisiert }}</td>
-              <td>{{ letzter_lauf.mydealz_rauschen }}</td>
+              <td>{{ letzter_lauf.spartanien_neu }}</td>
+              <td>{{ letzter_lauf.mydealz_neu + letzter_lauf.spartanien_neu }}</td>
             </tr>
             <tr>
-              <td class="bank">Spartanien</td>
-              <td>{{ letzter_lauf.spartanien_neu }}</td>
+              <td class="bank">Schon vorhanden</td>
+              <td>{{ letzter_lauf.mydealz_vorhanden }}</td>
               <td>{{ letzter_lauf.spartanien_vorhanden }}</td>
+              <td>{{ letzter_lauf.mydealz_vorhanden + letzter_lauf.spartanien_vorhanden }}</td>
+            </tr>
+            <tr>
+              <td class="bank">Aktualisiert</td>
+              <td>{{ letzter_lauf.mydealz_aktualisiert }}</td>
               <td>{{ letzter_lauf.spartanien_aktualisiert }}</td>
+              <td>{{ letzter_lauf.mydealz_aktualisiert + letzter_lauf.spartanien_aktualisiert }}</td>
+            </tr>
+            <tr>
+              <td class="bank">Aussortiert</td>
+              <td>{{ letzter_lauf.mydealz_rauschen }}</td>
               <td>{{ letzter_lauf.spartanien_rauschen }}</td>
+              <td>{{ letzter_lauf.mydealz_rauschen + letzter_lauf.spartanien_rauschen }}</td>
             </tr>
           </tbody>
         </table>
@@ -58,10 +66,31 @@
   {% else %}
   <p class="leer">Noch kein Lauf durchgeführt.</p>
   {% endif %}
-  <form method="post" action="vorschlaege/jetzt-suchen" style="margin-top:0.8rem">
-    <button type="submit" class="secondary">Jetzt suchen</button>
-  </form>
+  <div class="lauf-buttons">
+    <form method="post" action="vorschlaege/jetzt-suchen">
+      <button type="submit" class="secondary">Jetzt suchen</button>
+    </form>
+    <button type="button" class="secondary" onclick="document.getElementById('dlg-neu-analysieren').showModal()">Alle neu analysieren</button>
+  </div>
 </div>
+
+<dialog id="dlg-neu-analysieren" class="vk-dialog">
+  <h3>Alle Angebote neu analysieren?</h3>
+  <p class="vk-dialog-frage">
+    Jeder aktuell gelistete Fund wird erneut per KI geprüft - auch wenn sich am
+    Angebotstext nichts geändert hat und er eigentlich aus dem Cache bedient
+    würde. Damit lassen sich bestehende Karten mit neuen Feldern auffrischen
+    (z. B. eine erst später eingeführte Prämien-Aufschlüsselung). Das kostet
+    spürbar mehr API-Aufrufe als "Jetzt suchen" und kann je nach Anzahl der
+    Funde eine Weile dauern.
+  </p>
+  <form method="post" action="vorschlaege/alle-neu-analysieren" onsubmit="this.closest('dialog').close()">
+    <div class="vk-dialog-aktionen">
+      <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
+      <button type="submit" class="warn">Ja, alle neu analysieren</button>
+    </div>
+  </form>
+</dialog>
 
 <form class="filterleiste" method="get" action="vorschlaege">
   <details class="multi-filter">
@@ -105,19 +134,28 @@
         <input type="checkbox" name="status" value="automatisch_abgelehnt" {{ "checked" if "automatisch_abgelehnt" in filter_status else "" }}>
         Automatisch abgelehnt
       </label>
+      <label>
+        <input type="checkbox" name="status" value="verworfen" {{ "checked" if "verworfen" in filter_status else "" }}>
+        Verworfen
+      </label>
     </div>
   </details>
   <button type="submit" class="secondary">Filtern</button>
   {% if filter_aktiv %}<a class="button secondary" href="vorschlaege">Zurücksetzen</a>{% endif %}
 </form>
 
+{% macro status_href(status_wert) -%}
+vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{% endfor %}{% for t in filter_typ %}&typ={{ t }}{% endfor %}
+{%- endmacro %}
+
 <div class="vorschlag-meta">
-  <span class="chip status-vorgeschlagen">{{ vorgeschlagen | length }} vorgeschlagen</span>
-  <span class="chip status-zu_pruefen">{{ zu_pruefen | length }} zu prüfen</span>
-  <span class="chip status-automatisch_abgelehnt">{{ automatisch_abgelehnt | length }} abgelehnt</span>
+  <a class="chip status-vorgeschlagen" href="{{ status_href('vorgeschlagen') }}">{{ anzahl_vorgeschlagen }} vorgeschlagen</a>
+  <a class="chip status-zu_pruefen" href="{{ status_href('zu_pruefen') }}">{{ anzahl_zu_pruefen }} zu prüfen</a>
+  <a class="chip status-automatisch_abgelehnt" href="{{ status_href('automatisch_abgelehnt') }}">{{ anzahl_abgelehnt }} abgelehnt</a>
+  <a class="chip status-verworfen" href="{{ status_href('verworfen') }}">{{ anzahl_verworfen }} verworfen</a>
 </div>
 
-{% if not vorgeschlagen and not zu_pruefen and not automatisch_abgelehnt %}
+{% if not vorgeschlagen and not zu_pruefen and not automatisch_abgelehnt and not verworfen %}
 <div class="card">
   {% if filter_aktiv %}
   <p class="leer">Keine Vorschläge passen zu den gewählten Filtern.</p>
@@ -196,10 +234,7 @@
     <button type="button" class="{{ 'warn' if ns.hinweise else '' }}" onclick="document.getElementById('dlg-uebernehmen-{{ kid }}').showModal()">
       {{ "Trotzdem übernehmen" if g.status == "automatisch_abgelehnt" else "Übernehmen" }}
     </button>
-    <form method="post" action="vorschlaege/verwerfen" class="vk-inline-form">
-      {% for m in g.mitglieder %}<input type="hidden" name="vorschlag_ids" value="{{ m.id }}">{% endfor %}
-      <button type="submit" class="secondary">Verwerfen</button>
-    </form>
+    <button type="button" class="secondary" onclick="document.getElementById('dlg-verwerfen-{{ kid }}').showModal()">Verwerfen</button>
     <a class="button secondary" href="{{ g.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
   </div>
 
@@ -227,6 +262,59 @@
       </div>
     </form>
   </dialog>
+
+  <dialog id="dlg-verwerfen-{{ kid }}" class="vk-dialog">
+    <h3>{{ g.bank_name }} · {{ g.kontoart }}</h3>
+    <p class="vk-dialog-frage">Warum verwerfen? (Mehrfachauswahl möglich)</p>
+    <form method="post" action="vorschlaege/verwerfen" class="vk-verwerfen-form" onsubmit="return vkPruefeGrund(this)">
+      {% for m in g.mitglieder %}<input type="hidden" name="vorschlag_ids" value="{{ m.id }}">{% endfor %}
+      <div class="vk-dialog-gruende">
+        {% for code, label in verwerfen_gruende_optionen.items() %}
+        <label class="vorschlag-mitglied">
+          <input type="checkbox" name="gruende" value="{{ code }}">
+          <span>{{ label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <p class="vk-dialog-fehler" hidden>Bitte mindestens einen Grund auswählen.</p>
+      <div class="vk-dialog-aktionen">
+        <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
+        <button type="submit">Verwerfen</button>
+      </div>
+    </form>
+  </dialog>
+</div>
+{% endmacro %}
+
+{% macro verworfen_karte(g) %}
+<div class="card vorschlag-karte status-verworfen">
+  <div class="vk-kopf">
+    <div class="vk-titel">
+      <span class="bank">{{ g.bank_name }}</span>
+    </div>
+    <div class="vk-geld">
+      <span class="geld d-amt">{{ g.praemie_betrag | eur }}</span>
+    </div>
+  </div>
+
+  <div class="vk-tags">
+    <span class="vorschlag-tag tag-{{ g.quelle }}">{{ g.quelle | quelle }}</span>
+    {% if g.kontoart %}<span class="vorschlag-tag tag-kontoart">{{ g.kontoart }}</span>{% endif %}
+  </div>
+
+  <div class="vk-fakten">
+    <span class="vk-fakt">Gefunden {{ g.gefunden_am | datum }}</span>
+  </div>
+
+  <div class="vk-tags vk-gruende">
+    {% for label in g.verwerfen_gruende | verwerfen_gruende %}
+    <span class="vorschlag-tag tag-grund">{{ label }}</span>
+    {% endfor %}
+  </div>
+
+  <div class="vorschlag-aktionen">
+    <a class="button secondary" href="{{ g.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
+  </div>
 </div>
 {% endmacro %}
 
@@ -253,12 +341,30 @@
 {% endif %}
 
 {% if automatisch_abgelehnt %}
-<details class="json-import">
+<details class="json-import" {{ "open" if "automatisch_abgelehnt" in filter_status else "" }}>
   <summary>{{ automatisch_abgelehnt | length }} automatisch abgelehnte anzeigen</summary>
   {% for g in automatisch_abgelehnt %}
   {{ vorschlag_karte(g) }}
   {% endfor %}
 </details>
 {% endif %}
+
+{% if verworfen %}
+<details class="json-import" {{ "open" if "verworfen" in filter_status else "" }}>
+  <summary>{{ verworfen | length }} verworfene anzeigen</summary>
+  {% for g in verworfen %}
+  {{ verworfen_karte(g) }}
+  {% endfor %}
+</details>
+{% endif %}
+
+<script>
+  function vkPruefeGrund(form) {
+    var ausgewaehlt = form.querySelectorAll('input[name="gruende"]:checked').length > 0;
+    var fehler = form.querySelector('.vk-dialog-fehler');
+    if (!ausgewaehlt && fehler) { fehler.hidden = false; }
+    return ausgewaehlt;
+  }
+</script>
 
 {% endblock %}

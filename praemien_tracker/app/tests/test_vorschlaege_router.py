@@ -93,12 +93,19 @@ def test_uebernehmen_button_orange_nur_bei_hinweisen(db, zwei_inhaber):
     Übernehmen-Button orange (Klasse 'warn'); ohne Hinweise bleibt er grün."""
     alice, max_ = zwei_inhaber
 
+    # Der Übernehmen-Button ist speziell an "dlg-uebernehmen-" gebunden -
+    # dieses Muster prüfen statt einer bloßen 'class="warn"'-Suche über die
+    # ganze Seite, die auch auf andere Buttons (z.B. "Alle neu analysieren")
+    # anspringen könnte.
+    def _uebernehmen_button_ist_warn(html: str) -> bool:
+        return 'class="warn" onclick="document.getElementById(\'dlg-uebernehmen-' in html
+
     # Mit Hinweis: alice vorgeschlagen, max abgelehnt (Begründung).
     _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich", quelle_url="https://www.mydealz.de/a")
     _vorschlag(db, max_, "automatisch_abgelehnt", inhalt_hash="gleich", quelle_url="https://www.mydealz.de/a",
                ablehnungsgruende="Bereits Kundin.")
     antwort = client.get("/vorschlaege")
-    assert 'class="warn"' in antwort.text
+    assert _uebernehmen_button_ist_warn(antwort.text)
 
     from praemien_tracker.models import DealVorschlag as _DV
     db.query(_DV).delete()
@@ -108,7 +115,7 @@ def test_uebernehmen_button_orange_nur_bei_hinweisen(db, zwei_inhaber):
     _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="sauber", quelle_url="https://www.mydealz.de/b")
     _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="sauber", quelle_url="https://www.mydealz.de/b")
     antwort2 = client.get("/vorschlaege")
-    assert 'class="warn"' not in antwort2.text
+    assert not _uebernehmen_button_ist_warn(antwort2.text)
 
 
 def test_karte_zeigt_mehrere_teilpraemien_mit_bedingung(db, inhaber):
@@ -245,15 +252,60 @@ def test_bereits_uebernommener_vorschlag_wird_nicht_doppelt_verarbeitet(db, inha
     assert db.query(Deal).count() == 0
 
 
-def test_verwerfen_setzt_nur_den_status(db, inhaber):
+def test_verwerfen_setzt_status_und_speichert_grund(db, inhaber):
     vorschlag = _vorschlag(db, inhaber, "zu_pruefen")
 
-    antwort = client.post("/vorschlaege/verwerfen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+    antwort = client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [vorschlag.id], "gruende": ["duplikat"]},
+        follow_redirects=False,
+    )
     assert antwort.status_code == 303
 
     db.refresh(vorschlag)
     assert vorschlag.status == "verworfen"
+    assert vorschlag.verwerfen_gruende == "duplikat"
     assert db.query(Deal).count() == 0
+
+
+def test_verwerfen_speichert_mehrere_gruende(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [vorschlag.id], "gruende": ["duplikat", "bedingungen_aufwendig"]},
+        follow_redirects=False,
+    )
+
+    db.refresh(vorschlag)
+    assert vorschlag.status == "verworfen"
+    assert vorschlag.verwerfen_gruende == "duplikat,bedingungen_aufwendig"
+
+
+def test_verwerfen_ohne_grund_tut_nichts(db, inhaber):
+    """Ein manuelles Verwerfen braucht immer eine Begründung - ohne gültigen
+    Grund bleibt der Vorschlag unverändert offen (Dialog erzwingt die Auswahl
+    clientseitig, das hier ist die serverseitige Absicherung)."""
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    client.post("/vorschlaege/verwerfen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+
+    db.refresh(vorschlag)
+    assert vorschlag.status == "vorgeschlagen"
+    assert vorschlag.verwerfen_gruende is None
+
+
+def test_verwerfen_ignoriert_ungueltige_gruende(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [vorschlag.id], "gruende": ["quatsch"]},
+        follow_redirects=False,
+    )
+
+    db.refresh(vorschlag)
+    assert vorschlag.status == "vorgeschlagen"
 
 
 def test_verwerfen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen(db, zwei_inhaber):
@@ -261,7 +313,11 @@ def test_verwerfen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen(db, zwei_inha
     v_elli = _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich")
     v_max = _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
 
-    client.post("/vorschlaege/verwerfen", data={"vorschlag_ids": [v_elli.id]}, follow_redirects=False)
+    client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [v_elli.id], "gruende": ["duplikat"]},
+        follow_redirects=False,
+    )
 
     db.refresh(v_elli)
     db.refresh(v_max)
@@ -269,12 +325,38 @@ def test_verwerfen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen(db, zwei_inha
     assert v_max.status == "vorgeschlagen"
 
 
-def test_verworfener_vorschlag_taucht_nicht_mehr_in_der_liste_auf(db, inhaber):
+def test_verworfener_vorschlag_taucht_nicht_mehr_bei_offenen_auf(db, inhaber):
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
-    client.post("/vorschlaege/verwerfen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+    client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [vorschlag.id], "gruende": ["duplikat"]},
+        follow_redirects=False,
+    )
 
     antwort = client.get("/vorschlaege")
     assert "0 vorgeschlagen" in antwort.text
+
+
+def test_verworfener_vorschlag_zeigt_begruendung_in_eigener_sektion(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+    client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [vorschlag.id], "gruende": ["duplikat", "noch_nicht_neukunde"]},
+        follow_redirects=False,
+    )
+
+    antwort = client.get("/vorschlaege")
+    assert "1 verworfene anzeigen" in antwort.text
+    assert "Duplikat" in antwort.text
+    assert "Noch nicht wieder Neukunde" in antwort.text
+
+
+def test_verwerfen_dialog_zeigt_alle_grund_optionen(db, inhaber):
+    _vorschlag(db, inhaber, "vorgeschlagen")
+    antwort = client.get("/vorschlaege")
+    assert "Duplikat" in antwort.text
+    assert "Bedingungen zu aufwendig" in antwort.text
+    assert "Noch nicht wieder Neukunde" in antwort.text
 
 
 def test_unbekannte_id_beim_uebernehmen_wird_ignoriert(db):
@@ -325,13 +407,54 @@ def test_filter_nach_typ_kind_zeigt_nur_minderjaehrige(db, zwei_inhaber):
 
 
 def test_filter_nach_status(db, inhaber):
-    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
-    _vorschlag(db, inhaber, "zu_pruefen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2")
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1",
+               bank_name="VorgeschlagenBank")
+    _vorschlag(db, inhaber, "zu_pruefen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2",
+               bank_name="ZuPruefenBank")
 
     antwort = client.get("/vorschlaege", params={"status": "zu_pruefen"})
     assert antwort.status_code == 200
-    assert "0 vorgeschlagen" in antwort.text
+    # Die Chips zeigen weiterhin die Gesamtzahl je Status - unabhängig vom
+    # aktiven Status-Filter, sonst würden sie sich beim Anklicken auf 0
+    # zurücksetzen.
+    assert "1 vorgeschlagen" in antwort.text
     assert "1 zu prüfen" in antwort.text
+    # Nur "Zu prüfen" wird tatsächlich als Karten-Sektion angezeigt.
+    assert "ZuPruefenBank" in antwort.text
+    assert "VorgeschlagenBank" not in antwort.text
+
+
+def test_status_chips_sind_links_die_direkt_filtern(db, inhaber):
+    """Klick auf einen Status-Chip soll direkt auf den jeweiligen Status
+    filtern - die Chips sind deshalb Links auf vorschlaege?status=..."""
+    _vorschlag(db, inhaber, "vorgeschlagen")
+    antwort = client.get("/vorschlaege")
+    assert 'href="vorschlaege?status=vorgeschlagen"' in antwort.text
+    assert 'href="vorschlaege?status=zu_pruefen"' in antwort.text
+    assert 'href="vorschlaege?status=automatisch_abgelehnt"' in antwort.text
+    assert 'href="vorschlaege?status=verworfen"' in antwort.text
+
+
+def test_verworfen_ist_ueber_status_chip_und_filter_erreichbar(db, inhaber):
+    """Bisher gab es keine Möglichkeit, gezielt nach manuell verworfenen
+    Vorschlägen zu filtern - jetzt über den vierten Chip bzw. die
+    Status-Filterleiste (Wert "verworfen")."""
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen", bank_name="VerworfeneBank")
+    client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [vorschlag.id], "gruende": ["duplikat"]},
+        follow_redirects=False,
+    )
+
+    # Vierter Zähler ist immer sichtbar, auch ohne aktiven Filter.
+    antwort = client.get("/vorschlaege")
+    assert "1 verworfen" in antwort.text
+
+    # Gezielt gefiltert zeigt nur die Verworfen-Sektion (aufgeklappt) - die
+    # anderen (leeren) Sektionen erscheinen nicht.
+    gefiltert = client.get("/vorschlaege", params={"status": "verworfen"})
+    assert "VerworfeneBank" in gefiltert.text
+    assert '<details class="json-import" open>' in gefiltert.text
 
 
 def test_ungueltiger_filterwert_wird_ignoriert(db, inhaber):
@@ -368,13 +491,15 @@ def test_seite_zeigt_erfolgreichen_lauf(db):
     antwort = client.get("/vorschlaege")
     assert antwort.status_code == 200
     assert "Letzter Lauf erfolgreich" in antwort.text
-    # Tabelle: Quellen als Zeilen, die vier Kategorien als Spalten.
+    # Tabelle: die vier Kategorien als Zeilen, Quellen + Summe als Spalten.
     assert "mydealz" in antwort.text
     assert "Spartanien" in antwort.text
     assert "Neue Vorschläge" in antwort.text
     assert "Schon vorhanden" in antwort.text
     assert "Aktualisiert" in antwort.text
     assert "Aussortiert" in antwort.text
+    assert "Summe" in antwort.text
+    assert ">5<" in antwort.text  # Summe "Neue Vorschläge" = mydealz 3 + spartanien 2
 
 
 def test_seite_zeigt_fehlgeschlagenen_lauf_mit_fehlertext(db):
@@ -427,3 +552,30 @@ def test_seite_zeigt_nur_den_juengsten_lauf(db):
     antwort = client.get("/vorschlaege")
     assert "Letzter Lauf erfolgreich" in antwort.text
     assert "alter Fehler" not in antwort.text
+
+
+def test_seite_zeigt_alle_neu_analysieren_button_mit_bestaetigungsdialog(db):
+    antwort = client.get("/vorschlaege")
+    assert "Alle neu analysieren" in antwort.text
+    # Der Bestätigungsdialog erklärt die höheren API-Kosten, bevor die
+    # eigentliche Aktion (POST /vorschlaege/alle-neu-analysieren) ausgelöst wird.
+    assert "erneut per KI geprüft" in antwort.text
+    assert 'action="vorschlaege/alle-neu-analysieren"' in antwort.text
+    # Der Dialog schließt sich sofort bei der Bestätigung, statt während der
+    # (potenziell langsamen) Anfrage offen hängen zu bleiben.
+    assert 'onsubmit="this.closest(\'dialog\').close()"' in antwort.text
+
+
+def test_alle_neu_analysieren_ruft_lauf_mit_ignoriere_cache_auf(monkeypatch):
+    aufrufe = []
+
+    def fake_lauf(db_arg, *, ignoriere_cache=False):
+        aufrufe.append(ignoriere_cache)
+        return {}
+
+    monkeypatch.setattr("praemien_tracker.routers.vorschlaege.taeglicher_lauf", fake_lauf)
+
+    antwort = client.post("/vorschlaege/alle-neu-analysieren", follow_redirects=False)
+
+    assert antwort.status_code == 303
+    assert aufrufe == [True]

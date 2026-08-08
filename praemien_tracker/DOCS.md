@@ -55,6 +55,14 @@ unklare Sperrfrist) landet ein Fund unter "Zu prüfen" statt automatisch
 ausgeschlossen zu werden. Über den Button **Jetzt suchen** lässt sich ein
 Lauf jederzeit manuell anstoßen, z. B. um die Einrichtung zu testen.
 
+Der Button **Alle neu analysieren** daneben erzwingt für jeden aktuell
+gelisteten Fund eine frische KI-Prüfung, auch wenn sich am Text nichts
+geändert hat und er sonst aus dem Cache bedient würde - z. B. um bestehende
+Karten mit später eingeführten Feldern nachträglich aufzufrischen. Das kostet
+spürbar mehr API-Aufrufe als ein normaler Lauf, deshalb erst nach
+Bestätigung in einem Dialog. Bereits übernommene oder verworfene Vorschläge
+bleiben dabei unangetastet.
+
 Ändert sich ein Angebot (z. B. eine höhere Prämie), entsteht bewusst ein
 neuer Vorschlag statt eines stillen Updates am alten - die Historie bleibt
 so nachvollziehbar. Ein unveränderter Fund wird dagegen nicht erneut
@@ -68,20 +76,37 @@ Text, gilt der Deal als reines Erwachsenen-Angebot und das Kind erscheint gar
 nicht erst als Auswahl. Karten mit einem passenden Kind sind mit **"Auch für
 Kinder"** gekennzeichnet.
 
+Ob ein Angebot ein echter Neukunden-Deal ist, prüft die App über den
+Bank-Namen im Angebotstext gegen die selbst erfassten Banken - Groß-/
+Kleinschreibung, Leerzeichen und Interpunktion spielen dabei keine Rolle
+("SMARTBROKER" erkennt z. B. eine selbst als "Smart Broker" angelegte Bank).
+Findet sich keine passende Bank, gilt der Fund automatisch als Neukunden-Deal.
+
 **Ein Fund erscheint nur einmal.** Passt ein Angebot zu mehreren Inhabern
 (z. B. ein Erwachsener und ein Kind bei einem Junior-Depot), steht es als eine
-Karte da, mit einer Checkbox je Name statt einer eigenen Karte pro Person. Ist
-der Fund für eine
-Person ein echter Neukunden-Deal, für eine andere aber z. B. schon
-Bestandskunde, zählt beim Einsortieren der bessere Fall - die Karte landet
-unter "Vorgeschlagen", die betroffene Person zeigt daneben ihren
-abweichenden Status mit Begründung. Beim **Übernehmen** lassen sich gezielt
-ein oder mehrere Namen auswählen - für jede ausgewählte Person entsteht ein
-eigener Deal, nicht ausgewählte bleiben unverändert offen stehen. Dieselbe
-Auswahl gilt auch für **Verwerfen**.
+Karte da statt einer eigenen Karte pro Person. Ist der Fund für eine Person
+ein echter Neukunden-Deal, für eine andere aber z. B. schon Bestandskunde,
+zählt beim Einsortieren der bessere Fall - die Karte landet unter
+"Vorgeschlagen", die betroffene Person zeigt im Übernehmen-Dialog daneben
+ihren abweichenden Status mit Begründung. Ein Klick auf **Übernehmen** öffnet
+einen Dialog zur Auswahl der Namen - für jede ausgewählte Person entsteht ein
+eigener Deal, nicht ausgewählte bleiben unverändert offen stehen.
+
+Ein Klick auf **Verwerfen** öffnet ebenfalls einen Dialog: Hier wird - mit
+Mehrfachauswahl möglich - der Grund festgehalten (Duplikat, Bedingungen zu
+aufwendig, noch nicht wieder Neukunde). Ohne ausgewählten Grund lässt sich
+nicht verwerfen. Verworfene Funde erscheinen ganz unten in einer eigenen,
+eingeklappten Sektion, mit den gewählten Gründen als Kennzeichnung - und
+tauchen dank Dedup nicht erneut auf, solange sich am Fund nichts ändert.
 
 Über die Filterleiste lässt sich die Liste nach **Quelle** (mydealz/
-Spartanien), **Typ** (Erwachsene/Für Kinder) und **Status** eingrenzen.
+Spartanien), **Typ** (Erwachsene/Für Kinder) und **Status** eingrenzen -
+auch nach **Verworfen**, um manuell verworfene Funde gezielt wiederzufinden.
+Schneller geht's über die vier farbigen Zähler-Chips oberhalb der Liste
+("vorgeschlagen", "zu prüfen", "abgelehnt", "verworfen") - ein Klick filtert
+direkt auf den jeweiligen Status und klappt die passende Sektion automatisch
+auf. Die Chips zeigen dabei immer die Gesamtzahl (unter Berücksichtigung von
+Quelle/Typ), unabhängig davon, welcher Status gerade aktiv gefiltert ist.
 
 Jede Karte hat oben rechts einen **"Deal öffnen"**-Link, der die zugehörige
 mydealz-/Spartanien-Seite in einem neuen Tab öffnet, sowie Tags für Quelle,
