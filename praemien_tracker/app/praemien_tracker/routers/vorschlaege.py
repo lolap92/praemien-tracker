@@ -46,6 +46,7 @@ class VorschlagGruppe:
     bedingungen: list
     praemien: list
     status: str
+    verwerfen_gruende: object
     mitglieder: list[DealVorschlag]
 
 
@@ -78,11 +79,28 @@ def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
                 bedingungen=fuehrend.bedingungen,
                 praemien=fuehrend.praemien,
                 status=status,
+                verwerfen_gruende=fuehrend.verwerfen_gruende,
                 mitglieder=mitglieder,
             )
         )
     gruppen.sort(key=lambda g: max(m.gefunden_am for m in g.mitglieder), reverse=True)
     return gruppen
+
+
+def _nach_quelle_typ_filtern(
+    vorschlaege: list[DealVorschlag], filter_quelle: list[str], filter_typ: list[str]
+) -> list[DealVorschlag]:
+    if filter_quelle:
+        vorschlaege = [v for v in vorschlaege if v.quelle in filter_quelle]
+    if filter_typ:
+        will_kind = "kind" in filter_typ
+        will_erwachsen = "erwachsen" in filter_typ
+        vorschlaege = [
+            v
+            for v in vorschlaege
+            if (v.inhaber.ist_minderjaehrig and will_kind) or (not v.inhaber.ist_minderjaehrig and will_erwachsen)
+        ]
+    return vorschlaege
 
 
 @router.get("/vorschlaege")
@@ -97,28 +115,20 @@ def vorschlaege_view(
     filter_typ = [t for t in typ if t in TYPEN]
     filter_status = [s for s in status if s in STATUS_OFFEN]
 
+    lade_optionen = (
+        joinedload(DealVorschlag.inhaber),
+        joinedload(DealVorschlag.bedingungen),
+        joinedload(DealVorschlag.praemien),
+    )
+
     alle = (
         db.query(DealVorschlag)
-        .options(
-            joinedload(DealVorschlag.inhaber),
-            joinedload(DealVorschlag.bedingungen),
-            joinedload(DealVorschlag.praemien),
-        )
+        .options(*lade_optionen)
         .filter(DealVorschlag.status.in_(STATUS_OFFEN))
         .order_by(DealVorschlag.gefunden_am.desc())
         .all()
     )
-
-    if filter_quelle:
-        alle = [v for v in alle if v.quelle in filter_quelle]
-    if filter_typ:
-        will_kind = "kind" in filter_typ
-        will_erwachsen = "erwachsen" in filter_typ
-        alle = [
-            v
-            for v in alle
-            if (v.inhaber.ist_minderjaehrig and will_kind) or (not v.inhaber.ist_minderjaehrig and will_erwachsen)
-        ]
+    alle = _nach_quelle_typ_filtern(alle, filter_quelle, filter_typ)
 
     gruppen = _gruppieren(alle)
     if filter_status:
@@ -127,6 +137,18 @@ def vorschlaege_view(
     eingeteilt: dict[str, list[VorschlagGruppe]] = {s: [] for s in STATUS_OFFEN}
     for g in gruppen:
         eingeteilt[g.status].append(g)
+
+    # Manuell verworfene Vorschläge separat: eigene Sektion am Seitenende,
+    # mit den vom Nutzer ausgewählten Verwerfen-Gründen.
+    verworfene_rows = (
+        db.query(DealVorschlag)
+        .options(*lade_optionen)
+        .filter(DealVorschlag.status == matching.STATUS_VERWORFEN)
+        .order_by(DealVorschlag.gefunden_am.desc())
+        .all()
+    )
+    verworfene_rows = _nach_quelle_typ_filtern(verworfene_rows, filter_quelle, filter_typ)
+    verworfen = _gruppieren(verworfene_rows)
 
     letzter_lauf = db.query(FinderLauf).order_by(FinderLauf.id.desc()).first()
 
@@ -137,6 +159,8 @@ def vorschlaege_view(
             "vorgeschlagen": eingeteilt[matching.STATUS_VORGESCHLAGEN],
             "zu_pruefen": eingeteilt[matching.STATUS_ZU_PRUEFEN],
             "automatisch_abgelehnt": eingeteilt[matching.STATUS_ABGELEHNT],
+            "verworfen": verworfen,
+            "verwerfen_gruende_optionen": matching.VERWERFEN_GRUENDE_LABELS,
             "letzter_lauf": letzter_lauf,
             "filter_quelle": filter_quelle,
             "filter_typ": filter_typ,
@@ -167,15 +191,31 @@ def uebernehmen(request: Request, vorschlag_ids: list[int] = Form(default=[]), d
 
 
 @router.post("/vorschlaege/verwerfen")
-def verwerfen(request: Request, vorschlag_ids: list[int] = Form(default=[]), db: Session = Depends(get_db)):
+def verwerfen(
+    request: Request,
+    vorschlag_ids: list[int] = Form(default=[]),
+    gruende: list[str] = Form(default=[]),
+    db: Session = Depends(get_db),
+):
     """Setzt nur den Status der ausgewählten Zeilen, keine Löschung - taucht
     dank Dedup gegen den Inhalts-Hash nicht erneut auf, solange sich am Fund
     nichts ändert. Nicht ausgewählte Personen in derselben Gruppe bleiben
-    offen."""
+    offen.
+
+    Ein manuelles Verwerfen braucht immer mindestens einen Grund aus dem
+    festen Enum (Dialog erzwingt das clientseitig per Checkbox-Auswahl) -
+    ohne gültigen Grund passiert serverseitig nichts, damit nie ein Vorschlag
+    ohne Begründung verworfen werden kann."""
+    gueltige_gruende = [g for g in gruende if g in matching.VERWERFEN_GRUENDE]
+    if not gueltige_gruende:
+        return redirect(request, "vorschlaege")
+    gruende_text = ",".join(gueltige_gruende)
+
     for vorschlag_id in vorschlag_ids:
         vorschlag = db.get(DealVorschlag, vorschlag_id)
         if vorschlag is not None and vorschlag.status in STATUS_OFFEN:
             vorschlag.status = matching.STATUS_VERWORFEN
+            vorschlag.verwerfen_gruende = gruende_text
     db.commit()
     return redirect(request, "vorschlaege")
 

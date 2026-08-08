@@ -27,6 +27,19 @@ STATUS_VERWORFEN = "verworfen"
 # darf lauf.py diese Zeilen bei einer erneuten Bewertung noch verändern.
 STATUS_OFFEN = (STATUS_VORGESCHLAGEN, STATUS_ZU_PRUEFEN, STATUS_ABGELEHNT)
 
+# Feste Gründe für ein manuelles Verwerfen (Mehrfachauswahl im Dialog) -
+# bewusst ein Enum statt Freitext, damit die Gründe später auswertbar bleiben
+# (z.B. "wie oft wird wegen zu aufwendiger Bedingungen verworfen?").
+VERWERFEN_GRUND_DUPLIKAT = "duplikat"
+VERWERFEN_GRUND_BEDINGUNGEN = "bedingungen_aufwendig"
+VERWERFEN_GRUND_NEUKUNDE = "noch_nicht_neukunde"
+VERWERFEN_GRUENDE_LABELS = {
+    VERWERFEN_GRUND_DUPLIKAT: "Duplikat",
+    VERWERFEN_GRUND_BEDINGUNGEN: "Bedingungen zu aufwendig",
+    VERWERFEN_GRUND_NEUKUNDE: "Noch nicht wieder Neukunde",
+}
+VERWERFEN_GRUENDE = tuple(VERWERFEN_GRUENDE_LABELS)
+
 EINSCHAETZUNG_ERFUELLT = "erfuellt"
 EINSCHAETZUNG_ZU_PRUEFEN = "zu_pruefen"
 EINSCHAETZUNG_NICHT_ERFUELLT = "nicht_erfuellt"

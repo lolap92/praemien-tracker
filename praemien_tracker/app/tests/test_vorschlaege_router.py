@@ -245,15 +245,60 @@ def test_bereits_uebernommener_vorschlag_wird_nicht_doppelt_verarbeitet(db, inha
     assert db.query(Deal).count() == 0
 
 
-def test_verwerfen_setzt_nur_den_status(db, inhaber):
+def test_verwerfen_setzt_status_und_speichert_grund(db, inhaber):
     vorschlag = _vorschlag(db, inhaber, "zu_pruefen")
 
-    antwort = client.post("/vorschlaege/verwerfen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+    antwort = client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [vorschlag.id], "gruende": ["duplikat"]},
+        follow_redirects=False,
+    )
     assert antwort.status_code == 303
 
     db.refresh(vorschlag)
     assert vorschlag.status == "verworfen"
+    assert vorschlag.verwerfen_gruende == "duplikat"
     assert db.query(Deal).count() == 0
+
+
+def test_verwerfen_speichert_mehrere_gruende(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [vorschlag.id], "gruende": ["duplikat", "bedingungen_aufwendig"]},
+        follow_redirects=False,
+    )
+
+    db.refresh(vorschlag)
+    assert vorschlag.status == "verworfen"
+    assert vorschlag.verwerfen_gruende == "duplikat,bedingungen_aufwendig"
+
+
+def test_verwerfen_ohne_grund_tut_nichts(db, inhaber):
+    """Ein manuelles Verwerfen braucht immer eine Begründung - ohne gültigen
+    Grund bleibt der Vorschlag unverändert offen (Dialog erzwingt die Auswahl
+    clientseitig, das hier ist die serverseitige Absicherung)."""
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    client.post("/vorschlaege/verwerfen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+
+    db.refresh(vorschlag)
+    assert vorschlag.status == "vorgeschlagen"
+    assert vorschlag.verwerfen_gruende is None
+
+
+def test_verwerfen_ignoriert_ungueltige_gruende(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [vorschlag.id], "gruende": ["quatsch"]},
+        follow_redirects=False,
+    )
+
+    db.refresh(vorschlag)
+    assert vorschlag.status == "vorgeschlagen"
 
 
 def test_verwerfen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen(db, zwei_inhaber):
@@ -261,7 +306,11 @@ def test_verwerfen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen(db, zwei_inha
     v_elli = _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich")
     v_max = _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
 
-    client.post("/vorschlaege/verwerfen", data={"vorschlag_ids": [v_elli.id]}, follow_redirects=False)
+    client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [v_elli.id], "gruende": ["duplikat"]},
+        follow_redirects=False,
+    )
 
     db.refresh(v_elli)
     db.refresh(v_max)
@@ -269,12 +318,38 @@ def test_verwerfen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen(db, zwei_inha
     assert v_max.status == "vorgeschlagen"
 
 
-def test_verworfener_vorschlag_taucht_nicht_mehr_in_der_liste_auf(db, inhaber):
+def test_verworfener_vorschlag_taucht_nicht_mehr_bei_offenen_auf(db, inhaber):
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
-    client.post("/vorschlaege/verwerfen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+    client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [vorschlag.id], "gruende": ["duplikat"]},
+        follow_redirects=False,
+    )
 
     antwort = client.get("/vorschlaege")
     assert "0 vorgeschlagen" in antwort.text
+
+
+def test_verworfener_vorschlag_zeigt_begruendung_in_eigener_sektion(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+    client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [vorschlag.id], "gruende": ["duplikat", "noch_nicht_neukunde"]},
+        follow_redirects=False,
+    )
+
+    antwort = client.get("/vorschlaege")
+    assert "1 verworfene anzeigen" in antwort.text
+    assert "Duplikat" in antwort.text
+    assert "Noch nicht wieder Neukunde" in antwort.text
+
+
+def test_verwerfen_dialog_zeigt_alle_grund_optionen(db, inhaber):
+    _vorschlag(db, inhaber, "vorgeschlagen")
+    antwort = client.get("/vorschlaege")
+    assert "Duplikat" in antwort.text
+    assert "Bedingungen zu aufwendig" in antwort.text
+    assert "Noch nicht wieder Neukunde" in antwort.text
 
 
 def test_unbekannte_id_beim_uebernehmen_wird_ignoriert(db):

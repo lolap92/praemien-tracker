@@ -70,15 +70,20 @@ Kinder"** gekennzeichnet.
 
 **Ein Fund erscheint nur einmal.** Passt ein Angebot zu mehreren Inhabern
 (z. B. ein Erwachsener und ein Kind bei einem Junior-Depot), steht es als eine
-Karte da, mit einer Checkbox je Name statt einer eigenen Karte pro Person. Ist
-der Fund für eine
-Person ein echter Neukunden-Deal, für eine andere aber z. B. schon
-Bestandskunde, zählt beim Einsortieren der bessere Fall - die Karte landet
-unter "Vorgeschlagen", die betroffene Person zeigt daneben ihren
-abweichenden Status mit Begründung. Beim **Übernehmen** lassen sich gezielt
-ein oder mehrere Namen auswählen - für jede ausgewählte Person entsteht ein
-eigener Deal, nicht ausgewählte bleiben unverändert offen stehen. Dieselbe
-Auswahl gilt auch für **Verwerfen**.
+Karte da statt einer eigenen Karte pro Person. Ist der Fund für eine Person
+ein echter Neukunden-Deal, für eine andere aber z. B. schon Bestandskunde,
+zählt beim Einsortieren der bessere Fall - die Karte landet unter
+"Vorgeschlagen", die betroffene Person zeigt im Übernehmen-Dialog daneben
+ihren abweichenden Status mit Begründung. Ein Klick auf **Übernehmen** öffnet
+einen Dialog zur Auswahl der Namen - für jede ausgewählte Person entsteht ein
+eigener Deal, nicht ausgewählte bleiben unverändert offen stehen.
+
+Ein Klick auf **Verwerfen** öffnet ebenfalls einen Dialog: Hier wird - mit
+Mehrfachauswahl möglich - der Grund festgehalten (Duplikat, Bedingungen zu
+aufwendig, noch nicht wieder Neukunde). Ohne ausgewählten Grund lässt sich
+nicht verwerfen. Verworfene Funde erscheinen ganz unten in einer eigenen,
+eingeklappten Sektion, mit den gewählten Gründen als Kennzeichnung - und
+tauchen dank Dedup nicht erneut auf, solange sich am Fund nichts ändert.
 
 Über die Filterleiste lässt sich die Liste nach **Quelle** (mydealz/
 Spartanien), **Typ** (Erwachsene/Für Kinder) und **Status** eingrenzen.

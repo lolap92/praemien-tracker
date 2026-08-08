@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.11.0
+
+Begründungspflicht beim manuellen Verwerfen eines Vorschlags. Enthält eine
+Schema-Migration (neue Spalte `deal_vorschlaege.verwerfen_gruende`) - vorher
+wird automatisch eine Sicherheitskopie angelegt.
+
+- **Verwerfen öffnet jetzt einen Dialog** mit Mehrfachauswahl-Checkboxen für
+  den Grund: **Duplikat**, **Bedingungen zu aufwendig**, **Noch nicht wieder
+  Neukunde**. Ohne ausgewählten Grund lässt sich nicht verwerfen (client- und
+  serverseitig abgesichert).
+- **Manuell verworfene Vorschläge** erscheinen jetzt in einer eigenen,
+  eingeklappten Sektion ganz unten im Vorschläge-Tab, mit den gewählten
+  Gründen als Kennzeichnung - bisher waren sie komplett unsichtbar.
+
 ## 2.10.0
 
 Weitere Überarbeitung der Vorschlags-Karten. Reine Anzeige-Änderung, keine

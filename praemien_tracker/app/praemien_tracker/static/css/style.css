@@ -1514,6 +1514,19 @@ table.lauf-tabelle tr:hover {
   color: var(--accent-ink);
 }
 
+.vorschlag-tag.tag-grund {
+  background: rgba(180, 70, 42, 0.1);
+  color: var(--danger);
+}
+
+.vk-gruende {
+  margin-top: 0.5rem;
+}
+
+.vorschlag-karte.status-verworfen {
+  opacity: 0.85;
+}
+
 .vorschlag-begruendung {
   font-size: 0.82rem;
   line-height: 1.5;
@@ -1690,11 +1703,18 @@ dialog.vk-dialog h3 {
   color: var(--ink-soft);
 }
 
-.vk-dialog-namen {
+.vk-dialog-namen,
+.vk-dialog-gruende {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
   margin-bottom: 1.1rem;
+}
+
+.vk-dialog-fehler {
+  margin: -0.6rem 0 0.9rem;
+  font-size: 0.8rem;
+  color: var(--danger);
 }
 
 .vk-dialog-aktionen {

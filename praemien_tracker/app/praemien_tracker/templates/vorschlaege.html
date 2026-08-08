@@ -195,10 +195,7 @@
     <button type="button" class="{{ 'warn' if ns.hinweise else '' }}" onclick="document.getElementById('dlg-uebernehmen-{{ kid }}').showModal()">
       {{ "Trotzdem übernehmen" if g.status == "automatisch_abgelehnt" else "Übernehmen" }}
     </button>
-    <form method="post" action="vorschlaege/verwerfen" class="vk-inline-form">
-      {% for m in g.mitglieder %}<input type="hidden" name="vorschlag_ids" value="{{ m.id }}">{% endfor %}
-      <button type="submit" class="secondary">Verwerfen</button>
-    </form>
+    <button type="button" class="secondary" onclick="document.getElementById('dlg-verwerfen-{{ kid }}').showModal()">Verwerfen</button>
     <a class="button secondary" href="{{ g.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
   </div>
 
@@ -226,6 +223,59 @@
       </div>
     </form>
   </dialog>
+
+  <dialog id="dlg-verwerfen-{{ kid }}" class="vk-dialog">
+    <h3>{{ g.bank_name }} · {{ g.kontoart }}</h3>
+    <p class="vk-dialog-frage">Warum verwerfen? (Mehrfachauswahl möglich)</p>
+    <form method="post" action="vorschlaege/verwerfen" class="vk-verwerfen-form" onsubmit="return vkPruefeGrund(this)">
+      {% for m in g.mitglieder %}<input type="hidden" name="vorschlag_ids" value="{{ m.id }}">{% endfor %}
+      <div class="vk-dialog-gruende">
+        {% for code, label in verwerfen_gruende_optionen.items() %}
+        <label class="vorschlag-mitglied">
+          <input type="checkbox" name="gruende" value="{{ code }}">
+          <span>{{ label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <p class="vk-dialog-fehler" hidden>Bitte mindestens einen Grund auswählen.</p>
+      <div class="vk-dialog-aktionen">
+        <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
+        <button type="submit">Verwerfen</button>
+      </div>
+    </form>
+  </dialog>
+</div>
+{% endmacro %}
+
+{% macro verworfen_karte(g) %}
+<div class="card vorschlag-karte status-verworfen">
+  <div class="vk-kopf">
+    <div class="vk-titel">
+      <span class="bank">{{ g.bank_name }}</span>
+    </div>
+    <div class="vk-geld">
+      <span class="geld d-amt">{{ g.praemie_betrag | eur }}</span>
+    </div>
+  </div>
+
+  <div class="vk-tags">
+    <span class="vorschlag-tag tag-{{ g.quelle }}">{{ g.quelle | quelle }}</span>
+    {% if g.kontoart %}<span class="vorschlag-tag tag-kontoart">{{ g.kontoart }}</span>{% endif %}
+  </div>
+
+  <div class="vk-fakten">
+    <span class="vk-fakt">Gefunden {{ g.gefunden_am | datum }}</span>
+  </div>
+
+  <div class="vk-tags vk-gruende">
+    {% for label in g.verwerfen_gruende | verwerfen_gruende %}
+    <span class="vorschlag-tag tag-grund">{{ label }}</span>
+    {% endfor %}
+  </div>
+
+  <div class="vorschlag-aktionen">
+    <a class="button secondary" href="{{ g.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
+  </div>
 </div>
 {% endmacro %}
 
@@ -259,5 +309,23 @@
   {% endfor %}
 </details>
 {% endif %}
+
+{% if verworfen %}
+<details class="json-import">
+  <summary>{{ verworfen | length }} verworfene anzeigen</summary>
+  {% for g in verworfen %}
+  {{ verworfen_karte(g) }}
+  {% endfor %}
+</details>
+{% endif %}
+
+<script>
+  function vkPruefeGrund(form) {
+    var ausgewaehlt = form.querySelectorAll('input[name="gruende"]:checked').length > 0;
+    var fehler = form.querySelector('.vk-dialog-fehler');
+    if (!ausgewaehlt && fehler) { fehler.hidden = false; }
+    return ausgewaehlt;
+  }
+</script>
 
 {% endblock %}
