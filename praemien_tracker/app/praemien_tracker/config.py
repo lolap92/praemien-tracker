@@ -81,6 +81,10 @@ ANTHROPIC_MODEL: str = _OPTIONEN.get("anthropic_model") or "claude-haiku-4-5"
 MINDESTPRAEMIE: Decimal = _mindestpraemie(_OPTIONEN.get("mindestpraemie", 50))
 MYDEALZ_GRUPPE: str = _OPTIONEN.get("mydealz_gruppe") or "vertraege-finanzen"
 SPARTANIEN_URL: str = _OPTIONEN.get("spartanien_url") or "https://www.spartanien.de/"
+# dealdoktor liefert einen WordPress-RSS-Feed; die Rubrik "Bonus-Deals" ist am
+# stärksten auf Konto-/Depot-Prämien fokussiert. Über die Option lässt sich
+# jeder andere Feed (z.B. eine andere Kategorie) einsetzen.
+DEALDOKTOR_FEED_URL: str = _OPTIONEN.get("dealdoktor_feed_url") or "https://www.dealdoktor.de/bonus-deals/feed/"
 
 # Benachrichtigung bei neuen Vorschlägen (Konzept Abschnitt 6).
 # "benachrichtigungsgeraete" ist eine kommagetrennte Liste von Home-

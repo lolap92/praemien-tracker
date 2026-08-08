@@ -39,7 +39,7 @@ from ..database import SessionLocal
 from ..models import DealVorschlag, FinderFund, FinderLauf, Inhaber, VorschlagBedingung, VorschlagPraemie
 from . import extraktion, matching, notify
 from .extraktion import AngebotExtraktion
-from .quellen import RohFund, fetch_mydealz, fetch_spartanien
+from .quellen import RohFund, fetch_dealdoktor, fetch_mydealz, fetch_spartanien
 
 logger = logging.getLogger("praemien_tracker.finder")
 
@@ -48,11 +48,12 @@ logger = logging.getLogger("praemien_tracker.finder")
 class _QuellenErgebnis:
     mydealz_funde: list[RohFund] = field(default_factory=list)
     spartanien_funde: list[RohFund] = field(default_factory=list)
+    dealdoktor_funde: list[RohFund] = field(default_factory=list)
     fehler: list[str] = field(default_factory=list)
 
     @property
     def alle(self) -> list[RohFund]:
-        return self.mydealz_funde + self.spartanien_funde
+        return self.mydealz_funde + self.spartanien_funde + self.dealdoktor_funde
 
 
 def _anthropic_client() -> anthropic.Anthropic | None:
@@ -63,8 +64,8 @@ def _anthropic_client() -> anthropic.Anthropic | None:
 
 
 def _rohfunde_holen() -> _QuellenErgebnis:
-    """Beide Quellen abfragen. Schlägt eine fehl (z.B. geändertes Markup bei
-    spartanien, Netzwerkfehler), läuft der Rest mit der anderen Quelle weiter
+    """Alle Quellen abfragen. Schlägt eine fehl (z.B. geändertes Markup bei
+    spartanien, Netzwerkfehler), läuft der Rest mit den anderen Quellen weiter
     - ein einzelner Quellenausfall soll nicht den ganzen Tageslauf stoppen,
     wird aber als Fehler im Protokoll festgehalten."""
     ergebnis = _QuellenErgebnis()
@@ -78,6 +79,11 @@ def _rohfunde_holen() -> _QuellenErgebnis:
     except Exception as exc:
         logger.exception("spartanien-Abruf fehlgeschlagen, Lauf wird ohne diese Quelle fortgesetzt.")
         ergebnis.fehler.append(f"spartanien nicht erreichbar: {exc}")
+    try:
+        ergebnis.dealdoktor_funde = fetch_dealdoktor(config.DEALDOKTOR_FEED_URL)
+    except Exception as exc:
+        logger.exception("dealdoktor-Abruf fehlgeschlagen, Lauf wird ohne diese Quelle fortgesetzt.")
+        ergebnis.fehler.append(f"dealdoktor nicht erreichbar: {exc}")
     return ergebnis
 
 
@@ -353,6 +359,7 @@ def taeglicher_lauf(
         erfolgreich=erfolgreich,
         mydealz_geladen=len(quellen.mydealz_funde),
         spartanien_geladen=len(quellen.spartanien_funde),
+        dealdoktor_geladen=len(quellen.dealdoktor_funde),
         mydealz_neu=kategorie["mydealz"]["neu"],
         mydealz_vorhanden=kategorie["mydealz"]["vorhanden"],
         mydealz_aktualisiert=kategorie["mydealz"]["aktualisiert"],
@@ -361,6 +368,10 @@ def taeglicher_lauf(
         spartanien_vorhanden=kategorie["spartanien"]["vorhanden"],
         spartanien_aktualisiert=kategorie["spartanien"]["aktualisiert"],
         spartanien_rauschen=kategorie["spartanien"]["rauschen"],
+        dealdoktor_neu=kategorie["dealdoktor"]["neu"],
+        dealdoktor_vorhanden=kategorie["dealdoktor"]["vorhanden"],
+        dealdoktor_aktualisiert=kategorie["dealdoktor"]["aktualisiert"],
+        dealdoktor_rauschen=kategorie["dealdoktor"]["rauschen"],
         neu_gefunden=zaehler["neue_vorschlaege"],
         uebersprungen=zaehler["uebersprungen"],
         aus_cache=zaehler["aus_cache"],

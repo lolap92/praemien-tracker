@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.17.0
+
+**Dritte Deal-Quelle: DealDoktor.** Der KI-Deal-Finder durchsucht jetzt
+zusätzlich zu mydealz und Spartanien auch DealDoktor - über den offiziellen
+WordPress-RSS-Feed (Standard: Rubrik „Bonus-Deals"), also den gleichen
+stabilen Weg wie mydealz, ohne HTML-Scraping.
+
+- **Neue Add-on-Option `dealdoktor_feed_url`** (Standard
+  `https://www.dealdoktor.de/bonus-deals/feed/`) - hier lässt sich bei Bedarf
+  ein anderer DealDoktor-Feed (z. B. eine andere Kategorie) hinterlegen.
+- **Prämien-Quelle:** DealDoktor-Funde verlinken auf das Angebot der Bank -
+  die Prämie wird deshalb (wie bei mydealz) standardmäßig der **Bank** als
+  Geber zugeordnet, nicht dem Portal.
+- Die Lauf-Statistik im Tab **Vorschläge** und der Quelle-Filter zeigen
+  DealDoktor als eigene Spalte bzw. Auswahl.
+
 ## 2.16.0
 
 **Quellenübergreifende Duplikat-Erkennung im KI-Deal-Finder.** Meldet eine

@@ -25,6 +25,7 @@
               <th></th>
               <th>mydealz</th>
               <th>Spartanien</th>
+              <th>DealDoktor</th>
               <th>Summe</th>
             </tr>
           </thead>
@@ -33,25 +34,29 @@
               <td class="bank">Neue Vorschläge</td>
               <td>{{ letzter_lauf.mydealz_neu }}</td>
               <td>{{ letzter_lauf.spartanien_neu }}</td>
-              <td>{{ letzter_lauf.mydealz_neu + letzter_lauf.spartanien_neu }}</td>
+              <td>{{ letzter_lauf.dealdoktor_neu }}</td>
+              <td>{{ letzter_lauf.mydealz_neu + letzter_lauf.spartanien_neu + letzter_lauf.dealdoktor_neu }}</td>
             </tr>
             <tr>
               <td class="bank">Schon vorhanden</td>
               <td>{{ letzter_lauf.mydealz_vorhanden }}</td>
               <td>{{ letzter_lauf.spartanien_vorhanden }}</td>
-              <td>{{ letzter_lauf.mydealz_vorhanden + letzter_lauf.spartanien_vorhanden }}</td>
+              <td>{{ letzter_lauf.dealdoktor_vorhanden }}</td>
+              <td>{{ letzter_lauf.mydealz_vorhanden + letzter_lauf.spartanien_vorhanden + letzter_lauf.dealdoktor_vorhanden }}</td>
             </tr>
             <tr>
               <td class="bank">Aktualisiert</td>
               <td>{{ letzter_lauf.mydealz_aktualisiert }}</td>
               <td>{{ letzter_lauf.spartanien_aktualisiert }}</td>
-              <td>{{ letzter_lauf.mydealz_aktualisiert + letzter_lauf.spartanien_aktualisiert }}</td>
+              <td>{{ letzter_lauf.dealdoktor_aktualisiert }}</td>
+              <td>{{ letzter_lauf.mydealz_aktualisiert + letzter_lauf.spartanien_aktualisiert + letzter_lauf.dealdoktor_aktualisiert }}</td>
             </tr>
             <tr>
               <td class="bank">Aussortiert</td>
               <td>{{ letzter_lauf.mydealz_rauschen }}</td>
               <td>{{ letzter_lauf.spartanien_rauschen }}</td>
-              <td>{{ letzter_lauf.mydealz_rauschen + letzter_lauf.spartanien_rauschen }}</td>
+              <td>{{ letzter_lauf.dealdoktor_rauschen }}</td>
+              <td>{{ letzter_lauf.mydealz_rauschen + letzter_lauf.spartanien_rauschen + letzter_lauf.dealdoktor_rauschen }}</td>
             </tr>
           </tbody>
         </table>
@@ -107,6 +112,10 @@
       <label>
         <input type="checkbox" name="quelle" value="spartanien" {{ "checked" if "spartanien" in filter_quelle else "" }}>
         Spartanien
+      </label>
+      <label>
+        <input type="checkbox" name="quelle" value="dealdoktor" {{ "checked" if "dealdoktor" in filter_quelle else "" }}>
+        DealDoktor
       </label>
     </div>
   </details>

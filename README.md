@@ -16,7 +16,7 @@ lässt sich der komplette Datenbestand als Excel-Datei (mehrere Sheets:
 Deals, Prämien, Bedingungen, Aufgaben, Links) herunterladen.
 
 **Erweiterung KI-Deal-Finder** (eigenes Konzeptdokument): ein täglicher
-Hintergrund-Lauf durchsucht mydealz und spartanien per Anthropic API nach
+Hintergrund-Lauf durchsucht mydealz, spartanien und dealdoktor per Anthropic API nach
 neuen Neukunden-Prämien und schlägt echte Neuigkeiten im Tab **Vorschläge**
 vor - die KI *findet und extrahiert*, sie *entscheidet und speichert keine
 Fakten*. Details siehe `praemien_tracker/DOCS.md` → "KI-Deal-Finder".

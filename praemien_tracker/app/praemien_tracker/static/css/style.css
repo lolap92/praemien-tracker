@@ -1699,7 +1699,8 @@ table.lauf-tabelle tr:hover {
 }
 
 .vorschlag-tag.tag-mydealz,
-.vorschlag-tag.tag-spartanien {
+.vorschlag-tag.tag-spartanien,
+.vorschlag-tag.tag-dealdoktor {
   background: rgba(185, 130, 47, 0.14);
   color: var(--st-wait);
 }

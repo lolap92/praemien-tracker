@@ -177,6 +177,19 @@ def _praemie_betrag(wert: float) -> Decimal:
         return Decimal("0")
 
 
+# Standard-Prämiengeber je Finder-Quelle, wenn die KI keine Aufteilung mit
+# benanntem Geber liefert. Das Kernmodell kennt als Zahler nur "spartanien"
+# (das Portal zahlt selbst aus) oder "bank" (die eigentliche Bank zahlt).
+# Nur die Quelle "spartanien" verweist auf eine Portal-Prämie; mydealz und
+# dealdoktor verlinken lediglich auf das Angebot der Bank - dort zahlt die
+# Bank. Nicht aufgeführte (also neue) Quellen mappen deshalb auf "bank".
+_STANDARD_PRAEMIENGEBER = {"spartanien": "spartanien"}
+
+
+def _standard_praemienquelle(fund_quelle: str) -> str:
+    return _STANDARD_PRAEMIENGEBER.get(fund_quelle, "bank")
+
+
 def _quelle_aus_geber(geber: str | None, fund_quelle: str) -> str:
     """Freitext-Geber ("Spartanien", "Santander", ...) auf die kanonische
     Quelle (spartanien/bank) abbilden. Nur Spartanien selbst zahlt als
@@ -261,7 +274,7 @@ def bewerten(
             for p in teilpraemien
         ]
     else:
-        fallback_quelle = "spartanien" if fund.quelle == "spartanien" else "bank"
+        fallback_quelle = _standard_praemienquelle(fund.quelle)
         praemien_json = [{"quelle": fallback_quelle, "betrag": str(praemie_betrag), "erhalten": False}]
     roh_json = json.dumps(
         {

@@ -30,7 +30,7 @@ _STATUS_PRIORITAET = {matching.STATUS_VORGESCHLAGEN: 0, matching.STATUS_ZU_PRUEF
 # Status mehr, aber über dieselbe Status-Filterleiste erreichbar.
 STATUS_FILTERBAR = STATUS_OFFEN + (matching.STATUS_VERWORFEN,)
 
-QUELLEN = ("mydealz", "spartanien")
+QUELLEN = ("mydealz", "spartanien", "dealdoktor")
 TYPEN = ("erwachsen", "kind")
 
 

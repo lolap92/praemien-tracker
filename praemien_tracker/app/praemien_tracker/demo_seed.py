@@ -110,7 +110,7 @@ def lade_demo_daten(db: Session) -> None:
     # keine echte Websuche/API-Anfrage, kein Bezug zu echten Angeboten.
     def vorschlag(bank: str, inhaber: Inhaber, status: str, index: int, **kwargs) -> DealVorschlag:
         v = DealVorschlag(
-            quelle="mydealz" if index % 2 else "spartanien",
+            quelle=("spartanien", "mydealz", "dealdoktor")[index % 3],
             quelle_url=f"https://beispiel.invalid/demo-{index}",
             inhalt_hash=f"demo-hash-{index}",
             bank_name=bank,

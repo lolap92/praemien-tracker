@@ -1,5 +1,6 @@
-"""KI-Deal-Finder: täglicher Hintergrund-Lauf, der mydealz und spartanien nach
-neuen Konto-/Depotwechsel-Prämien durchsucht (Erweiterung zum Grundkonzept).
+"""KI-Deal-Finder: täglicher Hintergrund-Lauf, der mydealz, spartanien und
+dealdoktor nach neuen Konto-/Depotwechsel-Prämien durchsucht (Erweiterung zum
+Grundkonzept).
 
 Die Module hier trennen bewusst drei Verantwortlichkeiten:
 - quellen.py: Rohtext von den Quellen holen (kein Fachwissen).

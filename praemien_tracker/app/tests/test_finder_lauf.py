@@ -62,6 +62,7 @@ def zwei_inhaber(db):
 def _patch_quellen(monkeypatch, funde: list[RohFund]) -> None:
     monkeypatch.setattr(lauf, "fetch_mydealz", lambda gruppe, **kw: funde)
     monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [])
+    monkeypatch.setattr(lauf, "fetch_dealdoktor", lambda url, **kw: [])
 
 
 def test_lauf_ohne_client_tut_nichts(db, zwei_inhaber, monkeypatch):
@@ -105,6 +106,7 @@ def test_minderjaehrige_bekommen_nur_kinderdeals(db, monkeypatch):
     kinder_deal = RohFund("mydealz", "https://mydealz.de/junior", "t", "Angebot MARKER_KIND fuer Junge")
     monkeypatch.setattr(lauf, "fetch_mydealz", lambda gruppe, **kw: [erwachsenen_deal, kinder_deal])
     monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [])
+    monkeypatch.setattr(lauf, "fetch_dealdoktor", lambda url, **kw: [])
 
     class NachTextMessages:
         def parse(self, *, output_format, messages, **kwargs):
@@ -141,6 +143,7 @@ def test_doppelter_fund_in_einem_lauf_wird_nur_einmal_verarbeitet(db, zwei_inhab
     fund = RohFund("mydealz", "https://mydealz.de/doppelt", "C24 125 Euro", "Neukunden erhalten 125 Euro.")
     monkeypatch.setattr(lauf, "fetch_mydealz", lambda gruppe, **kw: [fund, fund])
     monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [])
+    monkeypatch.setattr(lauf, "fetch_dealdoktor", lambda url, **kw: [])
     client = ZaehlenderFakeClient(
         RelevanzErgebnis(ist_relevant=True),
         AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]),
@@ -242,6 +245,9 @@ def test_erfolgreicher_lauf_protokolliert_zaehlerstaende(db, zwei_inhaber, monke
     monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [
         RohFund("spartanien", "https://spartanien.de/1", "t", "x"),
     ])
+    monkeypatch.setattr(lauf, "fetch_dealdoktor", lambda url, **kw: [
+        RohFund("dealdoktor", "https://dealdoktor.de/1", "t", "x"),
+    ])
     client = FakeClient(
         RelevanzErgebnis(ist_relevant=True),
         AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]),
@@ -254,9 +260,11 @@ def test_erfolgreicher_lauf_protokolliert_zaehlerstaende(db, zwei_inhaber, monke
     assert protokoll.erfolgreich is True
     assert protokoll.mydealz_geladen == 2
     assert protokoll.spartanien_geladen == 1
-    assert protokoll.neu_gefunden == 3  # 3 Angebote (je eine Karte), nicht 3x2 Zeilen
+    assert protokoll.dealdoktor_geladen == 1
+    assert protokoll.neu_gefunden == 4  # 4 Angebote (je eine Karte), nicht 4x2 Zeilen
     assert protokoll.mydealz_neu == 2
     assert protokoll.spartanien_neu == 1
+    assert protokoll.dealdoktor_neu == 1
     assert protokoll.uebersprungen == 0
     assert protokoll.fehler is None
     assert protokoll.beendet_am is not None
@@ -273,6 +281,7 @@ def test_geladene_funde_gehen_je_quelle_lueckenlos_auf(db, zwei_inhaber, monkeyp
 
     monkeypatch.setattr(lauf, "fetch_mydealz", lambda gruppe, **kw: [relevant, irrelevant, doppelt])
     monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [])
+    monkeypatch.setattr(lauf, "fetch_dealdoktor", lambda url, **kw: [])
 
     class GemischteMessages:
         """relevant fuer /gut, irrelevant fuer /versicherung."""
@@ -327,6 +336,7 @@ def test_fehlgeschlagene_quelle_wird_als_fehler_protokolliert(db, zwei_inhaber, 
 
     monkeypatch.setattr(lauf, "fetch_mydealz", kaputt)
     monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [])
+    monkeypatch.setattr(lauf, "fetch_dealdoktor", lambda url, **kw: [])
     client = FakeClient(RelevanzErgebnis(ist_relevant=False), None)
 
     zaehler = lauf.taeglicher_lauf(db, client=client)
@@ -622,6 +632,7 @@ def test_ignoriere_cache_laesst_entschiedene_vorschlaege_unangetastet(db, zwei_i
     fund = RohFund("mydealz", "https://mydealz.de/klein", "t", "5 Euro Praemie")
     monkeypatch.setattr(lauf, "fetch_mydealz", lambda gruppe, **kw: [fund])
     monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [])
+    monkeypatch.setattr(lauf, "fetch_dealdoktor", lambda url, **kw: [])
     client = FakeClient(
         RelevanzErgebnis(ist_relevant=True),
         AngebotExtraktion(bank_name="Klein-Bank", kontoart="Girokonto", praemie_betrag=5.0, bedingungen=[]),

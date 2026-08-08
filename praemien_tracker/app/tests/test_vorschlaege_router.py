@@ -397,6 +397,20 @@ def test_filter_nach_quelle(db, inhaber):
     assert "1 vorgeschlagen" in antwort.text
 
 
+def test_filter_nach_quelle_dealdoktor(db, inhaber):
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle="mydealz", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
+    _vorschlag(
+        db, inhaber, "vorgeschlagen", quelle="dealdoktor",
+        quelle_url="https://www.dealdoktor.de/1", inhalt_hash="h2",
+    )
+
+    antwort = client.get("/vorschlaege", params={"quelle": "dealdoktor"})
+    assert antwort.status_code == 200
+    assert "1 vorgeschlagen" in antwort.text
+    assert "https://www.dealdoktor.de/1" in antwort.text
+    assert "https://www.mydealz.de/1" not in antwort.text
+
+
 def test_filter_nach_typ_kind_zeigt_nur_minderjaehrige(db, zwei_inhaber):
     alice, max_ = zwei_inhaber
     _vorschlag(db, alice, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
@@ -497,6 +511,7 @@ def test_seite_zeigt_erfolgreichen_lauf(db):
     # Tabelle: die vier Kategorien als Zeilen, Quellen + Summe als Spalten.
     assert "mydealz" in antwort.text
     assert "Spartanien" in antwort.text
+    assert "DealDoktor" in antwort.text
     assert "Neue Vorschläge" in antwort.text
     assert "Schon vorhanden" in antwort.text
     assert "Aktualisiert" in antwort.text

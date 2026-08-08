@@ -7,7 +7,14 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from praemien_tracker.finder import quellen
-from praemien_tracker.finder.quellen import fetch_mydealz, fetch_spartanien, parse_mydealz_rss, parse_spartanien_html
+from praemien_tracker.finder.quellen import (
+    fetch_dealdoktor,
+    fetch_mydealz,
+    fetch_spartanien,
+    parse_dealdoktor_rss,
+    parse_mydealz_rss,
+    parse_spartanien_html,
+)
 
 MYDEALZ_RSS_BEISPIEL = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel><title>mydealz - Verträge &amp; Finanzen</title>
@@ -74,6 +81,36 @@ def test_mydealz_rss_dedupliziert_denselben_link():
     assert len(funde) == 1
     assert funde[0].quelle_url == "https://www.mydealz.de/gutscheine/c24-125-euro-123456"
     assert "Erster Eintrag" in funde[0].text
+
+
+DEALDOKTOR_RSS_BEISPIEL = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>DealDoktor - Bonus-Deals</title>
+<item>
+<title>Santander BestGiro: 100&#8364; Neukunden-Bonus</title>
+<link>https://www.dealdoktor.de/santander-bestgiro-100-euro/</link>
+<description>&lt;p&gt;Neukunden bekommen 100&#8364; fuer die Eroeffnung des kostenlosen \
+Girokontos. Kein Gehaltseingang noetig.&lt;/p&gt;</description>
+</item>
+<item>
+<title>Ohne Link - wird uebersprungen</title>
+<description>Fehlerhafter Eintrag</description>
+</item>
+</channel></rss>"""
+
+
+def test_dealdoktor_rss_wird_geparst():
+    """dealdoktor nutzt denselben RSS-Parser wie mydealz - hier wird nur die
+    Quelle-Kennzeichnung geprueft, die Feld-Extraktion deckt der mydealz-Test
+    ab."""
+    funde = parse_dealdoktor_rss(DEALDOKTOR_RSS_BEISPIEL)
+    assert len(funde) == 1
+    assert funde[0].quelle == "dealdoktor"
+    assert funde[0].quelle_url == "https://www.dealdoktor.de/santander-bestgiro-100-euro/"
+    assert "Gehaltseingang" in funde[0].text
+
+
+def test_dealdoktor_rss_verkraftet_kaputtes_xml():
+    assert parse_dealdoktor_rss("das ist kein xml") == []
 
 
 def test_spartanien_html_wird_geparst():
@@ -147,6 +184,20 @@ def test_fetch_mydealz_folgt_redirects(monkeypatch):
 
     fetch_mydealz("vertraege-finanzen")
 
+    assert aufrufe[0][1]["follow_redirects"] is True
+
+
+def test_fetch_dealdoktor_folgt_redirects(monkeypatch):
+    aufrufe = []
+    monkeypatch.setattr(
+        quellen.httpx,
+        "get",
+        lambda url, **kw: aufrufe.append((url, kw)) or _FakeAntwort("<rss></rss>", url),
+    )
+
+    fetch_dealdoktor("https://www.dealdoktor.de/bonus-deals/feed/")
+
+    assert aufrufe[0][0] == "https://www.dealdoktor.de/bonus-deals/feed/"
     assert aufrufe[0][1]["follow_redirects"] is True
 
 

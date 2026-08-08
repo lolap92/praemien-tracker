@@ -1,10 +1,11 @@
-"""Rohtext von den beiden Quellen holen - ohne jede Fachlogik.
+"""Rohtext von den Quellen holen - ohne jede Fachlogik.
 
-mydealz läuft über den offiziellen RSS-Feed pro Gruppe (dokumentierter Weg,
-kein Scraping-Risiko). spartanien hat keinen bekannten Feed; dort wird die
-Angebotsliste per HTML geparst - bewusst so tolerant gebaut, dass ein
-geändertes Markup zu einer leeren Liste statt zu einem Absturz des ganzen
-Laufs führt (siehe fetch_spartanien).
+mydealz und dealdoktor laufen über offizielle RSS-Feeds (dokumentierter Weg,
+kein Scraping-Risiko) - beide liefern dieselbe Item-Struktur und teilen sich
+deshalb denselben Parser (_parse_rss). spartanien hat keinen bekannten Feed;
+dort wird die Angebotsliste per HTML geparst - bewusst so tolerant gebaut,
+dass ein geändertes Markup zu einer leeren Liste statt zu einem Absturz des
+ganzen Laufs führt (siehe fetch_spartanien).
 """
 
 from __future__ import annotations
@@ -26,18 +27,19 @@ MYDEALZ_RSS_URL = "https://www.mydealz.de/rss/gruppe/{gruppe}"
 class RohFund:
     """Ein ungeprüfter Fund, roher Text für die KI-Extraktion (extraktion.py)."""
 
-    quelle: str  # "mydealz" | "spartanien"
+    quelle: str  # "mydealz" | "spartanien" | "dealdoktor"
     quelle_url: str
     titel: str
     text: str
 
 
-def parse_mydealz_rss(xml_text: str) -> list[RohFund]:
-    """RSS-Items in RohFund-Objekte übersetzen.
+def _parse_rss(xml_text: str, quelle: str) -> list[RohFund]:
+    """RSS-Items in RohFund-Objekte übersetzen (geteilt von mydealz und
+    dealdoktor - beide Feeds haben dieselbe <item>-Struktur).
 
     Jedes Item liefert Titel, Link und eine HTML-Beschreibung - aus der
     Beschreibung wird der reine Text extrahiert (Tags entfernt), da die
-    KI-Extraktion mit Fließtext arbeitet, nicht mit Markup. Der Feed listet
+    KI-Extraktion mit Fließtext arbeitet, nicht mit Markup. Ein Feed listet
     einzelne Deals gelegentlich doppelt (z.B. nach einem Bump) - ohne
     Deduplizierung nach Link würde das doppelte API-Aufrufe für denselben
     Fund auslösen und, da quelle_url in finder_funde eindeutig ist, den
@@ -46,7 +48,7 @@ def parse_mydealz_rss(xml_text: str) -> list[RohFund]:
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError:
-        logger.warning("mydealz-RSS-Feed ließ sich nicht als XML lesen - Struktur geändert?")
+        logger.warning("%s-RSS-Feed ließ sich nicht als XML lesen - Struktur geändert?", quelle)
         return []
 
     funde: list[RohFund] = []
@@ -59,8 +61,16 @@ def parse_mydealz_rss(xml_text: str) -> list[RohFund]:
         if not link or not titel or link in gesehene_urls:
             continue
         gesehene_urls.add(link)
-        funde.append(RohFund(quelle="mydealz", quelle_url=link, titel=titel, text=text or titel))
+        funde.append(RohFund(quelle=quelle, quelle_url=link, titel=titel, text=text or titel))
     return funde
+
+
+def parse_mydealz_rss(xml_text: str) -> list[RohFund]:
+    return _parse_rss(xml_text, "mydealz")
+
+
+def parse_dealdoktor_rss(xml_text: str) -> list[RohFund]:
+    return _parse_rss(xml_text, "dealdoktor")
 
 
 def fetch_mydealz(gruppe: str, *, timeout: float = 15.0) -> list[RohFund]:
@@ -68,6 +78,16 @@ def fetch_mydealz(gruppe: str, *, timeout: float = 15.0) -> list[RohFund]:
     antwort = httpx.get(url, timeout=timeout, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
     antwort.raise_for_status()
     return parse_mydealz_rss(antwort.text)
+
+
+def fetch_dealdoktor(feed_url: str, *, timeout: float = 15.0) -> list[RohFund]:
+    """dealdoktor läuft auf WordPress und liefert den Standard-RSS-Feed (z.B.
+    die Rubrik "Bonus-Deals") - genau dieselbe Item-Struktur wie mydealz,
+    daher derselbe Parser. Anders als der spartanien-HTML-Scraper ist das der
+    stabile, dokumentierte Weg ohne Markup-Risiko."""
+    antwort = httpx.get(feed_url, timeout=timeout, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
+    antwort.raise_for_status()
+    return parse_dealdoktor_rss(antwort.text)
 
 
 def parse_spartanien_html(html_text: str, basis_url: str) -> list[RohFund]:

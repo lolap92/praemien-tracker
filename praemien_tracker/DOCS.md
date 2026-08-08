@@ -42,7 +42,8 @@ zunächst leer.
 ## KI-Deal-Finder (Vorschläge)
 
 Ein täglicher Hintergrund-Lauf (06:00 Uhr) durchsucht mydealz (Gruppe
-"Verträge & Finanzen") und Spartanien nach neuen Neukunden-Prämien und
+"Verträge & Finanzen"), Spartanien und DealDoktor (RSS-Rubrik "Bonus-Deals")
+nach neuen Neukunden-Prämien und
 schlägt echte Neuigkeiten im Tab **Vorschläge** vor. Die KI *findet und
 extrahiert*, sie *entscheidet und speichert keine Fakten* - ein Vorschlag
 ist erst nach "Übernehmen" ein echter Deal. Voraussetzung ist ein eigener
@@ -111,7 +112,7 @@ eingeklappten Sektion, mit den gewählten Gründen als Kennzeichnung - und
 tauchen dank Dedup nicht erneut auf, solange sich am Fund nichts ändert.
 
 Über die Filterleiste lässt sich die Liste nach **Quelle** (mydealz/
-Spartanien), **Typ** (Erwachsene/Für Kinder) und **Status** eingrenzen -
+Spartanien/DealDoktor), **Typ** (Erwachsene/Für Kinder) und **Status** eingrenzen -
 auch nach **Verworfen**, um manuell verworfene Funde gezielt wiederzufinden.
 Schneller geht's über die vier farbigen Zähler-Chips oberhalb der Liste
 ("vorgeschlagen", "zu prüfen", "abgelehnt", "verworfen") - ein Klick filtert
@@ -120,7 +121,7 @@ auf. Die Chips zeigen dabei immer die Gesamtzahl (unter Berücksichtigung von
 Quelle/Typ), unabhängig davon, welcher Status gerade aktiv gefiltert ist.
 
 Jede Karte hat oben rechts einen **"Deal öffnen"**-Link, der die zugehörige
-mydealz-/Spartanien-Seite in einem neuen Tab öffnet, sowie Tags für Quelle,
+mydealz-/Spartanien-/DealDoktor-Seite in einem neuen Tab öffnet, sowie Tags für Quelle,
 Kontoart (z. B. Depot, Tagesgeld) und - falls zutreffend - "Auch für Kinder".
 Setzt sich die Prämie aus mehreren Teilen mit unterschiedlichen
 Voraussetzungen zusammen (z. B. 50 EUR von Spartanien für die Kontoeröffnung
@@ -251,6 +252,7 @@ folgende optionale Einstellungen (Add-on-Konfiguration in Home Assistant):
 | `mindestpraemie` | Prämien unterhalb dieses Betrags werden automatisch abgelehnt (mit Begründung, weiterhin sichtbar). | `50` |
 | `mydealz_gruppe` | mydealz-Gruppe für den RSS-Feed. | `vertraege-finanzen` |
 | `spartanien_url` | Ziel-URL für den Spartanien-Parser. | `https://www.spartanien.de/` |
+| `dealdoktor_feed_url` | RSS-Feed-URL für den DealDoktor-Parser (WordPress-Feed, z. B. eine andere Kategorie). | `https://www.dealdoktor.de/bonus-deals/feed/` |
 | `benachrichtigungen_aktiv` | Push-Benachrichtigung bei neuen Vorschlägen ein-/ausschalten. | `true` |
 | `benachrichtigungsgeraete` ("Benachrichtigungsgeräte") | Home-Assistant-Notify-Dienst(e) ohne `notify.`-Präfix, z. B. `mobile_app_pixel_8` für ein bestimmtes Smartphone - mehrere Geräte durch Komma getrennt eintragen, z. B. `mobile_app_pixel_8, mobile_app_iphone_anna` (Gerätename siehe HA unter Einstellungen > Geräte & Dienste > das jeweilige Handy > "Dienst" im Entwicklerwerkzeug). `notify` adressiert weiterhin alle Geräte. | `notify` |
 

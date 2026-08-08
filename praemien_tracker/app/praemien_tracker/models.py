@@ -161,7 +161,7 @@ class DealVorschlag(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     inhaber_id: Mapped[int] = mapped_column(ForeignKey("inhaber.id"), index=True)
-    quelle: Mapped[str] = mapped_column(String(20))  # "mydealz" | "spartanien"
+    quelle: Mapped[str] = mapped_column(String(20))  # "mydealz" | "spartanien" | "dealdoktor"
     quelle_url: Mapped[str] = mapped_column(String(500), index=True)
     bank_name: Mapped[str] = mapped_column(String(100))
     kontoart: Mapped[str] = mapped_column(String(50))
@@ -313,6 +313,7 @@ class FinderLauf(Base):
     erfolgreich: Mapped[bool] = mapped_column(Boolean, default=False)
     mydealz_geladen: Mapped[int] = mapped_column(default=0)
     spartanien_geladen: Mapped[int] = mapped_column(default=0)
+    dealdoktor_geladen: Mapped[int] = mapped_column(default=0)
     # Aufschlüsselung je Quelle für die Tabelle im Vorschläge-Tab. Jeder
     # geladene Fund landet in genau einer der vier Kategorien, die Summe je
     # Quelle ergibt wieder <quelle>_geladen:
@@ -328,6 +329,10 @@ class FinderLauf(Base):
     spartanien_vorhanden: Mapped[int] = mapped_column(default=0)
     spartanien_aktualisiert: Mapped[int] = mapped_column(default=0)
     spartanien_rauschen: Mapped[int] = mapped_column(default=0)
+    dealdoktor_neu: Mapped[int] = mapped_column(default=0)
+    dealdoktor_vorhanden: Mapped[int] = mapped_column(default=0)
+    dealdoktor_aktualisiert: Mapped[int] = mapped_column(default=0)
+    dealdoktor_rauschen: Mapped[int] = mapped_column(default=0)
     # Neue Angebote/Karten insgesamt (Summe über beide Quellen, = *_neu) -
     # ein neuer Deal zählt genau einmal, unabhängig von der Zahl der Inhaber.
     neu_gefunden: Mapped[int] = mapped_column(default=0)

@@ -248,6 +248,17 @@ def test_spartanien_quelle_bleibt_spartanien(db, alice):
     assert daten.praemien[0].quelle == "spartanien"
 
 
+def test_dealdoktor_quelle_wird_beim_uebernehmen_auf_bank_gemappt(db, alice):
+    """dealdoktor-Funde verlinken auf das Angebot der Bank - die Prämie wird
+    (wie bei mydealz) der Bank als Geber zugeordnet, nicht dem Portal."""
+    fund = RohFund("dealdoktor", "https://www.dealdoktor.de/x", "t", "x")
+    ext = AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[])
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
+    daten = DealImport.model_validate_json(ergebnis.roh_json)
+    assert daten.praemien[0].quelle == "bank"
+    assert daten.urls[0].url == fund.quelle_url
+
+
 def test_dedup_erkennt_unveraenderten_fund(db, alice):
     fund = RohFund("mydealz", "https://mydealz.de/x", "t", "x")
     ext = AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[])
