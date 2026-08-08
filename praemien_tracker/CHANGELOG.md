@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.12.1
+
+Fehlerbehebung: ein Bank-Name mit leicht abweichender Schreibweise (z. B.
+"SMARTBROKER" im Angebot vs. selbst als "Smart Broker" angelegt) ließ die
+App fälschlich einen Neukunden-Deal statt einer bereits bestehenden
+Kundenbeziehung erkennen. Der Abgleich ignoriert jetzt Groß-/
+Kleinschreibung, Leerzeichen und Interpunktion - sowohl bei der
+Sperrfrist-/Neukunden-Prüfung im KI-Deal-Finder als auch beim Übernehmen
+eines Vorschlags (verhindert zusätzlich doppelte Bank-Datensätze für
+dieselbe Bank).
+
+Außerdem die Tabelle "Dieser Lauf je Quelle" überarbeitet: die
+Abschnittsüberschrift entfällt, die vier Kategorien stehen wieder als
+Zeilen mit mydealz/Spartanien/**Summe** als Spalten - passt jetzt ohne
+horizontales Scrollen auf den Bildschirm.
+
 ## 2.12.0
 
 Neuer Button **"Alle neu analysieren"** neben "Jetzt suchen" im

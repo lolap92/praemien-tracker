@@ -17,32 +17,40 @@
     </summary>
 
     <div class="lauf-details-inhalt">
-      <div class="lauf-abschnitt-label">Dieser Lauf je Quelle</div>
       <div class="tabelle-wrapper">
         <table class="pc-tabelle lauf-tabelle">
           <thead>
             <tr>
               <th></th>
-              <th>Neue Vorschläge</th>
-              <th>Schon vorhanden</th>
-              <th>Aktualisiert</th>
-              <th>Aussortiert</th>
+              <th>mydealz</th>
+              <th>Spartanien</th>
+              <th>Summe</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td class="bank">mydealz</td>
+              <td class="bank">Neue Vorschläge</td>
               <td>{{ letzter_lauf.mydealz_neu }}</td>
-              <td>{{ letzter_lauf.mydealz_vorhanden }}</td>
-              <td>{{ letzter_lauf.mydealz_aktualisiert }}</td>
-              <td>{{ letzter_lauf.mydealz_rauschen }}</td>
+              <td>{{ letzter_lauf.spartanien_neu }}</td>
+              <td>{{ letzter_lauf.mydealz_neu + letzter_lauf.spartanien_neu }}</td>
             </tr>
             <tr>
-              <td class="bank">Spartanien</td>
-              <td>{{ letzter_lauf.spartanien_neu }}</td>
+              <td class="bank">Schon vorhanden</td>
+              <td>{{ letzter_lauf.mydealz_vorhanden }}</td>
               <td>{{ letzter_lauf.spartanien_vorhanden }}</td>
+              <td>{{ letzter_lauf.mydealz_vorhanden + letzter_lauf.spartanien_vorhanden }}</td>
+            </tr>
+            <tr>
+              <td class="bank">Aktualisiert</td>
+              <td>{{ letzter_lauf.mydealz_aktualisiert }}</td>
               <td>{{ letzter_lauf.spartanien_aktualisiert }}</td>
+              <td>{{ letzter_lauf.mydealz_aktualisiert + letzter_lauf.spartanien_aktualisiert }}</td>
+            </tr>
+            <tr>
+              <td class="bank">Aussortiert</td>
+              <td>{{ letzter_lauf.mydealz_rauschen }}</td>
               <td>{{ letzter_lauf.spartanien_rauschen }}</td>
+              <td>{{ letzter_lauf.mydealz_rauschen + letzter_lauf.spartanien_rauschen }}</td>
             </tr>
           </tbody>
         </table>

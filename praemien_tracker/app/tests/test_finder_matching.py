@@ -198,6 +198,24 @@ def test_bereits_aktiver_kunde_ohne_kuendigung_wird_abgelehnt(db, alice):
     assert "bereits Kundin" in ergebnis.ablehnungsgruende
 
 
+def test_bank_wird_trotz_abweichender_schreibweise_erkannt(db, alice):
+    """Regressionstest: "SMARTBROKER" (aus einem Angebot) muss dieselbe Bank
+    treffen wie die selbst erfasste "Smart Broker" - sonst gilt ein
+    bestehender Kunde fälschlich als Neukunde, nur weil ein Leerzeichen
+    fehlt oder die Schreibweise abweicht."""
+    bank = Bank(name="Smart Broker")
+    db.add(bank)
+    db.commit()
+    db.add(Deal(bank=bank, inhaber=alice, kontoart="Depot", gekuendigt=False))
+    db.commit()
+
+    fund = RohFund("spartanien", "https://www.spartanien.de/smartbroker", "t", "x")
+    ext = AngebotExtraktion(bank_name="SMARTBROKER", kontoart="Depot", praemie_betrag=50.0, bedingungen=[])
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
+    assert ergebnis.status == matching.STATUS_ABGELEHNT
+    assert "bereits Kundin" in ergebnis.ablehnungsgruende
+
+
 def test_stornierter_deal_zaehlt_nicht_als_vorkunde(db, alice):
     """Analog zum Kernmodell (Deal.storniert): ein Deal, der nie zustande kam,
     darf die Sperrfristen-Prüfung nicht beeinflussen."""

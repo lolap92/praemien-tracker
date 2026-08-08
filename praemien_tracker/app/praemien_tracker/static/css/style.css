@@ -1352,6 +1352,10 @@ table.lauf-tabelle td:not(:first-child) {
   font-family: var(--font-mono);
 }
 
+table.lauf-tabelle td:last-child {
+  font-weight: 600;
+}
+
 table.lauf-tabelle tr:hover {
   background: transparent;
 }
@@ -1367,14 +1371,6 @@ table.lauf-tabelle tr:hover {
   flex-wrap: wrap;
   gap: 0.6rem;
   margin-top: 0.8rem;
-}
-
-.lauf-abschnitt-label {
-  font-size: 0.66rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  margin-bottom: 0.5rem;
 }
 
 .chip.lauf-erfolgreich {

@@ -76,6 +76,12 @@ Text, gilt der Deal als reines Erwachsenen-Angebot und das Kind erscheint gar
 nicht erst als Auswahl. Karten mit einem passenden Kind sind mit **"Auch für
 Kinder"** gekennzeichnet.
 
+Ob ein Angebot ein echter Neukunden-Deal ist, prüft die App über den
+Bank-Namen im Angebotstext gegen die selbst erfassten Banken - Groß-/
+Kleinschreibung, Leerzeichen und Interpunktion spielen dabei keine Rolle
+("SMARTBROKER" erkennt z. B. eine selbst als "Smart Broker" angelegte Bank).
+Findet sich keine passende Bank, gilt der Fund automatisch als Neukunden-Deal.
+
 **Ein Fund erscheint nur einmal.** Passt ein Angebot zu mehreren Inhabern
 (z. B. ein Erwachsener und ein Kind bei einem Junior-Depot), steht es als eine
 Karte da statt einer eigenen Karte pro Person. Ist der Fund für eine Person

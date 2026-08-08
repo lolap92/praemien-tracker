@@ -7,7 +7,7 @@ from decimal import Decimal, InvalidOperation
 from sqlalchemy.orm import Session
 
 from . import kuendigung_recherche
-from .derived import format_monat, parse_monat
+from .derived import bank_name_normalisieren, format_monat, parse_monat
 from .kuendigung_hinweise import hinweis_fuer
 from .models import Aufgabe, Bank, Bedingung, Deal, DealUrl, Inhaber, Praemie
 from .schemas import DealImport
@@ -70,8 +70,14 @@ def kuendigung_vorschlag(db: Session, deal: Deal) -> None:
 
 
 def get_or_create_bank(db: Session, name: str) -> Bank:
+    """Bank per Name finden oder neu anlegen - der Abgleich ignoriert Groß-/
+    Kleinschreibung, Leerzeichen und Interpunktion (z.B. "SMARTBROKER" ==
+    "Smart Broker"), sonst entstünde beim Übernehmen eines Vorschlags mit
+    leicht abweichender Schreibweise ein doppelter Bank-Datensatz für
+    dieselbe Bank."""
     name = name.strip()
-    bank = db.query(Bank).filter(Bank.name == name).one_or_none()
+    ziel = bank_name_normalisieren(name)
+    bank = next((b for b in db.query(Bank).all() if bank_name_normalisieren(b.name) == ziel), None)
     if bank is None:
         bank = Bank(name=name)
         db.add(bank)

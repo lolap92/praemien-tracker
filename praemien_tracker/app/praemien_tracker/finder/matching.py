@@ -78,14 +78,15 @@ class MatchErgebnis:
 
 
 def _bank_finden(db: Session, bank_name: str) -> Bank | None:
-    """Freitext-Bankname gegen bestehende Banken abgleichen (nur Groß-/
-    Kleinschreibung und Randleerzeichen werden verziehen). Findet sich keine
-    passende Bank, gilt der Inhaber für diese Bank automatisch als
-    Neukunde - eine unscharfe Namenssuche wäre hier riskanter als ein
-    verpasster Treffer, der stattdessen einfach zu einem echten neuen
-    Bank-Datensatz beim Übernehmen führt."""
-    ziel = bank_name.strip().lower()
-    return next((b for b in db.query(Bank).all() if b.name.strip().lower() == ziel), None)
+    """Freitext-Bankname gegen bestehende Banken abgleichen - Groß-/
+    Kleinschreibung, Leerzeichen und Interpunktion werden ignoriert (z.B.
+    "SMARTBROKER" == "Smart Broker"), siehe derived.bank_name_normalisieren.
+    Findet sich keine passende Bank, gilt der Inhaber für diese Bank
+    automatisch als Neukunde - eine unscharfe Namenssuche darüber hinaus wäre
+    riskanter als ein verpasster Treffer, der stattdessen einfach zu einem
+    echten neuen Bank-Datensatz beim Übernehmen führt."""
+    ziel = derived.bank_name_normalisieren(bank_name)
+    return next((b for b in db.query(Bank).all() if derived.bank_name_normalisieren(b.name) == ziel), None)
 
 
 def _sperrfrist_pruefen(

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import re
 from dataclasses import dataclass, field
 from decimal import Decimal
 
@@ -208,6 +209,16 @@ def normalisiere_quelle(wert: str | None) -> str | None:
 
 def quelle_label(quelle: str) -> str:
     return QUELLE_LABELS.get(quelle, quelle)
+
+
+def bank_name_normalisieren(name: str) -> str:
+    """Bank-Namen robust vergleichbar machen: Groß-/Kleinschreibung,
+    Leerzeichen und Interpunktion werden ignoriert (z.B. "SMARTBROKER" ==
+    "Smart Broker" == "smart-broker"). Ohne das gilt ein bereits bekannter
+    Kunde beim KI-Deal-Finder fälschlich als Neukunde, nur weil eine vom
+    Angebot gelieferte Schreibweise leicht von der selbst erfassten abweicht
+    - und beim Übernehmen entstünde ein doppelter Bank-Datensatz."""
+    return re.sub(r"[^a-z0-9]", "", name.lower())
 
 
 def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:

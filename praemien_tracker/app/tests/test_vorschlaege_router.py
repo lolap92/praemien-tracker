@@ -450,13 +450,15 @@ def test_seite_zeigt_erfolgreichen_lauf(db):
     antwort = client.get("/vorschlaege")
     assert antwort.status_code == 200
     assert "Letzter Lauf erfolgreich" in antwort.text
-    # Tabelle: Quellen als Zeilen, die vier Kategorien als Spalten.
+    # Tabelle: die vier Kategorien als Zeilen, Quellen + Summe als Spalten.
     assert "mydealz" in antwort.text
     assert "Spartanien" in antwort.text
     assert "Neue Vorschläge" in antwort.text
     assert "Schon vorhanden" in antwort.text
     assert "Aktualisiert" in antwort.text
     assert "Aussortiert" in antwort.text
+    assert "Summe" in antwort.text
+    assert ">5<" in antwort.text  # Summe "Neue Vorschläge" = mydealz 3 + spartanien 2
 
 
 def test_seite_zeigt_fehlgeschlagenen_lauf_mit_fehlertext(db):
