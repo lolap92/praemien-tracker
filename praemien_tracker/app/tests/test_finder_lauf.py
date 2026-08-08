@@ -212,7 +212,7 @@ def test_benachrichtigung_nur_bei_vorgeschlagen_oder_zu_pruefen(db, zwei_inhaber
 
 def test_benachrichtigung_konfiguration_wird_durchgereicht(db, zwei_inhaber, monkeypatch):
     monkeypatch.setattr(config, "BENACHRICHTIGUNGEN_AKTIV", False)
-    monkeypatch.setattr(config, "NOTIFY_DIENST", "mobile_app_pixel_8")
+    monkeypatch.setattr(config, "NOTIFY_GERAETE", ["mobile_app_pixel_8", "mobile_app_iphone_anna"])
     aufrufe = []
     monkeypatch.setattr(notify, "benachrichtigen", lambda *a, **kw: aufrufe.append((a, kw)))
 
@@ -227,7 +227,7 @@ def test_benachrichtigung_konfiguration_wird_durchgereicht(db, zwei_inhaber, mon
     assert len(aufrufe) == 1
     _, kwargs = aufrufe[0]
     assert kwargs["aktiv"] is False
-    assert kwargs["dienst"] == "mobile_app_pixel_8"
+    assert kwargs["geraete"] == ["mobile_app_pixel_8", "mobile_app_iphone_anna"]
 
 
 def _letzter_lauf(db) -> FinderLauf:

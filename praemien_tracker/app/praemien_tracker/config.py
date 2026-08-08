@@ -47,6 +47,17 @@ def _mindestpraemie(wert) -> Decimal:
         return Decimal("50")
 
 
+def _benachrichtigungsgeraete(wert) -> list[str]:
+    """Kommagetrennte Liste von Home-Assistant-Notify-Diensten (ohne
+    "notify."-Präfix) in eine bereinigte Liste übersetzen - erlaubt mehrere
+    Geräte in einem einzigen Textfeld. Leer oder "notify" adressiert weiterhin
+    alle Geräte."""
+    if not wert or not str(wert).strip():
+        return ["notify"]
+    geraete = [g.strip() for g in str(wert).split(",") if g.strip()]
+    return geraete or ["notify"]
+
+
 _OPTIONEN = _lade_optionen()
 
 # Demo-Modus: zeigt ausschließlich frei erfundene Testdaten, um die App
@@ -71,10 +82,11 @@ MINDESTPRAEMIE: Decimal = _mindestpraemie(_OPTIONEN.get("mindestpraemie", 50))
 MYDEALZ_GRUPPE: str = _OPTIONEN.get("mydealz_gruppe") or "vertraege-finanzen"
 SPARTANIEN_URL: str = _OPTIONEN.get("spartanien_url") or "https://www.spartanien.de/"
 
-# Benachrichtigung bei neuen Vorschlägen (Konzept Abschnitt 6). "notify_dienst"
-# ist der Home-Assistant-Dienstname ohne "notify."-Präfix - z.B.
-# "mobile_app_pixel_8", um gezielt ein Smartphone statt aller Geräte zu
-# erreichen (siehe Einstellungen > Personen > Gerät in HA für den genauen
-# Namen). Leer/"notify" adressiert weiterhin alle Geräte (notify.notify).
+# Benachrichtigung bei neuen Vorschlägen (Konzept Abschnitt 6).
+# "benachrichtigungsgeraete" ist eine kommagetrennte Liste von Home-
+# Assistant-Dienstnamen ohne "notify."-Präfix - z.B. "mobile_app_pixel_8",
+# um gezielt ein oder mehrere Smartphones statt aller Geräte zu erreichen
+# (siehe Einstellungen > Personen > Gerät in HA für den genauen Namen).
+# Leer/"notify" adressiert weiterhin alle Geräte (notify.notify).
 BENACHRICHTIGUNGEN_AKTIV: bool = bool(_OPTIONEN.get("benachrichtigungen_aktiv", True))
-NOTIFY_DIENST: str = (_OPTIONEN.get("notify_dienst") or "notify").strip() or "notify"
+NOTIFY_GERAETE: list[str] = _benachrichtigungsgeraete(_OPTIONEN.get("benachrichtigungsgeraete"))

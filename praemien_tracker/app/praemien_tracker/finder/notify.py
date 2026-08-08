@@ -2,10 +2,10 @@
 
 Setzt `homeassistant_api: true` im Add-on-Manifest voraus (config.yaml) -
 dann setzt der Supervisor die Umgebungsvariable SUPERVISOR_TOKEN automatisch,
-ein eigener Zugangsdaten-Eintrag ist nicht nötig. Welcher Dienst (und damit
-welches Gerät/welche Person) erreicht wird, ist über die Add-on-Option
-"notify_dienst" konfigurierbar; per "benachrichtigungen_aktiv" lässt sich die
-Benachrichtigung ganz abschalten.
+ein eigener Zugangsdaten-Eintrag ist nicht nötig. Welche Geräte (Dienste)
+erreicht werden, ist über die Add-on-Option "benachrichtigungsgeraete"
+konfigurierbar (mehrere, kommagetrennt); per "benachrichtigungen_aktiv"
+lässt sich die Benachrichtigung ganz abschalten.
 """
 
 from __future__ import annotations
@@ -25,15 +25,19 @@ def benachrichtigen(
     anzahl_zu_pruefen: int,
     *,
     aktiv: bool = True,
-    dienst: str = "notify",
+    geraete: list[str] | None = None,
     timeout: float = 10.0,
 ) -> None:
-    """Kurznachricht bei neuen vorgeschlagenen oder zu prüfenden Funden.
+    """Kurznachricht bei neuen vorgeschlagenen oder zu prüfenden Funden, an
+    ein oder mehrere Geräte (Home-Assistant-Notify-Dienste).
 
     Rein automatisch abgelehnte Funde lösen bewusst keine Benachrichtigung
     aus (Konzept Abschnitt 6, Schritt 7) - sie bleiben nur im Tab sichtbar.
     Ohne SUPERVISOR_TOKEN (z.B. lokal außerhalb des Add-ons) oder bei
-    `aktiv=False` wird nur geloggt, kein Fehler.
+    `aktiv=False` wird nur geloggt, kein Fehler. Schlägt der Versand an ein
+    einzelnes Gerät fehl (z.B. Tippfehler im Dienstnamen), werden die
+    übrigen konfigurierten Geräte trotzdem benachrichtigt - ein Fehler wird
+    nur geloggt, nicht weitergeworfen.
     """
     if not aktiv:
         logger.info(
@@ -61,10 +65,15 @@ def benachrichtigen(
         teile.append(f"{anzahl_zu_pruefen} zu prüfen")
     nachricht = "Prämien-Tracker: " + " · ".join(teile)
 
-    antwort = httpx.post(
-        SUPERVISOR_NOTIFY_URL_VORLAGE.format(dienst=dienst or "notify"),
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        json={"title": "Prämien-Tracker", "message": nachricht},
-        timeout=timeout,
-    )
-    antwort.raise_for_status()
+    for dienst in geraete or ["notify"]:
+        dienst = dienst.strip() or "notify"
+        try:
+            antwort = httpx.post(
+                SUPERVISOR_NOTIFY_URL_VORLAGE.format(dienst=dienst),
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                json={"title": "Prämien-Tracker", "message": nachricht},
+                timeout=timeout,
+            )
+            antwort.raise_for_status()
+        except Exception:
+            logger.exception("Benachrichtigung an Dienst 'notify.%s' fehlgeschlagen.", dienst)

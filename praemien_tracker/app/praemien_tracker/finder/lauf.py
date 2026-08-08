@@ -376,7 +376,7 @@ def taeglicher_lauf(
                 zaehler[matching.STATUS_VORGESCHLAGEN],
                 zaehler[matching.STATUS_ZU_PRUEFEN],
                 aktiv=config.BENACHRICHTIGUNGEN_AKTIV,
-                dienst=config.NOTIFY_DIENST,
+                geraete=config.NOTIFY_GERAETE,
             )
         except Exception:
             logger.exception("HA-Benachrichtigung fehlgeschlagen.")

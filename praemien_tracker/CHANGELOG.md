@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.15.0
+
+Notify-Konfiguration überarbeitet: mehrere Geräte statt nur eines möglich.
+
+- **Add-on-Option umbenannt** von `notify_dienst` in `benachrichtigungsgeraete`
+  (angezeigt als **"Benachrichtigungsgeräte"** in der Home-Assistant-
+  Konfiguration, inkl. Erklärungstext, wie das Feld auszufüllen ist).
+  ⚠️ Da sich der interne Schlüssel geändert hat, übernimmt Home Assistant
+  einen zuvor unter `notify_dienst` gesetzten Wert **nicht** automatisch -
+  bitte nach dem Update einmalig unter Einstellungen des Add-ons neu
+  eintragen.
+- **Mehrere Geräte gleichzeitig möglich:** Gerätenamen durch Komma getrennt
+  in dasselbe Feld eintragen, z. B. `mobile_app_pixel_8,
+  mobile_app_iphone_anna`. Jedes konfigurierte Gerät wird einzeln
+  benachrichtigt; schlägt der Versand an eines fehl (z. B. Tippfehler),
+  bekommen die übrigen Geräte die Benachrichtigung trotzdem.
+
 ## 2.14.0
 
 **Neue Option `demo_modus`.** Zeigt die App mit frei erfundenen Testdaten
