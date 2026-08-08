@@ -33,4 +33,25 @@
   </div>
 </div>
 
+<div class="card">
+  <div class="card-label">Vorschläge</div>
+  <div class="pipe">
+    <a class="seg" href="vorschlaege?status=vorgeschlagen">
+      <div class="bar pipe-bar-vorschlag-vorgeschlagen"></div>
+      <div class="cnt">{{ vorschlag_zaehler.vorgeschlagen }}</div>
+      <div class="nm">Vorgeschlagen</div>
+    </a>
+    <a class="seg" href="vorschlaege?status=zu_pruefen">
+      <div class="bar pipe-bar-vorschlag-zu_pruefen"></div>
+      <div class="cnt">{{ vorschlag_zaehler.zu_pruefen }}</div>
+      <div class="nm">Zu prüfen</div>
+    </a>
+    <a class="seg" href="vorschlaege?status=automatisch_abgelehnt&status=verworfen">
+      <div class="bar pipe-bar-vorschlag-abgelehnt"></div>
+      <div class="cnt">{{ vorschlag_zaehler.abgelehnt + vorschlag_zaehler.verworfen }}</div>
+      <div class="nm">Abgelehnt</div>
+    </a>
+  </div>
+</div>
+
 {% endblock %}

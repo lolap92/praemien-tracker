@@ -107,6 +107,34 @@ def _nach_quelle_typ_filtern(
     return vorschlaege
 
 
+@dataclass
+class VorschlagZaehler:
+    vorgeschlagen: int
+    zu_pruefen: int
+    abgelehnt: int
+    verworfen: int
+
+
+def zaehlen(db: Session) -> VorschlagZaehler:
+    """Anzahl Vorschläge je Status, dedupliziert wie in der Ansicht (ein Fund
+    für mehrere Inhaber zählt nur einmal) - unabhängig von Quelle-/Typ-Filtern,
+    für die Kacheln auf der Übersicht."""
+    lade_optionen = (joinedload(DealVorschlag.inhaber), joinedload(DealVorschlag.bedingungen), joinedload(DealVorschlag.praemien))
+
+    offene = db.query(DealVorschlag).options(*lade_optionen).filter(DealVorschlag.status.in_(STATUS_OFFEN)).all()
+    offene_gruppen = _gruppieren(offene)
+
+    verworfene = db.query(DealVorschlag).options(*lade_optionen).filter(DealVorschlag.status == matching.STATUS_VERWORFEN).all()
+    verworfene_gruppen = _gruppieren(verworfene)
+
+    return VorschlagZaehler(
+        vorgeschlagen=sum(1 for g in offene_gruppen if g.status == matching.STATUS_VORGESCHLAGEN),
+        zu_pruefen=sum(1 for g in offene_gruppen if g.status == matching.STATUS_ZU_PRUEFEN),
+        abgelehnt=sum(1 for g in offene_gruppen if g.status == matching.STATUS_ABGELEHNT),
+        verworfen=len(verworfene_gruppen),
+    )
+
+
 @router.get("/vorschlaege")
 def vorschlaege_view(
     request: Request,

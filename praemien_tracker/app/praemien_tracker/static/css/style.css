@@ -440,6 +440,16 @@ main {
   background: var(--st-done);
 }
 
+.pipe-bar-vorschlag-vorgeschlagen {
+  background: var(--st-done);
+}
+.pipe-bar-vorschlag-zu_pruefen {
+  background: var(--st-wait);
+}
+.pipe-bar-vorschlag-abgelehnt {
+  background: var(--danger);
+}
+
 /* ---------- status chip ---------- */
 
 .chip {

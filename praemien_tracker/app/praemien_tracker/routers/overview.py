@@ -8,6 +8,7 @@ from ..database import get_db
 from ..ingress import redirect
 from ..models import Deal
 from ..templating import templates
+from .vorschlaege import zaehlen as vorschlaege_zaehlen
 
 router = APIRouter()
 
@@ -36,6 +37,8 @@ def overview(request: Request, db: Session = Depends(get_db)):
     for d in deals:
         nach_status[derived.status(d)].append(d)
 
+    vorschlag_zaehler = vorschlaege_zaehlen(db)
+
     return templates.TemplateResponse(
         "overview.html",
         {
@@ -45,5 +48,6 @@ def overview(request: Request, db: Session = Depends(get_db)):
             "status_labels": derived.STATUS_LABELS,
             "status_order": derived.STATUS_ORDER,
             "anzahl_deals": len(deals),
+            "vorschlag_zaehler": vorschlag_zaehler,
         },
     )
