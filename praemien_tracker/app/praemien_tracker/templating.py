@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
+from .config import DEMO_MODUS
 from .derived import quelle_label
 from .finder.matching import VERWERFEN_GRUENDE_LABELS
 
@@ -15,6 +16,7 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 _STYLE_CSS = STATIC_DIR / "css" / "style.css"
 templates.env.globals["asset_v"] = int(_STYLE_CSS.stat().st_mtime) if _STYLE_CSS.exists() else 0
+templates.env.globals["demo_modus"] = DEMO_MODUS
 
 
 def format_eur(value) -> str:

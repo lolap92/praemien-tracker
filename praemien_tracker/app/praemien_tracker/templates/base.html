@@ -12,6 +12,9 @@
   {% set tab = nav_tab(request) %}
   {% set nebenreiter = ('deals', 'completeness', 'sperrfristen', 'protokoll', 'statistiken') %}
   <header class="appbar">
+    {% if demo_modus %}
+    <div class="demo-banner">Demo-Modus · ausschließlich Testdaten, keine echten Daten</div>
+    {% endif %}
     <div class="ha-ctx">Home Assistant · Prämien-Tracker</div>
     <div class="row">
       <h1>{% block appbar_title %}Prämien-Tracker{% endblock %}</h1>

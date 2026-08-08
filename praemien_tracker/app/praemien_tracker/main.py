@@ -28,8 +28,9 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect
 
 from . import protokoll  # noqa: F401  (registriert die Änderungsprotokoll-Events)
-from .config import DATABASE_URL, DB_BACKUP_PATH, DB_PATH
+from .config import DATABASE_URL, DB_BACKUP_PATH, DB_PATH, DEMO_MODUS
 from .database import SessionLocal, engine
+from .demo_seed import lade_demo_daten
 from .finder.lauf import geplanter_lauf
 from .routers import (
     completeness,
@@ -83,6 +84,16 @@ def _sicherheitskopie(ziel_revision: str) -> None:
     logger.info("Sicherheitskopie vor Migration %s erstellt: %s", ziel_revision, pfad)
 
 
+def _demo_datenbank_zuruecksetzen() -> None:
+    """Löscht eine evtl. vorhandene Demo-Datenbank vor jedem Start, damit der
+    Demo-Modus bei jedem Neustart wieder mit denselben, frisch erfundenen
+    Testdaten beginnt - nie mit Ständen aus einer vorherigen Vorführung."""
+    for pfad in (DB_PATH, DB_BACKUP_PATH):
+        if pfad.exists():
+            pfad.unlink()
+    logger.info("Demo-Modus aktiv: Demo-Datenbank %s wird frisch aufgebaut.", DB_PATH)
+
+
 def run_migrations() -> None:
     db_existed = DB_PATH.exists()
     cfg = _alembic_config()
@@ -109,7 +120,10 @@ def run_migrations() -> None:
     logger.info("Neue Datenbank angelegt, Schema auf aktuellem Stand.")
 
     with SessionLocal() as db:
-        import_seed_data(db)
+        if DEMO_MODUS:
+            lade_demo_daten(db)
+        else:
+            import_seed_data(db)
 
 
 def _zeitzone_protokollieren() -> None:
@@ -148,10 +162,16 @@ def _scheduler_starten() -> BackgroundScheduler:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _zeitzone_protokollieren()
+    if DEMO_MODUS:
+        _demo_datenbank_zuruecksetzen()
     run_migrations()
-    scheduler = _scheduler_starten()
+    # Im Demo-Modus läuft der KI-Deal-Finder nicht im Hintergrund - er würde
+    # sonst bei jedem Add-on-Start echte, kostenpflichtige API-/Website-
+    # Anfragen auslösen und die Demo-Vorschläge mit echten Funden vermischen.
+    scheduler = _scheduler_starten() if not DEMO_MODUS else None
     yield
-    scheduler.shutdown(wait=False)
+    if scheduler is not None:
+        scheduler.shutdown(wait=False)
 
 
 def create_app() -> FastAPI:

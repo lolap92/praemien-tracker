@@ -63,15 +63,19 @@
       {% endif %}
     </div>
   </details>
-  {% else %}
+  {% elif not demo_modus %}
   <p class="leer">Noch kein Lauf durchgeführt.</p>
   {% endif %}
+  {% if demo_modus %}
+  <p class="leer">Im Demo-Modus deaktiviert - die Vorschläge unten sind feste Testdaten.</p>
+  {% else %}
   <div class="lauf-buttons">
     <form method="post" action="vorschlaege/jetzt-suchen">
       <button type="submit" class="secondary">Jetzt suchen</button>
     </form>
     <button type="button" class="secondary" onclick="document.getElementById('dlg-neu-analysieren').showModal()">Alle neu analysieren</button>
   </div>
+  {% endif %}
 </div>
 
 <dialog id="dlg-neu-analysieren" class="vk-dialog">

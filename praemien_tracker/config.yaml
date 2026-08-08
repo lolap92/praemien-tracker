@@ -1,5 +1,5 @@
 name: "Prämien-Tracker"
-version: "2.13.0"
+version: "2.14.0"
 slug: "praemien_tracker"
 description: "Private Übersicht und Verwaltung von Bank-Prämien-Deals"
 url: "https://github.com/lolap92/praemien-tracker"
@@ -19,6 +19,7 @@ map:
   - type: addon_config
     read_only: false
 options:
+  demo_modus: false
   anthropic_api_key: ""
   anthropic_model: "claude-haiku-4-5"
   mindestpraemie: 50
@@ -27,6 +28,7 @@ options:
   benachrichtigungen_aktiv: true
   notify_dienst: "notify"
 schema:
+  demo_modus: "bool"
   anthropic_api_key: "password"
   anthropic_model: "str"
   mindestpraemie: "float"

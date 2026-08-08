@@ -19,16 +19,12 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 CONFIG_DIR = Path(os.environ.get("CONFIG_DIR", "./config"))
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
-DB_PATH = DATA_DIR / "praemien.db"
-DB_BACKUP_PATH = DATA_DIR / "praemien.db.bak"
-DATABASE_URL = f"sqlite:///{DB_PATH}"
-
 SEED_PATH = CONFIG_DIR / "seed-data.json"
 
 PORT = int(os.environ.get("PORT", "8000"))
 
-# Add-on-Optionen (KI-Deal-Finder). Home Assistant schreibt die vom Nutzer in
-# der Konfiguration-Registerkarte gesetzten Werte automatisch nach
+# Add-on-Optionen. Home Assistant schreibt die vom Nutzer in der
+# Konfiguration-Registerkarte gesetzten Werte automatisch nach
 # /data/options.json (also innerhalb von DATA_DIR) - kein map-Eintrag nötig,
 # anders als bei seed-data.json. Lokal/in Tests existiert die Datei schlicht
 # nicht, dann gelten die Vorgaben unten.
@@ -52,6 +48,19 @@ def _mindestpraemie(wert) -> Decimal:
 
 
 _OPTIONEN = _lade_optionen()
+
+# Demo-Modus: zeigt ausschließlich frei erfundene Testdaten, um die App
+# vorführen zu können, ohne echte Daten offenzulegen. Läuft dafür auf einer
+# komplett eigenen Datenbankdatei (demo.db statt praemien.db) - dieselbe
+# DATABASE_URL, mit der die ganze App arbeitet, zeigt dann durchgängig auf
+# die Demo-Datei. Es gibt keinen Codepfad, der beide Dateien gleichzeitig
+# anfasst, ein Durchsickern echter Daten in den Demo-Modus (oder umgekehrt)
+# ist dadurch strukturell ausgeschlossen, nicht nur per Konvention.
+DEMO_MODUS: bool = bool(_OPTIONEN.get("demo_modus", False))
+
+DB_PATH = DATA_DIR / ("demo.db" if DEMO_MODUS else "praemien.db")
+DB_BACKUP_PATH = DATA_DIR / ("demo.db.bak" if DEMO_MODUS else "praemien.db.bak")
+DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 # API-Key bewusst zusätzlich über eine Umgebungsvariable überschreibbar (z.B.
 # für lokale Entwicklung ohne Add-on-Optionen) - options.json gewinnt, wenn

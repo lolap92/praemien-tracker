@@ -203,6 +203,29 @@ tatsächlichen ab, ist im Container keine Zeitzone gesetzt - dann hilft ein
 `TZ`-Eintrag in der Add-on-Konfiguration. Die gespeicherten Daten sind
 davon nicht betroffen, es handelt sich nur um die Anzeige.
 
+## Demo-Modus
+
+Für Vorführzwecke lässt sich die App über die Option `demo_modus` komplett
+auf frei erfundene Testdaten umschalten - ein zweiter Personenkreis (Max
+und Erika Mustermann), fiktive Banken und ein paar Deals/ToDos/Vorschläge
+über alle Status hinweg, damit sich jede Ansicht sinnvoll zeigen lässt.
+
+Das läuft auf einer eigenen Datenbankdatei (`demo.db` statt `praemien.db`)
+- die echten Daten werden dabei nie gelesen oder geschrieben, unabhängig
+davon, was im Demo-Modus passiert. Bei jedem Start wird die Demo-Datenbank
+zusätzlich verworfen und frisch aus denselben Testdaten neu aufgebaut, ein
+Neustart genügt also, um wieder bei einem sauberen Ausgangszustand zu
+landen. Ein gut sichtbarer Hinweisbalken oben in der App macht zusätzlich
+unmissverständlich klar, dass gerade Testdaten angezeigt werden.
+
+Der KI-Deal-Finder läuft im Demo-Modus nicht im Hintergrund und lässt sich
+auch nicht manuell anstoßen (Buttons dafür sind ausgeblendet) - selbst mit
+hinterlegtem API-Key werden im Demo-Modus keine echten, kostenpflichtigen
+Anfragen an Anthropic oder die Fund-Quellen ausgelöst.
+
+Zum Zurückschalten auf die echten Daten die Option wieder auf `false`
+setzen und das Add-on neu starten.
+
 ## Konfiguration
 
 Ohne jede Einstellung ist das Add-on sofort einsatzbereit - der
@@ -211,6 +234,7 @@ folgende optionale Einstellungen (Add-on-Konfiguration in Home Assistant):
 
 | Option | Zweck | Default |
 |---|---|---|
+| `demo_modus` | Zeigt ausschließlich erfundene Testdaten zum Vorführen (siehe oben), rührt nie an den echten Daten. | `false` |
 | `anthropic_api_key` | Eigener API-Key von [console.anthropic.com](https://console.anthropic.com) - **kein** claude.ai-Abo (Free/Pro/Max reichen nicht, das ist ein getrenntes Produkt). Ohne Key läuft die App normal weiter, nur ohne Vorschläge. | leer |
 | `anthropic_model` | Welches Claude-Modell für die Extraktion genutzt wird. | `claude-haiku-4-5` |
 | `mindestpraemie` | Prämien unterhalb dieses Betrags werden automatisch abgelehnt (mit Begründung, weiterhin sichtbar). | `50` |

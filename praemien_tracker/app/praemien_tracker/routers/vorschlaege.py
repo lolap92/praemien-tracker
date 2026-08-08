@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from fastapi import APIRouter, Depends, Form, Query, Request
 from sqlalchemy.orm import Session, joinedload
 
+from ..config import DEMO_MODUS
 from ..database import get_db
 from ..finder import matching
 from ..finder.lauf import taeglicher_lauf
@@ -276,11 +277,15 @@ def jetzt_suchen(request: Request, db: Session = Depends(get_db)):
     """Manueller Anstoß des täglichen Laufs - nicht Teil des Konzepts, aber
     nötig, um Einrichtung und API-Key zu testen, ohne bis 06:00 Uhr zu warten.
     Fehler werden geloggt statt die Seite abstürzen zu lassen (z.B. fehlender
-    oder ungültiger API-Key, Quelle nicht erreichbar)."""
-    try:
-        taeglicher_lauf(db)
-    except Exception:
-        logger.exception("Manueller KI-Deal-Finder-Lauf fehlgeschlagen.")
+    oder ungültiger API-Key, Quelle nicht erreichbar). Im Demo-Modus komplett
+    gesperrt (auch serverseitig, nicht nur der ausgeblendete Button) - sonst
+    könnte ein echter API-Key echte, kostenpflichtige Anfragen auslösen und
+    echte Funde in die Demo-Daten mischen."""
+    if not DEMO_MODUS:
+        try:
+            taeglicher_lauf(db)
+        except Exception:
+            logger.exception("Manueller KI-Deal-Finder-Lauf fehlgeschlagen.")
     return redirect(request, "vorschlaege")
 
 
@@ -291,9 +296,11 @@ def alle_neu_analysieren(request: Request, db: Session = Depends(get_db)):
     mit dem neuen Ergebnis - z.B. damit ältere Karten nachträglich eine
     Prämien-Aufschlüsselung bekommen, die es bei ihrer ersten Prüfung noch
     nicht gab. Der Bestätigungsdialog im Frontend macht auf die höheren
-    API-Kosten aufmerksam, bevor diese Route überhaupt aufgerufen wird."""
-    try:
-        taeglicher_lauf(db, ignoriere_cache=True)
-    except Exception:
-        logger.exception("Erzwungene Neuanalyse (KI-Deal-Finder) fehlgeschlagen.")
+    API-Kosten aufmerksam, bevor diese Route überhaupt aufgerufen wird. Im
+    Demo-Modus gesperrt, siehe jetzt_suchen()."""
+    if not DEMO_MODUS:
+        try:
+            taeglicher_lauf(db, ignoriere_cache=True)
+        except Exception:
+            logger.exception("Erzwungene Neuanalyse (KI-Deal-Finder) fehlgeschlagen.")
     return redirect(request, "vorschlaege")

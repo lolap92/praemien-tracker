@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.14.0
+
+**Neue Option `demo_modus`.** Zeigt die App mit frei erfundenen Testdaten
+statt der echten - zum Vorführen, ohne echte Daten offenzulegen. Läuft auf
+einer eigenen Datenbankdatei, die bei jedem Start frisch aus denselben
+Testdaten neu aufgebaut wird; die echten Daten werden dabei nie berührt.
+Ein Hinweisbalken oben in der App macht den Demo-Modus jederzeit sichtbar,
+und der KI-Deal-Finder (Hintergrundlauf und manuelle Buttons) bleibt dabei
+komplett deaktiviert, damit auch bei hinterlegtem API-Key keine echten
+Anfragen ausgelöst werden.
+
 ## 2.13.0
 
 Die vier Zähler-Chips oberhalb der Vorschläge-Liste ("vorgeschlagen",

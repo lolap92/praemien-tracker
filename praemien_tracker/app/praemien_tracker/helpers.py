@@ -7,6 +7,7 @@ from decimal import Decimal, InvalidOperation
 from sqlalchemy.orm import Session
 
 from . import kuendigung_recherche
+from .config import DEMO_MODUS
 from .derived import bank_name_normalisieren, format_monat, parse_monat
 from .kuendigung_hinweise import hinweis_fuer
 from .models import Aufgabe, Bank, Bedingung, Deal, DealUrl, Inhaber, Praemie
@@ -56,8 +57,13 @@ def kuendigung_vorschlag(db: Session, deal: Deal) -> None:
     Wird nur beim Anlegen aufgerufen. Danach gehört das Feld dem Nutzer -
     ein geleertes oder überschriebenes Feld bleibt so, wie der Nutzer es
     haben möchte (siehe deal_update()/deal_kuendigung_hinweis_update()).
+
+    Im Demo-Modus komplett übersprungen (auch die feste Tabelle bringt
+    nichts, da die Bank ohnehin frei erfunden ist) - vor allem aber, damit
+    hier unter keinen Umständen eine echte, kostenpflichtige KI-Websuche
+    ausgelöst wird, nur weil im Demo-Modus ein Vorschlag "übernommen" wird.
     """
-    if deal.kuendigung_hinweis or deal.bank is None:
+    if DEMO_MODUS or deal.kuendigung_hinweis or deal.bank is None:
         return
     eintrag = hinweis_fuer(deal.bank.name, deal.kontoart)
     if eintrag:
