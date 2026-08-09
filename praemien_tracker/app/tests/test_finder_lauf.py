@@ -12,7 +12,7 @@ from praemien_tracker import config
 from praemien_tracker.finder import lauf, matching, notify
 from praemien_tracker.finder.extraktion import AngebotExtraktion, BedingungExtraktion, RelevanzErgebnis
 from praemien_tracker.finder.quellen import RohFund
-from praemien_tracker.models import DealVorschlag, FinderLauf, Inhaber
+from praemien_tracker.models import DealVorschlag, FinderFund, FinderLauf, Inhaber
 
 
 class FakeMessages:
@@ -201,6 +201,65 @@ def test_stehen_gebliebene_kinder_vorschlaege_werden_bei_reinem_erwachsenen_deal
         .count()
     )
     assert offene_kind_zeilen == 0
+
+
+def test_stehen_gebliebene_kinder_vorschlaege_werden_auch_ohne_erneuten_fund_bereinigt(
+    db, monkeypatch
+):
+    """Regressionstest für den pauschalen Vorablauf
+    (_stehen_gebliebene_kinder_vorschlaege_bereinigen): ein Deal, der in den
+    Quellen inzwischen gar nicht mehr gelistet ist (z.B. abgelaufen), taucht
+    in keinem "Jetzt suchen"/täglichen Lauf mehr unter den frisch geladenen
+    Funden auf. Trotzdem muss eine dafür noch offene Kinder-Alt-Zeile
+    bereinigt werden, solange der lokale Cache (FinderFund) verrät, dass das
+    Angebot kein Kinderdeal ist - ohne dass dafür ein neuer API-Aufruf nötig
+    wäre."""
+    erwachsen = Inhaber(name="Alice")
+    kind = Inhaber(name="Kim", ist_minderjaehrig=True)
+    db.add_all([erwachsen, kind])
+    db.commit()
+
+    abgelaufener_deal_url = "https://mydealz.de/laengst-abgelaufen"
+
+    # Cache-Eintrag wie er nach einer früheren Prüfung übrig geblieben ist -
+    # der Deal selbst wird in diesem Lauf nicht mehr aus der Quelle geladen.
+    db.add(
+        FinderFund(
+            quelle="mydealz",
+            quelle_url=abgelaufener_deal_url,
+            rohtext_hash="irrelevant",
+            ist_relevant=True,
+            extraktion_json=AngebotExtraktion(
+                bank_name="Bank", kontoart="Girokonto", praemie_betrag=125.0, fuer_kinder=False, bedingungen=[]
+            ).model_dump_json(),
+        )
+    )
+    alte_kind_zeile = DealVorschlag(
+        inhaber_id=kind.id,
+        quelle="mydealz",
+        quelle_url=abgelaufener_deal_url,
+        bank_name="Bank",
+        kontoart="Girokonto",
+        praemie_betrag=125.0,
+        roh_json="{}",
+        inhalt_hash="alt-hash",
+        status=matching.STATUS_ZU_PRUEFEN,
+    )
+    db.add(alte_kind_zeile)
+    db.commit()
+    kind_zeile_id = alte_kind_zeile.id
+
+    # Keine Quelle liefert in diesem Lauf irgendetwas - der abgelaufene Deal
+    # kommt insbesondere nicht erneut vor.
+    _patch_quellen(monkeypatch, [])
+    client = FakeClient(RelevanzErgebnis(ist_relevant=True), None)
+
+    lauf.taeglicher_lauf(db, client=client)
+
+    db.expire_all()
+    kind_zeile = db.get(DealVorschlag, kind_zeile_id)
+    assert kind_zeile.status == matching.STATUS_VERWORFEN
+    assert kind_zeile.verwerfen_gruende == matching.VERWERFEN_GRUND_NICHT_ANWENDBAR
 
 
 def test_doppelter_fund_in_einem_lauf_wird_nur_einmal_verarbeitet(db, zwei_inhaber, monkeypatch):

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.26.3
+
+Bereinigung stehen gebliebener Kinder-Vorschläge aus 2.26.2 wirkte bisher nur,
+wenn der betroffene Deal in genau demselben Lauf erneut aus mydealz/
+Spartanien/DealDoktor geladen wurde - bei einem inzwischen nicht mehr
+gelisteten (z.B. abgelaufenen) Deal passierte dagegen nichts, auch nicht
+durch "Jetzt suchen" oder "Alle neu analysieren", weil der äußere Lauf nur
+frisch geladene Funde durchgeht, keine Bestandsdaten. Läuft jetzt zusätzlich
+einmal vorab über alle noch offenen Kinder-Vorschläge und gleicht sie mit dem
+schon vorhandenen lokalen Cache (FinderFund.extraktion_json) ab - ganz ohne
+neuen API-Aufruf. Ein Klick auf "Jetzt suchen" bereinigt damit jetzt
+wirklich alle betroffenen Alt-Vorschläge, unabhängig davon, ob der Deal noch
+gelistet ist.
+
 ## 2.26.2
 
 Übrig gebliebene Kinder-Vorschläge bei reinen Erwachsenen-Deals bereinigt.
