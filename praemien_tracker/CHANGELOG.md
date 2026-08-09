@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.20.3
+
+Klarstellung: der Dialog von "Zurücksetzen" hieß "...und neu starten?" und
+sprach von "danach beginnt 'Jetzt suchen' komplett frisch" - das ließ sich
+so lesen, als würde der Button selbst eine neue Suche anstoßen. Tatsächlich
+löscht er nur (kein Aufruf des Finder-Laufs) - der Dialogtitel heißt jetzt
+schlicht "Alle Vorschläge löschen?" und der Text sagt ausdrücklich, dass
+danach zusätzlich "Jetzt suchen" geklickt werden muss. Keine
+Verhaltensänderung.
+
 ## 2.20.2
 
 Klarstellung: der Bestätigungsdialog von "Zurücksetzen" im Vorschläge-Tab

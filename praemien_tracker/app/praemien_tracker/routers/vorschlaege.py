@@ -393,10 +393,11 @@ def zuruecksetzen(request: Request, db: Session = Depends(get_db)):
     """Löscht unwiderruflich alle noch nicht übernommenen Vorschläge - egal
     ob vorgeschlagen, zu_pruefen, automatisch_abgelehnt oder manuell
     verworfen (status != STATUS_UEBERNOMMEN deckt alle vier ab) - sowie den
-    Rohtext-Cache (finder_funde). Bewusster Neustart, z.B. nach einer Häufung
-    von Duplikaten, um mit dem nächsten "Jetzt suchen" wieder komplett frisch
-    zu beginnen statt (noch) fehlerhaft zwischengespeicherte Extraktionen
-    weiterzuverwenden.
+    Rohtext-Cache (finder_funde). Löst selbst *keinen* neuen Lauf aus (kein
+    Aufruf von taeglicher_lauf) - reine Aufräum-Aktion, z.B. nach einer
+    Häufung von Duplikaten, damit der nächste manuell angestoßene "Jetzt
+    suchen" komplett frisch beginnt statt (noch) fehlerhaft
+    zwischengespeicherte Extraktionen weiterzuverwenden.
 
     Bereits übernommene Vorschläge bleiben ausdrücklich erhalten: sie sind
     längst ein echter Deal-Datensatz, und ohne ihre Vorschlags-Zeile würde
