@@ -167,6 +167,27 @@ das Feld wie bisher leer - der Nutzer trägt es dann selbst ein. Sobald das
 Feld von Hand bearbeitet wird, verschwindet die Markierung, denn ab dann
 gehört der Text dem Nutzer.
 
+## Kunden-wirbt-Kunden-Recherche
+
+Beim Anlegen eines Deals (egal ob per Formular, JSON-Import oder aus dem
+KI-Deal-Finder übernommen) prüft die App zusätzlich - nur mit konfiguriertem
+Anthropic-API-Key - per Websuche, ob die Bank für diese Kontoart ein "Kunden
+wirbt Kunden"-Programm anbietet. Wird eines gefunden, legt die App
+automatisch eine **Aufgabe** unter "Zu erledigen" an sowie einen **Link**
+zur zugehörigen Seite der Bank in den Deal-Links.
+
+Anders als beim Kündigungsweg wird dieses Ergebnis bewusst **nicht
+zwischengespeichert**: Empfehlungsprogramme sind oft befristete
+Marketing-Aktionen, die sich häufiger ändern als ein Kündigungsweg - ein
+veraltetes "gibt es nicht" wäre riskanter als der zusätzliche API-Aufruf bei
+jedem neu angelegten Deal. Ohne API-Key oder ohne verlässlichen Treffer
+entstehen einfach keine zusätzliche Aufgabe/kein Link.
+
+Schlägt die Recherche selbst fehl (z. B. kein auswertbares Ergebnis von der
+KI-Websuche), blockiert das die Deal-Anlage nicht - beim Übernehmen eines
+KI-Deal-Finder-Vorschlags erscheint dann oben im Vorschläge-Tab ein Hinweis,
+das Empfehlungsprogramm bei Interesse manuell zu prüfen.
+
 ## Erste Schritte
 
 1. Add-on starten.

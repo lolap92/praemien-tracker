@@ -17,6 +17,7 @@ from ..helpers import (
     get_or_create_bank,
     get_or_create_inhaber,
     kuendigung_vorschlag,
+    kwk_vorschlag,
     monat_aus_formular,
     parse_date,
     parse_decimal,
@@ -215,6 +216,7 @@ def deal_new_create(
         zugangsdaten_gespeichert=zugangsdaten_gespeichert == "on",
     )
     kuendigung_vorschlag(db, deal)
+    kwk_vorschlag(db, deal)
     db.add(deal)
     db.commit()
     return redirect(request, f"deals/{deal.id}/edit")

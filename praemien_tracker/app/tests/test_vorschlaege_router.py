@@ -199,6 +199,34 @@ def test_uebernehmen_legt_deal_an_und_markiert_vorschlag(db, inhaber):
     assert deal.urls[0].url == "https://www.mydealz.de/x"
 
 
+def test_uebernehmen_zeigt_hinweis_wenn_kwk_recherche_fehlschlaegt(db, inhaber, monkeypatch):
+    """Schlägt die Kunden-wirbt-Kunden-Recherche fehl, blockiert das die
+    Deal-Anlage nicht - der Redirect trägt aber ein Hinweis-Flag, das die
+    Seite als Erinnerung zur manuellen Prüfung anzeigt."""
+    monkeypatch.setattr("praemien_tracker.kwk_recherche.moeglichkeit_recherchieren", lambda bank, kontoart: (None, True))
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+
+    assert antwort.status_code == 303
+    assert antwort.headers["location"].endswith("vorschlaege?kwk_hinweis=1")
+    db.refresh(vorschlag)
+    assert vorschlag.status == "uebernommen"
+
+    seite = client.get("/vorschlaege", params={"kwk_hinweis": "1"})
+    assert "manuell prüfen" in seite.text
+
+
+def test_uebernehmen_ohne_kwk_fehler_zeigt_keinen_hinweis(db, inhaber, monkeypatch):
+    monkeypatch.setattr("praemien_tracker.kwk_recherche.moeglichkeit_recherchieren", lambda bank, kontoart: (None, False))
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+
+    assert antwort.headers["location"].endswith("vorschlaege")
+    assert not antwort.headers["location"].endswith("kwk_hinweis=1")
+
+
 def test_uebernehmen_mit_mehreren_ids_legt_fuer_jeden_ausgewaehlten_namen_einen_deal_an(db, zwei_inhaber):
     alice, max_ = zwei_inhaber
     v_elli = _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich")

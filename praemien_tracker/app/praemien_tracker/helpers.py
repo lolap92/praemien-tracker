@@ -6,7 +6,7 @@ from decimal import Decimal, InvalidOperation
 
 from sqlalchemy.orm import Session
 
-from . import kuendigung_recherche
+from . import kuendigung_recherche, kwk_recherche
 from .config import DEMO_MODUS
 from .derived import bank_name_normalisieren, format_monat, parse_monat
 from .kuendigung_hinweise import hinweis_fuer
@@ -73,6 +73,46 @@ def kuendigung_vorschlag(db: Session, deal: Deal) -> None:
     if eintrag:
         deal.kuendigung_hinweis, deal.kuendigung_hinweis_url = eintrag
         deal.kuendigung_hinweis_ki = True
+
+
+def kwk_vorschlag(db: Session, deal: Deal) -> bool:
+    """Prüft beim Anlegen eines Deals per KI-Websuche, ob die Bank für diese
+    Kontoart ein "Kunden wirbt Kunden"-Programm anbietet, und legt bei Erfolg
+    automatisch eine Aufgabe mit Link zur zugehörigen Seite der Bank an.
+
+    Bewusst ohne Cache (anders als kuendigung_vorschlag, siehe
+    kwk_recherche.py): ein KwK-Programm ist oft eine befristete
+    Marketing-Aktion, die sich häufiger ändert als ein Kündigungsweg - dafür
+    läuft die Recherche auch nur hier, beim einmaligen Anlegen des Deals,
+    nicht im täglichen KI-Deal-Finder-Lauf (dort gäbe es ohne Cache keinen
+    Schutz vor wiederholten Aufrufen für dieselbe Bank).
+
+    Liefert True, wenn die Recherche fehlgeschlagen ist (API-Fehler oder kein
+    auswertbares Ergebnis) - der Aufrufer (build_deal_from_import) reicht das
+    bis zum Übernehmen-Endpunkt durch, der den Nutzer dann auf eine manuelle
+    Prüfung hinweist. Das Anlegen des Deals selbst schlägt dadurch nie fehl -
+    die Prüfung ist eine reine, nicht blockierende Ergänzung.
+
+    `db` bleibt ungenutzt (kein Cache-Zugriff nötig) - der Parameter ist nur
+    da, damit die Funktion wie kuendigung_vorschlag() aus build_deal_from_import
+    aufgerufen werden kann, ohne dass der Aufrufer wissen muss, welche der
+    beiden einen DB-Zugriff braucht.
+
+    Im Demo-Modus komplett übersprungen, siehe kuendigung_vorschlag()."""
+    if DEMO_MODUS or deal.bank is None:
+        return False
+    url, fehlgeschlagen = kwk_recherche.moeglichkeit_recherchieren(deal.bank.name, deal.kontoart)
+    if url:
+        deal.urls.append(DealUrl(url=url, bezeichnung="Kunden wirbt Kunden"))
+        deal.aufgaben.append(
+            Aufgabe(
+                beschreibung=(
+                    f"Kunden wirbt Kunden bei {deal.bank.name} nutzen: Freund/in werben, "
+                    f"zusätzliche Prämie sichern - {url}"
+                )[:255]
+            )
+        )
+    return fehlgeschlagen
 
 
 def get_or_create_bank(db: Session, name: str) -> Bank:
@@ -150,5 +190,10 @@ def build_deal_from_import(db: Session, daten: DealImport) -> Deal:
             Aufgabe(beschreibung=a.beschreibung.strip(), erledigt=a.erledigt, faellig_bis=a.faellig_bis)
         )
     kuendigung_vorschlag(db, deal)
+    # Nicht in der Datenbank gespeichert (kein mapped_column) - reiner
+    # In-Memory-Marker, damit der Übernehmen-Endpunkt direkt am
+    # zurückgegebenen Deal ablesen kann, ob die KwK-Recherche fehlgeschlagen
+    # ist, und den Nutzer entsprechend hinweisen kann.
+    deal.kwk_fehlgeschlagen = kwk_vorschlag(db, deal)
     db.add(deal)
     return deal

@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.20.0
+
+**Kunden-wirbt-Kunden-Recherche.** Beim Anlegen eines Deals (Formular,
+JSON-Import oder aus dem KI-Deal-Finder übernommen) prüft die App
+zusätzlich - nur mit konfiguriertem Anthropic-API-Key - per Websuche, ob die
+Bank für diese Kontoart ein "Kunden wirbt Kunden"-Programm anbietet.
+
+- Wird eines gefunden, legt die App automatisch eine **Aufgabe** unter "Zu
+  erledigen" an sowie einen **Link** zur zugehörigen Seite der Bank in den
+  Deal-Links.
+- Bewusst **ohne Cache** (anders als die Kündigungsweg-Recherche):
+  Empfehlungsprogramme sind oft befristete Marketing-Aktionen, die sich
+  häufiger ändern als ein Kündigungsweg - ein veraltetes "gibt es nicht"
+  wäre riskanter als der zusätzliche API-Aufruf pro neu angelegtem Deal.
+- Schlägt die Recherche selbst fehl (z. B. kein auswertbares Ergebnis von
+  der KI-Websuche), blockiert das die Deal-Anlage **nicht** - beim
+  Übernehmen eines KI-Deal-Finder-Vorschlags erscheint dann ein Hinweis im
+  Vorschläge-Tab, das Empfehlungsprogramm bei Interesse manuell zu prüfen.
+
 ## 2.19.0
 
 **Strikterer Schutz vor Duplikaten und unnötigen API-Kosten.** Existiert für

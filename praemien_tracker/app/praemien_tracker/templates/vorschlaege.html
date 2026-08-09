@@ -3,6 +3,16 @@
 {% block appbar_title %}Vorschläge{% endblock %}
 {% block content %}
 
+{% if kwk_hinweis %}
+<div class="hinweis">
+  Hinweis: Die Prüfung auf ein "Kunden wirbt Kunden"-Programm ist bei
+  mindestens einem gerade übernommenen Deal fehlgeschlagen (z. B. kein
+  auswertbares Ergebnis von der KI-Websuche). Der Deal wurde trotzdem ganz
+  normal angelegt - bitte bei Interesse manuell prüfen, ob die Bank ein
+  Empfehlungsprogramm anbietet.
+</div>
+{% endif %}
+
 <div class="card">
   {% if letzter_lauf %}
   <details class="lauf-details">

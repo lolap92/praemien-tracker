@@ -196,6 +196,7 @@ def vorschlaege_view(
     quelle: list[str] = Query(default=[]),
     typ: list[str] = Query(default=[]),
     status: list[str] = Query(default=[]),
+    kwk_hinweis: bool = Query(default=False),
     db: Session = Depends(get_db),
 ):
     filter_quelle = [q for q in quelle if q in QUELLEN]
@@ -273,6 +274,7 @@ def vorschlaege_view(
             "filter_typ": filter_typ,
             "filter_status": filter_status,
             "filter_aktiv": bool(filter_quelle or filter_typ or filter_status),
+            "kwk_hinweis": kwk_hinweis,
         },
     )
 
@@ -296,13 +298,21 @@ def uebernehmen(
     DuplikatGruppe/dup_gruppe_karte): wählt der Nutzer dort eine Quelle zum
     Übernehmen aus, werden die übrigen Quellen desselben Deals hier
     automatisch mit Grund "Duplikat" verworfen - kein zusätzlicher
-    Bestätigungsschritt nötig."""
+    Bestätigungsschritt nötig.
+
+    Schlägt die Kunden-wirbt-Kunden-Recherche (helpers.kwk_vorschlag) für
+    mindestens einen übernommenen Deal fehl, blockiert das die Anlage nicht -
+    stattdessen landet ein Hinweis-Flag im Redirect, der Vorschläge-Tab zeigt
+    dann eine Erinnerung, das manuell zu prüfen."""
+    kwk_fehlgeschlagen = False
     for vorschlag_id in vorschlag_ids:
         vorschlag = db.get(DealVorschlag, vorschlag_id)
         if vorschlag is None or vorschlag.status not in STATUS_OFFEN:
             continue
         daten = DealImport.model_validate_json(vorschlag.roh_json)
-        build_deal_from_import(db, daten)
+        deal = build_deal_from_import(db, daten)
+        if deal.kwk_fehlgeschlagen:
+            kwk_fehlgeschlagen = True
         vorschlag.status = matching.STATUS_UEBERNOMMEN
     for vorschlag_id in verwerfen_duplikat_ids:
         vorschlag = db.get(DealVorschlag, vorschlag_id)
@@ -310,7 +320,8 @@ def uebernehmen(
             vorschlag.status = matching.STATUS_VERWORFEN
             vorschlag.verwerfen_gruende = matching.VERWERFEN_GRUND_DUPLIKAT
     db.commit()
-    return redirect(request, "vorschlaege")
+    ziel = "vorschlaege?kwk_hinweis=1" if kwk_fehlgeschlagen else "vorschlaege"
+    return redirect(request, ziel)
 
 
 @router.post("/vorschlaege/verwerfen")
