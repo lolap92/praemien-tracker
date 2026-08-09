@@ -243,24 +243,31 @@ def vorschlaege_view(
     verworfene_rows = _nach_quelle_typ_filtern(verworfene_rows, filter_quelle, filter_typ)
     verworfen_gruppen = _gruppieren(verworfene_rows)
 
-    # Zähler je Status - berücksichtigen Quelle/Typ, aber bewusst nicht den
-    # Status-Filter selbst: sonst würden sich die Chips beim Anklicken auf
-    # 0 zurücksetzen, weil die anderen Status dann herausgefiltert sind.
+    # Bündelung passiert genau einmal, auf den ungefilterten Gruppen - ihr
+    # Status ("bester" Status je Bündel, siehe _quellenuebergreifend_gruppieren)
+    # muss für Badge-Zähler und Anzeige identisch sein. Vorher wurde bei
+    # aktivem Status-Filter ein zweites Mal gebündelt, aber nur aus den schon
+    # nach Status vorgefilterten Einzel-Funden - ein Deal, dessen Bündel-
+    # Status dank einer besseren Fundstelle z.B. "vorgeschlagen" ist, konnte
+    # dadurch beim Filtern auf "zu prüfen" als eigenständige Karte aus den
+    # übrigen (schlechteren) Fundstellen wieder auftauchen, obwohl er laut
+    # Zähler gar nicht als "zu prüfen" mitgezählt wurde (Bug: Chip zeigte 0,
+    # Karte war trotzdem da).
     alle_anzeige = _quellenuebergreifend_gruppieren(alle_gruppen)
     anzahl_vorgeschlagen = sum(1 for g in alle_anzeige if g.status == matching.STATUS_VORGESCHLAGEN)
     anzahl_zu_pruefen = sum(1 for g in alle_anzeige if g.status == matching.STATUS_ZU_PRUEFEN)
     anzahl_abgelehnt = sum(1 for g in alle_anzeige if g.status == matching.STATUS_ABGELEHNT)
     anzahl_verworfen = len(verworfen_gruppen)
 
-    gruppen = alle_gruppen
+    anzeige = alle_anzeige
     if filter_status:
-        gruppen = [g for g in gruppen if g.status in filter_status]
+        anzeige = [g for g in anzeige if g.status in filter_status]
     verworfen = verworfen_gruppen
     if filter_status and matching.STATUS_VERWORFEN not in filter_status:
         verworfen = []
 
     eingeteilt: dict[str, list[VorschlagGruppe | DuplikatGruppe]] = {s: [] for s in STATUS_OFFEN}
-    for g in _quellenuebergreifend_gruppieren(gruppen):
+    for g in anzeige:
         eingeteilt[g.status].append(g)
 
     letzter_lauf = db.query(FinderLauf).order_by(FinderLauf.id.desc()).first()

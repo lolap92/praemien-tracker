@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.23.3
+
+Fehlerbehebung: bei aktivem Status-Filter (z. B. nur "Zu prüfen") konnte
+eine quellenübergreifende Duplikat-Kachel angezeigt werden, obwohl der
+Chip darüber "0 zu prüfen" zeigte. Ursache: die Kachel-Liste wurde bei
+aktivem Filter aus den nach Status vorgefilterten Einzel-Fundstellen neu
+gebündelt, der Zähler-Chip dagegen aus der ungefilterten Bündelung (bester
+Status je Deal gewinnt) - ein Deal mit einer besseren und einer
+schlechteren Fundstelle zählte deshalb z. B. als "vorgeschlagen", tauchte
+beim Filtern auf "zu prüfen" aber trotzdem mit den übrigen, schlechteren
+Fundstellen als eigene Karte auf. Jetzt wird nur noch einmal gebündelt und
+der Filter danach auf dasselbe Ergebnis angewendet - Zähler und
+angezeigte Karten sind damit immer konsistent.
+
 ## 2.23.2
 
 "Alle verwerfen" bei quellenübergreifend gebündelten Duplikat-Kacheln

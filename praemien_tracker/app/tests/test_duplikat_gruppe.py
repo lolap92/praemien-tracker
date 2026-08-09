@@ -139,6 +139,28 @@ def test_bester_status_bestimmt_die_sektion(db, inhaber):
     assert "0 abgelehnt" in antwort.text
 
 
+def test_status_filter_zeigt_keine_karte_wenn_badge_dafuer_0_zeigt(db, inhaber):
+    """Regression: ein Bündel mit einer besseren ('vorgeschlagen') und einer
+    schlechteren ('zu prüfen') Fundstelle zählt beim Badge als 'vorgeschlagen'
+    (bester Status gewinnt). Filtert man gezielt auf 'zu prüfen', darf dafür
+    keine Karte mehr auftauchen - sonst zeigt der Chip 0, während trotzdem
+    eine Karte in der Liste steht (genau dieser Bug: die Karten-Liste wurde
+    bei aktivem Status-Filter aus den ungebündelten Einzel-Funden neu
+    zusammengesetzt, statt aus demselben Bündel wie der Zähler)."""
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1", bank_name="ING")
+    _vorschlag(db, inhaber, "zu_pruefen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2", bank_name="ING")
+
+    antwort = client.get("/vorschlaege")
+    assert "1 vorgeschlagen" in antwort.text
+    assert "0 zu prüfen" in antwort.text
+
+    gefiltert = client.get("/vorschlaege?status=zu_pruefen")
+    assert "0 zu prüfen" in gefiltert.text
+    # 'dup-gruppe' steckt auch im eingebetteten <script> (JS-Selektor) -
+    # gezielt auf die Karte selbst prüfen, nicht bloß die Klasse irgendwo im HTML.
+    assert 'class="card dup-gruppe' not in gefiltert.text
+
+
 def test_automatisch_abgelehnte_duplikat_gruppe_zeigt_begruendung(db, inhaber):
     """Sind alle gebündelten Fundstellen automatisch abgelehnt, soll die
     Kachel trotz mehrerer Quellen oben eine gemeinsame Begründung zeigen -
