@@ -158,13 +158,22 @@ def _inhalt_hash(
     """Fachlich relevante Felder zu einem stabilen Hash - Grundlage der
     Dedup-Prüfung. Ändert sich einer dieser Werte (z.B. eine höhere Prämie),
     entsteht bewusst ein neuer Datensatz statt eines stillen Updates, damit
-    die Historie nachvollziehbar bleibt."""
+    die Historie nachvollziehbar bleibt.
+
+    Bei den Bedingungen zählt bewusst nur Anzahl+Einschätzung je Bedingung,
+    nicht der exakte Wortlaut: ändert sich der Rohtext derselben Quelle-URL
+    geringfügig (z.B. schwankende Kommentar-/Bewertungszahlen im mydealz-
+    RSS-Feed), löst das eine erneute, unwesentlich anders formulierte
+    KI-Extraktion aus - ohne diese Lockerung entstünde dafür fälschlich ein
+    weiterer Datensatz für denselben Fund, obwohl sich am Angebot inhaltlich
+    nichts geändert hat (sichtbar als mehrfach identischer "Deal öffnen"-Link
+    in der Vorschläge-Liste)."""
     nutzlast = {
         "bank_name": bank_name.strip().lower(),
         "kontoart": kontoart.strip().lower(),
         "praemie_betrag": str(praemie_betrag),
         "sperrfrist_monate": sperrfrist_monate,
-        "bedingungen": sorted((b.beschreibung.strip().lower(), b.einschaetzung) for b in bedingungen),
+        "bedingungen_einschaetzungen": sorted(b.einschaetzung for b in bedingungen),
     }
     rohtext = json.dumps(nutzlast, sort_keys=True, ensure_ascii=True)
     return hashlib.sha256(rohtext.encode("utf-8")).hexdigest()

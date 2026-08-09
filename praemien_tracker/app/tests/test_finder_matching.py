@@ -314,3 +314,46 @@ def test_geaenderte_praemie_ist_kein_duplikat(db, alice):
     ergebnis_neu = matching.bewerten(db, fund, ext_neu, alice, MINDESTPRAEMIE)
     assert ergebnis_neu.inhalt_hash != ergebnis_alt.inhalt_hash
     assert matching.bestehenden_vorschlag_finden(db, fund.quelle_url, alice.id, ergebnis_neu.inhalt_hash) is None
+
+
+def test_anders_formulierte_gleichwertige_bedingung_ist_kein_duplikat(db, alice):
+    """Bug (mehrfach identischer 'Deal öffnen'-Link in der Vorschläge-Liste):
+    schwankt der Rohtext derselben Quelle-URL geringfügig (z.B. Kommentar-/
+    Bewertungszahlen im mydealz-RSS-Feed), löst das eine erneute KI-
+    Extraktion aus, die eine inhaltlich gleiche Bedingung nicht immer
+    wortgleich formuliert. Das allein darf keinen neuen Datensatz erzeugen,
+    solange Anzahl und Einschätzung der Bedingungen gleich bleiben."""
+    fund = RohFund("mydealz", "https://mydealz.de/x", "t", "x")
+    ext_alt = AngebotExtraktion(
+        bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0,
+        bedingungen=[BedingungExtraktion(beschreibung="Mindesteinlage von 2.000 €", einschaetzung="erfuellt")],
+    )
+    ergebnis_alt = matching.bewerten(db, fund, ext_alt, alice, MINDESTPRAEMIE)
+
+    ext_neu = AngebotExtraktion(
+        bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0,
+        bedingungen=[BedingungExtraktion(beschreibung="Es ist eine Mindesteinlage von 2000 Euro nötig", einschaetzung="erfuellt")],
+    )
+    ergebnis_neu = matching.bewerten(db, fund, ext_neu, alice, MINDESTPRAEMIE)
+
+    assert ergebnis_neu.inhalt_hash == ergebnis_alt.inhalt_hash
+
+
+def test_tatsaechlich_geaenderte_bedingungen_bleiben_kein_duplikat(db, alice):
+    """Ändert sich dagegen die Einschätzung oder Anzahl der Bedingungen
+    wirklich (z.B. eine zusätzliche, unklare Bedingung), soll weiterhin ein
+    neuer Datensatz entstehen."""
+    fund = RohFund("mydealz", "https://mydealz.de/x", "t", "x")
+    ext_alt = AngebotExtraktion(
+        bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0,
+        bedingungen=[BedingungExtraktion(beschreibung="Mindesteinlage von 2.000 €", einschaetzung="erfuellt")],
+    )
+    ergebnis_alt = matching.bewerten(db, fund, ext_alt, alice, MINDESTPRAEMIE)
+
+    ext_neu = AngebotExtraktion(
+        bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0,
+        bedingungen=[BedingungExtraktion(beschreibung="Mindesteinlage von 2.000 €", einschaetzung="zu_pruefen")],
+    )
+    ergebnis_neu = matching.bewerten(db, fund, ext_neu, alice, MINDESTPRAEMIE)
+
+    assert ergebnis_neu.inhalt_hash != ergebnis_alt.inhalt_hash

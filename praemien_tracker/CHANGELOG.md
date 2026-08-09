@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.18.1
+
+Fehlerbehebung: derselbe mydealz-/Spartanien-/DealDoktor-Link konnte über die
+Zeit mehrfach als eigener Vorschlag auftauchen (sichtbar u.a. als mehrere
+gleichlautende Quellen-Einträge mit identischem "Deal öffnen"-Link in einer
+Duplikat-Karte). Ursache: schwankt der Rohtext derselben Quelle-URL
+geringfügig (z.B. Kommentar-/Bewertungszahlen im RSS-Feed), löst das eine
+erneute KI-Extraktion aus, die eine inhaltlich gleiche Bedingung nicht immer
+wortgleich formuliert - das allein zählte bisher als "geänderter Fund" und
+erzeugte fälschlich einen weiteren Datensatz. Die Dedup-Prüfung
+berücksichtigt bei den Bedingungen jetzt nur noch Anzahl und Einschätzung
+(erfüllt/zu prüfen/nicht erfüllt), nicht mehr den exakten Wortlaut - eine
+wirklich geänderte Bedingung erzeugt weiterhin bewusst einen neuen Vorschlag.
+
+Bereits entstandene doppelte Datensätze aus der Vergangenheit werden davon
+nicht rückwirkend bereinigt - lassen sich aber über die Duplikat-Karte
+(Version 2.16.0) einmalig per "Alle verwerfen" aufräumen.
+
 ## 2.18.0
 
 **Täglicher Lauf abschaltbar.** Der automatische KI-Deal-Finder-Lauf um
