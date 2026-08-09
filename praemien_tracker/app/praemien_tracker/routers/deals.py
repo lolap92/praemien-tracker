@@ -13,6 +13,7 @@ from .. import derived
 from ..database import get_db
 from ..export import build_workbook
 from ..helpers import (
+    KWK_FALLBACK_AUFGABE_TEXT,
     build_deal_from_import,
     freibetrag_jahr_bestimmen,
     get_or_create_bank,
@@ -215,7 +216,11 @@ def deal_new_create(
         zugangsdaten_gespeichert=zugangsdaten_gespeichert == "on",
     )
     kuendigung_vorschlag(db, deal)
-    kwk_vorschlag(db, deal)
+    if kwk_vorschlag(db, deal):
+        # Wie kwk_ergebnis_anwenden() beim Übernehmen-Ablauf: eine
+        # fehlgeschlagene Recherche bleibt hier sonst folgenlos - der Nutzer
+        # bekommt stattdessen eine konkrete Erinnerungs-Aufgabe.
+        deal.aufgaben.append(Aufgabe(beschreibung=KWK_FALLBACK_AUFGABE_TEXT))
     db.add(deal)
     db.commit()
     return redirect(request, f"deals/{deal.id}/edit")

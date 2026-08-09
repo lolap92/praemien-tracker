@@ -78,11 +78,21 @@ def _rohfunde_holen() -> _QuellenErgebnis:
     - ein einzelner Quellenausfall soll nicht den ganzen Tageslauf stoppen,
     wird aber als Fehler im Protokoll festgehalten."""
     ergebnis = _QuellenErgebnis()
-    try:
-        ergebnis.mydealz_funde = fetch_mydealz(config.MYDEALZ_GRUPPE)
-    except Exception as exc:
-        logger.exception("mydealz-Abruf fehlgeschlagen, Lauf wird ohne diese Quelle fortgesetzt.")
-        ergebnis.fehler.append(f"mydealz nicht erreichbar: {exc}")
+    mydealz_funde: list[RohFund] = []
+    for gruppe in config.MYDEALZ_GRUPPEN:
+        # Jede Gruppe einzeln abgefangen, gleiche Logik wie bei den
+        # dealdoktor-Feeds unten: eine nicht (mehr) erreichbare Gruppe soll
+        # nicht die anderen mydealz-Gruppen mit ausfallen lassen. Dedupliziert
+        # wird hier bewusst nicht (anders als bei dealdoktor mit seinen
+        # überlappenden Themenwelten) - eine doppelte quelle_url innerhalb
+        # eines Laufs wird ohnehin weiter unten als "rauschen" gezählt und
+        # übersprungen (siehe finder_funde-Verarbeitung).
+        try:
+            mydealz_funde.extend(fetch_mydealz(gruppe))
+        except Exception as exc:
+            logger.exception("mydealz-Abruf (%s) fehlgeschlagen, Lauf wird ohne diese Gruppe fortgesetzt.", gruppe)
+            ergebnis.fehler.append(f"mydealz ({gruppe}) nicht erreichbar: {exc}")
+    ergebnis.mydealz_funde = mydealz_funde
     try:
         ergebnis.spartanien_funde = fetch_spartanien(config.SPARTANIEN_URL)
     except Exception as exc:

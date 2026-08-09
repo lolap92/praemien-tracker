@@ -130,6 +130,9 @@ def kwk_vorschlag(db: Session, deal: Deal) -> bool:
     return fehlgeschlagen
 
 
+KWK_FALLBACK_AUFGABE_TEXT = "KwK möglich? Kunden-wirbt-Kunden-Programm manuell prüfen."
+
+
 SPARTANIEN_AUFGABE_TEXT = "Spartanien Tracking überprüfen"
 
 
@@ -193,7 +196,7 @@ def kwk_ergebnis_anwenden(deal: Deal, ergebnis: tuple[str | None, bool] | None) 
     if DEMO_MODUS or deal.bank is None:
         return
     if ergebnis is None or ergebnis[1]:
-        deal.aufgaben.append(Aufgabe(beschreibung="KwK möglich? Kunden-wirbt-Kunden-Programm manuell prüfen."))
+        deal.aufgaben.append(Aufgabe(beschreibung=KWK_FALLBACK_AUFGABE_TEXT))
         return
     url, _fehlgeschlagen = ergebnis
     if url:
@@ -299,5 +302,11 @@ def build_deal_from_import(db: Session, daten: DealImport, *, kwk_recherche_uebe
         # In-Memory-Marker, damit der Aufrufer direkt am zurückgegebenen Deal
         # ablesen kann, ob die KwK-Recherche fehlgeschlagen ist.
         deal.kwk_fehlgeschlagen = kwk_vorschlag(db, deal)
+        if deal.kwk_fehlgeschlagen:
+            # Wie kwk_ergebnis_anwenden() beim Übernehmen-Ablauf: eine
+            # fehlgeschlagene Recherche bleibt beim manuellen JSON-Import
+            # sonst folgenlos - der Nutzer bekommt stattdessen eine konkrete
+            # Erinnerungs-Aufgabe statt eines nirgends ausgewerteten Markers.
+            deal.aufgaben.append(Aufgabe(beschreibung=KWK_FALLBACK_AUFGABE_TEXT))
     db.add(deal)
     return deal

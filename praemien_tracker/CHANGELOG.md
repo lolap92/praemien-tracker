@@ -1,5 +1,36 @@
 # Changelog
 
+## 2.25.0
+
+Vier kleinere Verbesserungen (Todoist "Ki/Prämien webapp", Prio 4):
+
+- **Test-Benachrichtigung:** Auf der Vorschläge-Seite gibt es unter
+  "Weitere Aktionen" jetzt einen Button "Test-Benachrichtigung senden" -
+  schickt sofort eine Testnachricht an die konfigurierten Geräte, unabhängig
+  vom täglichen Lauf und ohne dass dafür erst ein neuer Fund auftauchen
+  muss. So lässt sich die Konfiguration (`benachrichtigungsgeraete` etc.)
+  gezielt prüfen ("Funktioniert die Benachrichtigung?"), statt bis zum
+  nächsten echten Fund oder 06:00 Uhr zu warten. Das Ergebnis (angekommen
+  oder nicht) wird direkt auf der Seite angezeigt.
+- **mydealz-Feed "konto-kreditkarten" ergänzt:** Die Add-on-Option
+  `mydealz_gruppe` akzeptiert jetzt wie `dealdoktor_feed_url` mehrere
+  kommagetrennte Gruppen statt nur einer einzigen. Vorgabe ist jetzt
+  `vertraege-finanzen,konto-kreditkarten` statt nur `vertraege-finanzen` -
+  der KI-Deal-Finder deckt damit zusätzlich die mydealz-Gruppe
+  "Konto/Kreditkarten" ab. Eine nicht erreichbare Gruppe blockiert die
+  anderen nicht (gleiches Verhalten wie bei den dealdoktor-Feeds).
+- **Vollständigkeits-Seite ohne erledigte Deals:** Abgeschlossene Deals
+  (storniert oder bestätigt gekündigt) tauchen auf `/completeness` nicht
+  mehr auf und zählen auch nicht mehr mit - an ihren Daten ändert sich
+  nichts mehr, sie gehörten dort nicht mehr hin und verwässerten den
+  "gepflegt"-Anteil unnötig.
+- **"KwK möglich?" auch bei manueller Anlage:** Schlägt die automatische
+  Kunden-wirbt-Kunden-Recherche beim manuellen Anlegen eines Deals fehl
+  (Formular `/deals/new` oder JSON-Import), legt die App jetzt wie beim
+  Übernehmen eines Vorschlags eine Erinnerungs-Aufgabe "KwK möglich?
+  Kunden-wirbt-Kunden-Programm manuell prüfen." an, statt den Fehlschlag
+  stillschweigend zu verwerfen.
+
 ## 2.24.5
 
 Die Übernehmen-Vorschau (siehe 2.24.1) zeigte bisher nur Bank und Kontoart

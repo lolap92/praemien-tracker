@@ -351,6 +351,49 @@ def test_fehlgeschlagene_quelle_wird_als_fehler_protokolliert(db, zwei_inhaber, 
     assert "HTTP 500" in protokoll.fehler
 
 
+def test_mehrere_mydealz_gruppen_werden_alle_abgefragt_und_zusammengefuehrt(db, zwei_inhaber, monkeypatch):
+    """config.MYDEALZ_GRUPPEN darf mehrere Gruppen enthalten (z.B. um
+    "konto-kreditkarten" neben "vertraege-finanzen" mitzunehmen) - jede wird
+    einzeln abgefragt, die Funde landen gemeinsam in mydealz_funde."""
+    monkeypatch.setattr(config, "MYDEALZ_GRUPPEN", ["vertraege-finanzen", "konto-kreditkarten"])
+    aufgerufene_gruppen = []
+
+    def fake_fetch_mydealz(gruppe, **kw):
+        aufgerufene_gruppen.append(gruppe)
+        return [RohFund("mydealz", f"https://mydealz.de/{gruppe}", "t", "x")]
+
+    monkeypatch.setattr(lauf, "fetch_mydealz", fake_fetch_mydealz)
+    monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [])
+    monkeypatch.setattr(lauf, "fetch_dealdoktor", lambda url, **kw: [])
+    client = FakeClient(RelevanzErgebnis(ist_relevant=False), None)
+
+    lauf.taeglicher_lauf(db, client=client)
+
+    assert aufgerufene_gruppen == ["vertraege-finanzen", "konto-kreditkarten"]
+    assert _letzter_lauf(db).mydealz_geladen == 2
+
+
+def test_fehlgeschlagene_mydealz_gruppe_blockiert_die_andere_nicht(db, zwei_inhaber, monkeypatch):
+    monkeypatch.setattr(config, "MYDEALZ_GRUPPEN", ["kaputt", "vertraege-finanzen"])
+
+    def fake_fetch_mydealz(gruppe, **kw):
+        if gruppe == "kaputt":
+            raise RuntimeError("HTTP 500")
+        return [RohFund("mydealz", "https://mydealz.de/gut", "t", "x")]
+
+    monkeypatch.setattr(lauf, "fetch_mydealz", fake_fetch_mydealz)
+    monkeypatch.setattr(lauf, "fetch_spartanien", lambda url, **kw: [])
+    monkeypatch.setattr(lauf, "fetch_dealdoktor", lambda url, **kw: [])
+    client = FakeClient(RelevanzErgebnis(ist_relevant=False), None)
+
+    lauf.taeglicher_lauf(db, client=client)
+
+    protokoll = _letzter_lauf(db)
+    assert protokoll.mydealz_geladen == 1
+    assert "kaputt" in protokoll.fehler
+    assert "HTTP 500" in protokoll.fehler
+
+
 def test_extraktionsfehler_wird_gezaehlt_und_protokolliert(db, zwei_inhaber, monkeypatch):
     fund = RohFund("mydealz", "https://mydealz.de/kaputt", "t", "x")
     _patch_quellen(monkeypatch, [fund])

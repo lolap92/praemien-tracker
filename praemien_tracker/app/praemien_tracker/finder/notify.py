@@ -27,9 +27,13 @@ def benachrichtigen(
     aktiv: bool = True,
     geraete: list[str] | None = None,
     timeout: float = 10.0,
-) -> None:
+    nachricht: str | None = None,
+) -> bool:
     """Kurznachricht bei neuen vorgeschlagenen oder zu prüfenden Funden, an
-    ein oder mehrere Geräte (Home-Assistant-Notify-Dienste).
+    ein oder mehrere Geräte (Home-Assistant-Notify-Dienste). Gibt zurück, ob
+    mindestens ein Gerät erfolgreich erreicht wurde - für den täglichen Lauf
+    ungenutzt, aber die Grundlage für die manuelle Test-Benachrichtigung in
+    den Vorschlägen ("Funktioniert die Benachrichtigung?").
 
     Rein automatisch abgelehnte Funde lösen bewusst keine Benachrichtigung
     aus (Konzept Abschnitt 6, Schritt 7) - sie bleiben nur im Tab sichtbar.
@@ -46,7 +50,7 @@ def benachrichtigen(
             anzahl_vorgeschlagen,
             anzahl_zu_pruefen,
         )
-        return
+        return False
 
     token = os.environ.get("SUPERVISOR_TOKEN")
     if not token:
@@ -56,15 +60,17 @@ def benachrichtigen(
             anzahl_vorgeschlagen,
             anzahl_zu_pruefen,
         )
-        return
+        return False
 
-    teile = []
-    if anzahl_vorgeschlagen:
-        teile.append(f"{anzahl_vorgeschlagen} neue Vorschläge")
-    if anzahl_zu_pruefen:
-        teile.append(f"{anzahl_zu_pruefen} zu prüfen")
-    nachricht = "Prämien-Tracker: " + " · ".join(teile)
+    if nachricht is None:
+        teile = []
+        if anzahl_vorgeschlagen:
+            teile.append(f"{anzahl_vorgeschlagen} neue Vorschläge")
+        if anzahl_zu_pruefen:
+            teile.append(f"{anzahl_zu_pruefen} zu prüfen")
+        nachricht = "Prämien-Tracker: " + " · ".join(teile)
 
+    erfolgreich = False
     for dienst in geraete or ["notify"]:
         dienst = dienst.strip() or "notify"
         try:
@@ -75,5 +81,7 @@ def benachrichtigen(
                 timeout=timeout,
             )
             antwort.raise_for_status()
+            erfolgreich = True
         except Exception:
             logger.exception("Benachrichtigung an Dienst 'notify.%s' fehlgeschlagen.", dienst)
+    return erfolgreich

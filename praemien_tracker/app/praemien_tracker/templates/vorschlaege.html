@@ -3,6 +3,12 @@
 {% block appbar_title %}Vorschläge{% endblock %}
 {% block content %}
 
+{% if test_benachrichtigung == "ok" %}
+<div class="vorschlag-begruendung erfolg">Test-Benachrichtigung gesendet - kam sie an?</div>
+{% elif test_benachrichtigung == "fehler" %}
+<div class="vorschlag-begruendung abgelehnt">Test-Benachrichtigung fehlgeschlagen - siehe Add-on-Log (z.B. fehlendes SUPERVISOR_TOKEN oder falscher Gerätename).</div>
+{% endif %}
+
 <div class="card">
   {% if lauf_laeuft and not letzter_lauf %}
   <p class="vorschlag-lauf-status">
@@ -93,6 +99,9 @@
       <div class="lauf-weitere-aktionen-panel">
         <button type="button" class="secondary" onclick="document.getElementById('dlg-neu-analysieren').showModal()">Alle neu analysieren</button>
         <button type="button" class="secondary" onclick="document.getElementById('dlg-zuruecksetzen').showModal()">Zurücksetzen</button>
+        <form method="post" action="vorschlaege/test-benachrichtigung">
+          <button type="submit" class="secondary">Test-Benachrichtigung senden</button>
+        </form>
       </div>
     </details>
   </div>

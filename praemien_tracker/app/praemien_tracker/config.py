@@ -79,8 +79,24 @@ DATABASE_URL = f"sqlite:///{DB_PATH}"
 ANTHROPIC_API_KEY: str | None = _OPTIONEN.get("anthropic_api_key") or os.environ.get("ANTHROPIC_API_KEY") or None
 ANTHROPIC_MODEL: str = _OPTIONEN.get("anthropic_model") or "claude-haiku-4-5"
 MINDESTPRAEMIE: Decimal = _mindestpraemie(_OPTIONEN.get("mindestpraemie", 50))
-MYDEALZ_GRUPPE: str = _OPTIONEN.get("mydealz_gruppe") or "vertraege-finanzen"
 SPARTANIEN_URL: str = _OPTIONEN.get("spartanien_url") or "https://www.spartanien.de/"
+
+
+def _mydealz_gruppen(wert) -> list[str]:
+    """Kommagetrennte Liste von mydealz-Gruppennamen (analog zu
+    benachrichtigungsgeraete/dealdoktor_feed_url) - erlaubt mehrere Gruppen in
+    einem einzigen Textfeld, z.B. um neben "vertraege-finanzen" zusätzlich
+    "konto-kreditkarten" mitzunehmen."""
+    vorgabe = ["vertraege-finanzen"]
+    if not wert or not str(wert).strip():
+        return vorgabe
+    gruppen = [g.strip() for g in str(wert).split(",") if g.strip()]
+    return gruppen or vorgabe
+
+
+# Über die Option lässt sich die Feed-Auswahl anpassen - mehrere Gruppen
+# kommagetrennt in einem einzigen Textfeld.
+MYDEALZ_GRUPPEN: list[str] = _mydealz_gruppen(_OPTIONEN.get("mydealz_gruppe"))
 
 
 def _dealdoktor_feed_urls(wert) -> list[str]:

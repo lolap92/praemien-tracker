@@ -281,7 +281,7 @@ folgende optionale Einstellungen (Add-on-Konfiguration in Home Assistant):
 | `anthropic_api_key` | Eigener API-Key von [console.anthropic.com](https://console.anthropic.com) - **kein** claude.ai-Abo (Free/Pro/Max reichen nicht, das ist ein getrenntes Produkt). Ohne Key läuft die App normal weiter, nur ohne Vorschläge. | leer |
 | `anthropic_model` | Welches Claude-Modell für die Extraktion genutzt wird. | `claude-haiku-4-5` |
 | `mindestpraemie` | Prämien unterhalb dieses Betrags werden automatisch abgelehnt (mit Begründung, weiterhin sichtbar). | `50` |
-| `mydealz_gruppe` | mydealz-Gruppe für den RSS-Feed. | `vertraege-finanzen` |
+| `mydealz_gruppe` | mydealz-Gruppe(n) für den RSS-Feed - mehrere Gruppen durch Komma getrennt eintragen, z. B. um eine weitere Kategorie zu ergänzen. | `vertraege-finanzen, konto-kreditkarten` |
 | `spartanien_url` | Ziel-URL für den Spartanien-Parser. | `https://www.spartanien.de/` |
 | `dealdoktor_feed_url` | RSS-Feed-URL(s) für den DealDoktor-Parser (WordPress-Feeds, je Rubrik/Themenwelt ein eigener Feed) - mehrere URLs durch Komma getrennt eintragen, z. B. um eine weitere Kategorie zu ergänzen. | `https://www.dealdoktor.de/bonus-deals/feed/, https://www.dealdoktor.de/themenwelten/banken-versicherung/feed/` |
 | `benachrichtigungen_aktiv` | Push-Benachrichtigung bei neuen Vorschlägen ein-/ausschalten. | `true` |
