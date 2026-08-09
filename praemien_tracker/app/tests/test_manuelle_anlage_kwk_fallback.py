@@ -37,17 +37,18 @@ def test_json_import_legt_keine_erinnerungsaufgabe_bei_erfolg_an(db, monkeypatch
 
 
 def test_uebernehmen_pfad_legt_trotz_uebersprungener_recherche_keine_doppelte_aufgabe_an(db, monkeypatch):
-    """kwk_recherche_ueberspringen=True (Übernehmen-Ablauf) darf kwk_vorschlag
-    gar nicht erst aufrufen - kwk_ergebnis_anwenden() kümmert sich dort
-    separat um Erfolg/Fehlschlag (siehe test_helpers_kwk_ergebnis_anwenden.py)."""
+    """hintergrund_recherche=True (Übernehmen-Ablauf) darf kwk_vorschlag/
+    kuendigung_vorschlag gar nicht erst aufrufen - kwk_ergebnis_anwenden()
+    kümmert sich dort separat um Erfolg/Fehlschlag (siehe
+    test_helpers_kwk_ergebnis_anwenden.py)."""
 
     def _fail(bank, kontoart):
-        raise AssertionError("kwk_vorschlag sollte bei kwk_recherche_ueberspringen=True nicht laufen.")
+        raise AssertionError("kwk_vorschlag sollte bei hintergrund_recherche=True nicht laufen.")
 
     monkeypatch.setattr(kwk_recherche, "moeglichkeit_recherchieren", _fail)
     daten = DealImport(bank="Testbank", kontoart="Girokonto", inhaber="Alice")
 
-    deal = build_deal_from_import(db, daten, kwk_recherche_ueberspringen=True)
+    deal = build_deal_from_import(db, daten, hintergrund_recherche=True)
 
     assert deal.aufgaben == []
 
