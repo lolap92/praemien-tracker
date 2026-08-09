@@ -3,65 +3,117 @@
 {% block appbar_title %}Übernehmen bestätigen{% endblock %}
 {% block content %}
 
-<div class="sec-t">Wird angelegt für</div>
+<div class="sec-t">Konto (nicht änderbar)</div>
 <div class="card">
-  <ul class="vorschlag-bedingungen">
-    {% for m in mitglieder %}
-    <li>{{ m.inhaber.name }}</li>
-    {% endfor %}
-  </ul>
+  <div class="reihe">
+    <div class="feld">
+      <label>Bank</label>
+      <p>{{ bank }}</p>
+    </div>
+    <div class="feld">
+      <label>Inhaber</label>
+      <p>{% for m in mitglieder %}{{ m.inhaber.name }}{{ ", " if not loop.last else "" }}{% endfor %}</p>
+    </div>
+    <div class="feld">
+      <label>Kontoart</label>
+      <p>{{ kontoart }}</p>
+    </div>
+  </div>
   <p class="auto">
-    Diese Daten sind für alle oben genannten Personen identisch (derselbe
-    Fund) - Bank und Kontoart lassen sich vor dem Anlegen noch korrigieren,
-    die übrigen Angaben wurden schon auf der Vorschlagskarte geprüft.
+    Stammen unverändert aus der KI-Extraktion (bestimmen u. a., ob ein
+    Inhaber als Neukunde gilt) und sind hier nicht änderbar. Die folgenden
+    Angaben sind für alle oben genannten Personen identisch (derselbe Fund)
+    und lassen sich vor dem Anlegen noch anpassen.
   </p>
 </div>
 
-<div class="sec-t">Konto</div>
-<div class="card">
-  <form action="vorschlaege/uebernehmen/bestaetigen" method="post">
-    {% for m in mitglieder %}<input type="hidden" name="vorschlag_ids" value="{{ m.id }}">{% endfor %}
-    {% for vid in verwerfen_duplikat_ids %}<input type="hidden" name="verwerfen_duplikat_ids" value="{{ vid }}">{% endfor %}
-    <input type="hidden" name="kwk_schluessel" value="{{ kwk_schluessel }}">
+<form action="vorschlaege/uebernehmen/bestaetigen" method="post">
+  {% for m in mitglieder %}<input type="hidden" name="vorschlag_ids" value="{{ m.id }}">{% endfor %}
+  {% for vid in verwerfen_duplikat_ids %}<input type="hidden" name="verwerfen_duplikat_ids" value="{{ vid }}">{% endfor %}
+  <input type="hidden" name="kwk_schluessel" value="{{ kwk_schluessel }}">
+  <input type="hidden" name="praemien_anzahl" value="{{ praemien_zeilen | length }}">
+  <input type="hidden" name="bedingungen_anzahl" value="{{ bedingungen_zeilen | length }}">
+  <input type="hidden" name="urls_anzahl" value="{{ url_zeilen | length }}">
+  <input type="hidden" name="aufgaben_anzahl" value="{{ aufgaben_zeilen | length }}">
 
+  <div class="sec-t">Konto</div>
+  <div class="card">
     <div class="reihe">
       <div class="feld">
-        <label for="bank">Bank</label>
-        <input type="text" id="bank" name="bank" required value="{{ bank }}">
-      </div>
-      <div class="feld">
-        <label for="kontoart">Kontoart</label>
-        <input type="text" id="kontoart" name="kontoart" required value="{{ kontoart }}">
+        <label for="kuendbar_ab">Kündbar ab <span class="auto">leer = keine Sperrfrist</span></label>
+        <input type="date" id="kuendbar_ab" name="kuendbar_ab" value="{{ kuendbar_ab }}">
       </div>
     </div>
-
-    {% if praemien %}
     <div class="feld">
-      <label>Prämien <span class="auto">unverändert, bei Bedarf nach dem Anlegen je Deal anpassbar</span></label>
-      <ul class="vorschlag-praemien">
-        {% for p in praemien %}
-        <li><span class="praemie-betrag">{{ p.betrag | eur }}</span> <span class="praemie-geber">{{ p.quelle }}</span></li>
-        {% endfor %}
-      </ul>
+      <label for="kommentar">Kommentar</label>
+      <textarea id="kommentar" name="kommentar">{{ kommentar }}</textarea>
     </div>
-    {% endif %}
+  </div>
 
-    {% if bedingungen %}
-    <div class="feld">
-      <label>Bedingungen <span class="auto">starten unabgehakt, unabhängig von der KI-Einschätzung</span></label>
-      <ul class="vorschlag-bedingungen">
-        {% for b in bedingungen %}
-        <li>{{ b.beschreibung }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
+  <div class="sec-t">Prämien</div>
+  <div class="card">
+    <ul class="unterliste">
+      {% for zeile in praemien_zeilen %}
+      <li class="reihe" style="align-items:center;">
+        <select name="praemie_{{ loop.index0 }}_quelle" style="flex:0 0 130px;">
+          <option value="spartanien" {{ "selected" if zeile.quelle == "spartanien" else "" }}>Spartanien</option>
+          <option value="bank" {{ "selected" if zeile.quelle == "bank" else "" }}>Bank</option>
+        </select>
+        <input type="text" name="praemie_{{ loop.index0 }}_betrag" placeholder="Betrag" style="flex:0 0 100px;" value="{{ zeile.betrag }}">
+        <input type="text" name="praemie_{{ loop.index0 }}_auszahlung_erwartet" placeholder="Erwartet JJJJ-MM" style="flex:0 0 140px;" value="{{ zeile.auszahlung_erwartet }}">
+        <span class="checkbox-zeile" style="flex:0 0 auto;">
+          <input type="checkbox" name="praemie_{{ loop.index0 }}_erhalten" id="praemie_{{ loop.index0 }}_erhalten" {{ "checked" if zeile.erhalten else "" }}>
+          <label for="praemie_{{ loop.index0 }}_erhalten" style="margin:0;">erhalten</label>
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="auto">Leer gelassene Zeilen werden beim Anlegen übersprungen.</p>
+  </div>
 
+  <div class="sec-t">Bedingungen</div>
+  <div class="card">
+    <ul class="unterliste">
+      {% for zeile in bedingungen_zeilen %}
+      <li class="reihe" style="align-items:center;">
+        <input type="text" name="bedingung_{{ loop.index0 }}_beschreibung" placeholder="z. B. 3 Trades ausführen" style="flex:1 1 200px;" value="{{ zeile.beschreibung }}">
+        <input type="date" name="bedingung_{{ loop.index0 }}_faellig_bis" style="flex:0 0 150px;" value="{{ zeile.faellig_bis }}">
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="auto">Startet beim Anlegen immer als nicht erfüllt.</p>
+  </div>
+
+  <div class="sec-t">Aufgaben (frei)</div>
+  <div class="card">
+    <ul class="unterliste">
+      {% for zeile in aufgaben_zeilen %}
+      <li class="reihe" style="align-items:center;">
+        <input type="text" name="aufgabe_{{ loop.index0 }}_beschreibung" placeholder="z. B. Geld zurücküberweisen" style="flex:1 1 200px;" value="{{ zeile.beschreibung }}">
+        <input type="date" name="aufgabe_{{ loop.index0 }}_faellig_bis" style="flex:0 0 150px;" value="{{ zeile.faellig_bis }}">
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="sec-t">Links</div>
+  <div class="card">
+    <ul class="unterliste">
+      {% for zeile in url_zeilen %}
+      <li class="reihe" style="align-items:center;">
+        <input type="text" name="url_{{ loop.index0 }}_bezeichnung" placeholder="Bezeichnung (z. B. Login)" style="flex:0 0 180px;" value="{{ zeile.bezeichnung }}">
+        <input type="text" name="url_{{ loop.index0 }}_url" placeholder="https://…" style="flex:1 1 200px;" value="{{ zeile.url }}">
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="card">
     <div class="vk-dialog-aktionen">
       <a class="button secondary" href="vorschlaege">Abbrechen</a>
       <button type="submit">Jetzt anlegen</button>
     </div>
-  </form>
-</div>
+  </div>
+</form>
 
 {% endblock %}

@@ -4,11 +4,11 @@
 from __future__ import annotations
 
 import datetime
-import re
 import time
 from decimal import Decimal
 
 import pytest
+from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
 
 from praemien_tracker.main import app
@@ -232,15 +232,62 @@ def test_gruppen_status_ist_der_beste_einzelstatus(db, zwei_inhaber):
     assert "Bereits Kundin." in antwort.text
 
 
-def test_uebernehmen_zeigt_vorschau_mit_bank_und_kontoart_ohne_deal_anzulegen(db, inhaber):
-    """Erster Schritt: nur eine editierbare Vorschau, noch kein Deal."""
+def _formularfelder(html: str) -> dict[str, list[str]]:
+    """Liest alle name/value-Paare aus dem <form> der Übernehmen-Vorschau -
+    Hidden-Felder, vorausgefüllte Inputs, Selects und Textareas - damit Tests
+    das Formular unverändert (oder mit gezielten Overrides) wieder absenden
+    können, statt die vollständige, dynamisch nummerierte Feldliste (siehe
+    routers/vorschlaege._form_zeilen) jedes Mal von Hand nachzubauen."""
+    soup = BeautifulSoup(html, "html.parser")
+    form = soup.find("form")
+    felder: dict[str, list[str]] = {}
+
+    def _hinzufuegen(name, value):
+        if name:
+            felder.setdefault(name, []).append(value or "")
+
+    for inp in form.find_all("input"):
+        name = inp.get("name")
+        if inp.get("type") == "checkbox":
+            if inp.has_attr("checked"):
+                _hinzufuegen(name, inp.get("value", "on"))
+            continue
+        _hinzufuegen(name, inp.get("value", ""))
+    for sel in form.find_all("select"):
+        gewaehlt = sel.find("option", selected=True) or sel.find("option")
+        if gewaehlt is not None:
+            _hinzufuegen(sel.get("name"), gewaehlt.get("value", ""))
+    for ta in form.find_all("textarea"):
+        _hinzufuegen(ta.get("name"), ta.text)
+    return felder
+
+
+def _uebernehmen_vorschau_und_bestaetigen(vorschlag_ids, verwerfen_duplikat_ids=None, **overrides):
+    """Kompletter Roundtrip wie im Browser: Vorschau öffnen und das dort
+    vorausgefüllte Formular unverändert (oder mit `overrides`, z.B. um ein
+    Feld gezielt zu leeren) absenden."""
+    daten = {"vorschlag_ids": vorschlag_ids}
+    if verwerfen_duplikat_ids:
+        daten["verwerfen_duplikat_ids"] = verwerfen_duplikat_ids
+    vorschau = client.post("/vorschlaege/uebernehmen", data=daten)
+    felder = _formularfelder(vorschau.text)
+    felder.update({k: (v if isinstance(v, list) else [v]) for k, v in overrides.items()})
+    return client.post("/vorschlaege/uebernehmen/bestaetigen", data=felder, follow_redirects=False)
+
+
+def test_uebernehmen_zeigt_vorschau_ohne_deal_anzulegen(db, inhaber):
+    """Erster Schritt: nur eine Vorschau, noch kein Deal. Bank/Kontoart/
+    Inhaber nur lesbar - keine Eingabefelder dafür."""
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
 
     antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]})
     assert antwort.status_code == 200
-    assert 'value="C24"' in antwort.text
-    assert 'value="Girokonto"' in antwort.text
+    assert "C24" in antwort.text
+    assert "Girokonto" in antwort.text
     assert "Alice" in antwort.text
+    assert 'name="bank"' not in antwort.text
+    assert 'name="kontoart"' not in antwort.text
+    assert 'name="inhaber"' not in antwort.text
 
     db.refresh(vorschlag)
     assert vorschlag.status == "vorgeschlagen"
@@ -256,11 +303,7 @@ def test_uebernehmen_ohne_gueltige_auswahl_zeigt_keine_vorschau(db):
 def test_uebernehmen_bestaetigen_legt_deal_an_und_markiert_vorschlag(db, inhaber):
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
 
-    antwort = client.post(
-        "/vorschlaege/uebernehmen/bestaetigen",
-        data={"vorschlag_ids": [vorschlag.id], "bank": "C24", "kontoart": "Girokonto"},
-        follow_redirects=False,
-    )
+    antwort = _uebernehmen_vorschau_und_bestaetigen([vorschlag.id])
     assert antwort.status_code == 303
 
     db.refresh(vorschlag)
@@ -273,33 +316,58 @@ def test_uebernehmen_bestaetigen_legt_deal_an_und_markiert_vorschlag(db, inhaber
     assert deal.urls[0].url == "https://www.mydealz.de/x"
 
 
-def test_uebernehmen_bestaetigen_uebernimmt_korrigierte_bank_und_kontoart(db, inhaber):
-    """Bank/Kontoart aus der Vorschau überschreiben die aus roh_json - dafür
-    ist die Vorschau schließlich da."""
+def test_uebernehmen_bestaetigen_uebernimmt_bearbeitete_felder(db, inhaber):
+    """Kündbar ab, Kommentar sowie Prämien-/Bedingungen-/Aufgaben-/Link-Zeilen
+    aus der Vorschau überschreiben die aus roh_json - dafür ist die Vorschau
+    schließlich da. Bank/Kontoart/Inhaber bleiben dagegen unverändert, da sie
+    dort nicht editierbar sind."""
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
 
-    client.post(
-        "/vorschlaege/uebernehmen/bestaetigen",
-        data={"vorschlag_ids": [vorschlag.id], "bank": "Consorsbank", "kontoart": "Tagesgeld"},
-        follow_redirects=False,
+    _uebernehmen_vorschau_und_bestaetigen(
+        [vorschlag.id],
+        kuendbar_ab=["2027-01-01"],
+        kommentar=["Vom Nutzer ergänzt"],
+        praemie_0_betrag=["150.00"],
+        bedingung_0_beschreibung=["Gehaltseingang von 1200 EUR"],
+        aufgabe_0_beschreibung=["Karte aktivieren"],
+        url_0_bezeichnung=["Login"],
     )
 
     deal = db.query(Deal).one()
-    assert deal.bank.name == "Consorsbank"
-    assert deal.kontoart == "Tagesgeld"
+    assert deal.bank.name == "C24"
+    assert deal.kontoart == "Girokonto"
+    assert deal.kuendbar_ab == datetime.date(2027, 1, 1)
+    assert deal.kommentar == "Vom Nutzer ergänzt"
+    assert deal.praemien[0].betrag == Decimal("150.00")
+    assert deal.bedingungen[0].beschreibung == "Gehaltseingang von 1200 EUR"
+    assert deal.bedingungen[0].erfuellt is False
+    assert any(a.beschreibung == "Karte aktivieren" for a in deal.aufgaben)
+    assert any(u.bezeichnung == "Login" for u in deal.urls)
+
+
+def test_uebernehmen_bestaetigen_ueberspringt_leer_gelassene_zusatzzeilen(db, inhaber):
+    """Die zusätzlich angebotenen leeren Zeilen (siehe
+    routers/vorschlaege._LEERZEILEN_*) dürfen, wenn sie leer bleiben, keine
+    leeren Prämien/Bedingungen/Aufgaben/Links erzeugen."""
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    _uebernehmen_vorschau_und_bestaetigen([vorschlag.id])
+
+    deal = db.query(Deal).one()
+    assert len(deal.praemien) == 1
+    assert len(deal.bedingungen) == 0
+    assert len(deal.aufgaben) == 0
+    assert len(deal.urls) == 1
 
 
 def test_uebernehmen_bestaetigen_ohne_kwk_ergebnis_legt_erinnerungsaufgabe_an(db, inhaber):
-    """Ohne (rechtzeitiges) Rechercheergebnis - hier: gar nicht erst über die
-    Vorschau gestartet, kwk_schluessel bleibt leer - bekommt der neue Deal
-    eine einfache Erinnerungs-Aufgabe statt eines Hinweis-Banners."""
+    """Ohne (rechtzeitiges) Rechercheergebnis - hier gezielt simuliert, indem
+    der von der Vorschau gelieferte kwk_schluessel beim Bestätigen geleert
+    wird - bekommt der neue Deal eine einfache Erinnerungs-Aufgabe statt
+    eines Hinweis-Banners."""
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
 
-    client.post(
-        "/vorschlaege/uebernehmen/bestaetigen",
-        data={"vorschlag_ids": [vorschlag.id], "bank": "C24", "kontoart": "Girokonto"},
-        follow_redirects=False,
-    )
+    _uebernehmen_vorschau_und_bestaetigen([vorschlag.id], kwk_schluessel=[""])
 
     deal = db.query(Deal).one()
     assert any("KwK möglich?" in a.beschreibung for a in deal.aufgaben)
@@ -327,19 +395,9 @@ def test_uebernehmen_vorschau_und_bestaetigen_nutzen_dieselbe_hintergrund_recher
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen", bank_name="KwK-Vorschau-Testbank", roh_json=roh_json)
 
     vorschau = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]})
-    schluessel = re.search(r'name="kwk_schluessel" value="([^"]*)"', vorschau.text).group(1)
     time.sleep(0.2)  # der (gefakte) Hintergrund-Thread braucht keine echte Websuchzeit
-
-    client.post(
-        "/vorschlaege/uebernehmen/bestaetigen",
-        data={
-            "vorschlag_ids": [vorschlag.id],
-            "bank": "KwK-Vorschau-Testbank",
-            "kontoart": "Girokonto",
-            "kwk_schluessel": schluessel,
-        },
-        follow_redirects=False,
-    )
+    felder = _formularfelder(vorschau.text)
+    client.post("/vorschlaege/uebernehmen/bestaetigen", data=felder, follow_redirects=False)
 
     deal = db.query(Deal).one()
     kwk_urls = [u.url for u in deal.urls if u.bezeichnung == "Kunden wirbt Kunden"]
@@ -352,11 +410,7 @@ def test_uebernehmen_bestaetigen_mit_mehreren_ids_legt_fuer_jeden_ausgewaehlten_
     v_elli = _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich")
     v_max = _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
 
-    antwort = client.post(
-        "/vorschlaege/uebernehmen/bestaetigen",
-        data={"vorschlag_ids": [v_elli.id, v_max.id], "bank": "C24", "kontoart": "Girokonto"},
-        follow_redirects=False,
-    )
+    antwort = _uebernehmen_vorschau_und_bestaetigen([v_elli.id, v_max.id])
     assert antwort.status_code == 303
 
     db.refresh(v_elli)
@@ -375,11 +429,7 @@ def test_uebernehmen_bestaetigen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen
     v_elli = _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich")
     v_max = _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
 
-    client.post(
-        "/vorschlaege/uebernehmen/bestaetigen",
-        data={"vorschlag_ids": [v_elli.id], "bank": "C24", "kontoart": "Girokonto"},
-        follow_redirects=False,
-    )
+    _uebernehmen_vorschau_und_bestaetigen([v_elli.id])
 
     db.refresh(v_elli)
     db.refresh(v_max)
@@ -392,11 +442,7 @@ def test_uebernehmen_bestaetigen_funktioniert_auch_bei_automatisch_abgelehnt(db,
     """Bewusstes Überstimmen laut Konzept - "Trotzdem übernehmen"."""
     vorschlag = _vorschlag(db, inhaber, "automatisch_abgelehnt")
 
-    antwort = client.post(
-        "/vorschlaege/uebernehmen/bestaetigen",
-        data={"vorschlag_ids": [vorschlag.id], "bank": "C24", "kontoart": "Girokonto"},
-        follow_redirects=False,
-    )
+    antwort = _uebernehmen_vorschau_und_bestaetigen([vorschlag.id])
     assert antwort.status_code == 303
     db.refresh(vorschlag)
     assert vorschlag.status == "uebernommen"
@@ -408,7 +454,7 @@ def test_bereits_uebernommener_vorschlag_wird_nicht_doppelt_verarbeitet(db, inha
 
     client.post(
         "/vorschlaege/uebernehmen/bestaetigen",
-        data={"vorschlag_ids": [vorschlag.id], "bank": "C24", "kontoart": "Girokonto"},
+        data={"vorschlag_ids": [vorschlag.id]},
         follow_redirects=False,
     )
 

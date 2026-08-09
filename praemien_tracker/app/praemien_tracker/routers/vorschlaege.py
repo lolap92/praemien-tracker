@@ -10,13 +10,23 @@ from ..config import DEMO_MODUS
 from ..database import get_db
 from ..finder import matching
 from ..finder.lauf import lauf_im_hintergrund_starten, lauf_status
-from ..helpers import build_deal_from_import
+from ..helpers import build_deal_from_import, parse_date, parse_decimal
 from ..ingress import redirect
 from ..models import DealVorschlag, FinderFund, FinderLauf
-from ..schemas import DealImport
+from ..schemas import AufgabeIn, BedingungIn, DealImport, PraemieIn, UrlIn
 from ..templating import templates
 
 router = APIRouter()
+
+# Zusätzliche leere Zeilen, die uebernehmen_vorschau über die vorhandenen
+# Einträge aus roh_json hinaus anbietet, um in der Vorschau noch etwas Neues
+# hinzuzufügen (z.B. einen zweiten Link oder eine frei formulierte Aufgabe) -
+# ohne eine dynamische "+ Zeile"-Schaltfläche zu brauchen. Leer gebliebene
+# Zeilen werden von uebernehmen_bestaetigen beim Auswerten übersprungen.
+_LEERZEILEN_PRAEMIEN = 2
+_LEERZEILEN_BEDINGUNGEN = 2
+_LEERZEILEN_URLS = 1
+_LEERZEILEN_AUFGABEN = 3
 
 # Reihenfolge der Statusgruppen wie im Konzept-Mockup: erst eindeutig
 # vorgeschlagene, dann zu prüfende, ganz unten (eingeklappt) die
@@ -309,6 +319,14 @@ def vorschlaege_view(
     )
 
 
+def _zeilen_mit_leerzeilen(vorhandene: list[dict], leerzeile: dict, anzahl_leer: int) -> list[dict]:
+    """Vorhandene Zeilen (aus roh_json) plus `anzahl_leer` leere Zeilen zum
+    Ergänzen, ohne eine dynamische "+ Zeile"-Schaltfläche zu brauchen - siehe
+    uebernehmen_vorschau. Jede Leerzeile ist ein eigenes dict, damit die
+    Vorlage sie unabhängig voneinander befüllen kann."""
+    return vorhandene + [dict(leerzeile) for _ in range(anzahl_leer)]
+
+
 @router.post("/vorschlaege/uebernehmen")
 def uebernehmen_vorschau(
     request: Request,
@@ -317,14 +335,15 @@ def uebernehmen_vorschau(
     db: Session = Depends(get_db),
 ):
     """Erster Schritt des Übernehmens: zeigt statt sofort einen Deal je
-    ausgewähltem Inhaber anzulegen zunächst ein Bearbeitungsformular für Bank
-    und Kontoart - die einzigen beiden Felder, die typischerweise noch
-    korrigiert werden, und ohnehin für alle ausgewählten Inhaber identisch
-    (derselbe Fund, siehe VorschlagGruppe/_gruppieren). Erst das Absenden
-    dieses Formulars (uebernehmen_bestaetigen) legt die Deals wirklich an.
-    Prämien/Bedingungen/Quelle-URL bleiben unverändert aus roh_json und werden
-    nur zur Kontrolle mit angezeigt - sie wurden schon auf der Vorschlags-
-    karte geprüft, bevor "Übernehmen" überhaupt geklickt wurde.
+    ausgewähltem Inhaber anzulegen zunächst ein Bearbeitungsformular für die
+    Felder, die für alle ausgewählten Inhaber identisch sind (derselbe Fund,
+    siehe VorschlagGruppe/_gruppieren) - Kündbar ab, Kommentar sowie Prämien,
+    Bedingungen, freie Aufgaben und Links als editierbare Zeilen (plus ein
+    paar leere Zeilen zum Ergänzen, siehe _zeilen_mit_leerzeilen). Bank und
+    Kontoart werden nur noch zur Orientierung angezeigt, nicht mehr bearbeitet
+    - sie bestimmen u.a., ob ein Inhaber als Neukunde gilt, und sollen daher
+    unverändert aus der KI-Extraktion stammen. Erst das Absenden dieses
+    Formulars (uebernehmen_bestaetigen) legt die Deals wirklich an.
 
     Die Auswahl kommt aus den Checkboxen je Person in der Gruppen-Karte, auch
     aus "automatisch_abgelehnt" möglich (bewusstes Überstimmen). Unbekannte
@@ -345,14 +364,42 @@ def uebernehmen_vorschau(
     daten = DealImport.model_validate_json(fuehrend.roh_json)
     kwk_schluessel = helpers.kwk_recherche_vorab_starten(daten.bank, daten.kontoart)
 
+    praemien_zeilen = _zeilen_mit_leerzeilen(
+        [
+            {"quelle": p.quelle, "betrag": str(p.betrag), "auszahlung_erwartet": p.auszahlung_erwartet or "", "erhalten": p.erhalten}
+            for p in daten.praemien
+        ],
+        {"quelle": "bank", "betrag": "", "auszahlung_erwartet": "", "erhalten": False},
+        _LEERZEILEN_PRAEMIEN,
+    )
+    bedingungen_zeilen = _zeilen_mit_leerzeilen(
+        [{"beschreibung": b.beschreibung, "faellig_bis": b.faellig_bis.isoformat() if b.faellig_bis else ""} for b in daten.bedingungen],
+        {"beschreibung": "", "faellig_bis": ""},
+        _LEERZEILEN_BEDINGUNGEN,
+    )
+    url_zeilen = _zeilen_mit_leerzeilen(
+        [{"bezeichnung": u.bezeichnung or "", "url": u.url} for u in daten.urls],
+        {"bezeichnung": "", "url": ""},
+        _LEERZEILEN_URLS,
+    )
+    aufgaben_zeilen = _zeilen_mit_leerzeilen(
+        [{"beschreibung": a.beschreibung, "faellig_bis": a.faellig_bis.isoformat() if a.faellig_bis else ""} for a in daten.aufgaben],
+        {"beschreibung": "", "faellig_bis": ""},
+        _LEERZEILEN_AUFGABEN,
+    )
+
     return templates.TemplateResponse(
         "vorschlag_uebernehmen.html",
         {
             "request": request,
             "bank": daten.bank,
             "kontoart": daten.kontoart,
-            "praemien": daten.praemien,
-            "bedingungen": daten.bedingungen,
+            "kuendbar_ab": daten.kuendbar_ab.isoformat() if daten.kuendbar_ab else "",
+            "kommentar": daten.kommentar or "",
+            "praemien_zeilen": praemien_zeilen,
+            "bedingungen_zeilen": bedingungen_zeilen,
+            "url_zeilen": url_zeilen,
+            "aufgaben_zeilen": aufgaben_zeilen,
             "mitglieder": gueltig,
             "verwerfen_duplikat_ids": verwerfen_duplikat_ids,
             "kwk_schluessel": kwk_schluessel,
@@ -360,24 +407,36 @@ def uebernehmen_vorschau(
     )
 
 
+def _form_zeilen(form, prefix: str, anzahl_feld: str, felder: tuple[str, ...]) -> list[dict[str, str | None]]:
+    """Liest die von uebernehmen_vorschau als `{prefix}_{index}_{feld}`
+    benannten Formularfelder wieder ein - so bekommt jede Checkbox (z.B.
+    "erhalten") einen eindeutigen Namen und es entsteht nicht das klassische
+    Problem nicht angehakter Checkboxen, die in einem gemeinsamen Array-Namen
+    einfach fehlen würden und die Zuordnung zu ihrer Zeile verschieben. Ein
+    Bool-Feld wird an seinem Namen ohne "_wert"-Suffix erkannt (siehe
+    Aufrufer) und ist True, wenn der Schlüssel überhaupt vorhanden ist."""
+    zeilen = []
+    for i in range(int(form.get(anzahl_feld, "0") or "0")):
+        zeilen.append({feld: form.get(f"{prefix}_{i}_{feld}") for feld in felder})
+    return zeilen
+
+
 @router.post("/vorschlaege/uebernehmen/bestaetigen")
-def uebernehmen_bestaetigen(
-    request: Request,
-    vorschlag_ids: list[int] = Form(default=[]),
-    verwerfen_duplikat_ids: list[int] = Form(default=[]),
-    bank: str = Form(...),
-    kontoart: str = Form(...),
-    kwk_schluessel: str = Form(""),
-    db: Session = Depends(get_db),
-):
+async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db)):
     """Zweiter Schritt: legt jetzt tatsächlich für jede ausgewählte
     Inhaber-Zeile einen eigenen Deal aus roh_json an - über denselben
-    Mechanismus wie der händische JSON-Import (Konzept Abschnitt 7). Bank und
-    Kontoart kommen aus dem in uebernehmen_vorschau editierbaren Formular und
-    überschreiben die aus roh_json, alle übrigen Felder bleiben unverändert.
-    Unbekannte oder bereits entschiedene IDs (z.B. durch einen parallel
-    offenen zweiten Tab schon entschieden) werden übergangen statt die ganze
-    Anfrage abzubrechen.
+    Mechanismus wie der händische JSON-Import (Konzept Abschnitt 7). Kündbar
+    ab, Kommentar sowie die Prämien-/Bedingungen-/Aufgaben-/Link-Zeilen kommen
+    aus dem in uebernehmen_vorschau editierbaren Formular und überschreiben
+    die aus roh_json; Bank, Kontoart und Inhaber bleiben unverändert (siehe
+    dort). Unbekannte oder bereits entschiedene IDs (z.B. durch einen
+    parallel offenen zweiten Tab schon entschieden) werden übergangen statt
+    die ganze Anfrage abzubrechen.
+
+    Liest die Formulardaten bewusst manuell über request.form() statt über
+    typisierte Form(...)-Parameter, weil die Anzahl der Prämien-/Bedingungen-/
+    Aufgaben-/Link-Zeilen von Vorschlag zu Vorschlag unterschiedlich ist
+    (siehe _form_zeilen/uebernehmen_vorschau).
 
     verwerfen_duplikat_ids kommt aus der Duplikat-Gruppe (siehe
     DuplikatGruppe/dup_gruppe_karte): wählt der Nutzer dort eine Quelle zum
@@ -393,8 +452,48 @@ def uebernehmen_bestaetigen(
     bekommt jeder neue Deal stattdessen eine einfache Erinnerungs-Aufgabe
     (helpers.kwk_ergebnis_anwenden) - "Übernehmen" wartet dadurch nie länger
     als KWK_TIMEOUT_SEKUNDEN auf eine hängende KI-Websuche."""
-    bank = bank.strip()
-    kontoart = kontoart.strip()
+    form = await request.form()
+    vorschlag_ids = [int(v) for v in form.getlist("vorschlag_ids")]
+    verwerfen_duplikat_ids = [int(v) for v in form.getlist("verwerfen_duplikat_ids")]
+    kwk_schluessel = form.get("kwk_schluessel", "")
+    kuendbar_ab = parse_date((form.get("kuendbar_ab") or "").strip() or None)
+    kommentar = (form.get("kommentar") or "").strip() or None
+
+    praemien: list[PraemieIn] = []
+    for zeile in _form_zeilen(form, "praemie", "praemien_anzahl", ("quelle", "betrag", "auszahlung_erwartet", "erhalten")):
+        betrag = parse_decimal(zeile["betrag"])
+        if betrag is None:
+            continue
+        praemien.append(
+            PraemieIn(
+                quelle=zeile["quelle"] or "bank",
+                betrag=betrag,
+                erhalten=zeile["erhalten"] is not None,
+                auszahlung_erwartet=(zeile["auszahlung_erwartet"] or "").strip() or None,
+            )
+        )
+
+    bedingungen: list[BedingungIn] = []
+    for zeile in _form_zeilen(form, "bedingung", "bedingungen_anzahl", ("beschreibung", "faellig_bis")):
+        beschreibung = (zeile["beschreibung"] or "").strip()
+        if not beschreibung:
+            continue
+        bedingungen.append(BedingungIn(beschreibung=beschreibung, erfuellt=False, faellig_bis=parse_date(zeile["faellig_bis"])))
+
+    urls: list[UrlIn] = []
+    for zeile in _form_zeilen(form, "url", "urls_anzahl", ("bezeichnung", "url")):
+        url = (zeile["url"] or "").strip()
+        if not url:
+            continue
+        urls.append(UrlIn(url=url, bezeichnung=(zeile["bezeichnung"] or "").strip() or None))
+
+    aufgaben: list[AufgabeIn] = []
+    for zeile in _form_zeilen(form, "aufgabe", "aufgaben_anzahl", ("beschreibung", "faellig_bis")):
+        beschreibung = (zeile["beschreibung"] or "").strip()
+        if not beschreibung:
+            continue
+        aufgaben.append(AufgabeIn(beschreibung=beschreibung, erledigt=False, faellig_bis=parse_date(zeile["faellig_bis"])))
+
     kwk_ergebnis = helpers.kwk_recherche_ergebnis_abholen(kwk_schluessel, timeout=helpers.KWK_TIMEOUT_SEKUNDEN)
 
     for vorschlag_id in vorschlag_ids:
@@ -402,10 +501,12 @@ def uebernehmen_bestaetigen(
         if vorschlag is None or vorschlag.status not in STATUS_OFFEN:
             continue
         daten = DealImport.model_validate_json(vorschlag.roh_json)
-        if bank:
-            daten.bank = bank
-        if kontoart:
-            daten.kontoart = kontoart
+        daten.kuendbar_ab = kuendbar_ab
+        daten.kommentar = kommentar
+        daten.praemien = praemien
+        daten.bedingungen = bedingungen
+        daten.urls = urls
+        daten.aufgaben = aufgaben
         deal = build_deal_from_import(db, daten, kwk_recherche_ueberspringen=True)
         helpers.kwk_ergebnis_anwenden(deal, kwk_ergebnis)
         vorschlag.status = matching.STATUS_UEBERNOMMEN

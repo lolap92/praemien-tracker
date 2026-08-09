@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.24.5
+
+Die Übernehmen-Vorschau (siehe 2.24.1) zeigte bisher nur Bank und Kontoart
+editierbar an, alle übrigen Felder read-only. Auf Nutzerwunsch jetzt genauer
+abgestimmt:
+
+- Bank, Inhaber und Kontoart werden weiterhin angezeigt, aber nur noch
+  read-only (auch Bank/Kontoart waren zwischenzeitlich editierbar, das ist
+  jetzt zurückgenommen) - sie bestimmen u. a., ob jemand als Neukunde gilt,
+  und sollen unverändert aus der KI-Extraktion stammen.
+- Stattdessen jetzt editierbar: Kündbar ab, Kommentar, sowie Prämien
+  (Quelle/Betrag/erwartete Auszahlung/erhalten), Bedingungen (Beschreibung/
+  fällig bis), freie Aufgaben (neu hinzufügbar) und Links (Bezeichnung/URL) -
+  jeweils als Zeilen mit ein paar zusätzlichen leeren Zeilen zum Ergänzen.
+  Alle anderen Detailfelder der normalen Deal-Seite (Kontonummer,
+  Zugangsdaten, weitere Kündigungsfelder, Freibetrag, Prämien auf Sparkonto)
+  werden auf dieser Seite gar nicht erst angezeigt, da sie bei KI-Vorschlägen
+  ohnehin nie befüllt sind.
+
 ## 2.24.3
 
 Fehlerbehebung Deal-Detailansicht (siehe 2.24.0): lange Werte wie die

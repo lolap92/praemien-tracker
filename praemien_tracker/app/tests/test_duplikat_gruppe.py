@@ -8,12 +8,53 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
 
 from praemien_tracker.main import app
 from praemien_tracker.models import Deal, DealVorschlag, Inhaber
 
 client = TestClient(app)
+
+
+def _formularfelder(html: str) -> dict[str, list[str]]:
+    """Siehe test_vorschlaege_router._formularfelder - liest alle name/value-
+    Paare aus dem <form> der Übernehmen-Vorschau, damit Tests es unverändert
+    wieder absenden können statt die dynamisch nummerierten Felder (Prämien/
+    Bedingungen/Aufgaben/Links) von Hand nachzubauen."""
+    soup = BeautifulSoup(html, "html.parser")
+    form = soup.find("form")
+    felder: dict[str, list[str]] = {}
+
+    def _hinzufuegen(name, value):
+        if name:
+            felder.setdefault(name, []).append(value or "")
+
+    for inp in form.find_all("input"):
+        name = inp.get("name")
+        if inp.get("type") == "checkbox":
+            if inp.has_attr("checked"):
+                _hinzufuegen(name, inp.get("value", "on"))
+            continue
+        _hinzufuegen(name, inp.get("value", ""))
+    for sel in form.find_all("select"):
+        gewaehlt = sel.find("option", selected=True) or sel.find("option")
+        if gewaehlt is not None:
+            _hinzufuegen(sel.get("name"), gewaehlt.get("value", ""))
+    for ta in form.find_all("textarea"):
+        _hinzufuegen(ta.get("name"), ta.text)
+    return felder
+
+
+def _uebernehmen_vorschau_und_bestaetigen(vorschlag_ids, verwerfen_duplikat_ids=None):
+    """Kompletter Roundtrip wie im Browser: Vorschau öffnen, das dort
+    vorausgefüllte Formular unverändert absenden."""
+    daten = {"vorschlag_ids": vorschlag_ids}
+    if verwerfen_duplikat_ids:
+        daten["verwerfen_duplikat_ids"] = verwerfen_duplikat_ids
+    vorschau = client.post("/vorschlaege/uebernehmen", data=daten)
+    felder = _formularfelder(vorschau.text)
+    return client.post("/vorschlaege/uebernehmen/bestaetigen", data=felder, follow_redirects=False)
 
 
 @pytest.fixture()
@@ -184,16 +225,7 @@ def test_uebernehmen_verwirft_andere_quellen_automatisch(db, inhaber):
     verlierer = _vorschlag(db, inhaber, "vorgeschlagen", quelle="spartanien", quelle_url="https://www.spartanien.de/ing",
                             inhalt_hash="h2", bank_name="ING", praemie_betrag=Decimal("150.00"))
 
-    antwort = client.post(
-        "/vorschlaege/uebernehmen/bestaetigen",
-        data={
-            "vorschlag_ids": [gewinner.id],
-            "verwerfen_duplikat_ids": [verlierer.id],
-            "bank": "ING",
-            "kontoart": "Girokonto",
-        },
-        follow_redirects=False,
-    )
+    antwort = _uebernehmen_vorschau_und_bestaetigen([gewinner.id], verwerfen_duplikat_ids=[verlierer.id])
     assert antwort.status_code == 303
 
     db.refresh(gewinner)
@@ -209,11 +241,7 @@ def test_uebernehmen_ohne_duplikat_ids_verhaelt_sich_wie_bisher(db, inhaber):
     gebündelte Karte) ändert sich am bisherigen Verhalten nichts."""
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
 
-    antwort = client.post(
-        "/vorschlaege/uebernehmen/bestaetigen",
-        data={"vorschlag_ids": [vorschlag.id], "bank": "C24", "kontoart": "Girokonto"},
-        follow_redirects=False,
-    )
+    antwort = _uebernehmen_vorschau_und_bestaetigen([vorschlag.id])
     assert antwort.status_code == 303
     db.refresh(vorschlag)
     assert vorschlag.status == "uebernommen"
