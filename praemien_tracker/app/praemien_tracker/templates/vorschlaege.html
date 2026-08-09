@@ -115,11 +115,11 @@
 <dialog id="dlg-zuruecksetzen" class="vk-dialog">
   <h3>Alle Vorschläge löschen und neu starten?</h3>
   <p class="vk-dialog-frage">
-    Löscht unwiderruflich alle noch nicht übernommenen Vorschläge (offen oder
-    manuell verworfen) sowie den Rohtext-Cache - danach beginnt "Jetzt
-    suchen" komplett frisch, ohne zwischengespeicherte Extraktionen weiter zu
-    verwenden. Bereits übernommene Vorschläge (schon echte Deals) bleiben
-    davon unberührt.
+    Löscht unwiderruflich alle noch nicht übernommenen Vorschläge - egal ob
+    vorgeschlagen, zu prüfen, automatisch abgelehnt oder manuell verworfen -
+    sowie den Rohtext-Cache. Danach beginnt "Jetzt suchen" komplett frisch,
+    ohne zwischengespeicherte Extraktionen weiter zu verwenden. Bereits
+    übernommene Vorschläge (schon echte Deals) bleiben davon unberührt.
   </p>
   <form method="post" action="vorschlaege/zuruecksetzen" onsubmit="this.closest('dialog').close()">
     <div class="vk-dialog-aktionen">

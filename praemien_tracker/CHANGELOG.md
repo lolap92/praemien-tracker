@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.20.2
+
+Klarstellung: der Bestätigungsdialog von "Zurücksetzen" im Vorschläge-Tab
+sprach nur von "offen oder manuell verworfen" - das ließ sich missverstehen,
+als würden "zu prüfen" und "automatisch abgelehnt" nicht mitgelöscht.
+Tatsächlich löscht die Funktion schon immer alle vier nicht-übernommenen
+Status, der Text nennt sie jetzt einzeln. Keine Verhaltensänderung, nur
+Text/Doku klargestellt und mit einem Test abgesichert, der ausdrücklich
+alle vier Status abdeckt.
+
 ## 2.20.1
 
 Fehlerbehebung: der JSON-Import (auch beim Übernehmen eines

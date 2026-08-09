@@ -634,9 +634,15 @@ def test_seite_zeigt_zuruecksetzen_button_mit_bestaetigungsdialog(db):
     assert 'onsubmit="this.closest(\'dialog\').close()"' in antwort.text
 
 
-def test_zuruecksetzen_loescht_offene_und_verworfene_vorschlaege(db, inhaber):
+def test_zuruecksetzen_loescht_alle_nicht_uebernommenen_status(db, inhaber):
+    """Deckt ausdrücklich alle vier nicht-übernommenen Status ab, nicht nur
+    'vorgeschlagen' und 'verworfen' - das Wort 'offen' im Dialogtext hatte
+    zuvor missverständlich gewirkt, als wären 'zu prüfen' und 'automatisch
+    abgelehnt' davon nicht erfasst."""
     _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
-    _vorschlag(db, inhaber, "verworfen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2",
+    _vorschlag(db, inhaber, "zu_pruefen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2")
+    _vorschlag(db, inhaber, "automatisch_abgelehnt", quelle_url="https://www.mydealz.de/3", inhalt_hash="h3")
+    _vorschlag(db, inhaber, "verworfen", quelle_url="https://www.mydealz.de/4", inhalt_hash="h4",
                verwerfen_gruende="duplikat")
 
     antwort = client.post("/vorschlaege/zuruecksetzen", follow_redirects=False)

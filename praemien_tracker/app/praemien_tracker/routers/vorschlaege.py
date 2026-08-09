@@ -390,11 +390,13 @@ def alle_neu_analysieren(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/vorschlaege/zuruecksetzen")
 def zuruecksetzen(request: Request, db: Session = Depends(get_db)):
-    """Löscht unwiderruflich alle noch nicht übernommenen Vorschläge (offen
-    oder manuell verworfen) sowie den Rohtext-Cache (finder_funde) - bewusster
-    Neustart, z.B. nach einer Häufung von Duplikaten, um mit dem nächsten
-    "Jetzt suchen" wieder komplett frisch zu beginnen statt (noch) fehlerhaft
-    zwischengespeicherte Extraktionen weiterzuverwenden.
+    """Löscht unwiderruflich alle noch nicht übernommenen Vorschläge - egal
+    ob vorgeschlagen, zu_pruefen, automatisch_abgelehnt oder manuell
+    verworfen (status != STATUS_UEBERNOMMEN deckt alle vier ab) - sowie den
+    Rohtext-Cache (finder_funde). Bewusster Neustart, z.B. nach einer Häufung
+    von Duplikaten, um mit dem nächsten "Jetzt suchen" wieder komplett frisch
+    zu beginnen statt (noch) fehlerhaft zwischengespeicherte Extraktionen
+    weiterzuverwenden.
 
     Bereits übernommene Vorschläge bleiben ausdrücklich erhalten: sie sind
     längst ein echter Deal-Datensatz, und ohne ihre Vorschlags-Zeile würde
