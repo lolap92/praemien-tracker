@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.20.1
+
+Fehlerbehebung: der JSON-Import (auch beim Übernehmen eines
+KI-Deal-Finder-Vorschlags) kannte bisher kein `freibetrag_jahr` - ein
+importierter Freibetrag landete deshalb ohne Jahresangabe in der Datenbank
+und erschien in der Freibetrag-Übersicht in keiner der beiden Jahresspalten,
+war also praktisch unsichtbar, bis man ihn einmal manuell auf der
+Bearbeiten-Seite nachträgt. Der JSON-Import setzt jetzt - wie die
+Bearbeiten-Seite schon immer - bei einem gesetzten Freibetrag ohne
+Jahresangabe automatisch das laufende Jahr.
+
 ## 2.20.0
 
 **Kunden-wirbt-Kunden-Recherche.** Beim Anlegen eines Deals (Formular,

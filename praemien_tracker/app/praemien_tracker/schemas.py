@@ -76,6 +76,10 @@ class DealImport(BaseModel):
     kuendigung_hinweis_url: Optional[str] = None
     kommentar: Optional[str] = None
     freibetrag: Optional[Decimal] = None
+    # Ohne Angabe fällt ein gesetzter Freibetrag beim Import auf das laufende
+    # Jahr (siehe helpers.freibetrag_jahr_bestimmen) - sonst wäre er in der
+    # Freibetrag-Übersicht keiner Jahresspalte zugeordnet und unsichtbar.
+    freibetrag_jahr: Optional[int] = None
     praemien_auf_sparkonto: Optional[bool] = None
     zugangsdaten_gespeichert: bool = False
     # Felder, die bewusst als "nicht nötig" abgehakt wurden - damit sich die

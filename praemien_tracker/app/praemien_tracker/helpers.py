@@ -32,6 +32,21 @@ def parse_decimal(value: str | None) -> Decimal | None:
         return None
 
 
+def freibetrag_jahr_bestimmen(jahr: int | None, betrag: Decimal | None) -> int | None:
+    """Ohne Jahresangabe fällt ein gesetzter Freibetrag-Betrag auf das
+    laufende Jahr - sonst erscheint er in keiner der beiden Jahresspalten der
+    Freibetrag-Übersicht (statistiken.py) und ist praktisch unsichtbar. Ohne
+    Betrag bleibt eine (unwahrscheinliche) Jahresangabe ohne Betrag einfach
+    stehen, ohne Auswirkung.
+
+    Gemeinsam genutzt von der Bearbeiten-Seite (routers/deals.py) und
+    build_deal_from_import() - jede Stelle, die freibetrag setzt, muss auch
+    freibetrag_jahr danach bestimmen, sonst entsteht genau diese Lücke."""
+    if betrag is None:
+        return jahr
+    return jahr or datetime.date.today().year
+
+
 def monat_aus_formular(wert: str | None) -> str | None:
     """Monatsangabe aus dem Formular auf ISO bringen. Nicht lesbare Eingaben
     werden unverändert übernommen, damit die Eingabe des Nutzers nicht
@@ -164,6 +179,7 @@ def build_deal_from_import(db: Session, daten: DealImport) -> Deal:
         kuendigung_hinweis=_leer_zu_none(daten.kuendigung_hinweis),
         kuendigung_hinweis_url=_leer_zu_none(daten.kuendigung_hinweis_url),
         freibetrag=daten.freibetrag,
+        freibetrag_jahr=freibetrag_jahr_bestimmen(daten.freibetrag_jahr, daten.freibetrag),
         praemien_auf_sparkonto=daten.praemien_auf_sparkonto,
         kommentar=_leer_zu_none(daten.kommentar),
         zugangsdaten_gespeichert=daten.zugangsdaten_gespeichert,

@@ -14,6 +14,7 @@ from ..database import get_db
 from ..export import build_workbook
 from ..helpers import (
     build_deal_from_import,
+    freibetrag_jahr_bestimmen,
     get_or_create_bank,
     get_or_create_inhaber,
     kuendigung_vorschlag,
@@ -50,14 +51,11 @@ def _quelle_oder_400(wert: str) -> str:
     return normalisiert
 
 
-def _freibetrag_jahr(eingabe: str, betrag) -> int | None:
+def _jahr_aus_formular(eingabe: str) -> int | None:
     try:
-        jahr = int(eingabe.strip())
+        return int(eingabe.strip())
     except (ValueError, AttributeError):
-        jahr = None
-    if betrag is None:
-        return jahr
-    return jahr or datetime.date.today().year
+        return None
 
 
 def _als_int(werte: list[str]) -> list[int]:
@@ -383,7 +381,7 @@ def deal_update(
     deal.freibetrag = parse_decimal(freibetrag)
     # Ohne Jahresangabe faellt der Betrag auf das laufende Jahr - sonst
     # erscheint er in keiner der beiden Jahresspalten und ist unsichtbar.
-    deal.freibetrag_jahr = _freibetrag_jahr(freibetrag_jahr, deal.freibetrag)
+    deal.freibetrag_jahr = freibetrag_jahr_bestimmen(_jahr_aus_formular(freibetrag_jahr), deal.freibetrag)
     deal.praemien_auf_sparkonto = (praemien_auf_sparkonto == "on") if praemien_auf_sparkonto else None
     deal.kommentar = kommentar.strip() or None
     deal.zugangsdaten_gespeichert = zugangsdaten_gespeichert == "on"
