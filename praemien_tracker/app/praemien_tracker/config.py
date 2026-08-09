@@ -81,10 +81,27 @@ ANTHROPIC_MODEL: str = _OPTIONEN.get("anthropic_model") or "claude-haiku-4-5"
 MINDESTPRAEMIE: Decimal = _mindestpraemie(_OPTIONEN.get("mindestpraemie", 50))
 MYDEALZ_GRUPPE: str = _OPTIONEN.get("mydealz_gruppe") or "vertraege-finanzen"
 SPARTANIEN_URL: str = _OPTIONEN.get("spartanien_url") or "https://www.spartanien.de/"
-# dealdoktor liefert einen WordPress-RSS-Feed; die Rubrik "Bonus-Deals" ist am
-# stärksten auf Konto-/Depot-Prämien fokussiert. Über die Option lässt sich
-# jeder andere Feed (z.B. eine andere Kategorie) einsetzen.
-DEALDOKTOR_FEED_URL: str = _OPTIONEN.get("dealdoktor_feed_url") or "https://www.dealdoktor.de/bonus-deals/feed/"
+
+
+def _dealdoktor_feed_urls(wert) -> list[str]:
+    """Kommagetrennte Liste von dealdoktor-RSS-Feed-URLs (analog zu
+    benachrichtigungsgeraete) - dealdoktor liefert je Rubrik/Themenwelt einen
+    eigenen WordPress-Feed, es gibt keinen gemeinsamen Feed über mehrere
+    Kategorien hinweg. Vorgabe deckt die Rubrik "Bonus-Deals" (allgemeine
+    Konto-/Depot-Prämien) und die Themenwelt "Banken & Versicherung" ab."""
+    vorgabe = [
+        "https://www.dealdoktor.de/bonus-deals/feed/",
+        "https://www.dealdoktor.de/themenwelten/banken-versicherung/feed/",
+    ]
+    if not wert or not str(wert).strip():
+        return vorgabe
+    urls = [u.strip() for u in str(wert).split(",") if u.strip()]
+    return urls or vorgabe
+
+
+# Über die Option lässt sich die Feed-Auswahl anpassen (z.B. weitere/andere
+# Kategorien) - mehrere URLs kommagetrennt in einem einzigen Textfeld.
+DEALDOKTOR_FEED_URLS: list[str] = _dealdoktor_feed_urls(_OPTIONEN.get("dealdoktor_feed_url"))
 
 # Benachrichtigung bei neuen Vorschlägen (Konzept Abschnitt 6).
 # "benachrichtigungsgeraete" ist eine kommagetrennte Liste von Home-

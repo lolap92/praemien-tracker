@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.21.0
+
+Der KI-Deal-Finder liest bei dealdoktor jetzt zusätzlich zur Rubrik
+"Bonus-Deals" auch die Themenwelt "Banken & Versicherung"
+(`https://www.dealdoktor.de/themenwelten/banken-versicherung/feed/`) - dort
+laufen teils andere Konto-/Depot-/Versicherungs-Prämien auf, die im
+Bonus-Deals-Feed nicht auftauchen. Die Add-on-Option `dealdoktor_feed_url`
+akzeptiert dafür jetzt mehrere, durch Komma getrennte Feed-URLs (analog zu
+`benachrichtigungsgeraete`) statt nur einer einzelnen - bestehende
+Installationen mit einer einzelnen URL laufen unverändert weiter. Fällt
+einer der Feeds aus (z. B. geändertes URL-Schema), wird nur dieser eine
+übersprungen, die übrigen Quellen laufen normal weiter.
+
 ## 2.20.3
 
 Klarstellung: der Dialog von "Zurücksetzen" hieß "...und neu starten?" und

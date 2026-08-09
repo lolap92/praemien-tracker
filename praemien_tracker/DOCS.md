@@ -283,7 +283,7 @@ folgende optionale Einstellungen (Add-on-Konfiguration in Home Assistant):
 | `mindestpraemie` | Prämien unterhalb dieses Betrags werden automatisch abgelehnt (mit Begründung, weiterhin sichtbar). | `50` |
 | `mydealz_gruppe` | mydealz-Gruppe für den RSS-Feed. | `vertraege-finanzen` |
 | `spartanien_url` | Ziel-URL für den Spartanien-Parser. | `https://www.spartanien.de/` |
-| `dealdoktor_feed_url` | RSS-Feed-URL für den DealDoktor-Parser (WordPress-Feed, z. B. eine andere Kategorie). | `https://www.dealdoktor.de/bonus-deals/feed/` |
+| `dealdoktor_feed_url` | RSS-Feed-URL(s) für den DealDoktor-Parser (WordPress-Feeds, je Rubrik/Themenwelt ein eigener Feed) - mehrere URLs durch Komma getrennt eintragen, z. B. um eine weitere Kategorie zu ergänzen. | `https://www.dealdoktor.de/bonus-deals/feed/, https://www.dealdoktor.de/themenwelten/banken-versicherung/feed/` |
 | `benachrichtigungen_aktiv` | Push-Benachrichtigung bei neuen Vorschlägen ein-/ausschalten. | `true` |
 | `benachrichtigungsgeraete` ("Benachrichtigungsgeräte") | Home-Assistant-Notify-Dienst(e) ohne `notify.`-Präfix, z. B. `mobile_app_pixel_8` für ein bestimmtes Smartphone - mehrere Geräte durch Komma getrennt eintragen, z. B. `mobile_app_pixel_8, mobile_app_iphone_anna` (Gerätename siehe HA unter Einstellungen > Geräte & Dienste > das jeweilige Handy > "Dienst" im Entwicklerwerkzeug). `notify` adressiert weiterhin alle Geräte. | `notify` |
 | `taeglicher_lauf_aktiv` ("Täglicher Lauf aktiv") | Automatischen KI-Deal-Finder-Lauf um 06:00 Uhr ein-/ausschalten. Bei Deaktivierung bleibt "Jetzt suchen" weiterhin manuell nutzbar. | `true` |

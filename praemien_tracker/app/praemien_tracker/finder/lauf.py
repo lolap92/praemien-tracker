@@ -87,11 +87,24 @@ def _rohfunde_holen() -> _QuellenErgebnis:
     except Exception as exc:
         logger.exception("spartanien-Abruf fehlgeschlagen, Lauf wird ohne diese Quelle fortgesetzt.")
         ergebnis.fehler.append(f"spartanien nicht erreichbar: {exc}")
-    try:
-        ergebnis.dealdoktor_funde = fetch_dealdoktor(config.DEALDOKTOR_FEED_URL)
-    except Exception as exc:
-        logger.exception("dealdoktor-Abruf fehlgeschlagen, Lauf wird ohne diese Quelle fortgesetzt.")
-        ergebnis.fehler.append(f"dealdoktor nicht erreichbar: {exc}")
+    dealdoktor_funde: list[RohFund] = []
+    gesehene_dealdoktor_urls: set[str] = set()
+    for feed_url in config.DEALDOKTOR_FEED_URLS:
+        # Jeder Feed einzeln abgefangen: eine nicht (mehr) erreichbare
+        # Rubrik/Themenwelt soll nicht die anderen dealdoktor-Feeds mit
+        # ausfallen lassen, gleiche Logik wie bei mydealz/spartanien oben.
+        try:
+            for fund in fetch_dealdoktor(feed_url):
+                if fund.quelle_url in gesehene_dealdoktor_urls:
+                    continue
+                gesehene_dealdoktor_urls.add(fund.quelle_url)
+                dealdoktor_funde.append(fund)
+        except Exception as exc:
+            logger.exception(
+                "dealdoktor-Abruf (%s) fehlgeschlagen, Lauf wird ohne diesen Feed fortgesetzt.", feed_url
+            )
+            ergebnis.fehler.append(f"dealdoktor ({feed_url}) nicht erreichbar: {exc}")
+    ergebnis.dealdoktor_funde = dealdoktor_funde
     return ergebnis
 
 

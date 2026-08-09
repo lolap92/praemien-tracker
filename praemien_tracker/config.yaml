@@ -1,5 +1,5 @@
 name: "Prämien-Tracker"
-version: "2.20.3"
+version: "2.21.0"
 slug: "praemien_tracker"
 description: "Private Übersicht und Verwaltung von Bank-Prämien-Deals"
 url: "https://github.com/lolap92/praemien-tracker"
@@ -25,7 +25,7 @@ options:
   mindestpraemie: 50
   mydealz_gruppe: "vertraege-finanzen"
   spartanien_url: "https://www.spartanien.de/"
-  dealdoktor_feed_url: "https://www.dealdoktor.de/bonus-deals/feed/"
+  dealdoktor_feed_url: "https://www.dealdoktor.de/bonus-deals/feed/,https://www.dealdoktor.de/themenwelten/banken-versicherung/feed/"
   benachrichtigungen_aktiv: true
   benachrichtigungsgeraete: "notify"
   taeglicher_lauf_aktiv: true
@@ -36,7 +36,7 @@ schema:
   mindestpraemie: "float"
   mydealz_gruppe: "str"
   spartanien_url: "url"
-  dealdoktor_feed_url: "url"
+  dealdoktor_feed_url: "str"
   benachrichtigungen_aktiv: "bool"
   benachrichtigungsgeraete: "str"
   taeglicher_lauf_aktiv: "bool"
