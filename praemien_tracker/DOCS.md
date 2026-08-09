@@ -162,8 +162,8 @@ der Weg fest hinterlegt und geprüft) - das passiert sofort, ohne API-Aufruf.
 Kennt die feste Tabelle keinen Eintrag, bleibt das Feld beim Anlegen zunächst
 leer: die KI-Websuche läuft nicht mehr direkt beim Anlegen (das konnte den
 Vorgang für eine noch nie recherchierte Bank+Kontoart-Kombination spürbar
-verzögern), sondern nachts als eigener Batch-Lauf um 05:00 Uhr - eine Stunde
-vor dem KI-Deal-Finder, damit beide nicht gleichzeitig gegen dieselbe
+verzögern), sondern nachts als eigener Batch-Lauf um 02:00 Uhr - deutlich vor
+dem KI-Deal-Finder um 06:00, damit beide nicht gleichzeitig gegen dieselbe
 Datenbank schreiben. Der Batch durchsucht alle Deals ohne Kündigungshinweis
 und trägt - nur mit konfiguriertem Anthropic-API-Key - per Websuche einen
 nach, markiert deutlich als **"KI-recherchiert, bitte prüfen"** auf der
@@ -174,8 +174,8 @@ API-Key oder ohne verlässlichen Treffer bleibt das Feld leer - der Nutzer
 trägt es dann selbst ein. Sobald das Feld von Hand bearbeitet wird,
 verschwindet die Markierung, denn ab dann gehört der Text dem Nutzer, und
 der nächtliche Batch lässt Deals mit einem bereits gesetzten Hinweis
-unangetastet. Steuerbar über dieselbe Option wie der KI-Deal-Finder
-(`taeglicher_lauf_aktiv`).
+unangetastet. Über die eigene Option `kuendigung_hinweise_batch_aktiv`
+unabhängig vom KI-Deal-Finder abschaltbar.
 
 ## Kunden-wirbt-Kunden-Recherche
 
@@ -296,7 +296,8 @@ folgende optionale Einstellungen (Add-on-Konfiguration in Home Assistant):
 | `dealdoktor_feed_url` | RSS-Feed-URL(s) für den DealDoktor-Parser (WordPress-Feeds, je Rubrik/Themenwelt ein eigener Feed) - mehrere URLs durch Komma getrennt eintragen, z. B. um eine weitere Kategorie zu ergänzen. | `https://www.dealdoktor.de/bonus-deals/feed/, https://www.dealdoktor.de/themenwelten/banken-versicherung/feed/` |
 | `benachrichtigungen_aktiv` | Push-Benachrichtigung bei neuen Vorschlägen ein-/ausschalten. | `true` |
 | `benachrichtigungsgeraete` ("Benachrichtigungsgeräte") | Home-Assistant-Notify-Dienst(e) ohne `notify.`-Präfix, z. B. `mobile_app_pixel_8` für ein bestimmtes Smartphone - mehrere Geräte durch Komma getrennt eintragen, z. B. `mobile_app_pixel_8, mobile_app_iphone_anna` (Gerätename siehe HA unter Einstellungen > Geräte & Dienste > das jeweilige Handy > "Dienst" im Entwicklerwerkzeug). `notify` adressiert weiterhin alle Geräte. | `notify` |
-| `taeglicher_lauf_aktiv` ("Täglicher Lauf aktiv") | Automatischen KI-Deal-Finder-Lauf um 06:00 Uhr sowie den nächtlichen Kündigungshinweis-Batch um 05:00 Uhr (trägt fehlende Kündigungswege nach, siehe unten) gemeinsam ein-/ausschalten. Bei Deaktivierung bleibt "Jetzt suchen" weiterhin manuell nutzbar. | `true` |
+| `taeglicher_lauf_aktiv` ("Täglicher Lauf aktiv") | Automatischen KI-Deal-Finder-Lauf um 06:00 Uhr ein-/ausschalten. Bei Deaktivierung bleibt "Jetzt suchen" weiterhin manuell nutzbar. | `true` |
+| `kuendigung_hinweise_batch_aktiv` ("Kündigungshinweis-Batch aktiv") | Nächtlichen Kündigungshinweis-Batch um 02:00 Uhr ein-/ausschalten (trägt fehlende Kündigungswege per KI-Websuche nach, siehe oben) - unabhängig vom KI-Deal-Finder. | `true` |
 
 Bei 1×/Tag und wenigen kurzen Texten liegen die tatsächlichen API-Kosten
 typischerweise im Cent-Bereich pro Monat.

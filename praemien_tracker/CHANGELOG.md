@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.27.1
+
+Zwei Anpassungen am nächtlichen Kündigungshinweis-Batch (siehe 2.27.0):
+
+- Läuft jetzt um **02:00 Uhr** statt 05:00 Uhr.
+- Neue eigene Option `kuendigung_hinweise_batch_aktiv`, um ihn unabhängig
+  vom KI-Deal-Finder ein-/auszuschalten - bisher hing er an
+  `taeglicher_lauf_aktiv` und ließ sich nicht getrennt deaktivieren.
+
 ## 2.27.0
 
 Kündigungsweg-Recherche komplett vom Anlegen eines Deals entkoppelt: der

@@ -28,7 +28,14 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect
 
 from . import protokoll  # noqa: F401  (registriert die Änderungsprotokoll-Events)
-from .config import DATABASE_URL, DB_BACKUP_PATH, DB_PATH, DEMO_MODUS, TAEGLICHER_LAUF_AKTIV
+from .config import (
+    DATABASE_URL,
+    DB_BACKUP_PATH,
+    DB_PATH,
+    DEMO_MODUS,
+    KUENDIGUNG_HINWEISE_BATCH_AKTIV,
+    TAEGLICHER_LAUF_AKTIV,
+)
 from .database import SessionLocal, engine
 from .demo_seed import lade_demo_daten
 from .finder.lauf import geplanter_lauf
@@ -154,18 +161,22 @@ def _scheduler_starten() -> BackgroundScheduler:
     Batch (kuendigung_recherche.naechtlicher_lauf - trägt KI-recherchierte
     Kündigungswege für Deals ohne eigenen Hinweis nach, siehe dort), beide im
     selben Prozess wie die Web-App (Konzept: kein zweiter Container/Cronjob).
-    Der Kündigungshinweis-Batch läuft eine Stunde früher (05:00 statt 06:00),
-    damit beide Jobs nicht gleichzeitig gegen dieselbe SQLite-Datenbank
-    schreiben. Uhrzeiten bewusst nicht konfigurierbar - die Add-on-Optionen
-    betreffen die Fachlogik der Läufe (Mindestprämie, Quellen), nicht ihre
-    Uhrzeit. Ob sie überhaupt laufen, ist über die Option
-    "taeglicher_lauf_aktiv" gemeinsam abschaltbar (z. B. um API-Kosten zu
-    vermeiden) - "Jetzt suchen" bleibt davon unberührt."""
+    Der Kündigungshinweis-Batch läuft um 02:00 Uhr, deutlich vor dem
+    KI-Deal-Finder um 06:00, damit beide Jobs nicht gleichzeitig gegen
+    dieselbe SQLite-Datenbank schreiben. Uhrzeiten bewusst nicht
+    konfigurierbar - die Add-on-Optionen betreffen die Fachlogik der Läufe
+    (Mindestprämie, Quellen), nicht ihre Uhrzeit.
+
+    Beide Jobs sind über eigene Optionen unabhängig voneinander abschaltbar
+    ("taeglicher_lauf_aktiv" für den KI-Deal-Finder,
+    "kuendigung_hinweise_batch_aktiv" für den Kündigungshinweis-Batch, z. B.
+    um API-Kosten zu vermeiden) - "Jetzt suchen" bleibt davon unberührt."""
     scheduler = BackgroundScheduler()
-    if TAEGLICHER_LAUF_AKTIV:
+    if KUENDIGUNG_HINWEISE_BATCH_AKTIV:
         scheduler.add_job(
-            kuendigung_hinweise_lauf, "cron", hour=5, minute=0, id="kuendigung_hinweise", misfire_grace_time=3600
+            kuendigung_hinweise_lauf, "cron", hour=2, minute=0, id="kuendigung_hinweise", misfire_grace_time=3600
         )
+    if TAEGLICHER_LAUF_AKTIV:
         scheduler.add_job(geplanter_lauf, "cron", hour=6, minute=0, id="ki_deal_finder", misfire_grace_time=3600)
     scheduler.start()
     return scheduler

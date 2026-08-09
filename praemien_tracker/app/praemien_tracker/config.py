@@ -132,3 +132,10 @@ NOTIFY_GERAETE: list[str] = _benachrichtigungsgeraete(_OPTIONEN.get("benachricht
 # Lauf ausschließlich manuell ("Jetzt suchen") anstoßen wollen, z. B. um
 # API-Kosten zu vermeiden.
 TAEGLICHER_LAUF_AKTIV: bool = bool(_OPTIONEN.get("taeglicher_lauf_aktiv", True))
+
+# Nächtlicher Kündigungshinweis-Batch um 02:00 Uhr (siehe
+# kuendigung_recherche.naechtlicher_lauf) - eigene Option statt an
+# TAEGLICHER_LAUF_AKTIV gekoppelt, da beide Läufe unabhängig voneinander
+# sinnvoll abschaltbar sein sollen (z. B. KI-Deal-Finder weiter nutzen, aber
+# keine KI-Websuche für Kündigungswege wollen, oder umgekehrt).
+KUENDIGUNG_HINWEISE_BATCH_AKTIV: bool = bool(_OPTIONEN.get("kuendigung_hinweise_batch_aktiv", True))

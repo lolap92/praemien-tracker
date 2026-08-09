@@ -1,5 +1,5 @@
 name: "Prämien-Tracker"
-version: "2.27.0"
+version: "2.27.1"
 slug: "praemien_tracker"
 description: "Private Übersicht und Verwaltung von Bank-Prämien-Deals"
 url: "https://github.com/lolap92/praemien-tracker"
@@ -29,6 +29,7 @@ options:
   benachrichtigungen_aktiv: true
   benachrichtigungsgeraete: "notify"
   taeglicher_lauf_aktiv: true
+  kuendigung_hinweise_batch_aktiv: true
 schema:
   demo_modus: "bool"
   anthropic_api_key: "password"
@@ -40,3 +41,4 @@ schema:
   benachrichtigungen_aktiv: "bool"
   benachrichtigungsgeraete: "str"
   taeglicher_lauf_aktiv: "bool"
+  kuendigung_hinweise_batch_aktiv: "bool"
