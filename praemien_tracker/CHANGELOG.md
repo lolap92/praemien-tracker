@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.26.2
+
+Übrig gebliebene Kinder-Vorschläge bei reinen Erwachsenen-Deals bereinigt.
+
+- Seit 2.24.0 (Kinder nur bei Kinderdeals) wird einem minderjährigen Inhaber
+  ein Angebot nur noch vorgeschlagen, wenn es laut KI-Extraktion (auch) für
+  Kinder abschließbar ist - reine Erwachsenen-Angebote erscheinen für Kinder
+  seither gar nicht mehr neu. Vorher schon angelegte, noch offene
+  Kinder-Zeilen zu solchen Deals blieben davon aber unberührt: der Lauf hat
+  den minderjährigen Inhaber ab da einfach komplett übersprungen, ohne die
+  Alt-Zeile je erneut anzufassen. Ergebnis: Im "Übernehmen"-Dialog standen
+  weiterhin alle vier Haushaltsmitglieder inkl. Kinder, und selbst nachdem
+  alle Erwachsenen übernommen hatten, blieb die Vorschlags-Karte wegen der
+  liegen gebliebenen, weiterhin offenen Kinder-Zeile sichtbar.
+- Der Lauf verwirft eine solche stehen gebliebene Kinder-Zeile jetzt
+  automatisch (Grund "Nicht anwendbar"), sobald er den Fund erneut bewertet
+  und dabei feststellt, dass er für dieses Kind gar nicht gilt. Dadurch
+  tauchen im "Übernehmen"-Dialog bei einem reinen Erwachsenen-Deal nur noch
+  die Erwachsenen als auswählbar auf, und die Karte verschwindet wie
+  erwartet, sobald für alle Erwachsenen ein Deal angelegt wurde. Bei
+  tatsächlichen Kinderdeals (fuer_kinder=true) ändert sich nichts - Kinder
+  bleiben dort wie bisher mit auswählbar.
+- Greift beim nächsten täglichen Lauf (oder "Jetzt suchen"/"Alle neu
+  analysieren") automatisch, ohne manuellen Aufräumschritt.
+
 ## 2.26.1
 
 "Übernehmen" hing beim Klick auf "Jetzt anlegen" trotz der Hintergrund-KwK-

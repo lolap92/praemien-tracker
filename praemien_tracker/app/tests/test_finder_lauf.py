@@ -135,6 +135,74 @@ def test_minderjaehrige_bekommen_nur_kinderdeals(db, monkeypatch):
     assert kind_urls == {"https://mydealz.de/junior"}
 
 
+def test_stehen_gebliebene_kinder_vorschlaege_werden_bei_reinem_erwachsenen_deal_verworfen(
+    db, monkeypatch
+):
+    """Regressionstest: eine für ein minderjähriges Kind schon bestehende,
+    noch offene Vorschlagszeile (z.B. angelegt, bevor es die Alterprüfung
+    gab, oder unter einer damals abweichenden fuer_kinder-Einschätzung) darf
+    nicht für immer offen hängen bleiben - sonst bliebe die Vorschlags-Karte
+    trotz Übernahme durch alle Erwachsenen sichtbar (siehe
+    _nicht_anwendbaren_vorschlag_verwerfen). Sie wird beim nächsten Lauf
+    automatisch verworfen (Grund "nicht_anwendbar")."""
+    erwachsen = Inhaber(name="Alice")
+    kind = Inhaber(name="Kim", ist_minderjaehrig=True)
+    db.add_all([erwachsen, kind])
+    db.commit()
+
+    fund = RohFund("mydealz", "https://mydealz.de/giro", "t", "nur Erwachsene")
+    _patch_quellen(monkeypatch, [fund])
+    client = FakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="Bank", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]),
+    )
+
+    # Stehen gebliebene Alt-Zeile für das Kind, wie sie vor Einführung der
+    # Alterprüfung entstanden wäre - noch offen ("vorgeschlagen").
+    alte_kind_zeile = DealVorschlag(
+        inhaber_id=kind.id,
+        quelle="mydealz",
+        quelle_url=fund.quelle_url,
+        bank_name="Bank",
+        kontoart="Girokonto",
+        praemie_betrag=125.0,
+        roh_json="{}",
+        inhalt_hash="alt-hash",
+        status=matching.STATUS_VORGESCHLAGEN,
+    )
+    db.add(alte_kind_zeile)
+    db.commit()
+    kind_zeile_id = alte_kind_zeile.id
+
+    lauf.taeglicher_lauf(db, client=client)
+
+    db.expire_all()
+    kind_zeile = db.get(DealVorschlag, kind_zeile_id)
+    assert kind_zeile.status == matching.STATUS_VERWORFEN
+    assert kind_zeile.verwerfen_gruende == matching.VERWERFEN_GRUND_NICHT_ANWENDBAR
+
+    # Die Erwachsenen-Zeile ist normal neu entstanden und offen.
+    erwachsenen_zeile = (
+        db.query(DealVorschlag)
+        .filter(DealVorschlag.inhaber_id == erwachsen.id, DealVorschlag.quelle_url == fund.quelle_url)
+        .one()
+    )
+    assert erwachsenen_zeile.status == matching.STATUS_VORGESCHLAGEN
+
+    # Keine offene Zeile mehr für das Kind auf diesem Fund - die Gruppe würde
+    # in der Vorschläge-Ansicht verschwinden, sobald der Erwachsene übernommen hat.
+    offene_kind_zeilen = (
+        db.query(DealVorschlag)
+        .filter(
+            DealVorschlag.inhaber_id == kind.id,
+            DealVorschlag.quelle_url == fund.quelle_url,
+            DealVorschlag.status.in_(matching.STATUS_OFFEN),
+        )
+        .count()
+    )
+    assert offene_kind_zeilen == 0
+
+
 def test_doppelter_fund_in_einem_lauf_wird_nur_einmal_verarbeitet(db, zwei_inhaber, monkeypatch):
     """Regressionstest: finder_funde.quelle_url ist eindeutig - taucht
     dieselbe quelle_url zweimal in einem Lauf auf (z.B. weil eine Quelle

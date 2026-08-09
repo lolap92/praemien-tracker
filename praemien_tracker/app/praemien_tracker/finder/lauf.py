@@ -170,6 +170,29 @@ def _vorschlag_felder_setzen(
     ]
 
 
+def _nicht_anwendbaren_vorschlag_verwerfen(db: Session, quelle_url: str, inhaber_id: int) -> None:
+    """Räumt eine für diesen minderjährigen Inhaber schon bestehende, noch
+    offene Vorschlagszeile zu `quelle_url` weg, sobald die aktuelle Prüfung
+    ergibt, dass das Angebot für Kinder gar nicht anwendbar ist (siehe
+    Aufrufer). Ohne das würde eine früher - z.B. vor Einführung dieser
+    Alterprüfung oder unter einer damals abweichenden fuer_kinder-Einschätzung
+    - angelegte Zeile für immer offen hängen bleiben: der Inhaber wird ja
+    gerade übersprungen und nie wieder neu bewertet, und die Vorschlags-Karte
+    würde trotz Übernahme durch alle Erwachsenen nie verschwinden."""
+    offene = (
+        db.query(DealVorschlag)
+        .filter(
+            DealVorschlag.quelle_url == quelle_url,
+            DealVorschlag.inhaber_id == inhaber_id,
+            DealVorschlag.status.in_(matching.STATUS_OFFEN),
+        )
+        .all()
+    )
+    for vorschlag in offene:
+        vorschlag.status = matching.STATUS_VERWORFEN
+        vorschlag.verwerfen_gruende = matching.VERWERFEN_GRUND_NICHT_ANWENDBAR
+
+
 def _protokoll_speichern(db: Session, **werte) -> None:
     """Schreibt eine neue FinderLauf-Zeile. Läuft in einer eigenen kleinen
     Transaktion - wird nach einem db.rollback() im Hauptteil aufgerufen,
@@ -337,8 +360,12 @@ def taeglicher_lauf(
                 # Depot, Kinderkonto). Die meisten Neukunden-Prämien setzen
                 # Volljährigkeit voraus - steht nichts im Text, gilt der Deal
                 # als reines Erwachsenen-Angebot (extrahiert.fuer_kinder=False),
-                # und das Kind erscheint gar nicht erst als Auswahl.
+                # und das Kind erscheint gar nicht erst als Auswahl. Existiert
+                # dafür schon eine offene Zeile (z.B. aus einer Zeit vor dieser
+                # Prüfung), wird sie hier automatisch verworfen statt für
+                # immer offen zu bleiben (_nicht_anwendbaren_vorschlag_verwerfen).
                 if inhaber.ist_minderjaehrig and not extrahiert.fuer_kinder:
+                    _nicht_anwendbaren_vorschlag_verwerfen(db, fund.quelle_url, inhaber.id)
                     continue
                 match = matching.bewerten(db, fund, extrahiert, inhaber, config.MINDESTPRAEMIE)
                 bestehend = matching.bestehenden_vorschlag_finden(

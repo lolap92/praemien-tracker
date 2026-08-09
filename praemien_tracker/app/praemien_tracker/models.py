@@ -178,10 +178,12 @@ class DealVorschlag(Base):
     sperrfrist_monate: Mapped[int | None] = mapped_column(nullable=True)
     # Klartext-Begründung(en), nur bei zu_pruefen/automatisch_abgelehnt gefüllt.
     ablehnungsgruende: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Komma-getrennte Codes aus matching.VERWERFEN_GRUENDE_LABELS, nur beim
-    # manuellen Verwerfen durch den Nutzer gefüllt (Mehrfachauswahl im
-    # Dialog) - im Unterschied zu ablehnungsgruende, das die automatische
-    # KI-Ablehnung begründet.
+    # Komma-getrennte Codes aus matching.VERWERFEN_GRUENDE_LABELS. Meist vom
+    # Nutzer manuell gefüllt (Mehrfachauswahl im Dialog), daneben auch
+    # automatisch mit dem Code "nicht_anwendbar", wenn ein Angebot für einen
+    # minderjährigen Inhaber gar nicht gilt (siehe finder/lauf.py:
+    # _nicht_anwendbaren_vorschlag_verwerfen) - im Unterschied zu
+    # ablehnungsgruende, das die automatische KI-Ablehnung begründet.
     verwerfen_gruende: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # Vollständiges JSON im Deal-Anlage-Format (schemas.DealImport) - wird
     # beim Übernehmen unverändert an build_deal_from_import() gereicht.
