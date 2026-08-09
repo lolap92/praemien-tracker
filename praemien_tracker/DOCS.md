@@ -116,7 +116,7 @@ falls keine Version passt.
 
 Ein Klick auf **Verwerfen** öffnet ebenfalls einen Dialog: Hier wird - mit
 Mehrfachauswahl möglich - der Grund festgehalten (Duplikat, Bedingungen zu
-aufwendig, noch nicht wieder Neukunde). Ohne ausgewählten Grund lässt sich
+aufwendig, noch nicht wieder Neukunde, Prämie zu niedrig). Ohne ausgewählten Grund lässt sich
 nicht verwerfen. Verworfene Funde erscheinen ganz unten in einer eigenen,
 eingeklappten Sektion, mit den gewählten Gründen als Kennzeichnung - und
 tauchen dank Dedup nicht erneut auf, solange sich am Fund nichts ändert.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.23.1
+
+Neuer Grund "Prämie zu niedrig" bei den Verwerfen-Optionen (bisher:
+Duplikat, Bedingungen zu aufwendig, noch nicht wieder Neukunde) - deckt
+den Fall ab, dass ein Fund zwar durchgeht (z. B. knapp über der
+Mindestprämie), sich aber trotzdem nicht lohnt.
+
 ## 2.23.0
 
 Automatisch abgelehnte Vorschläge zeigen jetzt oben auf der Kachel, direkt
