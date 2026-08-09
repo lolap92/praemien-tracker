@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.22.2
+
+Die Lauf-Zusammenfassungstabelle ("Letzter Lauf erfolgreich" aufgeklappt)
+sprengte auf schmalen Handy-Bildschirmen die Breite - "SPARTANIEN" und
+"DEALDOKTOR" liefen ins horizontale Scrollen. Auf Bildschirmen bis 600px
+Breite heißen die Quellen-Spalten jetzt MD/SP/DD statt ausgeschrieben,
+Abstände und Schrift sind enger, die Zeilenbeschriftung darf umbrechen -
+auf größeren Bildschirmen unverändert die vollen Quellennamen. Keine
+Änderung an den Zahlen selbst.
+
 ## 2.22.1
 
 "Alle neu analysieren" und "Zurücksetzen" stecken jetzt standardmäßig

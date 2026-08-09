@@ -1553,6 +1553,32 @@ table.lauf-tabelle tr:hover {
   color: var(--ink-faint);
 }
 
+.quelle-kurz {
+  display: none;
+}
+
+/* Auf schmalen Bildschirmen sonst nicht ohne horizontales Scrollen lesbar
+   (fünf Spalten inkl. "SPARTANIEN"/"DEALDOKTOR" sprengen die Breite): Quellen
+   auf Kürzel verkürzt, Beschriftungszeile darf umbrechen, Abstände enger. */
+@media (max-width: 600px) {
+  table.lauf-tabelle {
+    font-size: 0.72rem;
+  }
+  table.lauf-tabelle th,
+  table.lauf-tabelle td {
+    padding: 0.4rem 0.3rem;
+  }
+  table.lauf-tabelle td.bank {
+    white-space: normal;
+  }
+  .quelle-lang {
+    display: none;
+  }
+  .quelle-kurz {
+    display: inline;
+  }
+}
+
 .lauf-buttons {
   display: flex;
   flex-wrap: wrap;
