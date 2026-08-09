@@ -425,6 +425,26 @@ main {
   font-weight: 600;
 }
 
+.pipe.pipe-4 {
+  flex-wrap: nowrap;
+}
+
+.pipe.pipe-4 .seg {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.pipe.pipe-4 .seg .cnt {
+  font-size: 0.95rem;
+}
+
+.pipe.pipe-4 .seg .nm {
+  font-size: 0.62rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .pipe .seg .nm {
   font-size: 0.72rem;
   color: var(--ink-soft);

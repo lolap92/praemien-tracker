@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.24.2
+
+Die vier Kacheln der "Vorschläge"-Übersicht auf der Startseite (Vorgeschlagen/
+Zu prüfen/Abgelehnt/Verworfen, siehe 2.24.0) brachen auf schmalen
+Bildschirmen (Handy) in zwei Zeilen um, weil sie dieselbe Flex-Regel wie die
+sechsteilige Pipeline-Kachel nutzten, die absichtlich umbricht. Die
+Vorschläge-Kachel hat jetzt eine eigene Regel (`pipe-4`), die alle vier
+Segmente per `flex-wrap: nowrap` in einer Zeile hält und Schrift/Abstände
+dafür etwas verkleinert - die sechsteilige Pipeline-Kachel bleibt unverändert
+zweizeilig.
+
 ## 2.24.1
 
 Vier Verbesserungen am "Übernehmen"-Ablauf für KI-Vorschläge:
