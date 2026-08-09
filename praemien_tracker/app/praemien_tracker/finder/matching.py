@@ -295,10 +295,14 @@ def bewerten(
             "kontoart": extraktion.kontoart.strip(),
             "inhaber": inhaber.name,
             "praemien": praemien_json,
-            "bedingungen": [
-                {"beschreibung": b.beschreibung, "erfuellt": b.einschaetzung == EINSCHAETZUNG_ERFUELLT}
-                for b in bedingungen
-            ],
+            # erfuellt startet hier bewusst immer False, unabhängig von der
+            # KI-Einschätzung (b.einschaetzung, weiterhin oben auf der Karte
+            # sichtbar, siehe vorschlaege.html bedingungen_liste): eine
+            # Einschätzung ist keine bestätigte Erfüllung. Sonst würde eine
+            # neu angelegte Bedingung beim Übernehmen schon abgehakt in der
+            # Todo-Liste erscheinen, ohne dass die/der Nutzer/in sie je
+            # bestätigt hat.
+            "bedingungen": [{"beschreibung": b.beschreibung, "erfuellt": False} for b in bedingungen],
             "urls": [{"url": fund.quelle_url, "bezeichnung": f"{fund.quelle}-Angebot"}],
         },
         ensure_ascii=False,

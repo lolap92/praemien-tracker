@@ -3,16 +3,6 @@
 {% block appbar_title %}Vorschläge{% endblock %}
 {% block content %}
 
-{% if kwk_hinweis %}
-<div class="hinweis">
-  Hinweis: Die Prüfung auf ein "Kunden wirbt Kunden"-Programm ist bei
-  mindestens einem gerade übernommenen Deal fehlgeschlagen (z. B. kein
-  auswertbares Ergebnis von der KI-Websuche). Der Deal wurde trotzdem ganz
-  normal angelegt - bitte bei Interesse manuell prüfen, ob die Bank ein
-  Empfehlungsprogramm anbietet.
-</div>
-{% endif %}
-
 <div class="card">
   {% if lauf_laeuft and not letzter_lauf %}
   <p class="vorschlag-lauf-status">
@@ -320,7 +310,7 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
     <div class="vk-dialog-namen">
       {% for m in g.mitglieder %}
       <label class="vorschlag-mitglied">
-        <input type="checkbox" name="vorschlag_ids" value="{{ m.id }}" checked>
+        <input type="checkbox" name="vorschlag_ids" value="{{ m.id }}" {{ "" if m.inhaber.ist_minderjaehrig else "checked" }}>
         <span class="vk-name">{{ m.inhaber.name }}</span>
         {% if m.status != g.status %}
         <span class="chip status-{{ m.status }}">{{ m.status | vorschlag_status }}</span>

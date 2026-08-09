@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from fastapi import APIRouter, Depends, Form, Query, Request
 from sqlalchemy.orm import Session, joinedload
 
-from .. import derived
+from .. import derived, helpers
 from ..config import DEMO_MODUS
 from ..database import get_db
 from ..finder import matching
@@ -218,7 +218,6 @@ def vorschlaege_view(
     quelle: list[str] = Query(default=[]),
     typ: list[str] = Query(default=[]),
     status: list[str] = Query(default=[]),
-    kwk_hinweis: bool = Query(default=False),
     db: Session = Depends(get_db),
 ):
     filter_quelle = [q for q in quelle if q in QUELLEN]
@@ -306,25 +305,79 @@ def vorschlaege_view(
             "filter_typ": filter_typ,
             "filter_status": filter_status,
             "filter_aktiv": bool(filter_quelle or filter_typ or filter_status),
-            "kwk_hinweis": kwk_hinweis,
         },
     )
 
 
 @router.post("/vorschlaege/uebernehmen")
-def uebernehmen(
+def uebernehmen_vorschau(
     request: Request,
     vorschlag_ids: list[int] = Form(default=[]),
     verwerfen_duplikat_ids: list[int] = Form(default=[]),
     db: Session = Depends(get_db),
 ):
-    """Legt für jede ausgewählte Inhaber-Zeile einen eigenen Deal aus
-    roh_json an - über denselben Mechanismus wie der händische JSON-Import
-    (Konzept Abschnitt 7). Die Auswahl kommt aus den Checkboxen je Person in
-    der Gruppen-Karte: ein Fund kann für mehrere Namen gleichzeitig
-    übernommen werden. Auch aus "automatisch_abgelehnt" möglich, als
-    bewusstes Überstimmen. Unbekannte oder bereits entschiedene IDs werden
-    übergangen statt die ganze Anfrage abzubrechen.
+    """Erster Schritt des Übernehmens: zeigt statt sofort einen Deal je
+    ausgewähltem Inhaber anzulegen zunächst ein Bearbeitungsformular für Bank
+    und Kontoart - die einzigen beiden Felder, die typischerweise noch
+    korrigiert werden, und ohnehin für alle ausgewählten Inhaber identisch
+    (derselbe Fund, siehe VorschlagGruppe/_gruppieren). Erst das Absenden
+    dieses Formulars (uebernehmen_bestaetigen) legt die Deals wirklich an.
+    Prämien/Bedingungen/Quelle-URL bleiben unverändert aus roh_json und werden
+    nur zur Kontrolle mit angezeigt - sie wurden schon auf der Vorschlags-
+    karte geprüft, bevor "Übernehmen" überhaupt geklickt wurde.
+
+    Die Auswahl kommt aus den Checkboxen je Person in der Gruppen-Karte, auch
+    aus "automatisch_abgelehnt" möglich (bewusstes Überstimmen). Unbekannte
+    oder bereits entschiedene IDs werden hier wie beim späteren Anlegen
+    übergangen; bleibt dadurch keine gültige Auswahl übrig, geht es ohne
+    Vorschau direkt zurück zur Übersicht.
+
+    Stößt die Kunden-wirbt-Kunden-Recherche für Bank+Kontoart schon jetzt im
+    Hintergrund an (helpers.kwk_recherche_vorab_starten) - die Zeit, die der
+    Nutzer mit der Vorschau verbringt, überbrückt die KI-Websuche, ohne
+    "Übernehmen" wie früher spürbar zu blockieren (siehe
+    uebernehmen_bestaetigen)."""
+    gueltig = [v for v in (db.get(DealVorschlag, vid) for vid in vorschlag_ids) if v is not None and v.status in STATUS_OFFEN]
+    if not gueltig:
+        return redirect(request, "vorschlaege")
+
+    fuehrend = gueltig[0]
+    daten = DealImport.model_validate_json(fuehrend.roh_json)
+    kwk_schluessel = helpers.kwk_recherche_vorab_starten(daten.bank, daten.kontoart)
+
+    return templates.TemplateResponse(
+        "vorschlag_uebernehmen.html",
+        {
+            "request": request,
+            "bank": daten.bank,
+            "kontoart": daten.kontoart,
+            "praemien": daten.praemien,
+            "bedingungen": daten.bedingungen,
+            "mitglieder": gueltig,
+            "verwerfen_duplikat_ids": verwerfen_duplikat_ids,
+            "kwk_schluessel": kwk_schluessel,
+        },
+    )
+
+
+@router.post("/vorschlaege/uebernehmen/bestaetigen")
+def uebernehmen_bestaetigen(
+    request: Request,
+    vorschlag_ids: list[int] = Form(default=[]),
+    verwerfen_duplikat_ids: list[int] = Form(default=[]),
+    bank: str = Form(...),
+    kontoart: str = Form(...),
+    kwk_schluessel: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """Zweiter Schritt: legt jetzt tatsächlich für jede ausgewählte
+    Inhaber-Zeile einen eigenen Deal aus roh_json an - über denselben
+    Mechanismus wie der händische JSON-Import (Konzept Abschnitt 7). Bank und
+    Kontoart kommen aus dem in uebernehmen_vorschau editierbaren Formular und
+    überschreiben die aus roh_json, alle übrigen Felder bleiben unverändert.
+    Unbekannte oder bereits entschiedene IDs (z.B. durch einen parallel
+    offenen zweiten Tab schon entschieden) werden übergangen statt die ganze
+    Anfrage abzubrechen.
 
     verwerfen_duplikat_ids kommt aus der Duplikat-Gruppe (siehe
     DuplikatGruppe/dup_gruppe_karte): wählt der Nutzer dort eine Quelle zum
@@ -332,19 +385,29 @@ def uebernehmen(
     automatisch mit Grund "Duplikat" verworfen - kein zusätzlicher
     Bestätigungsschritt nötig.
 
-    Schlägt die Kunden-wirbt-Kunden-Recherche (helpers.kwk_vorschlag) für
-    mindestens einen übernommenen Deal fehl, blockiert das die Anlage nicht -
-    stattdessen landet ein Hinweis-Flag im Redirect, der Vorschläge-Tab zeigt
-    dann eine Erinnerung, das manuell zu prüfen."""
-    kwk_fehlgeschlagen = False
+    Die KwK-Recherche wurde schon beim Öffnen der Vorschau einmal im
+    Hintergrund für Bank+Kontoart gestartet (uebernehmen_vorschau) und gilt
+    für alle hier angelegten Deals gleichermaßen - hier wird höchstens noch
+    kurz auf das Ergebnis gewartet (helpers.kwk_recherche_ergebnis_abholen).
+    Liegt dann immer noch keins vor oder ist die Recherche fehlgeschlagen,
+    bekommt jeder neue Deal stattdessen eine einfache Erinnerungs-Aufgabe
+    (helpers.kwk_ergebnis_anwenden) - "Übernehmen" wartet dadurch nie länger
+    als KWK_TIMEOUT_SEKUNDEN auf eine hängende KI-Websuche."""
+    bank = bank.strip()
+    kontoart = kontoart.strip()
+    kwk_ergebnis = helpers.kwk_recherche_ergebnis_abholen(kwk_schluessel, timeout=helpers.KWK_TIMEOUT_SEKUNDEN)
+
     for vorschlag_id in vorschlag_ids:
         vorschlag = db.get(DealVorschlag, vorschlag_id)
         if vorschlag is None or vorschlag.status not in STATUS_OFFEN:
             continue
         daten = DealImport.model_validate_json(vorschlag.roh_json)
-        deal = build_deal_from_import(db, daten)
-        if deal.kwk_fehlgeschlagen:
-            kwk_fehlgeschlagen = True
+        if bank:
+            daten.bank = bank
+        if kontoart:
+            daten.kontoart = kontoart
+        deal = build_deal_from_import(db, daten, kwk_recherche_ueberspringen=True)
+        helpers.kwk_ergebnis_anwenden(deal, kwk_ergebnis)
         vorschlag.status = matching.STATUS_UEBERNOMMEN
     for vorschlag_id in verwerfen_duplikat_ids:
         vorschlag = db.get(DealVorschlag, vorschlag_id)
@@ -352,8 +415,7 @@ def uebernehmen(
             vorschlag.status = matching.STATUS_VERWORFEN
             vorschlag.verwerfen_gruende = matching.VERWERFEN_GRUND_DUPLIKAT
     db.commit()
-    ziel = "vorschlaege?kwk_hinweis=1" if kwk_fehlgeschlagen else "vorschlaege"
-    return redirect(request, ziel)
+    return redirect(request, "vorschlaege")
 
 
 @router.post("/vorschlaege/verwerfen")

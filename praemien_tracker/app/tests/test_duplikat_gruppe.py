@@ -185,8 +185,13 @@ def test_uebernehmen_verwirft_andere_quellen_automatisch(db, inhaber):
                             inhalt_hash="h2", bank_name="ING", praemie_betrag=Decimal("150.00"))
 
     antwort = client.post(
-        "/vorschlaege/uebernehmen",
-        data={"vorschlag_ids": [gewinner.id], "verwerfen_duplikat_ids": [verlierer.id]},
+        "/vorschlaege/uebernehmen/bestaetigen",
+        data={
+            "vorschlag_ids": [gewinner.id],
+            "verwerfen_duplikat_ids": [verlierer.id],
+            "bank": "ING",
+            "kontoart": "Girokonto",
+        },
         follow_redirects=False,
     )
     assert antwort.status_code == 303
@@ -204,7 +209,11 @@ def test_uebernehmen_ohne_duplikat_ids_verhaelt_sich_wie_bisher(db, inhaber):
     gebündelte Karte) ändert sich am bisherigen Verhalten nichts."""
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
 
-    antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+    antwort = client.post(
+        "/vorschlaege/uebernehmen/bestaetigen",
+        data={"vorschlag_ids": [vorschlag.id], "bank": "C24", "kontoart": "Girokonto"},
+        follow_redirects=False,
+    )
     assert antwort.status_code == 303
     db.refresh(vorschlag)
     assert vorschlag.status == "uebernommen"

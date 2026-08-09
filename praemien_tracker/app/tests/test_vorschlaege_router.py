@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import datetime
+import re
+import time
 from decimal import Decimal
 
 import pytest
@@ -230,10 +232,35 @@ def test_gruppen_status_ist_der_beste_einzelstatus(db, zwei_inhaber):
     assert "Bereits Kundin." in antwort.text
 
 
-def test_uebernehmen_legt_deal_an_und_markiert_vorschlag(db, inhaber):
+def test_uebernehmen_zeigt_vorschau_mit_bank_und_kontoart_ohne_deal_anzulegen(db, inhaber):
+    """Erster Schritt: nur eine editierbare Vorschau, noch kein Deal."""
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
 
-    antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+    antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]})
+    assert antwort.status_code == 200
+    assert 'value="C24"' in antwort.text
+    assert 'value="Girokonto"' in antwort.text
+    assert "Alice" in antwort.text
+
+    db.refresh(vorschlag)
+    assert vorschlag.status == "vorgeschlagen"
+    assert db.query(Deal).count() == 0
+
+
+def test_uebernehmen_ohne_gueltige_auswahl_zeigt_keine_vorschau(db):
+    antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [999999]}, follow_redirects=False)
+    assert antwort.status_code == 303
+    assert antwort.headers["location"].endswith("vorschlaege")
+
+
+def test_uebernehmen_bestaetigen_legt_deal_an_und_markiert_vorschlag(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    antwort = client.post(
+        "/vorschlaege/uebernehmen/bestaetigen",
+        data={"vorschlag_ids": [vorschlag.id], "bank": "C24", "kontoart": "Girokonto"},
+        follow_redirects=False,
+    )
     assert antwort.status_code == 303
 
     db.refresh(vorschlag)
@@ -246,42 +273,88 @@ def test_uebernehmen_legt_deal_an_und_markiert_vorschlag(db, inhaber):
     assert deal.urls[0].url == "https://www.mydealz.de/x"
 
 
-def test_uebernehmen_zeigt_hinweis_wenn_kwk_recherche_fehlschlaegt(db, inhaber, monkeypatch):
-    """Schlägt die Kunden-wirbt-Kunden-Recherche fehl, blockiert das die
-    Deal-Anlage nicht - der Redirect trägt aber ein Hinweis-Flag, das die
-    Seite als Erinnerung zur manuellen Prüfung anzeigt."""
-    monkeypatch.setattr("praemien_tracker.kwk_recherche.moeglichkeit_recherchieren", lambda bank, kontoart: (None, True))
+def test_uebernehmen_bestaetigen_uebernimmt_korrigierte_bank_und_kontoart(db, inhaber):
+    """Bank/Kontoart aus der Vorschau überschreiben die aus roh_json - dafür
+    ist die Vorschau schließlich da."""
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
 
-    antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+    client.post(
+        "/vorschlaege/uebernehmen/bestaetigen",
+        data={"vorschlag_ids": [vorschlag.id], "bank": "Consorsbank", "kontoart": "Tagesgeld"},
+        follow_redirects=False,
+    )
 
-    assert antwort.status_code == 303
-    assert antwort.headers["location"].endswith("vorschlaege?kwk_hinweis=1")
-    db.refresh(vorschlag)
-    assert vorschlag.status == "uebernommen"
-
-    seite = client.get("/vorschlaege", params={"kwk_hinweis": "1"})
-    assert "manuell prüfen" in seite.text
+    deal = db.query(Deal).one()
+    assert deal.bank.name == "Consorsbank"
+    assert deal.kontoart == "Tagesgeld"
 
 
-def test_uebernehmen_ohne_kwk_fehler_zeigt_keinen_hinweis(db, inhaber, monkeypatch):
-    monkeypatch.setattr("praemien_tracker.kwk_recherche.moeglichkeit_recherchieren", lambda bank, kontoart: (None, False))
+def test_uebernehmen_bestaetigen_ohne_kwk_ergebnis_legt_erinnerungsaufgabe_an(db, inhaber):
+    """Ohne (rechtzeitiges) Rechercheergebnis - hier: gar nicht erst über die
+    Vorschau gestartet, kwk_schluessel bleibt leer - bekommt der neue Deal
+    eine einfache Erinnerungs-Aufgabe statt eines Hinweis-Banners."""
     vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
 
-    antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+    client.post(
+        "/vorschlaege/uebernehmen/bestaetigen",
+        data={"vorschlag_ids": [vorschlag.id], "bank": "C24", "kontoart": "Girokonto"},
+        follow_redirects=False,
+    )
 
-    assert antwort.headers["location"].endswith("vorschlaege")
-    assert not antwort.headers["location"].endswith("kwk_hinweis=1")
+    deal = db.query(Deal).one()
+    assert any("KwK möglich?" in a.beschreibung for a in deal.aufgaben)
 
 
-def test_uebernehmen_mit_mehreren_ids_legt_fuer_jeden_ausgewaehlten_namen_einen_deal_an(db, zwei_inhaber):
+def test_uebernehmen_vorschau_und_bestaetigen_nutzen_dieselbe_hintergrund_recherche(db, inhaber, monkeypatch):
+    """Die KwK-Recherche wird schon beim Öffnen der Vorschau im Hintergrund
+    gestartet und beim Bestätigen nur noch abgeholt - bei genug Zeit
+    dazwischen bekommt der Deal das echte Ergebnis statt der Platzhalter-
+    Aufgabe, und die Recherche läuft dabei nur einmal."""
+    # Eigene, sonst nirgends im Testlauf verwendete Bank: hintergrund_starten()
+    # dedupliziert global über Bank+Kontoart (kein Reset zwischen Tests, siehe
+    # kwk_recherche.py) - mit der überall als Standard verwendeten "C24"
+    # könnte ein anderer Test denselben Schlüssel schon verbraucht haben.
+    aufrufe = []
+    monkeypatch.setattr(
+        "praemien_tracker.kwk_recherche.moeglichkeit_recherchieren",
+        lambda bank, kontoart: aufrufe.append((bank, kontoart)) or ("https://bank.example/kwk", False),
+    )
+    roh_json = (
+        '{"bank": "KwK-Vorschau-Testbank", "kontoart": "Girokonto", "inhaber": "Alice", '
+        '"praemien": [{"quelle": "bank", "betrag": "125.00", "erhalten": false}], '
+        '"bedingungen": [], "urls": [{"url": "https://www.mydealz.de/x", "bezeichnung": "mydealz-Angebot"}]}'
+    )
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen", bank_name="KwK-Vorschau-Testbank", roh_json=roh_json)
+
+    vorschau = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]})
+    schluessel = re.search(r'name="kwk_schluessel" value="([^"]*)"', vorschau.text).group(1)
+    time.sleep(0.2)  # der (gefakte) Hintergrund-Thread braucht keine echte Websuchzeit
+
+    client.post(
+        "/vorschlaege/uebernehmen/bestaetigen",
+        data={
+            "vorschlag_ids": [vorschlag.id],
+            "bank": "KwK-Vorschau-Testbank",
+            "kontoart": "Girokonto",
+            "kwk_schluessel": schluessel,
+        },
+        follow_redirects=False,
+    )
+
+    deal = db.query(Deal).one()
+    kwk_urls = [u.url for u in deal.urls if u.bezeichnung == "Kunden wirbt Kunden"]
+    assert kwk_urls == ["https://bank.example/kwk"]
+    assert len(aufrufe) == 1
+
+
+def test_uebernehmen_bestaetigen_mit_mehreren_ids_legt_fuer_jeden_ausgewaehlten_namen_einen_deal_an(db, zwei_inhaber):
     alice, max_ = zwei_inhaber
     v_elli = _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich")
     v_max = _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
 
     antwort = client.post(
-        "/vorschlaege/uebernehmen",
-        data={"vorschlag_ids": [v_elli.id, v_max.id]},
+        "/vorschlaege/uebernehmen/bestaetigen",
+        data={"vorschlag_ids": [v_elli.id, v_max.id], "bank": "C24", "kontoart": "Girokonto"},
         follow_redirects=False,
     )
     assert antwort.status_code == 303
@@ -295,14 +368,18 @@ def test_uebernehmen_mit_mehreren_ids_legt_fuer_jeden_ausgewaehlten_namen_einen_
     assert namen == {"Alice", "Max"}
 
 
-def test_uebernehmen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen(db, zwei_inhaber):
+def test_uebernehmen_bestaetigen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen(db, zwei_inhaber):
     """Wird nur ein Name ausgewählt, bleibt der Vorschlag für die andere
     Person offen und weiterhin sichtbar - kein automatisches Verwerfen."""
     alice, max_ = zwei_inhaber
     v_elli = _vorschlag(db, alice, "vorgeschlagen", inhalt_hash="gleich")
     v_max = _vorschlag(db, max_, "vorgeschlagen", inhalt_hash="gleich")
 
-    client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [v_elli.id]}, follow_redirects=False)
+    client.post(
+        "/vorschlaege/uebernehmen/bestaetigen",
+        data={"vorschlag_ids": [v_elli.id], "bank": "C24", "kontoart": "Girokonto"},
+        follow_redirects=False,
+    )
 
     db.refresh(v_elli)
     db.refresh(v_max)
@@ -311,11 +388,15 @@ def test_uebernehmen_mit_teilauswahl_laesst_nicht_ausgewaehlte_offen(db, zwei_in
     assert db.query(Deal).count() == 1
 
 
-def test_uebernehmen_funktioniert_auch_bei_automatisch_abgelehnt(db, inhaber):
+def test_uebernehmen_bestaetigen_funktioniert_auch_bei_automatisch_abgelehnt(db, inhaber):
     """Bewusstes Überstimmen laut Konzept - "Trotzdem übernehmen"."""
     vorschlag = _vorschlag(db, inhaber, "automatisch_abgelehnt")
 
-    antwort = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+    antwort = client.post(
+        "/vorschlaege/uebernehmen/bestaetigen",
+        data={"vorschlag_ids": [vorschlag.id], "bank": "C24", "kontoart": "Girokonto"},
+        follow_redirects=False,
+    )
     assert antwort.status_code == 303
     db.refresh(vorschlag)
     assert vorschlag.status == "uebernommen"
@@ -325,7 +406,11 @@ def test_uebernehmen_funktioniert_auch_bei_automatisch_abgelehnt(db, inhaber):
 def test_bereits_uebernommener_vorschlag_wird_nicht_doppelt_verarbeitet(db, inhaber):
     vorschlag = _vorschlag(db, inhaber, "uebernommen")
 
-    client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]}, follow_redirects=False)
+    client.post(
+        "/vorschlaege/uebernehmen/bestaetigen",
+        data={"vorschlag_ids": [vorschlag.id], "bank": "C24", "kontoart": "Girokonto"},
+        follow_redirects=False,
+    )
 
     assert db.query(Deal).count() == 0
 

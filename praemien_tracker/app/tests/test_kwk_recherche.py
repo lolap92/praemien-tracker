@@ -6,6 +6,8 @@ fehlgeschlagenes Ergebnis wird explizit von einem "kein Programm" unterschieden
 
 from __future__ import annotations
 
+import threading
+import time
 from types import SimpleNamespace
 
 from praemien_tracker import kwk_recherche
@@ -112,3 +114,87 @@ def test_zweiter_aufruf_ruft_erneut_die_api_auf(monkeypatch):
     kwk_recherche.moeglichkeit_recherchieren("Testbank", "Girokonto")
 
     assert client.messages.aufrufe == 2
+
+
+def test_hintergrund_starten_liefert_ergebnis_ueber_ergebnis_abholen(monkeypatch):
+    monkeypatch.setattr(kwk_recherche, "moeglichkeit_recherchieren", lambda bank, kontoart: ("https://bank.example/kwk", False))
+
+    kwk_recherche.hintergrund_starten("testbank|girokonto", "Testbank", "Girokonto")
+    ergebnis = kwk_recherche.ergebnis_abholen("testbank|girokonto", timeout=2.0)
+
+    assert ergebnis == ("https://bank.example/kwk", False)
+
+
+def test_ergebnis_abholen_ohne_vorherigen_hintergrund_starten_liefert_none():
+    assert kwk_recherche.ergebnis_abholen("nie-gestartet", timeout=0.1) is None
+
+
+def test_hintergrund_starten_dedupliziert_laufenden_schluessel(monkeypatch):
+    """Ein zweiter hintergrund_starten() für denselben Schlüssel, während der
+    erste Thread noch läuft, darf keine zweite (kostenpflichtige) Recherche
+    auslösen - die gefakte Recherche blockiert hier bewusst auf einem Event,
+    damit der erste Thread beim zweiten Aufruf garantiert noch aktiv ist
+    (sonst wäre der Test von der Ausführungsreihenfolge der Threads
+    abhängig, siehe hintergrund_starten: ein schon *fertiger* Thread für
+    denselben Schlüssel löst dagegen bewusst eine neue Recherche aus, siehe
+    nächster Test)."""
+    aufrufe = []
+    laeuft = threading.Event()
+    weitermachen = threading.Event()
+
+    def _blockierende_recherche(bank, kontoart):
+        aufrufe.append((bank, kontoart))
+        laeuft.set()
+        weitermachen.wait(2.0)
+        return None, False
+
+    monkeypatch.setattr(kwk_recherche, "moeglichkeit_recherchieren", _blockierende_recherche)
+
+    kwk_recherche.hintergrund_starten("dedup-schluessel", "C24", "Girokonto")
+    assert laeuft.wait(2.0)
+    kwk_recherche.hintergrund_starten("dedup-schluessel", "C24", "Girokonto")
+    weitermachen.set()
+    kwk_recherche.ergebnis_abholen("dedup-schluessel", timeout=2.0)
+
+    assert len(aufrufe) == 1
+
+
+def test_hintergrund_starten_recherchiert_erneut_wenn_voriger_thread_fertig_ist(monkeypatch):
+    """Anders als beim noch laufenden Thread (siehe voriger Test): ist die
+    vorige Recherche für denselben Schlüssel schon fertig, aber nie über
+    ergebnis_abholen() abgeholt worden (z.B. eine nie bestätigte Vorschau),
+    soll ein späterer, unabhängiger Übernehmen-Vorgang trotzdem frisch
+    recherchieren statt für immer auf dem alten Ergebnis sitzen zu bleiben -
+    bewusst kein Cache, siehe Moduldocstring."""
+    aufrufe = []
+    monkeypatch.setattr(
+        kwk_recherche,
+        "moeglichkeit_recherchieren",
+        lambda bank, kontoart: aufrufe.append((bank, kontoart)) or (None, False),
+    )
+
+    kwk_recherche.hintergrund_starten("nie-abgeholt", "C24", "Girokonto")
+    kwk_recherche._threads["nie-abgeholt"].join(2.0)  # sicherstellen, dass der erste Thread fertig ist
+
+    kwk_recherche.hintergrund_starten("nie-abgeholt", "C24", "Girokonto")
+    kwk_recherche.ergebnis_abholen("nie-abgeholt", timeout=2.0)
+
+    assert len(aufrufe) == 2
+
+
+def test_ergebnis_abholen_bei_zu_kurzem_timeout_liefert_none(monkeypatch):
+    """Läuft die Recherche länger als der Aufrufer warten will (siehe
+    helpers.KWK_TIMEOUT_SEKUNDEN), gibt es kein Ergebnis statt einer
+    blockierenden Wartezeit - der Aufrufer fällt dann auf eine einfache
+    Erinnerungs-Aufgabe zurück (helpers.kwk_ergebnis_anwenden)."""
+
+    def _langsame_recherche(bank, kontoart):
+        time.sleep(0.3)
+        return "https://bank.example/kwk", False
+
+    monkeypatch.setattr(kwk_recherche, "moeglichkeit_recherchieren", _langsame_recherche)
+
+    kwk_recherche.hintergrund_starten("langsam|depot", "Langsam", "Depot")
+    ergebnis = kwk_recherche.ergebnis_abholen("langsam|depot", timeout=0.01)
+
+    assert ergebnis is None

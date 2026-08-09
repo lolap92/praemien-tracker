@@ -1,5 +1,34 @@
 # Changelog
 
+## 2.24.1
+
+Vier Verbesserungen am "Übernehmen"-Ablauf für KI-Vorschläge:
+
+- Im Übernehmen-Dialog sind jetzt standardmäßig nur erwachsene Inhaber
+  angehakt - ein minderjähriger Inhaber taucht als Option nur auf, wenn das
+  Angebot laut KI-Extraktion überhaupt für Kinder geeignet ist, wurde bisher
+  aber trotzdem automatisch mitausgewählt. Jetzt muss man ihn bewusst
+  anhaken, damit nicht versehentlich ein Deal für ein Kind mit übernommen
+  wird.
+- Neu angelegte Bedingungen starten jetzt immer unabgehakt ("nicht
+  erfüllt"), auch beim Übernehmen eines Vorschlags. Bisher konnte die
+  KI-Einschätzung einer Bedingung ("erfüllt") direkt in den fertigen Deal
+  übernommen werden, ohne dass sie/er das je bestätigt hat - eine
+  Einschätzung ist keine bestätigte Erfüllung.
+- "Übernehmen" konnte bei mehreren ausgewählten Inhabern spürbar hängen: die
+  Kunden-wirbt-Kunden-Recherche (KI-Websuche ohne Zeitlimit) lief bisher
+  synchron und pro Inhaber einzeln. Sie läuft jetzt einmal je Bank+Kontoart
+  im Hintergrund, während die neue Vorschau (siehe nächster Punkt) offen
+  ist; wartet beim Bestätigen höchstens noch 4 Sekunden auf das Ergebnis und
+  legt sonst statt eines Hinweis-Banners direkt eine Erinnerungs-Aufgabe
+  "KwK möglich?" an.
+- Vor dem eigentlichen Anlegen zeigt "Übernehmen" jetzt zunächst eine
+  Vorschau mit Bank und Kontoart in einem Bearbeitungsformular - Felder, die
+  für alle ausgewählten Inhaber ohnehin identisch sind (derselbe Fund).
+  Prämien und Bedingungen bleiben unverändert aus dem Vorschlag und werden
+  nur zur Kontrolle mit angezeigt. Erst das Bestätigen dieser Vorschau legt
+  die Deals wirklich an.
+
 ## 2.24.0
 
 Sechs kleinere Verbesserungen an Vorschläge, Deals und ToDos:

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Übernehmen bestätigen – Prämien-Tracker{% endblock %}
+{% block appbar_title %}Übernehmen bestätigen{% endblock %}
+{% block content %}
+
+<div class="sec-t">Wird angelegt für</div>
+<div class="card">
+  <ul class="vorschlag-bedingungen">
+    {% for m in mitglieder %}
+    <li>{{ m.inhaber.name }}</li>
+    {% endfor %}
+  </ul>
+  <p class="auto">
+    Diese Daten sind für alle oben genannten Personen identisch (derselbe
+    Fund) - Bank und Kontoart lassen sich vor dem Anlegen noch korrigieren,
+    die übrigen Angaben wurden schon auf der Vorschlagskarte geprüft.
+  </p>
+</div>
+
+<div class="sec-t">Konto</div>
+<div class="card">
+  <form action="vorschlaege/uebernehmen/bestaetigen" method="post">
+    {% for m in mitglieder %}<input type="hidden" name="vorschlag_ids" value="{{ m.id }}">{% endfor %}
+    {% for vid in verwerfen_duplikat_ids %}<input type="hidden" name="verwerfen_duplikat_ids" value="{{ vid }}">{% endfor %}
+    <input type="hidden" name="kwk_schluessel" value="{{ kwk_schluessel }}">
+
+    <div class="reihe">
+      <div class="feld">
+        <label for="bank">Bank</label>
+        <input type="text" id="bank" name="bank" required value="{{ bank }}">
+      </div>
+      <div class="feld">
+        <label for="kontoart">Kontoart</label>
+        <input type="text" id="kontoart" name="kontoart" required value="{{ kontoart }}">
+      </div>
+    </div>
+
+    {% if praemien %}
+    <div class="feld">
+      <label>Prämien <span class="auto">unverändert, bei Bedarf nach dem Anlegen je Deal anpassbar</span></label>
+      <ul class="vorschlag-praemien">
+        {% for p in praemien %}
+        <li><span class="praemie-betrag">{{ p.betrag | eur }}</span> <span class="praemie-geber">{{ p.quelle }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if bedingungen %}
+    <div class="feld">
+      <label>Bedingungen <span class="auto">starten unabgehakt, unabhängig von der KI-Einschätzung</span></label>
+      <ul class="vorschlag-bedingungen">
+        {% for b in bedingungen %}
+        <li>{{ b.beschreibung }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="vk-dialog-aktionen">
+      <a class="button secondary" href="vorschlaege">Abbrechen</a>
+      <button type="submit">Jetzt anlegen</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
