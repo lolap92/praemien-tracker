@@ -193,8 +193,30 @@ def test_alle_verwerfen_button_deckt_alle_quellen_ab(db, inhaber):
     b = _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2", bank_name="ING")
 
     antwort = client.get("/vorschlaege")
-    # Das "Alle verwerfen"-Formular trägt beide IDs als verstecktes Feld, mit
-    # dem festen Grund "duplikat" statt eines Auswahl-Dialogs.
+    # "Alle verwerfen" öffnet wie beim einzelnen Vorschlag einen Dialog mit
+    # Grund-Auswahl (Mehrfachauswahl) statt fest "duplikat" zu setzen - das
+    # versteckte Formular trägt aber weiterhin beide IDs.
     assert f'name="vorschlag_ids" value="{a.id}"' in antwort.text
     assert f'name="vorschlag_ids" value="{b.id}"' in antwort.text
-    assert 'name="gruende" value="duplikat"' in antwort.text
+    assert 'name="gruende" value="praemie_niedrig"' in antwort.text
+    # "Duplikat" ist sinnvoll vorausgewählt (Kacheln bündeln ja vermutliche
+    # Duplikate), aber weiterhin nur eine von mehreren wählbaren Optionen.
+    assert 'name="gruende" value="duplikat" checked' in antwort.text
+
+
+def test_alle_verwerfen_dialog_erlaubt_anderen_grund_als_duplikat(db, inhaber):
+    a = _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1", bank_name="ING")
+    b = _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2", bank_name="ING")
+
+    antwort = client.post(
+        "/vorschlaege/verwerfen",
+        data={"vorschlag_ids": [a.id, b.id], "gruende": ["praemie_niedrig"]},
+        follow_redirects=False,
+    )
+    assert antwort.status_code == 303
+    db.refresh(a)
+    db.refresh(b)
+    assert a.status == "verworfen"
+    assert a.verwerfen_gruende == "praemie_niedrig"
+    assert b.status == "verworfen"
+    assert b.verwerfen_gruende == "praemie_niedrig"

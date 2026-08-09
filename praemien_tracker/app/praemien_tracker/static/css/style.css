@@ -1935,10 +1935,6 @@ table.lauf-tabelle tr:hover {
   gap: 0.5rem;
 }
 
-.dup-alle-verwerfen-form {
-  display: contents;
-}
-
 .dup-hinweis-auto {
   font-size: 0.72rem;
   color: var(--ink-faint);

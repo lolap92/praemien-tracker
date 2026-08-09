@@ -413,14 +413,31 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
   <div class="dup-aktionen">
     <span class="dup-hinweis-auto">Nicht gewählte Fundstellen werden beim Übernehmen automatisch <b>verworfen</b> (Grund: Duplikat).</span>
     <div class="dup-aktionen-buttons">
-      <form method="post" action="vorschlaege/verwerfen" class="dup-alle-verwerfen-form">
-        {% for vid in alle_ids %}<input type="hidden" name="vorschlag_ids" value="{{ vid }}">{% endfor %}
-        <input type="hidden" name="gruende" value="duplikat">
-        <button type="submit" class="secondary">Alle verwerfen</button>
-      </form>
+      <button type="button" class="secondary" onclick="document.getElementById('dlg-dup-verwerfen-{{ alle_ids[0] }}').showModal()">Alle verwerfen</button>
       <button type="button" onclick="vkDupUebernehmen(this)">Ausgewählte übernehmen</button>
     </div>
   </div>
+
+  <dialog id="dlg-dup-verwerfen-{{ alle_ids[0] }}" class="vk-dialog">
+    <h3>{{ d.bank_name }} · {{ d.kontoart }}</h3>
+    <p class="vk-dialog-frage">Warum verwerfen? (Mehrfachauswahl möglich, gilt für alle {{ d.funde | length }} Fundstellen)</p>
+    <form method="post" action="vorschlaege/verwerfen" class="vk-verwerfen-form" onsubmit="return vkPruefeGrund(this)">
+      {% for vid in alle_ids %}<input type="hidden" name="vorschlag_ids" value="{{ vid }}">{% endfor %}
+      <div class="vk-dialog-gruende">
+        {% for code, label in verwerfen_gruende_optionen.items() %}
+        <label class="vorschlag-mitglied">
+          <input type="checkbox" name="gruende" value="{{ code }}" {{ "checked" if code == "duplikat" else "" }}>
+          <span>{{ label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <p class="vk-dialog-fehler" hidden>Bitte mindestens einen Grund auswählen.</p>
+      <div class="vk-dialog-aktionen">
+        <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
+        <button type="submit">Verwerfen</button>
+      </div>
+    </form>
+  </dialog>
 
   {% for f in d.funde %}
   {% set andere_ids = [] %}

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.23.2
+
+"Alle verwerfen" bei quellenübergreifend gebündelten Duplikat-Kacheln
+(z. B. mydealz + Spartanien derselbe Deal) fragt jetzt wie beim einzelnen
+Vorschlag per Dialog nach dem Grund (Mehrfachauswahl, "Duplikat"
+voreingestellt) statt ihn fest auf "Duplikat" zu setzen - z. B. wenn beide
+Fundstellen tatsächlich an einer zu niedrigen Prämie scheitern. Unverändert:
+wählt man stattdessen über "Ausgewählte übernehmen" eine einzelne Fundstelle
+aus, werden die übrigen weiterhin automatisch mit Grund "Duplikat" verworfen.
+
 ## 2.23.1
 
 Neuer Grund "Prämie zu niedrig" bei den Verwerfen-Optionen (bisher:
