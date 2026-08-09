@@ -678,3 +678,97 @@ def test_ignoriere_cache_laesst_entschiedene_vorschlaege_unangetastet(db, zwei_i
     db.refresh(eintrag)
     assert eintrag.status == matching.STATUS_UEBERNOMMEN
     assert eintrag.bank_name == "Von Hand geändert"
+
+
+# ---------------------------------------------------------------------------
+# lauf_status()/lauf_im_hintergrund_starten(): Live-Anzeige "Suche läuft" im
+# Vorschläge-Tab, damit ein Klick auf "Jetzt suchen"/"Alle neu analysieren"
+# nicht bis zu einer Minute oder länger ohne jedes Feedback blockiert.
+# ---------------------------------------------------------------------------
+
+
+class _SyncThread:
+    """Ersetzt threading.Thread im Test - führt die Zielfunktion sofort
+    synchron im Testthread aus, statt echte Nebenläufigkeit zu erzeugen.
+    Macht den Test deterministisch (kein Polling/Timing nötig), prüft aber
+    trotzdem den echten Code aus _ausfuehren()/lauf_im_hintergrund_starten()."""
+
+    def __init__(self, target, daemon=None, name=None):
+        self._target = target
+
+    def start(self):
+        self._target()
+
+
+def test_lauf_im_hintergrund_starten_fuehrt_lauf_aus_und_wird_wieder_frei(db, zwei_inhaber, monkeypatch):
+    _patch_quellen(monkeypatch, [])
+    monkeypatch.setattr(lauf, "_anthropic_client", lambda: FakeClient(RelevanzErgebnis(ist_relevant=False), None))
+    monkeypatch.setattr(lauf.threading, "Thread", _SyncThread)
+
+    gestartet = lauf.lauf_im_hintergrund_starten()
+
+    assert gestartet is True
+    # gestartet_am bleibt nach Abschluss bewusst stehen (wird nur angezeigt,
+    # solange laeuft True ist) - nur das Flag muss zurückgesetzt sein.
+    assert lauf.lauf_status()[0] is False
+    assert db.query(FinderLauf).count() == 1
+
+
+def test_lauf_im_hintergrund_starten_gibt_ignoriere_cache_weiter(db, zwei_inhaber, monkeypatch):
+    aufrufe = []
+    monkeypatch.setattr(
+        lauf,
+        "taeglicher_lauf",
+        lambda db_arg, *, ignoriere_cache=False: aufrufe.append(ignoriere_cache) or {},
+    )
+    monkeypatch.setattr(lauf.threading, "Thread", _SyncThread)
+
+    lauf.lauf_im_hintergrund_starten(ignoriere_cache=True)
+
+    assert aufrufe == [True]
+
+
+def test_lauf_im_hintergrund_starten_verhindert_parallelen_lauf():
+    """Simuliert einen bereits aktiven Lauf über die internen Marker, statt
+    eine echte Race Condition zwischen zwei Threads zu erzeugen (wäre
+    flakey) - prüft nur den Schutz selbst."""
+    assert lauf._lauf_beginnen() is True
+    try:
+        gestartet = lauf.lauf_im_hintergrund_starten()
+        assert gestartet is False
+    finally:
+        lauf._lauf_beenden()
+    assert lauf.lauf_status()[0] is False
+
+
+def test_lauf_status_liefert_startzeitpunkt_waehrend_aktiv():
+    vor = datetime.datetime.utcnow()
+    assert lauf._lauf_beginnen() is True
+    try:
+        laeuft, gestartet_am = lauf.lauf_status()
+        assert laeuft is True
+        assert gestartet_am >= vor
+    finally:
+        lauf._lauf_beenden()
+    assert lauf.lauf_status()[0] is False
+
+
+def test_geplanter_lauf_uebersprungen_wenn_bereits_aktiv(monkeypatch):
+    aufrufe = []
+    monkeypatch.setattr(lauf, "taeglicher_lauf", lambda *a, **kw: aufrufe.append(1))
+    assert lauf._lauf_beginnen() is True
+    try:
+        lauf.geplanter_lauf()
+    finally:
+        lauf._lauf_beenden()
+    assert aufrufe == []
+
+
+def test_geplanter_lauf_markiert_sich_und_wird_wieder_frei(db, zwei_inhaber, monkeypatch):
+    _patch_quellen(monkeypatch, [])
+    monkeypatch.setattr(lauf, "_anthropic_client", lambda: FakeClient(RelevanzErgebnis(ist_relevant=False), None))
+
+    lauf.geplanter_lauf()
+
+    assert lauf.lauf_status()[0] is False
+    assert db.query(FinderLauf).count() == 1

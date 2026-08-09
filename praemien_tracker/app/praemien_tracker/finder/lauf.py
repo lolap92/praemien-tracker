@@ -35,6 +35,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import logging
+import threading
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 
@@ -445,8 +446,72 @@ def taeglicher_lauf(
     return zaehler
 
 
+_lauf_lock = threading.Lock()
+_lauf_status: dict[str, object] = {"laeuft": False, "gestartet_am": None}
+
+
+def lauf_status() -> tuple[bool, datetime.datetime | None]:
+    """Ob gerade ein Lauf aktiv ist (Button-Klick oder der 06:00-Job) und
+    wann er gestartet wurde - für die Live-Anzeige im Vorschläge-Tab ("Suche
+    läuft ..."), da ein Lauf je nach Anzahl der Funde eine Weile dauern kann
+    und sonst kein Feedback sichtbar wäre."""
+    with _lauf_lock:
+        return bool(_lauf_status["laeuft"]), _lauf_status["gestartet_am"]
+
+
+def _lauf_beginnen() -> bool:
+    """Markiert den Start eines Laufs. Liefert False, wenn schon einer aktiv
+    ist - kein zweiter parallel, sonst konkurrierende Schreibzugriffe auf
+    dieselbe SQLite-Datenbank durch zwei gleichzeitige Läufe."""
+    with _lauf_lock:
+        if _lauf_status["laeuft"]:
+            return False
+        _lauf_status["laeuft"] = True
+        _lauf_status["gestartet_am"] = datetime.datetime.utcnow()
+        return True
+
+
+def _lauf_beenden() -> None:
+    with _lauf_lock:
+        _lauf_status["laeuft"] = False
+
+
+def lauf_im_hintergrund_starten(*, ignoriere_cache: bool = False) -> bool:
+    """Startet taeglicher_lauf() in einem eigenen Thread mit eigener Session,
+    statt den auslösenden Request ("Jetzt suchen"/"Alle neu analysieren")
+    bis zu einer Minute oder länger zu blockieren. Liefert False (kein neuer
+    Thread gestartet), wenn bereits ein Lauf aktiv ist - egal ob durch einen
+    der beiden Buttons oder den 06:00-Job."""
+    if not _lauf_beginnen():
+        return False
+
+    def _ausfuehren() -> None:
+        try:
+            with SessionLocal() as db:
+                taeglicher_lauf(db, ignoriere_cache=ignoriere_cache)
+        except Exception:
+            # taeglicher_lauf() faengt eigene Fehler bereits ab und
+            # protokolliert sie (siehe Docstring dort) - dieser Fang ist nur
+            # ein zusaetzliches Netz, falls z.B. schon SessionLocal() selbst
+            # scheitert.
+            logger.exception("Hintergrund-Lauf fehlgeschlagen.")
+        finally:
+            _lauf_beenden()
+
+    threading.Thread(target=_ausfuehren, daemon=True, name="ki-deal-finder-lauf").start()
+    return True
+
+
 def geplanter_lauf() -> None:
     """Einstiegspunkt für den APScheduler-Job (main.py) - öffnet eine eigene
-    Session, da der Job außerhalb eines Requests läuft."""
-    with SessionLocal() as db:
-        taeglicher_lauf(db)
+    Session, da der Job außerhalb eines Requests läuft. Markiert sich
+    ebenfalls über lauf_status(), damit ein zeitgleicher Klick auf "Jetzt
+    suchen" nicht parallel gegen dieselbe Datenbank schreibt."""
+    if not _lauf_beginnen():
+        logger.warning("Geplanter Lauf übersprungen - es läuft bereits ein anderer Lauf.")
+        return
+    try:
+        with SessionLocal() as db:
+            taeglicher_lauf(db)
+    finally:
+        _lauf_beenden()

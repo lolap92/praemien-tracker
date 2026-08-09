@@ -1498,12 +1498,17 @@ table.pc-tabelle tr:hover {
 }
 
 /* Statuszeile ist die aufklappbare Zusammenfassung: eingeklappt zeigt sie nur
-   "Letzter Lauf ...", die Zahlen/Fehler erscheinen erst per Klick. */
+   "Letzter Lauf ...", die Zahlen/Fehler erscheinen erst per Klick auf genau
+   diese Zeile (kein separater "Details"-Link nötig - der ganze <summary>
+   inkl. Chip ist bereits der Klickbereich). */
 .vorschlag-lauf-status {
   display: flex;
   align-items: center;
   gap: 0.6rem;
   flex-wrap: wrap;
+}
+
+summary.vorschlag-lauf-status {
   cursor: pointer;
   list-style: none;
 }
@@ -1512,19 +1517,8 @@ table.pc-tabelle tr:hover {
   display: none;
 }
 
-.lauf-details > summary::after {
-  content: "▾ Details";
-  margin-left: auto;
-  font-size: 0.72rem;
-  color: var(--ink-faint);
-}
-
 .lauf-details[open] > summary {
   margin-bottom: 0.8rem;
-}
-
-.lauf-details[open] > summary::after {
-  content: "▴ Zuklappen";
 }
 
 .lauf-zeitpunkt {
@@ -1575,6 +1569,10 @@ table.lauf-tabelle tr:hover {
   background: rgba(180, 70, 42, 0.12);
 }
 .chip.lauf-teilweise {
+  color: var(--st-wait);
+  background: rgba(185, 130, 47, 0.13);
+}
+.chip.lauf-laeuft {
   color: var(--st-wait);
   background: rgba(185, 130, 47, 0.13);
 }

@@ -14,17 +14,27 @@
 {% endif %}
 
 <div class="card">
-  {% if letzter_lauf %}
+  {% if lauf_laeuft and not letzter_lauf %}
+  <p class="vorschlag-lauf-status">
+    <span class="chip lauf-laeuft">Suche läuft</span>
+    <span class="lauf-zeitpunkt">{{ lauf_gestartet_am | zeitpunkt }}</span>
+  </p>
+  {% elif letzter_lauf %}
   <details class="lauf-details">
     <summary class="vorschlag-lauf-status">
-      {% if not letzter_lauf.erfolgreich %}
+      {% if lauf_laeuft %}
+      <span class="chip lauf-laeuft">Suche läuft</span>
+      <span class="lauf-zeitpunkt">{{ lauf_gestartet_am | zeitpunkt }}</span>
+      {% elif not letzter_lauf.erfolgreich %}
       <span class="chip lauf-fehlgeschlagen">✗ Letzter Lauf fehlgeschlagen</span>
+      <span class="lauf-zeitpunkt">{{ letzter_lauf.beendet_am | zeitpunkt }}</span>
       {% elif letzter_lauf.fehler %}
       <span class="chip lauf-teilweise">⚠ Letzter Lauf teilweise erfolgreich</span>
+      <span class="lauf-zeitpunkt">{{ letzter_lauf.beendet_am | zeitpunkt }}</span>
       {% else %}
       <span class="chip lauf-erfolgreich">✓ Letzter Lauf erfolgreich</span>
-      {% endif %}
       <span class="lauf-zeitpunkt">{{ letzter_lauf.beendet_am | zeitpunkt }}</span>
+      {% endif %}
     </summary>
 
     <div class="lauf-details-inhalt">
@@ -471,6 +481,13 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
     if (!gewaehlt) { return; }
     document.getElementById('dlg-uebernehmen-' + gewaehlt.dataset.kid).showModal();
   }
+
+  {% if lauf_laeuft %}
+  // Lauf noch aktiv (Button "Jetzt suchen"/"Alle neu analysieren" oder der
+  // 06:00-Job) - Seite alle 3s neu laden, bis der Lauf fertig ist und der
+  // echte Status/die neuen Vorschläge sichtbar werden.
+  setTimeout(function () { location.reload(); }, 3000);
+  {% endif %}
 </script>
 
 {% endblock %}

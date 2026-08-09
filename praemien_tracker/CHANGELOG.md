@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.22.0
+
+"Jetzt suchen" und "Alle neu analysieren" liefen bisher synchron im
+Request - bei vielen Funden dauerte das spürbar, ohne dass währenddessen
+irgendein Feedback sichtbar war. Beide Buttons starten den Lauf jetzt in
+einem Hintergrund-Thread und laden die Seite danach automatisch neu: der
+grüne Status-Text zeigt sofort orange "Suche läuft ..." mit dem neuen
+Zeitstempel an, die Seite lädt alle drei Sekunden neu und zeigt automatisch
+das fertige Ergebnis, sobald der Lauf durch ist. Ein zeitgleicher Klick auf
+beide Buttons oder ein Zusammentreffen mit dem geplanten 06:00-Lauf startet
+keinen zweiten parallelen Lauf mehr (gemeinsame Sperre), da zwei gleichzeitige
+Läufe sonst konkurrierend in dieselbe SQLite-Datenbank geschrieben hätten.
+Außerdem entfernt: das Wort "Details" beim aufklappbaren Status-Text - der
+grüne/orange Text selbst ist bereits der Klick-Bereich zum Auf-/Zuklappen.
+
 ## 2.21.0
 
 Der KI-Deal-Finder liest bei dealdoktor jetzt zusätzlich zur Rubrik

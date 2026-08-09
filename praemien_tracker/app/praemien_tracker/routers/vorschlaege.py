@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 
 from fastapi import APIRouter, Depends, Form, Query, Request
@@ -10,7 +9,7 @@ from .. import derived
 from ..config import DEMO_MODUS
 from ..database import get_db
 from ..finder import matching
-from ..finder.lauf import taeglicher_lauf
+from ..finder.lauf import lauf_im_hintergrund_starten, lauf_status
 from ..helpers import build_deal_from_import
 from ..ingress import redirect
 from ..models import DealVorschlag, FinderFund, FinderLauf
@@ -18,7 +17,6 @@ from ..schemas import DealImport
 from ..templating import templates
 
 router = APIRouter()
-logger = logging.getLogger("praemien_tracker.finder")
 
 # Reihenfolge der Statusgruppen wie im Konzept-Mockup: erst eindeutig
 # vorgeschlagene, dann zu prüfende, ganz unten (eingeklappt) die
@@ -255,11 +253,14 @@ def vorschlaege_view(
         eingeteilt[g.status].append(g)
 
     letzter_lauf = db.query(FinderLauf).order_by(FinderLauf.id.desc()).first()
+    lauf_laeuft, lauf_gestartet_am = lauf_status()
 
     return templates.TemplateResponse(
         "vorschlaege.html",
         {
             "request": request,
+            "lauf_laeuft": lauf_laeuft,
+            "lauf_gestartet_am": lauf_gestartet_am,
             "vorgeschlagen": eingeteilt[matching.STATUS_VORGESCHLAGEN],
             "zu_pruefen": eingeteilt[matching.STATUS_ZU_PRUEFEN],
             "automatisch_abgelehnt": eingeteilt[matching.STATUS_ABGELEHNT],
@@ -358,16 +359,19 @@ def verwerfen(
 def jetzt_suchen(request: Request, db: Session = Depends(get_db)):
     """Manueller Anstoß des täglichen Laufs - nicht Teil des Konzepts, aber
     nötig, um Einrichtung und API-Key zu testen, ohne bis 06:00 Uhr zu warten.
-    Fehler werden geloggt statt die Seite abstürzen zu lassen (z.B. fehlender
-    oder ungültiger API-Key, Quelle nicht erreichbar). Im Demo-Modus komplett
-    gesperrt (auch serverseitig, nicht nur der ausgeblendete Button) - sonst
-    könnte ein echter API-Key echte, kostenpflichtige Anfragen auslösen und
-    echte Funde in die Demo-Daten mischen."""
+
+    Läuft im Hintergrund (siehe lauf_im_hintergrund_starten) statt den
+    Request zu blockieren, bis alle Funde geprüft sind - das konnte je nach
+    Anzahl spürbar dauern, ohne dass währenddessen irgendein Feedback sichtbar
+    war. Die Seite zeigt stattdessen sofort "Suche läuft" und lädt automatisch
+    neu, sobald der Lauf fertig ist (siehe vorschlaege_view/lauf_status).
+    Läuft schon ein anderer Lauf (Button oder 06:00-Job), passiert einfach
+    nichts - kein zweiter parallel. Im Demo-Modus komplett gesperrt (auch
+    serverseitig, nicht nur der ausgeblendete Button) - sonst könnte ein
+    echter API-Key echte, kostenpflichtige Anfragen auslösen und echte Funde
+    in die Demo-Daten mischen."""
     if not DEMO_MODUS:
-        try:
-            taeglicher_lauf(db)
-        except Exception:
-            logger.exception("Manueller KI-Deal-Finder-Lauf fehlgeschlagen.")
+        lauf_im_hintergrund_starten()
     return redirect(request, "vorschlaege")
 
 
@@ -378,13 +382,11 @@ def alle_neu_analysieren(request: Request, db: Session = Depends(get_db)):
     mit dem neuen Ergebnis - z.B. damit ältere Karten nachträglich eine
     Prämien-Aufschlüsselung bekommen, die es bei ihrer ersten Prüfung noch
     nicht gab. Der Bestätigungsdialog im Frontend macht auf die höheren
-    API-Kosten aufmerksam, bevor diese Route überhaupt aufgerufen wird. Im
-    Demo-Modus gesperrt, siehe jetzt_suchen()."""
+    API-Kosten aufmerksam, bevor diese Route überhaupt aufgerufen wird. Läuft
+    wie jetzt_suchen() im Hintergrund, siehe dort. Im Demo-Modus gesperrt,
+    siehe jetzt_suchen()."""
     if not DEMO_MODUS:
-        try:
-            taeglicher_lauf(db, ignoriere_cache=True)
-        except Exception:
-            logger.exception("Erzwungene Neuanalyse (KI-Deal-Finder) fehlgeschlagen.")
+        lauf_im_hintergrund_starten(ignoriere_cache=True)
     return redirect(request, "vorschlaege")
 
 

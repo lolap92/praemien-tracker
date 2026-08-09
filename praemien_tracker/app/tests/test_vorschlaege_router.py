@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import datetime
 from decimal import Decimal
 
 import pytest
@@ -600,6 +601,40 @@ def test_seite_zeigt_nur_den_juengsten_lauf(db):
     assert "alter Fehler" not in antwort.text
 
 
+def test_seite_zeigt_suche_laeuft_wenn_lauf_aktiv_und_kein_vorheriger_existiert(db, monkeypatch):
+    monkeypatch.setattr(
+        "praemien_tracker.routers.vorschlaege.lauf_status",
+        lambda: (True, datetime.datetime(2026, 8, 9, 3, 0, 0)),
+    )
+
+    antwort = client.get("/vorschlaege")
+
+    assert "Suche läuft" in antwort.text
+    assert "location.reload()" in antwort.text
+
+
+def test_seite_zeigt_suche_laeuft_statt_letztem_status_wenn_lauf_aktiv(db, monkeypatch):
+    db.add(FinderLauf(erfolgreich=True, fehler=None))
+    db.commit()
+    monkeypatch.setattr(
+        "praemien_tracker.routers.vorschlaege.lauf_status",
+        lambda: (True, datetime.datetime(2026, 8, 9, 3, 0, 0)),
+    )
+
+    antwort = client.get("/vorschlaege")
+
+    assert "Suche läuft" in antwort.text
+    assert "Letzter Lauf erfolgreich" not in antwort.text
+
+
+def test_seite_ohne_aktiven_lauf_zeigt_kein_reload_skript(db, monkeypatch):
+    monkeypatch.setattr("praemien_tracker.routers.vorschlaege.lauf_status", lambda: (False, None))
+
+    antwort = client.get("/vorschlaege")
+
+    assert "location.reload()" not in antwort.text
+
+
 def test_seite_zeigt_alle_neu_analysieren_button_mit_bestaetigungsdialog(db):
     antwort = client.get("/vorschlaege")
     assert "Alle neu analysieren" in antwort.text
@@ -612,19 +647,30 @@ def test_seite_zeigt_alle_neu_analysieren_button_mit_bestaetigungsdialog(db):
     assert 'onsubmit="this.closest(\'dialog\').close()"' in antwort.text
 
 
-def test_alle_neu_analysieren_ruft_lauf_mit_ignoriere_cache_auf(monkeypatch):
+def test_alle_neu_analysieren_startet_lauf_mit_ignoriere_cache_im_hintergrund(monkeypatch):
     aufrufe = []
-
-    def fake_lauf(db_arg, *, ignoriere_cache=False):
-        aufrufe.append(ignoriere_cache)
-        return {}
-
-    monkeypatch.setattr("praemien_tracker.routers.vorschlaege.taeglicher_lauf", fake_lauf)
+    monkeypatch.setattr(
+        "praemien_tracker.routers.vorschlaege.lauf_im_hintergrund_starten",
+        lambda **kwargs: aufrufe.append(kwargs) or True,
+    )
 
     antwort = client.post("/vorschlaege/alle-neu-analysieren", follow_redirects=False)
 
     assert antwort.status_code == 303
-    assert aufrufe == [True]
+    assert aufrufe == [{"ignoriere_cache": True}]
+
+
+def test_jetzt_suchen_startet_lauf_im_hintergrund(monkeypatch):
+    aufrufe = []
+    monkeypatch.setattr(
+        "praemien_tracker.routers.vorschlaege.lauf_im_hintergrund_starten",
+        lambda **kwargs: aufrufe.append(kwargs) or True,
+    )
+
+    antwort = client.post("/vorschlaege/jetzt-suchen", follow_redirects=False)
+
+    assert antwort.status_code == 303
+    assert aufrufe == [{}]
 
 
 def test_seite_zeigt_zuruecksetzen_button_mit_bestaetigungsdialog(db):
