@@ -98,8 +98,13 @@
     <form method="post" action="vorschlaege/jetzt-suchen">
       <button type="submit" class="secondary">Jetzt suchen</button>
     </form>
-    <button type="button" class="secondary" onclick="document.getElementById('dlg-neu-analysieren').showModal()">Alle neu analysieren</button>
-    <button type="button" class="secondary" onclick="document.getElementById('dlg-zuruecksetzen').showModal()">Zurücksetzen</button>
+    <details class="lauf-weitere-aktionen">
+      <summary>Weitere Aktionen</summary>
+      <div class="lauf-weitere-aktionen-panel">
+        <button type="button" class="secondary" onclick="document.getElementById('dlg-neu-analysieren').showModal()">Alle neu analysieren</button>
+        <button type="button" class="secondary" onclick="document.getElementById('dlg-zuruecksetzen').showModal()">Zurücksetzen</button>
+      </div>
+    </details>
   </div>
   {% endif %}
 </div>

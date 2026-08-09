@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.22.1
+
+"Alle neu analysieren" und "Zurücksetzen" stecken jetzt standardmäßig
+eingeklappt hinter einem neuen Dropdown "Weitere Aktionen" neben "Jetzt
+suchen" - im Alltag wird praktisch nur "Jetzt suchen" gebraucht, die beiden
+anderen sind seltener nötig und lösen bei Fehlklick teuren Neu-Abgleich
+bzw. unwiderrufliches Löschen aus. Keine Verhaltensänderung an den Buttons
+selbst, nur an ihrer Sichtbarkeit.
+
 ## 2.22.0
 
 "Jetzt suchen" und "Alle neu analysieren" liefen bisher synchron im

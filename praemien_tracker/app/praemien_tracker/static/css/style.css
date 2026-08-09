@@ -1560,6 +1560,64 @@ table.lauf-tabelle tr:hover {
   margin-top: 0.8rem;
 }
 
+/* "Alle neu analysieren"/"Zurücksetzen" stecken standardmäßig eingeklappt in
+   diesem Dropdown, damit im Alltag nur "Jetzt suchen" ins Auge fällt - beide
+   sind seltener gebraucht und lösen bei Fehlklick teuren Neu-Abgleich bzw.
+   unwiderrufliches Löschen aus. Styling bewusst identisch zu .multi-filter
+   (gleiches Dropdown-Muster, schon an anderer Stelle auf der Seite etabliert). */
+.lauf-weitere-aktionen {
+  position: relative;
+}
+
+.lauf-weitere-aktionen > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.5rem 0.9rem;
+  border-radius: 20px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.lauf-weitere-aktionen > summary::-webkit-details-marker {
+  display: none;
+}
+
+.lauf-weitere-aktionen > summary::after {
+  content: "▾";
+  font-size: 0.65rem;
+  color: var(--ink-faint);
+}
+
+.lauf-weitere-aktionen[open] > summary {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.lauf-weitere-aktionen-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  padding: 0.6rem;
+  min-width: 190px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lauf-weitere-aktionen-panel button {
+  width: 100%;
+}
+
 .chip.lauf-erfolgreich {
   color: var(--st-done);
   background: rgba(27, 158, 119, 0.13);
