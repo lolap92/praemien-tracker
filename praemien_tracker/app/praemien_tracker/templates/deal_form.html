@@ -34,165 +34,132 @@
 </div>
 {% endif %}
 
+{% if deal %}
+
+<form id="deal-form" action="deals/{{ deal.id }}" method="post">
+
 <div class="sec-t">Konto</div>
 <div class="card">
-  {% if form_fehler %}
-  <div class="hinweis">{{ form_fehler }}</div>
-  {% endif %}
-  <form action="{{ 'deals/' ~ deal.id if deal else 'deals/new' }}" method="post">
-    <div class="reihe">
-      <div class="feld">
-        <label for="bank">Bank</label>
-        <input list="banken-liste" id="bank" name="bank" required value="{{ deal.bank.name if deal else eingaben.get('bank', '') }}">
-      </div>
-      <div class="feld">
-        <label for="inhaber">Inhaber</label>
-        <input list="inhaber-liste" id="inhaber" name="inhaber" required value="{{ deal.inhaber.name if deal else eingaben.get('inhaber', '') }}">
-      </div>
+  <div class="reihe">
+    <div class="feld">
+      <label for="bank">Bank</label>
+      <input list="banken-liste" id="bank" name="bank" required value="{{ deal.bank.name }}">
     </div>
-    <div class="reihe">
-      <div class="feld">
-        <label for="kontoart">Kontoart</label>
-        <input list="kontoart-liste" id="kontoart" name="kontoart" required value="{{ deal.kontoart if deal else eingaben.get('kontoart', '') }}">
-      </div>
-      <div class="feld">
-        <label for="kontonummer">Kontonummer {{ "⚠ offen" if 'kontonummer' in offene_felder else "" }}</label>
-        <input type="text" id="kontonummer" name="kontonummer" value="{{ deal.kontonummer or '' if deal else eingaben.get('kontonummer', '') }}">
-      </div>
+    <div class="feld">
+      <label for="inhaber">Inhaber</label>
+      <input list="inhaber-liste" id="inhaber" name="inhaber" required value="{{ deal.inhaber.name }}">
     </div>
-    <div class="checkbox-zeile feld">
-      <input type="checkbox" id="zugangsdaten_gespeichert" name="zugangsdaten_gespeichert" {{ "checked" if deal and deal.zugangsdaten_gespeichert else "" }}>
-      <label for="zugangsdaten_gespeichert">Zugangsdaten im Passwortmanager gesichert</label>
+  </div>
+  <div class="reihe">
+    <div class="feld">
+      <label for="kontoart">Kontoart</label>
+      <input list="kontoart-liste" id="kontoart" name="kontoart" required value="{{ deal.kontoart }}">
     </div>
-
-    {% if deal %}
-    <fieldset>
-      <legend>Kündigung</legend>
-      <div class="reihe">
-        <div class="feld">
-          <label for="kuendbar_ab">Kündbar ab <span class="auto">leer = keine Sperrfrist</span></label>
-          <input type="date" id="kuendbar_ab" name="kuendbar_ab" value="{{ deal.kuendbar_ab.isoformat() if deal.kuendbar_ab else '' }}">
-        </div>
-        <div class="feld">
-          <label for="gekuendigt_im_monat">Gekündigt im Monat (z. B. 2026-05)</label>
-          <input type="text" id="gekuendigt_im_monat" name="gekuendigt_im_monat" value="{{ deal.gekuendigt_im_monat or '' }}">
-        </div>
-      </div>
-      <div class="checkbox-zeile feld">
-        <input type="checkbox" id="gekuendigt" name="gekuendigt" {{ "checked" if deal.gekuendigt else "" }}>
-        <label for="gekuendigt">Gekündigt</label>
-      </div>
-      <div class="checkbox-zeile feld">
-        <input type="checkbox" id="kuendigung_bestaetigt" name="kuendigung_bestaetigt" {{ "checked" if deal.kuendigung_bestaetigt else "" }}>
-        <label for="kuendigung_bestaetigt">Kündigung bestätigt</label>
-      </div>
-      <div class="feld">
-        <label for="kuendigung_hinweis">
-          Kündigung Anweisungen
-          {% if deal and deal.kuendigung_hinweis_ki %}
-          <span class="chip chip-ki-recherchiert" title="Von der KI per Websuche recherchiert, nicht manuell geprüft - vor Nutzung kontrollieren.">KI-recherchiert, bitte prüfen</span>
-          {% endif %}
-        </label>
-        <textarea id="kuendigung_hinweis" name="kuendigung_hinweis" placeholder="Wie kündige ich dieses Konto? (z. B. Online im Kundenportal, per Post, Formular nötig …)">{{ deal.kuendigung_hinweis or '' }}</textarea>
-      </div>
-      <div class="feld">
-        <label for="kuendigung_hinweis_url">Link zur Anleitung (optional, z. B. PDF-Formular)</label>
-        <input type="url" id="kuendigung_hinweis_url" name="kuendigung_hinweis_url" placeholder="https://…" value="{{ deal.kuendigung_hinweis_url or '' }}">
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>Steuer &amp; Notiz</legend>
-      <div class="reihe">
-        <div class="feld">
-          <label for="freibetrag">Freibetrag (€) {{ "⚠ offen" if 'freibetrag' in offene_felder else "" }}</label>
-          <input type="text" id="freibetrag" name="freibetrag" value="{{ deal.freibetrag if deal.freibetrag is not none else '' }}">
-        </div>
-        <div class="feld">
-          <label for="freibetrag_jahr">Für welches Jahr?</label>
-          <input type="number" id="freibetrag_jahr" name="freibetrag_jahr" min="2000" max="2100" step="1"
-                 placeholder="{{ jahr_heute }}" value="{{ deal.freibetrag_jahr if deal.freibetrag_jahr else '' }}">
-        </div>
-        <div class="feld">
-          <label for="praemien_auf_sparkonto">Prämien auf Sparkonto</label>
-          <select id="praemien_auf_sparkonto" name="praemien_auf_sparkonto">
-            <option value="" {{ "selected" if deal.praemien_auf_sparkonto is none else "" }}>unbekannt</option>
-            <option value="on" {{ "selected" if deal.praemien_auf_sparkonto == True else "" }}>ja</option>
-            <option value="nein" {{ "selected" if deal.praemien_auf_sparkonto == False else "" }}>nein</option>
-          </select>
-        </div>
-      </div>
-      <div class="feld">
-        <label for="kommentar">Kommentar</label>
-        <textarea id="kommentar" name="kommentar">{{ deal.kommentar or '' }}</textarea>
-      </div>
-    </fieldset>
-    {% endif %}
-
-    <button type="submit" class="save-btn">{{ "Speichern" if deal else "Deal anlegen" }}</button>
-  </form>
+    <div class="feld">
+      <label for="kontonummer">Kontonummer {{ "⚠ offen" if 'kontonummer' in offene_felder else "" }}</label>
+      <input type="text" id="kontonummer" name="kontonummer" value="{{ deal.kontonummer or '' }}">
+    </div>
+  </div>
+  <div class="checkbox-zeile feld">
+    <input type="checkbox" id="zugangsdaten_gespeichert" name="zugangsdaten_gespeichert" {{ "checked" if deal.zugangsdaten_gespeichert else "" }}>
+    <label for="zugangsdaten_gespeichert">Zugangsdaten im Passwortmanager gesichert</label>
+  </div>
 </div>
 
-{% if not deal %}
-<details class="json-import" id="json-import" {{ "open" if json_fehler else "" }}>
-  <summary>Stattdessen per JSON anlegen</summary>
-  <div class="card">
-    {% if json_fehler %}
-    <div class="hinweis">
-      Konnte JSON nicht verarbeiten:
-      <ul>
-        {% for zeile in json_fehler %}<li>{{ zeile }}</li>{% endfor %}
-      </ul>
+<div class="sec-t">Kündigung</div>
+<div class="card">
+  <div class="reihe">
+    <div class="feld">
+      <label for="kuendbar_ab">Kündbar ab <span class="auto">leer = keine Sperrfrist</span></label>
+      <input type="date" id="kuendbar_ab" name="kuendbar_ab" value="{{ deal.kuendbar_ab.isoformat() if deal.kuendbar_ab else '' }}">
     </div>
-    {% endif %}
-    <form action="deals/json-import" method="post">
-      <div class="feld">
-        <textarea name="json_text" rows="16" placeholder='{"bank": "Trade Republic", "kontoart": "Depot", "inhaber": "Max", ...}'>{{ json_text }}</textarea>
-      </div>
-      <p class="auto">Ein einzelnes Objekt oder eine Liste mehrerer Deals.</p>
-      <button type="submit">JSON übernehmen</button>
-    </form>
+    <div class="feld">
+      <label for="gekuendigt_im_monat">Gekündigt im Monat (z. B. 2026-05)</label>
+      <input type="text" id="gekuendigt_im_monat" name="gekuendigt_im_monat" value="{{ deal.gekuendigt_im_monat or '' }}">
+    </div>
   </div>
-</details>
-{% endif %}
+  <div class="checkbox-zeile feld">
+    <input type="checkbox" id="gekuendigt" name="gekuendigt" {{ "checked" if deal.gekuendigt else "" }}>
+    <label for="gekuendigt">Gekündigt</label>
+  </div>
+  <div class="checkbox-zeile feld">
+    <input type="checkbox" id="kuendigung_bestaetigt" name="kuendigung_bestaetigt" {{ "checked" if deal.kuendigung_bestaetigt else "" }}>
+    <label for="kuendigung_bestaetigt">Kündigung bestätigt</label>
+  </div>
+  <div class="feld">
+    <label for="kuendigung_hinweis">
+      Kündigung Anweisungen
+      {% if deal.kuendigung_hinweis_ki %}
+      <span class="chip chip-ki-recherchiert" title="Von der KI per Websuche recherchiert, nicht manuell geprüft - vor Nutzung kontrollieren.">KI-recherchiert, bitte prüfen</span>
+      {% endif %}
+    </label>
+    <textarea id="kuendigung_hinweis" name="kuendigung_hinweis" placeholder="Wie kündige ich dieses Konto? (z. B. Online im Kundenportal, per Post, Formular nötig …)">{{ deal.kuendigung_hinweis or '' }}</textarea>
+  </div>
+  <div class="feld">
+    <label for="kuendigung_hinweis_url">Link zur Anleitung (optional, z. B. PDF-Formular)</label>
+    <input type="url" id="kuendigung_hinweis_url" name="kuendigung_hinweis_url" placeholder="https://…" value="{{ deal.kuendigung_hinweis_url or '' }}">
+  </div>
+</div>
 
-{% if deal %}
+<div class="sec-t">Steuer &amp; Notiz</div>
+<div class="card">
+  <div class="reihe">
+    <div class="feld">
+      <label for="freibetrag">Freibetrag (€) {{ "⚠ offen" if 'freibetrag' in offene_felder else "" }}</label>
+      <input type="text" id="freibetrag" name="freibetrag" value="{{ deal.freibetrag if deal.freibetrag is not none else '' }}">
+    </div>
+    <div class="feld">
+      <label for="freibetrag_jahr">Für welches Jahr?</label>
+      <input type="number" id="freibetrag_jahr" name="freibetrag_jahr" min="2000" max="2100" step="1"
+             placeholder="{{ jahr_heute }}" value="{{ deal.freibetrag_jahr if deal.freibetrag_jahr else '' }}">
+    </div>
+    <div class="feld">
+      <label for="praemien_auf_sparkonto">Prämien auf Sparkonto</label>
+      <select id="praemien_auf_sparkonto" name="praemien_auf_sparkonto">
+        <option value="" {{ "selected" if deal.praemien_auf_sparkonto is none else "" }}>unbekannt</option>
+        <option value="on" {{ "selected" if deal.praemien_auf_sparkonto == True else "" }}>ja</option>
+        <option value="nein" {{ "selected" if deal.praemien_auf_sparkonto == False else "" }}>nein</option>
+      </select>
+    </div>
+  </div>
+  <div class="feld">
+    <label for="kommentar">Kommentar</label>
+    <textarea id="kommentar" name="kommentar">{{ deal.kommentar or '' }}</textarea>
+  </div>
+</div>
 
 <div class="sec-t">Prämien</div>
 <div class="card">
   <ul class="unterliste">
     {% for p in deal.praemien %}
     <li>
-      <form class="reihe" style="flex:1; align-items:center;" action="deals/{{ deal.id }}/praemien/{{ p.id }}" method="post">
-        <select name="quelle" style="flex:0 0 130px;">
+      <div class="reihe" style="flex:1; align-items:center;">
+        <select name="praemie_{{ p.id }}_quelle" style="flex:0 0 130px;">
           <option value="spartanien" {{ "selected" if p.quelle == "spartanien" else "" }}>Spartanien</option>
           <option value="bank" {{ "selected" if p.quelle == "bank" else "" }}>Bank</option>
         </select>
-        <input type="text" name="betrag" style="flex:0 0 100px;" value="{{ p.betrag }}">
-        <input type="text" id="praemie_{{ p.id }}_auszahlung_erwartet" name="auszahlung_erwartet" style="flex:0 0 110px;" placeholder="JJJJ-MM" value="{{ p.auszahlung_erwartet or '' }}">
+        <input type="text" name="praemie_{{ p.id }}_betrag" style="flex:0 0 100px;" value="{{ p.betrag }}">
+        <input type="text" id="praemie_{{ p.id }}_auszahlung_erwartet" name="praemie_{{ p.id }}_auszahlung_erwartet" style="flex:0 0 110px;" placeholder="JJJJ-MM" value="{{ p.auszahlung_erwartet or '' }}">
         <span class="checkbox-zeile" style="flex:0 0 auto;">
-          <input type="checkbox" name="erhalten" id="praemie_{{ p.id }}_erhalten" {{ "checked" if p.erhalten else "" }}>
+          <input type="checkbox" name="praemie_{{ p.id }}_erhalten" id="praemie_{{ p.id }}_erhalten" {{ "checked" if p.erhalten else "" }}>
           <label for="praemie_{{ p.id }}_erhalten" style="margin:0;">erhalten</label>
         </span>
-        <button type="submit" class="secondary">Speichern</button>
-      </form>
-      <form action="deals/{{ deal.id }}/praemien/{{ p.id }}/delete" method="post">
-        <button type="submit" class="danger">×</button>
-      </form>
+      </div>
+      <button type="submit" class="danger" formaction="deals/{{ deal.id }}/praemien/{{ p.id }}/delete" formnovalidate>×</button>
     </li>
     {% else %}
     <li class="leer">Noch keine Prämien erfasst.</li>
     {% endfor %}
   </ul>
-  <form class="reihe" action="deals/{{ deal.id }}/praemien" method="post">
-    <select name="quelle" style="flex:0 0 130px;">
+  <div class="reihe">
+    <select name="neu_praemie_quelle" style="flex:0 0 130px;">
       <option value="spartanien">Spartanien</option>
       <option value="bank">Bank</option>
     </select>
-    <input type="text" name="betrag" placeholder="Betrag" style="flex:0 0 100px;" required>
-    <input type="text" name="auszahlung_erwartet" placeholder="Erwartet JJJJ-MM" style="flex:0 0 140px;">
-    <button type="submit">+ Prämie</button>
-  </form>
+    <input type="text" name="neu_praemie_betrag" placeholder="Betrag" style="flex:0 0 100px;">
+    <input type="text" name="neu_praemie_auszahlung_erwartet" placeholder="Erwartet JJJJ-MM" style="flex:0 0 140px;">
+    <button type="submit" formaction="deals/{{ deal.id }}/praemien" formnovalidate>+ Prämie</button>
+  </div>
 </div>
 
 <div class="sec-t">Bedingungen</div>
@@ -200,28 +167,25 @@
   <ul class="unterliste">
     {% for b in deal.bedingungen %}
     <li>
-      <form class="reihe" style="flex:1; align-items:center;" action="deals/{{ deal.id }}/bedingungen/{{ b.id }}" method="post">
-        <input type="text" name="beschreibung" style="flex:1 1 200px;" value="{{ b.beschreibung }}">
-        <input type="date" name="faellig_bis" style="flex:0 0 150px;" value="{{ b.faellig_bis.isoformat() if b.faellig_bis else '' }}">
+      <div class="reihe" style="flex:1; align-items:center;">
+        <input type="text" name="bedingung_{{ b.id }}_beschreibung" style="flex:1 1 200px;" value="{{ b.beschreibung }}">
+        <input type="date" name="bedingung_{{ b.id }}_faellig_bis" style="flex:0 0 150px;" value="{{ b.faellig_bis.isoformat() if b.faellig_bis else '' }}">
         <span class="checkbox-zeile" style="flex:0 0 auto;">
-          <input type="checkbox" name="erfuellt" id="bedingung_{{ b.id }}_erfuellt" {{ "checked" if b.erfuellt else "" }}>
+          <input type="checkbox" name="bedingung_{{ b.id }}_erfuellt" id="bedingung_{{ b.id }}_erfuellt" {{ "checked" if b.erfuellt else "" }}>
           <label for="bedingung_{{ b.id }}_erfuellt" style="margin:0;">erfüllt</label>
         </span>
-        <button type="submit" class="secondary">Speichern</button>
-      </form>
-      <form action="deals/{{ deal.id }}/bedingungen/{{ b.id }}/delete" method="post">
-        <button type="submit" class="danger">×</button>
-      </form>
+      </div>
+      <button type="submit" class="danger" formaction="deals/{{ deal.id }}/bedingungen/{{ b.id }}/delete" formnovalidate>×</button>
     </li>
     {% else %}
     <li class="leer">Keine Bedingungen hinterlegt – gilt als erfüllt.</li>
     {% endfor %}
   </ul>
-  <form class="reihe" action="deals/{{ deal.id }}/bedingungen" method="post">
-    <input type="text" name="beschreibung" placeholder="z. B. 3 Trades ausführen" style="flex:1 1 200px;" required>
-    <input type="date" name="faellig_bis" style="flex:0 0 150px;">
-    <button type="submit">+ Bedingung</button>
-  </form>
+  <div class="reihe">
+    <input type="text" name="neu_bedingung_beschreibung" placeholder="z. B. 3 Trades ausführen" style="flex:1 1 200px;">
+    <input type="date" name="neu_bedingung_faellig_bis" style="flex:0 0 150px;">
+    <button type="submit" formaction="deals/{{ deal.id }}/bedingungen" formnovalidate>+ Bedingung</button>
+  </div>
 </div>
 
 <div class="sec-t">Aufgaben (frei)</div>
@@ -229,29 +193,32 @@
   <ul class="unterliste">
     {% for a in deal.aufgaben %}
     <li>
-      <form class="reihe" style="flex:1; align-items:center;" action="deals/{{ deal.id }}/aufgaben/{{ a.id }}" method="post">
-        <input type="text" name="beschreibung" style="flex:1 1 200px;" value="{{ a.beschreibung }}">
-        <input type="date" name="faellig_bis" style="flex:0 0 150px;" value="{{ a.faellig_bis.isoformat() if a.faellig_bis else '' }}">
+      <div class="reihe" style="flex:1; align-items:center;">
+        <input type="text" name="aufgabe_{{ a.id }}_beschreibung" style="flex:1 1 200px;" value="{{ a.beschreibung }}">
+        <input type="date" name="aufgabe_{{ a.id }}_faellig_bis" style="flex:0 0 150px;" value="{{ a.faellig_bis.isoformat() if a.faellig_bis else '' }}">
         <span class="checkbox-zeile" style="flex:0 0 auto;">
-          <input type="checkbox" name="erledigt" id="aufgabe_{{ a.id }}_erledigt" {{ "checked" if a.erledigt else "" }}>
+          <input type="checkbox" name="aufgabe_{{ a.id }}_erledigt" id="aufgabe_{{ a.id }}_erledigt" {{ "checked" if a.erledigt else "" }}>
           <label for="aufgabe_{{ a.id }}_erledigt" style="margin:0;">erledigt</label>
         </span>
-        <button type="submit" class="secondary">Speichern</button>
-      </form>
-      <form action="deals/{{ deal.id }}/aufgaben/{{ a.id }}/delete" method="post">
-        <button type="submit" class="danger">×</button>
-      </form>
+      </div>
+      <button type="submit" class="danger" formaction="deals/{{ deal.id }}/aufgaben/{{ a.id }}/delete" formnovalidate>×</button>
     </li>
     {% else %}
     <li class="leer">Keine freien Aufgaben.</li>
     {% endfor %}
   </ul>
-  <form class="reihe" action="deals/{{ deal.id }}/aufgaben" method="post">
-    <input type="text" name="beschreibung" placeholder="z. B. Geld zurücküberweisen" style="flex:1 1 200px;" required>
-    <input type="date" name="faellig_bis" style="flex:0 0 150px;">
-    <button type="submit">+ Aufgabe</button>
-  </form>
+  <div class="reihe">
+    <input type="text" name="neu_aufgabe_beschreibung" placeholder="z. B. Geld zurücküberweisen" style="flex:1 1 200px;">
+    <input type="date" name="neu_aufgabe_faellig_bis" style="flex:0 0 150px;">
+    <button type="submit" formaction="deals/{{ deal.id }}/aufgaben" formnovalidate>+ Aufgabe</button>
+  </div>
 </div>
+
+<div class="card">
+  <button type="submit" class="save-btn">Speichern</button>
+</div>
+
+</form>
 
 <div class="sec-t">Links</div>
 <div class="card">
@@ -287,6 +254,64 @@
     <button type="submit" class="danger">Deal löschen</button>
   </form>
 </div>
+
+{% else %}
+
+<div class="sec-t">Konto</div>
+<div class="card">
+  {% if form_fehler %}
+  <div class="hinweis">{{ form_fehler }}</div>
+  {% endif %}
+  <form action="deals/new" method="post">
+    <div class="reihe">
+      <div class="feld">
+        <label for="bank">Bank</label>
+        <input list="banken-liste" id="bank" name="bank" required value="{{ eingaben.get('bank', '') }}">
+      </div>
+      <div class="feld">
+        <label for="inhaber">Inhaber</label>
+        <input list="inhaber-liste" id="inhaber" name="inhaber" required value="{{ eingaben.get('inhaber', '') }}">
+      </div>
+    </div>
+    <div class="reihe">
+      <div class="feld">
+        <label for="kontoart">Kontoart</label>
+        <input list="kontoart-liste" id="kontoart" name="kontoart" required value="{{ eingaben.get('kontoart', '') }}">
+      </div>
+      <div class="feld">
+        <label for="kontonummer">Kontonummer</label>
+        <input type="text" id="kontonummer" name="kontonummer" value="{{ eingaben.get('kontonummer', '') }}">
+      </div>
+    </div>
+    <div class="checkbox-zeile feld">
+      <input type="checkbox" id="zugangsdaten_gespeichert" name="zugangsdaten_gespeichert">
+      <label for="zugangsdaten_gespeichert">Zugangsdaten im Passwortmanager gesichert</label>
+    </div>
+
+    <button type="submit" class="save-btn">Deal anlegen</button>
+  </form>
+</div>
+
+<details class="json-import" id="json-import" {{ "open" if json_fehler else "" }}>
+  <summary>Stattdessen per JSON anlegen</summary>
+  <div class="card">
+    {% if json_fehler %}
+    <div class="hinweis">
+      Konnte JSON nicht verarbeiten:
+      <ul>
+        {% for zeile in json_fehler %}<li>{{ zeile }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    <form action="deals/json-import" method="post">
+      <div class="feld">
+        <textarea name="json_text" rows="16" placeholder='{"bank": "Trade Republic", "kontoart": "Depot", "inhaber": "Max", ...}'>{{ json_text }}</textarea>
+      </div>
+      <p class="auto">Ein einzelnes Objekt oder eine Liste mehrerer Deals.</p>
+      <button type="submit">JSON übernehmen</button>
+    </form>
+  </div>
+</details>
 
 {% endif %}
 

@@ -373,45 +373,62 @@ def deal_edit_form(request: Request, deal_id: int, db: Session = Depends(get_db)
 
 
 @router.post("/deals/{deal_id}")
-def deal_update(
-    request: Request,
-    deal_id: int,
-    bank: str = Form(...),
-    inhaber: str = Form(...),
-    kontoart: str = Form(...),
-    kontonummer: str = Form(""),
-    kuendbar_ab: str = Form(""),
-    gekuendigt: str = Form(""),
-    gekuendigt_im_monat: str = Form(""),
-    kuendigung_bestaetigt: str = Form(""),
-    kuendigung_hinweis: str = Form(""),
-    kuendigung_hinweis_url: str = Form(""),
-    freibetrag: str = Form(""),
-    freibetrag_jahr: str = Form(""),
-    praemien_auf_sparkonto: str = Form(""),
-    kommentar: str = Form(""),
-    zugangsdaten_gespeichert: str = Form(""),
-    db: Session = Depends(get_db),
-):
+async def deal_update(request: Request, deal_id: int, db: Session = Depends(get_db)):
+    """Speichert die komplette Bearbeiten-Seite in einem Rutsch: Kontodaten
+    sowie alle Prämien-/Bedingungen-/Aufgaben-Zeilen, die dort inline editierbar
+    sind (siehe deal_form.html - ein einziger "Speichern"-Button statt vieler
+    einzelner). Gelesen wird bewusst über request.form() statt typisierter
+    Form(...)-Parameter, weil die Anzahl der Zeilen je Deal unterschiedlich ist
+    (gleiches Muster wie vorschlaege.py::uebernehmen_bestaetigen)."""
     deal = _hole_deal(db, deal_id)
-    deal.bank = get_or_create_bank(db, bank)
-    deal.inhaber = get_or_create_inhaber(db, inhaber)
-    deal.kontoart = kontoart.strip()
-    deal.kontonummer = kontonummer.strip() or None
-    deal.kuendbar_ab = parse_date(kuendbar_ab)
-    deal.gekuendigt = gekuendigt == "on"
-    deal.gekuendigt_im_monat = monat_aus_formular(gekuendigt_im_monat)
-    deal.kuendigung_bestaetigt = kuendigung_bestaetigt == "on"
-    deal.kuendigung_hinweis = kuendigung_hinweis.strip() or None
-    deal.kuendigung_hinweis_url = kuendigung_hinweis_url.strip() or None
+    form = await request.form()
+
+    deal.bank = get_or_create_bank(db, form.get("bank", ""))
+    deal.inhaber = get_or_create_inhaber(db, form.get("inhaber", ""))
+    deal.kontoart = (form.get("kontoart") or "").strip()
+    deal.kontonummer = (form.get("kontonummer") or "").strip() or None
+    deal.kuendbar_ab = parse_date(form.get("kuendbar_ab") or "")
+    deal.gekuendigt = form.get("gekuendigt") == "on"
+    deal.gekuendigt_im_monat = monat_aus_formular(form.get("gekuendigt_im_monat") or "")
+    deal.kuendigung_bestaetigt = form.get("kuendigung_bestaetigt") == "on"
+    deal.kuendigung_hinweis = (form.get("kuendigung_hinweis") or "").strip() or None
+    deal.kuendigung_hinweis_url = (form.get("kuendigung_hinweis_url") or "").strip() or None
     deal.kuendigung_hinweis_ki = False
-    deal.freibetrag = parse_decimal(freibetrag)
+    deal.freibetrag = parse_decimal(form.get("freibetrag") or "")
     # Ohne Jahresangabe faellt der Betrag auf das laufende Jahr - sonst
     # erscheint er in keiner der beiden Jahresspalten und ist unsichtbar.
-    deal.freibetrag_jahr = freibetrag_jahr_bestimmen(_jahr_aus_formular(freibetrag_jahr), deal.freibetrag)
+    deal.freibetrag_jahr = freibetrag_jahr_bestimmen(_jahr_aus_formular(form.get("freibetrag_jahr") or ""), deal.freibetrag)
+    praemien_auf_sparkonto = form.get("praemien_auf_sparkonto") or ""
     deal.praemien_auf_sparkonto = (praemien_auf_sparkonto == "on") if praemien_auf_sparkonto else None
-    deal.kommentar = kommentar.strip() or None
-    deal.zugangsdaten_gespeichert = zugangsdaten_gespeichert == "on"
+    deal.kommentar = (form.get("kommentar") or "").strip() or None
+    deal.zugangsdaten_gespeichert = form.get("zugangsdaten_gespeichert") == "on"
+
+    for p in deal.praemien:
+        praefix = f"praemie_{p.id}_"
+        if f"{praefix}betrag" not in form:
+            continue
+        p.quelle = _quelle_oder_400(form.get(f"{praefix}quelle") or "bank")
+        p.betrag = parse_decimal(form.get(f"{praefix}betrag")) or 0
+        p.erhalten = form.get(f"{praefix}erhalten") == "on"
+        p.auszahlung_erwartet = monat_aus_formular(form.get(f"{praefix}auszahlung_erwartet") or "")
+    spartanien_aufgabe_sicherstellen(deal)
+
+    for b in deal.bedingungen:
+        praefix = f"bedingung_{b.id}_"
+        if f"{praefix}beschreibung" not in form:
+            continue
+        b.beschreibung = (form.get(f"{praefix}beschreibung") or "").strip()
+        b.erfuellt = form.get(f"{praefix}erfuellt") == "on"
+        b.faellig_bis = parse_date(form.get(f"{praefix}faellig_bis") or "")
+
+    for a in deal.aufgaben:
+        praefix = f"aufgabe_{a.id}_"
+        if f"{praefix}beschreibung" not in form:
+            continue
+        a.beschreibung = (form.get(f"{praefix}beschreibung") or "").strip()
+        a.erledigt = form.get(f"{praefix}erledigt") == "on"
+        a.faellig_bis = parse_date(form.get(f"{praefix}faellig_bis") or "")
+
     db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
 
@@ -475,45 +492,29 @@ def deal_delete(request: Request, deal_id: int, db: Session = Depends(get_db)):
 def praemie_add(
     request: Request,
     deal_id: int,
-    quelle: str = Form(...),
-    betrag: str = Form(...),
-    erhalten: str = Form(""),
-    auszahlung_erwartet: str = Form(""),
+    neu_praemie_quelle: str = Form("bank"),
+    neu_praemie_betrag: str = Form(""),
+    neu_praemie_erhalten: str = Form(""),
+    neu_praemie_auszahlung_erwartet: str = Form(""),
     db: Session = Depends(get_db),
 ):
     deal = _hole_deal(db, deal_id)
+    betrag = parse_decimal(neu_praemie_betrag)
+    # Leer gelassen (nur die Leerzeile am Ende der Liste, ohne Eingabe
+    # abgeschickt über den Speichern-Button) - nichts anzulegen statt einer
+    # Prämie mit 0 €.
+    if betrag is None:
+        return redirect(request, f"deals/{deal_id}/edit")
     deal.praemien.append(
         Praemie(
-            quelle=_quelle_oder_400(quelle),
-            betrag=parse_decimal(betrag) or 0,
-            erhalten=erhalten == "on",
-            auszahlung_erwartet=monat_aus_formular(auszahlung_erwartet),
+            quelle=_quelle_oder_400(neu_praemie_quelle),
+            betrag=betrag,
+            erhalten=neu_praemie_erhalten == "on",
+            auszahlung_erwartet=monat_aus_formular(neu_praemie_auszahlung_erwartet),
         )
     )
     spartanien_aufgabe_sicherstellen(deal)
     db.commit()
-    return redirect(request, f"deals/{deal_id}/edit")
-
-
-@router.post("/deals/{deal_id}/praemien/{praemie_id}")
-def praemie_update(
-    request: Request,
-    deal_id: int,
-    praemie_id: int,
-    quelle: str = Form(...),
-    betrag: str = Form(...),
-    erhalten: str = Form(""),
-    auszahlung_erwartet: str = Form(""),
-    db: Session = Depends(get_db),
-):
-    p = db.get(Praemie, praemie_id)
-    if p:
-        p.quelle = _quelle_oder_400(quelle)
-        p.betrag = parse_decimal(betrag) or 0
-        p.erhalten = erhalten == "on"
-        p.auszahlung_erwartet = monat_aus_formular(auszahlung_erwartet)
-        spartanien_aufgabe_sicherstellen(p.deal)
-        db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
 
 
@@ -533,32 +534,16 @@ def praemie_delete(request: Request, deal_id: int, praemie_id: int, db: Session 
 def bedingung_add(
     request: Request,
     deal_id: int,
-    beschreibung: str = Form(...),
-    faellig_bis: str = Form(""),
+    neu_bedingung_beschreibung: str = Form(""),
+    neu_bedingung_faellig_bis: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    beschreibung = neu_bedingung_beschreibung.strip()
+    if not beschreibung:
+        return redirect(request, f"deals/{deal_id}/edit")
     _hole_deal(db, deal_id)
-    db.add(Bedingung(deal_id=deal_id, beschreibung=beschreibung.strip(), faellig_bis=parse_date(faellig_bis)))
+    db.add(Bedingung(deal_id=deal_id, beschreibung=beschreibung, faellig_bis=parse_date(neu_bedingung_faellig_bis)))
     db.commit()
-    return redirect(request, f"deals/{deal_id}/edit")
-
-
-@router.post("/deals/{deal_id}/bedingungen/{bedingung_id}")
-def bedingung_update(
-    request: Request,
-    deal_id: int,
-    bedingung_id: int,
-    beschreibung: str = Form(...),
-    erfuellt: str = Form(""),
-    faellig_bis: str = Form(""),
-    db: Session = Depends(get_db),
-):
-    b = db.get(Bedingung, bedingung_id)
-    if b:
-        b.beschreibung = beschreibung.strip()
-        b.erfuellt = erfuellt == "on"
-        b.faellig_bis = parse_date(faellig_bis)
-        db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
 
 
@@ -578,32 +563,16 @@ def bedingung_delete(request: Request, deal_id: int, bedingung_id: int, db: Sess
 def deal_aufgabe_add(
     request: Request,
     deal_id: int,
-    beschreibung: str = Form(...),
-    faellig_bis: str = Form(""),
+    neu_aufgabe_beschreibung: str = Form(""),
+    neu_aufgabe_faellig_bis: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    beschreibung = neu_aufgabe_beschreibung.strip()
+    if not beschreibung:
+        return redirect(request, f"deals/{deal_id}/edit")
     _hole_deal(db, deal_id)
-    db.add(Aufgabe(deal_id=deal_id, beschreibung=beschreibung.strip(), faellig_bis=parse_date(faellig_bis)))
+    db.add(Aufgabe(deal_id=deal_id, beschreibung=beschreibung, faellig_bis=parse_date(neu_aufgabe_faellig_bis)))
     db.commit()
-    return redirect(request, f"deals/{deal_id}/edit")
-
-
-@router.post("/deals/{deal_id}/aufgaben/{aufgabe_id}")
-def deal_aufgabe_update(
-    request: Request,
-    deal_id: int,
-    aufgabe_id: int,
-    beschreibung: str = Form(...),
-    erledigt: str = Form(""),
-    faellig_bis: str = Form(""),
-    db: Session = Depends(get_db),
-):
-    a = db.get(Aufgabe, aufgabe_id)
-    if a:
-        a.beschreibung = beschreibung.strip()
-        a.erledigt = erledigt == "on"
-        a.faellig_bis = parse_date(faellig_bis)
-        db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
 
 

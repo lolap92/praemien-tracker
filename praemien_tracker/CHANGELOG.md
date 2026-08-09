@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.26.0
+
+Deal bearbeiten (Todoist "Ki/Prämien webapp", Prio 1): ein Speichern-Button
+statt vieler.
+
+- Die Bearbeiten-Seite eines Deals hatte bisher für jede Prämien-,
+  Bedingungen- und Aufgaben-Zeile einen eigenen "Speichern"-Button, dazu
+  einen weiteren für die Kontodaten - leicht zu übersehen, wenn nach einer
+  Änderung an mehreren Stellen nicht überall gespeichert wurde. Jetzt hängen
+  Kontodaten, Kündigung, Steuer/Notiz sowie alle Prämien-/Bedingungen-/
+  Aufgaben-Zeilen an einem gemeinsamen Formular mit **einem** Speichern-Button
+  ganz unten, der alles auf einmal sichert. Zeilen hinzufügen/löschen bleibt
+  weiterhin sofort wirksam (kein Speichern nötig). Links sowie Stornieren/
+  Löschen bleiben unverändert eigene, sofort wirksame Aktionen.
+
 ## 2.25.0
 
 Vier kleinere Verbesserungen (Todoist "Ki/Prämien webapp", Prio 4):
