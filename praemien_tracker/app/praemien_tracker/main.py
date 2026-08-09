@@ -32,6 +32,7 @@ from .config import DATABASE_URL, DB_BACKUP_PATH, DB_PATH, DEMO_MODUS, TAEGLICHE
 from .database import SessionLocal, engine
 from .demo_seed import lade_demo_daten
 from .finder.lauf import geplanter_lauf
+from .kuendigung_recherche import naechtlicher_lauf as kuendigung_hinweise_lauf
 from .routers import (
     completeness,
     deals,
@@ -149,14 +150,22 @@ def _zeitzone_protokollieren() -> None:
 
 
 def _scheduler_starten() -> BackgroundScheduler:
-    """Täglicher KI-Deal-Finder-Lauf, im selben Prozess wie die Web-App
-    (Konzept: kein zweiter Container/Cronjob). Uhrzeit bewusst nicht
-    konfigurierbar - die Add-on-Optionen betreffen die Fachlogik des Laufs
-    (Mindestprämie, Quellen), nicht seine Uhrzeit. Ob er überhaupt läuft, ist
-    über die Option "taeglicher_lauf_aktiv" abschaltbar (z. B. um API-Kosten
-    zu vermeiden) - "Jetzt suchen" bleibt davon unberührt."""
+    """Täglicher KI-Deal-Finder-Lauf sowie der nächtliche Kündigungshinweis-
+    Batch (kuendigung_recherche.naechtlicher_lauf - trägt KI-recherchierte
+    Kündigungswege für Deals ohne eigenen Hinweis nach, siehe dort), beide im
+    selben Prozess wie die Web-App (Konzept: kein zweiter Container/Cronjob).
+    Der Kündigungshinweis-Batch läuft eine Stunde früher (05:00 statt 06:00),
+    damit beide Jobs nicht gleichzeitig gegen dieselbe SQLite-Datenbank
+    schreiben. Uhrzeiten bewusst nicht konfigurierbar - die Add-on-Optionen
+    betreffen die Fachlogik der Läufe (Mindestprämie, Quellen), nicht ihre
+    Uhrzeit. Ob sie überhaupt laufen, ist über die Option
+    "taeglicher_lauf_aktiv" gemeinsam abschaltbar (z. B. um API-Kosten zu
+    vermeiden) - "Jetzt suchen" bleibt davon unberührt."""
     scheduler = BackgroundScheduler()
     if TAEGLICHER_LAUF_AKTIV:
+        scheduler.add_job(
+            kuendigung_hinweise_lauf, "cron", hour=5, minute=0, id="kuendigung_hinweise", misfire_grace_time=3600
+        )
         scheduler.add_job(geplanter_lauf, "cron", hour=6, minute=0, id="ki_deal_finder", misfire_grace_time=3600)
     scheduler.start()
     return scheduler

@@ -406,23 +406,16 @@ def test_uebernehmen_vorschau_und_bestaetigen_nutzen_dieselbe_hintergrund_recher
     assert len(aufrufe) == 1
 
 
-def test_uebernehmen_bestaetigen_teilt_sich_ein_gemeinsames_zeitbudget_fuer_beide_recherchen(db, inhaber, monkeypatch):
-    """KwK- und Kündigungsweg-Recherche laufen unabhängig im Hintergrund -
-    sind beide beim Bestätigen noch nicht fertig, darf sich die Wartezeit
-    nicht addieren (sonst hinge "Übernehmen" trotz Hintergrund-Recherche
-    weiterhin spürbar, nur eben doppelt so kurz wie vorher)."""
-    monkeypatch.setattr(helpers, "HINTERGRUND_RECHERCHE_TIMEOUT_SEKUNDEN", 0.3)
+def test_uebernehmen_bestaetigen_wartet_hoechstens_kwk_timeout_auf_langsame_recherche(db, inhaber, monkeypatch):
+    """Kernanliegen des Hintergrund-Fixes: eine langsame KwK-Recherche darf
+    "Übernehmen" nie länger als KWK_TIMEOUT_SEKUNDEN blockieren."""
+    monkeypatch.setattr(helpers, "KWK_TIMEOUT_SEKUNDEN", 0.3)
 
     def _langsame_kwk(bank, kontoart):
-        time.sleep(1.0)
+        time.sleep(2.0)
         return None, False
 
-    def _langsame_kuendigung(db_, bank, kontoart):
-        time.sleep(1.0)
-        return None
-
     monkeypatch.setattr("praemien_tracker.kwk_recherche.moeglichkeit_recherchieren", _langsame_kwk)
-    monkeypatch.setattr("praemien_tracker.kuendigung_recherche.hinweis_recherchieren", _langsame_kuendigung)
     roh_json = (
         '{"bank": "Zeitbudget-Testbank", "kontoart": "Girokonto", "inhaber": "Alice", '
         '"praemien": [{"quelle": "bank", "betrag": "125.00", "erhalten": false}], '
@@ -437,10 +430,20 @@ def test_uebernehmen_bestaetigen_teilt_sich_ein_gemeinsames_zeitbudget_fuer_beid
     client.post("/vorschlaege/uebernehmen/bestaetigen", data=felder, follow_redirects=False)
     dauer = time.monotonic() - start
 
-    # Bei zwei unabhängigen, je 0.3s langen Wartezeiten wären es (ohne
-    # gemeinsames Budget) rund 0.6s - deutlich darunter beweist, dass beide
-    # sich ein einziges Budget teilen statt es zu verdoppeln.
-    assert dauer < 0.5
+    assert dauer < 1.0  # deutlich unter den 2.0s der (gefakten) langsamen Recherche
+
+
+def test_uebernehmen_bestaetigen_ruft_fuer_kuendigungsweg_nie_die_api_auf(db, inhaber, monkeypatch):
+    """Der Kündigungsweg ist reiner Tabellen-Lookup - keine KI-Websuche mehr
+    im Übernehmen-Ablauf, das übernimmt ausschließlich der nächtliche Batch."""
+
+    def _fail(*a, **kw):
+        raise AssertionError("hinweis_recherchieren sollte beim Übernehmen nicht aufgerufen werden.")
+
+    monkeypatch.setattr("praemien_tracker.kuendigung_recherche.hinweis_recherchieren", _fail)
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    _uebernehmen_vorschau_und_bestaetigen([vorschlag.id])
 
 
 def test_uebernehmen_bestaetigen_mit_mehreren_ids_legt_fuer_jeden_ausgewaehlten_namen_einen_deal_an(db, zwei_inhaber):

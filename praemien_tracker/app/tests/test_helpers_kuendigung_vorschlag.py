@@ -1,5 +1,6 @@
-"""helpers.kuendigung_vorschlag(): fest hinterlegter Hinweis geht vor,
-KI-Recherche ist nur der Fallback und wird als solcher markiert."""
+"""helpers.kuendigung_vorschlag(): reiner Tabellen-Lookup (KUENDIGUNG_HINWEISE),
+keine KI-Websuche mehr - die läuft nur noch nachts im Batch, siehe
+kuendigung_recherche.naechtlicher_lauf() / test_kuendigung_recherche.py."""
 
 from __future__ import annotations
 
@@ -19,11 +20,8 @@ def _deal(db, bank_name: str, kontoart: str) -> Deal:
     return deal
 
 
-def test_fest_hinterlegter_hinweis_wird_nicht_als_ki_markiert(db, monkeypatch):
+def test_fest_hinterlegter_hinweis_wird_gesetzt(db):
     """C24 Bank/Girokonto ist in kuendigung_hinweise.py fest hinterlegt."""
-    monkeypatch.setattr(
-        kuendigung_recherche, "hinweis_recherchieren", lambda *a, **kw: pytest_fail_if_called()
-    )
     deal = _deal(db, "C24 Bank", "Girokonto")
 
     kuendigung_vorschlag(db, deal)
@@ -32,27 +30,13 @@ def test_fest_hinterlegter_hinweis_wird_nicht_als_ki_markiert(db, monkeypatch):
     assert deal.kuendigung_hinweis_ki is False
 
 
-def pytest_fail_if_called():
-    raise AssertionError("Recherche sollte bei fest hinterlegtem Hinweis nicht aufgerufen werden.")
-
-
-def test_ki_recherche_greift_wenn_nichts_fest_hinterlegt_ist(db, monkeypatch):
+def test_ohne_festen_eintrag_bleibt_hinweis_leer_ohne_api_aufruf(db, monkeypatch):
+    """Kernanliegen: kein fest hinterlegter Eintrag löst keine KI-Websuche
+    mehr aus - das Nachtragen übernimmt ausschließlich der nächtliche Batch
+    (kuendigung_recherche.naechtlicher_lauf)."""
     monkeypatch.setattr(
-        kuendigung_recherche,
-        "hinweis_recherchieren",
-        lambda db_, bank, kontoart: ("Online kündbar.", "https://bank.example/faq"),
+        kuendigung_recherche, "hinweis_recherchieren", lambda *a, **kw: pytest_fail_if_called()
     )
-    deal = _deal(db, "Ganz Unbekannte Bank", "Girokonto")
-
-    kuendigung_vorschlag(db, deal)
-
-    assert deal.kuendigung_hinweis == "Online kündbar."
-    assert deal.kuendigung_hinweis_url == "https://bank.example/faq"
-    assert deal.kuendigung_hinweis_ki is True
-
-
-def test_ohne_treffer_bleibt_hinweis_leer(db, monkeypatch):
-    monkeypatch.setattr(kuendigung_recherche, "hinweis_recherchieren", lambda *a, **kw: None)
     deal = _deal(db, "Ganz Unbekannte Bank", "Girokonto")
 
     kuendigung_vorschlag(db, deal)
@@ -61,18 +45,26 @@ def test_ohne_treffer_bleibt_hinweis_leer(db, monkeypatch):
     assert deal.kuendigung_hinweis_ki is False
 
 
-def test_bestehender_hinweis_wird_nicht_ueberschrieben(db, monkeypatch):
-    aufrufe = []
-    monkeypatch.setattr(
-        kuendigung_recherche,
-        "hinweis_recherchieren",
-        lambda *a, **kw: aufrufe.append(1) or ("x", "https://x"),
-    )
-    deal = _deal(db, "Ganz Unbekannte Bank", "Girokonto")
+def pytest_fail_if_called():
+    raise AssertionError("hinweis_recherchieren sollte beim Anlegen nicht mehr aufgerufen werden.")
+
+
+def test_bestehender_hinweis_wird_nicht_ueberschrieben(db):
+    deal = _deal(db, "C24 Bank", "Girokonto")
     deal.kuendigung_hinweis = "Eigener Text"
 
     kuendigung_vorschlag(db, deal)
 
     assert deal.kuendigung_hinweis == "Eigener Text"
     assert deal.kuendigung_hinweis_ki is False
-    assert aufrufe == []
+
+
+def test_ohne_bank_passiert_nichts(db):
+    inhaber = Inhaber(name="Alice")
+    db.add(inhaber)
+    db.commit()
+    deal = Deal(bank=None, inhaber=inhaber, kontoart="Girokonto")
+
+    kuendigung_vorschlag(db, deal)
+
+    assert deal.kuendigung_hinweis is None

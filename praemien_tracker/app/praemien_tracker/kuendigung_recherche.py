@@ -2,6 +2,17 @@
 (fest hinterlegt, siehe kuendigung_hinweise.py) keinen Eintrag für Bank+
 Kontoart kennt.
 
+Läuft ausschließlich im nächtlichen Batch (naechtlicher_lauf, per
+APScheduler-Job in main.py) statt direkt beim Anlegen eines Deals - ein Deal
+wartet dadurch nie auf eine KI-Websuche (frühere synchrone Variante konnte
+"Übernehmen"/die manuelle Anlage für eine noch nie recherchierte Bank+
+Kontoart-Kombination spürbar blockieren). Ein neu angelegter Deal ohne fest
+hinterlegten Hinweis (helpers.kuendigung_vorschlag) bekommt seinen
+KI-recherchierten Hinweis dadurch typischerweise erst am nächsten Morgen
+statt sofort - für einen Kündigungsweg, der sich selten ändert und beim
+Anlegen meist noch nicht gebraucht wird, ein vertretbarer Tausch gegen ein
+nie blockierendes Anlegen.
+
 Das Ergebnis wird in der Datenbank gecacht (KuendigungRecherche), damit
 dieselbe Bank+Kontoart-Kombination nicht wiederholt gegen die API geschickt
 wird - dieselbe Kostenersparnis-Idee wie beim KI-Deal-Finder (finder/lauf.py).
@@ -16,7 +27,6 @@ diese Recherche ist eine reine Ergänzung, kein Ersatz für die feste Tabelle.
 from __future__ import annotations
 
 import logging
-import threading
 
 import anthropic
 from pydantic import BaseModel
@@ -25,7 +35,8 @@ from sqlalchemy.orm import Session
 from . import config
 from .anthropic_client import anthropic_client
 from .database import SessionLocal
-from .models import KuendigungRecherche
+from .kuendigung_hinweise import hinweis_fuer
+from .models import Deal, KuendigungRecherche
 
 logger = logging.getLogger("praemien_tracker")
 
@@ -96,60 +107,54 @@ def hinweis_recherchieren(db: Session, bank_name: str, kontoart: str) -> tuple[s
     return hinweis, hinweis_url
 
 
-# Hintergrund-Recherche für den Übernehmen-Vorschau-Schritt (siehe
-# routers/vorschlaege.uebernehmen_vorschau und
-# helpers.kuendigung_hinweis_vorab_starten): hinweis_recherchieren() lief
-# bisher synchron beim Anlegen jedes einzelnen Deals und konnte "Übernehmen"
-# für eine noch nie recherchierte Bank+Kontoart-Kombination spürbar blockieren
-# (Cache greift erst ab dem zweiten Mal) - analog zu kwk_recherche.py läuft
-# sie jetzt stattdessen einmal je Bank+Kontoart im Hintergrund, während der
-# Nutzer die Vorschau sieht/bearbeitet. Eigene DB-Session (SessionLocal), da
-# der Thread außerhalb des Requests läuft und dessen Session zu diesem
-# Zeitpunkt schon geschlossen sein kann.
-_lock = threading.Lock()
-_threads: dict[str, threading.Thread] = {}
-_ergebnisse: dict[str, tuple[str, str] | None] = {}
+def alle_ohne_hinweis_nachtragen(db: Session) -> int:
+    """Nächtlicher Batch: trägt für alle offenen Deals ohne Kündigungshinweis
+    einen nach - zuerst aus der festen Tabelle (kein API-Aufruf; deckt Fälle
+    ab, in denen KUENDIGUNG_HINWEISE nach der Deal-Anlage um einen Eintrag
+    ergänzt wurde), sonst per KI-Websuche mit demselben DB-Cache wie bisher
+    (hinweis_recherchieren) - eine Bank+Kontoart-Kombination wird dadurch
+    über alle betroffenen Deals hinweg nur einmal recherchiert.
+
+    Storniert Deals werden übersprungen - ein Deal, der nie zustande kam,
+    braucht keinen Kündigungsweg, das wäre ein unnötiger API-Aufruf. Ein
+    schon gesetzter Hinweis wird nie überschrieben (siehe
+    helpers.kuendigung_vorschlag) - nur Deals mit kuendigung_hinweis IS NULL
+    kommen überhaupt in Frage.
+
+    Liefert die Anzahl der Deals, für die dabei ein Hinweis ergänzt wurde."""
+    deals = (
+        db.query(Deal)
+        .filter(Deal.kuendigung_hinweis.is_(None), Deal.storniert.is_(False))
+        .all()
+    )
+    aktualisiert = 0
+    for deal in deals:
+        if deal.bank is None:
+            continue
+        eintrag = hinweis_fuer(deal.bank.name, deal.kontoart)
+        ki_recherchiert = False
+        if eintrag is None:
+            eintrag = hinweis_recherchieren(db, deal.bank.name, deal.kontoart)
+            ki_recherchiert = True
+        if eintrag is None:
+            continue
+        deal.kuendigung_hinweis, deal.kuendigung_hinweis_url = eintrag
+        deal.kuendigung_hinweis_ki = ki_recherchiert
+        aktualisiert += 1
+    db.commit()
+    return aktualisiert
 
 
-def hintergrund_starten(schluessel: str, bank_name: str, kontoart: str) -> None:
-    """Startet hinweis_recherchieren() in einem eigenen Thread mit eigener
-    Session, dedupliziert über `schluessel` - ein zweiter Aufruf für denselben
-    Schlüssel, während der erste Thread noch läuft, startet keinen zweiten.
-    Ist der vorherige Thread für denselben Schlüssel dagegen schon fertig,
-    aber sein Ergebnis nie abgeholt worden, wird trotzdem neu recherchiert
-    statt für immer auf dem alten, nie abgeholten Ergebnis sitzen zu bleiben -
-    siehe kwk_recherche.hintergrund_starten für dieselbe Überlegung."""
-    with _lock:
-        bestehend = _threads.get(schluessel)
-        if bestehend is not None and bestehend.is_alive():
-            return
-        _ergebnisse.pop(schluessel, None)
-
-        def _ausfuehren() -> None:
-            try:
-                with SessionLocal() as eigene_db:
-                    ergebnis = hinweis_recherchieren(eigene_db, bank_name, kontoart)
-            except Exception:
-                logger.exception("Hintergrund-Kündigungsweg-Recherche für %s (%s) fehlgeschlagen.", bank_name, kontoart)
-                ergebnis = None
-            with _lock:
-                _ergebnisse[schluessel] = ergebnis
-
-        thread = threading.Thread(target=_ausfuehren, daemon=True, name="kuendigung-recherche")
-        _threads[schluessel] = thread
-        thread.start()
-
-
-def ergebnis_abholen(schluessel: str, timeout: float) -> tuple[str, str] | None:
-    """Wartet bis zu `timeout` Sekunden auf den mit hintergrund_starten() für
-    denselben Schlüssel gestarteten Thread und liefert dessen Ergebnis - None
-    sowohl bei Timeout als auch bei einer legitim erfolglosen Recherche
-    (beides führt beim Aufrufer zum selben Verhalten: das Feld bleibt leer,
-    siehe helpers.kuendigung_ergebnis_anwenden)."""
-    with _lock:
-        thread = _threads.pop(schluessel, None)
-    if thread is None:
-        return None
-    thread.join(timeout)
-    with _lock:
-        return _ergebnisse.pop(schluessel, None)
+def naechtlicher_lauf() -> None:
+    """Einstiegspunkt für den APScheduler-Job (main.py) - öffnet eine eigene
+    Session, da der Job außerhalb eines Requests läuft. Läuft zeitversetzt
+    vor dem KI-Deal-Finder (siehe main._scheduler_starten), damit beide
+    Jobs nicht gleichzeitig gegen dieselbe SQLite-Datenbank schreiben.
+    Fehler werden geloggt statt den Scheduler zum Absturz zu bringen -
+    analog zu finder.lauf.geplanter_lauf()."""
+    try:
+        with SessionLocal() as db:
+            anzahl = alle_ohne_hinweis_nachtragen(db)
+        logger.info("Nächtlicher Kündigungshinweis-Batch: %d Deal(s) aktualisiert.", anzahl)
+    except Exception:
+        logger.exception("Nächtlicher Kündigungshinweis-Batch fehlgeschlagen.")

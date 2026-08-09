@@ -59,35 +59,30 @@ def monat_aus_formular(wert: str | None) -> str | None:
 
 
 def kuendigung_vorschlag(db: Session, deal: Deal) -> None:
-    """Recherchierten Kündigungsweg als Vorschlag setzen, falls für Bank und
-    Kontoart einer hinterlegt ist und der Deal noch keinen eigenen trägt.
-
-    Kennt KUENDIGUNG_HINWEISE (fest hinterlegt) keinen Eintrag, wird
-    zusätzlich einmalig per KI-Websuche recherchiert (kuendigung_recherche.py)
-    - nur, wenn ein Anthropic-API-Key konfiguriert ist, sonst bleibt das Feld
-    wie bisher leer. Ein so gesetzter Hinweis wird als KI-recherchiert
-    markiert (kuendigung_hinweis_ki), damit die Oberfläche ihn von den fest
-    hinterlegten, geprüften Einträgen unterscheiden kann.
+    """Fest hinterlegten Kündigungsweg (KUENDIGUNG_HINWEISE) als Vorschlag
+    setzen, falls einer für Bank und Kontoart existiert und der Deal noch
+    keinen eigenen trägt - reiner, kostenloser Tabellen-Lookup, keine
+    KI-Websuche mehr (siehe kuendigung_recherche.naechtlicher_lauf für die,
+    die stattdessen nachts läuft).
 
     Wird nur beim Anlegen aufgerufen. Danach gehört das Feld dem Nutzer -
     ein geleertes oder überschriebenes Feld bleibt so, wie der Nutzer es
-    haben möchte (siehe deal_update()/deal_kuendigung_hinweis_update()).
+    haben möchte (siehe deal_update()/deal_kuendigung_hinweis_update()); der
+    nächtliche Batch überschreibt aus demselben Grund nur Deals, die noch
+    gar keinen Hinweis haben.
 
-    Im Demo-Modus komplett übersprungen (auch die feste Tabelle bringt
-    nichts, da die Bank ohnehin frei erfunden ist) - vor allem aber, damit
-    hier unter keinen Umständen eine echte, kostenpflichtige KI-Websuche
-    ausgelöst wird, nur weil im Demo-Modus ein Vorschlag "übernommen" wird.
-    """
+    `db` bleibt ungenutzt (kein Cache-Zugriff mehr nötig) - der Parameter ist
+    nur da, damit die Funktion wie kwk_vorschlag() aus build_deal_from_import
+    aufgerufen werden kann, ohne dass der Aufrufer wissen muss, welche der
+    beiden einen DB-Zugriff braucht.
+
+    Im Demo-Modus komplett übersprungen, da die Bank ohnehin frei erfunden
+    ist und die feste Tabelle dafür nichts liefert."""
     if DEMO_MODUS or deal.kuendigung_hinweis or deal.bank is None:
         return
     eintrag = hinweis_fuer(deal.bank.name, deal.kontoart)
     if eintrag:
         deal.kuendigung_hinweis, deal.kuendigung_hinweis_url = eintrag
-        return
-    eintrag = kuendigung_recherche.hinweis_recherchieren(db, deal.bank.name, deal.kontoart)
-    if eintrag:
-        deal.kuendigung_hinweis, deal.kuendigung_hinweis_url = eintrag
-        deal.kuendigung_hinweis_ki = True
 
 
 def kwk_vorschlag(db: Session, deal: Deal) -> bool:
@@ -151,16 +146,12 @@ def spartanien_aufgabe_sicherstellen(deal: Deal) -> None:
     deal.aufgaben.append(Aufgabe(beschreibung=SPARTANIEN_AUFGABE_TEXT))
 
 
-# Sekunden, die routers/vorschlaege.uebernehmen_bestaetigen INSGESAMT
-# höchstens auf die beim Öffnen der Vorschau (uebernehmen_vorschau) im
-# Hintergrund gestarteten Recherchen (KwK + Kündigungsweg) wartet - siehe
-# kwk_recherche_vorab_starten/kwk_ergebnis_anwenden bzw.
-# kuendigung_hinweis_vorab_starten/kuendigung_ergebnis_anwenden. Kurz genug,
-# um "Übernehmen" nie spürbar zu blockieren, aber lang genug, um eine ohnehin
-# meist längst fertige Recherche noch mitzunehmen. Gilt als gemeinsames
-# Budget für beide Recherchen (siehe uebernehmen_bestaetigen), nicht als
-# Timeout je Recherche - sonst könnten sich zwei Wartezeiten aufsummieren.
-HINTERGRUND_RECHERCHE_TIMEOUT_SEKUNDEN = 2.0
+# Sekunden, die routers/vorschlaege.uebernehmen_bestaetigen höchstens auf die
+# beim Öffnen der Vorschau (uebernehmen_vorschau) im Hintergrund gestartete
+# KwK-Recherche wartet - siehe kwk_recherche_vorab_starten/kwk_ergebnis_anwenden.
+# Kurz genug, um "Übernehmen" nie spürbar zu blockieren, aber lang genug, um
+# eine ohnehin meist längst fertige Recherche noch mitzunehmen.
+KWK_TIMEOUT_SEKUNDEN = 2.0
 
 
 def kwk_recherche_vorab_starten(bank_name: str, kontoart: str) -> str:
@@ -215,56 +206,6 @@ def kwk_ergebnis_anwenden(deal: Deal, ergebnis: tuple[str | None, bool] | None) 
         )
 
 
-def kuendigung_hinweis_vorab_starten(bank_name: str, kontoart: str) -> str:
-    """Stößt die Kündigungsweg-Recherche schon beim Öffnen der Übernehmen-
-    Vorschau im Hintergrund an (kuendigung_recherche.hintergrund_starten),
-    statt sie wie früher erst beim tatsächlichen Anlegen synchron
-    auszuführen - dort hing "Übernehmen" für eine noch nie recherchierte
-    Bank+Kontoart-Kombination spürbar (der DB-Cache in
-    kuendigung_recherche.hinweis_recherchieren greift erst ab dem zweiten
-    Mal), siehe kuendigung_ergebnis_anwenden(). Prüft zuerst die feste Tabelle
-    (kuendigung_hinweise.hinweis_fuer) - ist dort schon ein Eintrag hinterlegt,
-    lohnt sich keine (kostenpflichtige) Recherche, es wird kein Thread
-    gestartet. Liefert den Dedup-Schlüssel für
-    kuendigung_hinweis_ergebnis_abholen(); im Demo-Modus ebenfalls kein
-    Thread, siehe kuendigung_vorschlag()."""
-    schluessel = f"{bank_name_normalisieren(bank_name)}|{kontoart.strip().lower()}"
-    if not DEMO_MODUS and hinweis_fuer(bank_name, kontoart) is None:
-        kuendigung_recherche.hintergrund_starten(schluessel, bank_name, kontoart)
-    return schluessel
-
-
-def kuendigung_hinweis_ergebnis_abholen(schluessel: str, timeout: float) -> tuple[str, str] | None:
-    """Holt das Ergebnis einer mit kuendigung_hinweis_vorab_starten()
-    gestarteten Recherche ab, siehe kuendigung_recherche.ergebnis_abholen().
-    Im Demo-Modus oder ohne Schlüssel (z.B. Direktaufruf ohne vorherige
-    Vorschau, oder weil die feste Tabelle schon einen Eintrag hatte und kein
-    Thread gestartet wurde) immer None."""
-    if DEMO_MODUS or not schluessel:
-        return None
-    return kuendigung_recherche.ergebnis_abholen(schluessel, timeout)
-
-
-def kuendigung_ergebnis_anwenden(deal: Deal, ki_ergebnis: tuple[str, str] | None) -> None:
-    """Hintergrund-Variante von kuendigung_vorschlag() für den Übernehmen-
-    Vorschau-Schritt: prüft wie dort zuerst die feste Tabelle (fest
-    hinterlegte, geprüfte Einträge gehen immer vor), wendet sonst das per
-    kuendigung_hinweis_vorab_starten()/kuendigung_hinweis_ergebnis_abholen()
-    vorab im Hintergrund ermittelte KI-Ergebnis an. Liegt (noch) keins vor
-    (Timeout) oder hat die Recherche nichts Verlässliches gefunden, bleibt das
-    Feld wie bisher leer - der Nutzer kann es jederzeit von Hand ergänzen
-    (siehe kuendigung_vorschlag(), dessen Docstring dazu weiterhin gilt)."""
-    if deal.kuendigung_hinweis or deal.bank is None:
-        return
-    eintrag = hinweis_fuer(deal.bank.name, deal.kontoart)
-    if eintrag:
-        deal.kuendigung_hinweis, deal.kuendigung_hinweis_url = eintrag
-        return
-    if ki_ergebnis:
-        deal.kuendigung_hinweis, deal.kuendigung_hinweis_url = ki_ergebnis
-        deal.kuendigung_hinweis_ki = True
-
-
 def get_or_create_bank(db: Session, name: str) -> Bank:
     """Bank per Name finden oder neu anlegen - der Abgleich ignoriert Groß-/
     Kleinschreibung, Leerzeichen und Interpunktion (z.B. "SMARTBROKER" ==
@@ -303,13 +244,13 @@ def build_deal_from_import(db: Session, daten: DealImport, *, hintergrund_recher
     """Legt einen Deal inkl. Prämien/Bedingungen/Aufgaben/Links aus validierten
     JSON-Importdaten an.
 
-    `hintergrund_recherche`: True, wenn der Aufrufer die KwK- und
-    Kündigungsweg-Recherche selbst übernimmt (siehe helpers.
-    kwk_ergebnis_anwenden/kuendigung_ergebnis_anwenden) - z.B. weil mehrere
-    Deals aus demselben Übernehmen-Vorgang (routers/vorschlaege.
-    uebernehmen_bestaetigen) dieselben, schon vorab im Hintergrund
-    gestarteten Recherchen teilen sollen, statt sie hier pro Deal erneut
-    synchron auszulösen."""
+    `hintergrund_recherche`: True, wenn der Aufrufer die KwK-Recherche selbst
+    übernimmt (siehe helpers.kwk_ergebnis_anwenden) - z.B. weil mehrere Deals
+    aus demselben Übernehmen-Vorgang (routers/vorschlaege.
+    uebernehmen_bestaetigen) dieselbe, schon vorab im Hintergrund gestartete
+    Recherche teilen sollen, statt sie hier pro Deal erneut synchron
+    auszulösen. Der Kündigungsweg-Lookup (kuendigung_vorschlag) läuft davon
+    unabhängig immer - er ist reiner Tabellen-Lookup, keine KI-Websuche."""
     deal = Deal(
         bank=get_or_create_bank(db, daten.bank),
         inhaber=get_or_create_inhaber(db, daten.inhaber),
@@ -348,11 +289,13 @@ def build_deal_from_import(db: Session, daten: DealImport, *, hintergrund_recher
         deal.aufgaben.append(
             Aufgabe(beschreibung=a.beschreibung.strip(), erledigt=a.erledigt, faellig_bis=a.faellig_bis)
         )
+    # Reiner Tabellen-Lookup, keine KI-Websuche mehr (siehe Docstring dort) -
+    # läuft deshalb immer, unabhängig von hintergrund_recherche.
+    kuendigung_vorschlag(db, deal)
     spartanien_aufgabe_sicherstellen(deal)
     if hintergrund_recherche:
         deal.kwk_fehlgeschlagen = False
     else:
-        kuendigung_vorschlag(db, deal)
         # Nicht in der Datenbank gespeichert (kein mapped_column) - reiner
         # In-Memory-Marker, damit der Aufrufer direkt am zurückgegebenen Deal
         # ablesen kann, ob die KwK-Recherche fehlgeschlagen ist.

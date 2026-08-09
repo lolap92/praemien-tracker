@@ -3,14 +3,10 @@ gefaked (analog zu finder/test_finder_extraktion.py)."""
 
 from __future__ import annotations
 
-import threading
-import time
 from types import SimpleNamespace
 
-import pytest
-
 from praemien_tracker import kuendigung_recherche
-from praemien_tracker.models import KuendigungRecherche
+from praemien_tracker.models import Bank, Deal, Inhaber, KuendigungRecherche
 
 
 class _FakeMessages:
@@ -41,75 +37,6 @@ def test_ohne_api_key_liefert_none_und_legt_nichts_an(db, monkeypatch):
 
     assert ergebnis is None
     assert db.query(KuendigungRecherche).count() == 0
-
-
-def test_hintergrund_starten_liefert_ergebnis_ueber_ergebnis_abholen(db, monkeypatch):
-    client = _FakeClient(_ergebnis())
-    monkeypatch.setattr(kuendigung_recherche, "anthropic_client", lambda: client)
-
-    kuendigung_recherche.hintergrund_starten("hintergrund-testbank|girokonto", "Hintergrund-Testbank", "Girokonto")
-    ergebnis = kuendigung_recherche.ergebnis_abholen("hintergrund-testbank|girokonto", timeout=2.0)
-
-    assert ergebnis == ("Online im Kundenportal kündbar.", "https://bank.example/faq")
-    # Der Hintergrund-Thread nutzt eine eigene Session (SessionLocal), landet
-    # aber in derselben Datenbank wie der Test - der Cache-Eintrag muss also
-    # trotzdem entstehen.
-    assert db.query(KuendigungRecherche).filter_by(bank_name="Hintergrund-Testbank").count() == 1
-
-
-def test_ergebnis_abholen_ohne_vorherigen_hintergrund_starten_liefert_none():
-    assert kuendigung_recherche.ergebnis_abholen("nie-gestartet", timeout=0.1) is None
-
-
-def test_hintergrund_starten_dedupliziert_laufenden_schluessel(monkeypatch):
-    """Analog zu test_kwk_recherche.test_hintergrund_starten_dedupliziert_
-    laufenden_schluessel: ein zweiter hintergrund_starten() für denselben
-    Schlüssel, während der erste Thread noch läuft, darf keine zweite
-    (kostenpflichtige) Recherche auslösen."""
-    aufrufe = []
-    laeuft = threading.Event()
-    weitermachen = threading.Event()
-
-    def _blockierender_client():
-        class _Blockierend:
-            class messages:
-                @staticmethod
-                def parse(**kwargs):
-                    aufrufe.append(1)
-                    laeuft.set()
-                    weitermachen.wait(2.0)
-                    raise RuntimeError("nur zum Zaehlen der Aufrufe")
-
-        return _Blockierend()
-
-    monkeypatch.setattr(kuendigung_recherche, "anthropic_client", _blockierender_client)
-
-    kuendigung_recherche.hintergrund_starten("dedup-kuendigung", "C24", "Girokonto")
-    assert laeuft.wait(2.0)
-    kuendigung_recherche.hintergrund_starten("dedup-kuendigung", "C24", "Girokonto")
-    weitermachen.set()
-    kuendigung_recherche.ergebnis_abholen("dedup-kuendigung", timeout=2.0)
-
-    assert len(aufrufe) == 1
-
-
-def test_ergebnis_abholen_bei_zu_kurzem_timeout_liefert_none(monkeypatch):
-    def _langsamer_client():
-        class _Langsam:
-            class messages:
-                @staticmethod
-                def parse(**kwargs):
-                    time.sleep(0.3)
-                    raise RuntimeError("absichtlich langsam und fehlschlagend")
-
-        return _Langsam()
-
-    monkeypatch.setattr(kuendigung_recherche, "anthropic_client", _langsamer_client)
-
-    kuendigung_recherche.hintergrund_starten("langsam-kuendigung", "Langsam", "Depot")
-    ergebnis = kuendigung_recherche.ergebnis_abholen("langsam-kuendigung", timeout=0.01)
-
-    assert ergebnis is None
 
 
 def test_erfolgreiche_recherche_wird_gecacht(db, monkeypatch):
@@ -168,3 +95,104 @@ def test_api_fehler_wird_abgefangen(db, monkeypatch):
 
     assert ergebnis is None
     assert db.query(KuendigungRecherche).count() == 0
+
+
+def _deal(db, bank_name: str, kontoart: str = "Girokonto", inhaber_name: str | None = None, **kwargs) -> Deal:
+    bank = db.query(Bank).filter_by(name=bank_name).one_or_none() or Bank(name=bank_name)
+    inhaber = Inhaber(name=inhaber_name or f"Inhaber-{bank_name}-{kontoart}")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank=bank, inhaber=inhaber, kontoart=kontoart, **kwargs)
+    db.add(deal)
+    db.commit()
+    return deal
+
+
+def test_alle_ohne_hinweis_nachtragen_nutzt_feste_tabelle_ohne_api_aufruf(db, monkeypatch):
+    """C24 Bank/Girokonto ist fest hinterlegt - kein API-Aufruf nötig."""
+    monkeypatch.setattr(
+        kuendigung_recherche, "hinweis_recherchieren", lambda *a, **kw: pytest_fail_if_called()
+    )
+    deal = _deal(db, "C24 Bank")
+
+    anzahl = kuendigung_recherche.alle_ohne_hinweis_nachtragen(db)
+
+    assert anzahl == 1
+    assert deal.kuendigung_hinweis is not None
+    assert deal.kuendigung_hinweis_ki is False
+
+
+def pytest_fail_if_called():
+    raise AssertionError("hinweis_recherchieren sollte bei fest hinterlegtem Eintrag nicht aufgerufen werden.")
+
+
+def test_alle_ohne_hinweis_nachtragen_recherchiert_wenn_nichts_fest_hinterlegt_ist(db, monkeypatch):
+    client = _FakeClient(_ergebnis())
+    monkeypatch.setattr(kuendigung_recherche, "anthropic_client", lambda: client)
+    deal = _deal(db, "Ganz Unbekannte Bank")
+
+    anzahl = kuendigung_recherche.alle_ohne_hinweis_nachtragen(db)
+
+    assert anzahl == 1
+    assert deal.kuendigung_hinweis == "Online im Kundenportal kündbar."
+    assert deal.kuendigung_hinweis_ki is True
+
+
+def test_alle_ohne_hinweis_nachtragen_dedupliziert_ueber_mehrere_deals(db, monkeypatch):
+    """Zwei Deals mit derselben Bank+Kontoart teilen sich den DB-Cache aus
+    hinweis_recherchieren - nur ein API-Aufruf für beide."""
+    client = _FakeClient(_ergebnis())
+    monkeypatch.setattr(kuendigung_recherche, "anthropic_client", lambda: client)
+    deal_a = _deal(db, "Ganz Unbekannte Bank", inhaber_name="Alice")
+    deal_b = _deal(db, "Ganz Unbekannte Bank", inhaber_name="Max")
+
+    anzahl = kuendigung_recherche.alle_ohne_hinweis_nachtragen(db)
+
+    assert anzahl == 2
+    assert deal_a.kuendigung_hinweis == "Online im Kundenportal kündbar."
+    assert deal_b.kuendigung_hinweis == "Online im Kundenportal kündbar."
+    assert client.messages.aufrufe == 1
+
+
+def test_alle_ohne_hinweis_nachtragen_laesst_bestehenden_hinweis_unangetastet(db):
+    deal = _deal(db, "Ganz Unbekannte Bank", kuendigung_hinweis="Eigener Text")
+
+    anzahl = kuendigung_recherche.alle_ohne_hinweis_nachtragen(db)
+
+    assert anzahl == 0
+    assert deal.kuendigung_hinweis == "Eigener Text"
+
+
+def test_alle_ohne_hinweis_nachtragen_ueberspringt_stornierte_deals(db, monkeypatch):
+    monkeypatch.setattr(
+        kuendigung_recherche, "hinweis_recherchieren", lambda *a, **kw: pytest_fail_if_called()
+    )
+    deal = _deal(db, "Ganz Unbekannte Bank", storniert=True)
+
+    anzahl = kuendigung_recherche.alle_ohne_hinweis_nachtragen(db)
+
+    assert anzahl == 0
+    assert deal.kuendigung_hinweis is None
+
+
+def test_alle_ohne_hinweis_nachtragen_ohne_treffer_bleibt_leer(db, monkeypatch):
+    client = _FakeClient(_ergebnis(gefunden=False, anleitung="", quelle_url=""))
+    monkeypatch.setattr(kuendigung_recherche, "anthropic_client", lambda: client)
+    deal = _deal(db, "Ganz Unbekannte Bank")
+
+    anzahl = kuendigung_recherche.alle_ohne_hinweis_nachtragen(db)
+
+    assert anzahl == 0
+    assert deal.kuendigung_hinweis is None
+
+
+def test_naechtlicher_lauf_faengt_fehler_ab(monkeypatch):
+    """Ein Fehler im Batch darf den Scheduler nicht zum Absturz bringen -
+    analog zu finder.lauf.geplanter_lauf()."""
+
+    def _kaputt(db):
+        raise RuntimeError("kaputt")
+
+    monkeypatch.setattr(kuendigung_recherche, "alle_ohne_hinweis_nachtragen", _kaputt)
+
+    kuendigung_recherche.naechtlicher_lauf()  # darf nicht raisen

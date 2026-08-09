@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.27.0
+
+Kündigungsweg-Recherche komplett vom Anlegen eines Deals entkoppelt: der
+API-Aufruf lief bisher überall dort synchron mit, wo ein Deal entsteht
+(Formular, JSON-Import, Übernehmen eines Vorschlags) und konnte für eine
+noch nie recherchierte Bank+Kontoart-Kombination spürbar verzögern (der
+DB-Cache greift erst ab dem zweiten Mal). Jetzt prüft das Anlegen nur noch
+die feste Tabelle (kostenlos, sofort) - findet sie nichts, bleibt das Feld
+zunächst leer.
+
+Stattdessen läuft nachts um 05:00 Uhr (eine Stunde vor dem KI-Deal-Finder)
+ein neuer Batch, der für alle offenen Deals ohne Kündigungshinweis einen
+nachträgt: zuerst wieder die feste Tabelle, sonst per KI-Websuche mit
+demselben Cache wie bisher - eine Bank+Kontoart-Kombination wird dabei über
+alle betroffenen Deals hinweg nur einmal recherchiert. Stornierte Deals
+werden übersprungen, ein bereits gesetzter oder von Hand eingetragener
+Hinweis nie überschrieben. Steuerbar über dieselbe Option wie der
+KI-Deal-Finder (`taeglicher_lauf_aktiv`).
+
 ## 2.26.1
 
 "Übernehmen" hing beim Klick auf "Jetzt anlegen" trotz der Hintergrund-KwK-
