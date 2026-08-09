@@ -16,6 +16,7 @@ diese Recherche ist eine reine Ergänzung, kein Ersatz für die feste Tabelle.
 from __future__ import annotations
 
 import logging
+import threading
 
 import anthropic
 from pydantic import BaseModel
@@ -23,6 +24,7 @@ from sqlalchemy.orm import Session
 
 from . import config
 from .anthropic_client import anthropic_client
+from .database import SessionLocal
 from .models import KuendigungRecherche
 
 logger = logging.getLogger("praemien_tracker")
@@ -92,3 +94,62 @@ def hinweis_recherchieren(db: Session, bank_name: str, kontoart: str) -> tuple[s
     db.add(KuendigungRecherche(bank_name=bank_name, kontoart=kontoart, hinweis=hinweis, hinweis_url=hinweis_url))
     db.commit()
     return hinweis, hinweis_url
+
+
+# Hintergrund-Recherche für den Übernehmen-Vorschau-Schritt (siehe
+# routers/vorschlaege.uebernehmen_vorschau und
+# helpers.kuendigung_hinweis_vorab_starten): hinweis_recherchieren() lief
+# bisher synchron beim Anlegen jedes einzelnen Deals und konnte "Übernehmen"
+# für eine noch nie recherchierte Bank+Kontoart-Kombination spürbar blockieren
+# (Cache greift erst ab dem zweiten Mal) - analog zu kwk_recherche.py läuft
+# sie jetzt stattdessen einmal je Bank+Kontoart im Hintergrund, während der
+# Nutzer die Vorschau sieht/bearbeitet. Eigene DB-Session (SessionLocal), da
+# der Thread außerhalb des Requests läuft und dessen Session zu diesem
+# Zeitpunkt schon geschlossen sein kann.
+_lock = threading.Lock()
+_threads: dict[str, threading.Thread] = {}
+_ergebnisse: dict[str, tuple[str, str] | None] = {}
+
+
+def hintergrund_starten(schluessel: str, bank_name: str, kontoart: str) -> None:
+    """Startet hinweis_recherchieren() in einem eigenen Thread mit eigener
+    Session, dedupliziert über `schluessel` - ein zweiter Aufruf für denselben
+    Schlüssel, während der erste Thread noch läuft, startet keinen zweiten.
+    Ist der vorherige Thread für denselben Schlüssel dagegen schon fertig,
+    aber sein Ergebnis nie abgeholt worden, wird trotzdem neu recherchiert
+    statt für immer auf dem alten, nie abgeholten Ergebnis sitzen zu bleiben -
+    siehe kwk_recherche.hintergrund_starten für dieselbe Überlegung."""
+    with _lock:
+        bestehend = _threads.get(schluessel)
+        if bestehend is not None and bestehend.is_alive():
+            return
+        _ergebnisse.pop(schluessel, None)
+
+        def _ausfuehren() -> None:
+            try:
+                with SessionLocal() as eigene_db:
+                    ergebnis = hinweis_recherchieren(eigene_db, bank_name, kontoart)
+            except Exception:
+                logger.exception("Hintergrund-Kündigungsweg-Recherche für %s (%s) fehlgeschlagen.", bank_name, kontoart)
+                ergebnis = None
+            with _lock:
+                _ergebnisse[schluessel] = ergebnis
+
+        thread = threading.Thread(target=_ausfuehren, daemon=True, name="kuendigung-recherche")
+        _threads[schluessel] = thread
+        thread.start()
+
+
+def ergebnis_abholen(schluessel: str, timeout: float) -> tuple[str, str] | None:
+    """Wartet bis zu `timeout` Sekunden auf den mit hintergrund_starten() für
+    denselben Schlüssel gestarteten Thread und liefert dessen Ergebnis - None
+    sowohl bei Timeout als auch bei einer legitim erfolglosen Recherche
+    (beides führt beim Aufrufer zum selben Verhalten: das Feld bleibt leer,
+    siehe helpers.kuendigung_ergebnis_anwenden)."""
+    with _lock:
+        thread = _threads.pop(schluessel, None)
+    if thread is None:
+        return None
+    thread.join(timeout)
+    with _lock:
+        return _ergebnisse.pop(schluessel, None)

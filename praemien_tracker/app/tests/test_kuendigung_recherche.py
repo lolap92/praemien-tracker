@@ -3,6 +3,8 @@ gefaked (analog zu finder/test_finder_extraktion.py)."""
 
 from __future__ import annotations
 
+import threading
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -39,6 +41,75 @@ def test_ohne_api_key_liefert_none_und_legt_nichts_an(db, monkeypatch):
 
     assert ergebnis is None
     assert db.query(KuendigungRecherche).count() == 0
+
+
+def test_hintergrund_starten_liefert_ergebnis_ueber_ergebnis_abholen(db, monkeypatch):
+    client = _FakeClient(_ergebnis())
+    monkeypatch.setattr(kuendigung_recherche, "anthropic_client", lambda: client)
+
+    kuendigung_recherche.hintergrund_starten("hintergrund-testbank|girokonto", "Hintergrund-Testbank", "Girokonto")
+    ergebnis = kuendigung_recherche.ergebnis_abholen("hintergrund-testbank|girokonto", timeout=2.0)
+
+    assert ergebnis == ("Online im Kundenportal kündbar.", "https://bank.example/faq")
+    # Der Hintergrund-Thread nutzt eine eigene Session (SessionLocal), landet
+    # aber in derselben Datenbank wie der Test - der Cache-Eintrag muss also
+    # trotzdem entstehen.
+    assert db.query(KuendigungRecherche).filter_by(bank_name="Hintergrund-Testbank").count() == 1
+
+
+def test_ergebnis_abholen_ohne_vorherigen_hintergrund_starten_liefert_none():
+    assert kuendigung_recherche.ergebnis_abholen("nie-gestartet", timeout=0.1) is None
+
+
+def test_hintergrund_starten_dedupliziert_laufenden_schluessel(monkeypatch):
+    """Analog zu test_kwk_recherche.test_hintergrund_starten_dedupliziert_
+    laufenden_schluessel: ein zweiter hintergrund_starten() für denselben
+    Schlüssel, während der erste Thread noch läuft, darf keine zweite
+    (kostenpflichtige) Recherche auslösen."""
+    aufrufe = []
+    laeuft = threading.Event()
+    weitermachen = threading.Event()
+
+    def _blockierender_client():
+        class _Blockierend:
+            class messages:
+                @staticmethod
+                def parse(**kwargs):
+                    aufrufe.append(1)
+                    laeuft.set()
+                    weitermachen.wait(2.0)
+                    raise RuntimeError("nur zum Zaehlen der Aufrufe")
+
+        return _Blockierend()
+
+    monkeypatch.setattr(kuendigung_recherche, "anthropic_client", _blockierender_client)
+
+    kuendigung_recherche.hintergrund_starten("dedup-kuendigung", "C24", "Girokonto")
+    assert laeuft.wait(2.0)
+    kuendigung_recherche.hintergrund_starten("dedup-kuendigung", "C24", "Girokonto")
+    weitermachen.set()
+    kuendigung_recherche.ergebnis_abholen("dedup-kuendigung", timeout=2.0)
+
+    assert len(aufrufe) == 1
+
+
+def test_ergebnis_abholen_bei_zu_kurzem_timeout_liefert_none(monkeypatch):
+    def _langsamer_client():
+        class _Langsam:
+            class messages:
+                @staticmethod
+                def parse(**kwargs):
+                    time.sleep(0.3)
+                    raise RuntimeError("absichtlich langsam und fehlschlagend")
+
+        return _Langsam()
+
+    monkeypatch.setattr(kuendigung_recherche, "anthropic_client", _langsamer_client)
+
+    kuendigung_recherche.hintergrund_starten("langsam-kuendigung", "Langsam", "Depot")
+    ergebnis = kuendigung_recherche.ergebnis_abholen("langsam-kuendigung", timeout=0.01)
+
+    assert ergebnis is None
 
 
 def test_erfolgreiche_recherche_wird_gecacht(db, monkeypatch):

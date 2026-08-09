@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 
 from fastapi import APIRouter, Depends, Form, Query, Request
@@ -352,10 +353,11 @@ def uebernehmen_vorschau(
     übergangen; bleibt dadurch keine gültige Auswahl übrig, geht es ohne
     Vorschau direkt zurück zur Übersicht.
 
-    Stößt die Kunden-wirbt-Kunden-Recherche für Bank+Kontoart schon jetzt im
-    Hintergrund an (helpers.kwk_recherche_vorab_starten) - die Zeit, die der
-    Nutzer mit der Vorschau verbringt, überbrückt die KI-Websuche, ohne
-    "Übernehmen" wie früher spürbar zu blockieren (siehe
+    Stößt die Kunden-wirbt-Kunden- und die Kündigungsweg-Recherche für
+    Bank+Kontoart schon jetzt im Hintergrund an (helpers.
+    kwk_recherche_vorab_starten/kuendigung_hinweis_vorab_starten) - die Zeit,
+    die der Nutzer mit der Vorschau verbringt, überbrückt beide KI-Websuchen,
+    ohne "Übernehmen" wie früher spürbar zu blockieren (siehe
     uebernehmen_bestaetigen)."""
     gueltig = [v for v in (db.get(DealVorschlag, vid) for vid in vorschlag_ids) if v is not None and v.status in STATUS_OFFEN]
     if not gueltig:
@@ -364,6 +366,7 @@ def uebernehmen_vorschau(
     fuehrend = gueltig[0]
     daten = DealImport.model_validate_json(fuehrend.roh_json)
     kwk_schluessel = helpers.kwk_recherche_vorab_starten(daten.bank, daten.kontoart)
+    kuendigung_schluessel = helpers.kuendigung_hinweis_vorab_starten(daten.bank, daten.kontoart)
 
     praemien_zeilen = _zeilen_mit_leerzeilen(
         [
@@ -404,6 +407,7 @@ def uebernehmen_vorschau(
             "mitglieder": gueltig,
             "verwerfen_duplikat_ids": verwerfen_duplikat_ids,
             "kwk_schluessel": kwk_schluessel,
+            "kuendigung_schluessel": kuendigung_schluessel,
         },
     )
 
@@ -420,6 +424,13 @@ def _form_zeilen(form, prefix: str, anzahl_feld: str, felder: tuple[str, ...]) -
     for i in range(int(form.get(anzahl_feld, "0") or "0")):
         zeilen.append({feld: form.get(f"{prefix}_{i}_{feld}") for feld in felder})
     return zeilen
+
+
+def _rest_vom_budget(deadline: float) -> float:
+    """Verbleibende Sekunden bis `deadline` (nie negativ) - siehe
+    uebernehmen_bestaetigen: mehrere Recherchen teilen sich ein gemeinsames
+    Zeitbudget, statt dass sich ihre einzelnen Timeouts aufsummieren."""
+    return max(0.0, deadline - time.monotonic())
 
 
 @router.post("/vorschlaege/uebernehmen/bestaetigen")
@@ -445,18 +456,24 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
     automatisch mit Grund "Duplikat" verworfen - kein zusätzlicher
     Bestätigungsschritt nötig.
 
-    Die KwK-Recherche wurde schon beim Öffnen der Vorschau einmal im
-    Hintergrund für Bank+Kontoart gestartet (uebernehmen_vorschau) und gilt
-    für alle hier angelegten Deals gleichermaßen - hier wird höchstens noch
-    kurz auf das Ergebnis gewartet (helpers.kwk_recherche_ergebnis_abholen).
-    Liegt dann immer noch keins vor oder ist die Recherche fehlgeschlagen,
+    Die KwK- und die Kündigungsweg-Recherche wurden schon beim Öffnen der
+    Vorschau einmal im Hintergrund für Bank+Kontoart gestartet
+    (uebernehmen_vorschau) und gelten für alle hier angelegten Deals
+    gleichermaßen - hier wird höchstens noch kurz auf die Ergebnisse gewartet
+    (helpers.kwk_recherche_ergebnis_abholen/kuendigung_hinweis_ergebnis_abholen).
+    HINTERGRUND_RECHERCHE_TIMEOUT_SEKUNDEN gilt dabei als gemeinsames Budget
+    für beide Wartezeiten zusammen (siehe _hintergrund_ergebnis_abholen),
+    nicht als Timeout je Recherche - sonst könnten sich zwei Wartezeiten
+    aufsummieren und "Übernehmen" trotzdem spürbar hängen. Liegt ein Ergebnis
+    dann immer noch nicht vor oder ist die KwK-Recherche fehlgeschlagen,
     bekommt jeder neue Deal stattdessen eine einfache Erinnerungs-Aufgabe
-    (helpers.kwk_ergebnis_anwenden) - "Übernehmen" wartet dadurch nie länger
-    als KWK_TIMEOUT_SEKUNDEN auf eine hängende KI-Websuche."""
+    (helpers.kwk_ergebnis_anwenden); beim Kündigungsweg bleibt das Feld in
+    diesem Fall einfach leer (helpers.kuendigung_ergebnis_anwenden)."""
     form = await request.form()
     vorschlag_ids = [int(v) for v in form.getlist("vorschlag_ids")]
     verwerfen_duplikat_ids = [int(v) for v in form.getlist("verwerfen_duplikat_ids")]
     kwk_schluessel = form.get("kwk_schluessel", "")
+    kuendigung_schluessel = form.get("kuendigung_schluessel", "")
     kuendbar_ab = parse_date((form.get("kuendbar_ab") or "").strip() or None)
     kommentar = (form.get("kommentar") or "").strip() or None
 
@@ -495,7 +512,9 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
             continue
         aufgaben.append(AufgabeIn(beschreibung=beschreibung, erledigt=False, faellig_bis=parse_date(zeile["faellig_bis"])))
 
-    kwk_ergebnis = helpers.kwk_recherche_ergebnis_abholen(kwk_schluessel, timeout=helpers.KWK_TIMEOUT_SEKUNDEN)
+    deadline = time.monotonic() + helpers.HINTERGRUND_RECHERCHE_TIMEOUT_SEKUNDEN
+    kwk_ergebnis = helpers.kwk_recherche_ergebnis_abholen(kwk_schluessel, timeout=_rest_vom_budget(deadline))
+    kuendigung_ergebnis = helpers.kuendigung_hinweis_ergebnis_abholen(kuendigung_schluessel, timeout=_rest_vom_budget(deadline))
 
     for vorschlag_id in vorschlag_ids:
         vorschlag = db.get(DealVorschlag, vorschlag_id)
@@ -508,8 +527,9 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
         daten.bedingungen = bedingungen
         daten.urls = urls
         daten.aufgaben = aufgaben
-        deal = build_deal_from_import(db, daten, kwk_recherche_ueberspringen=True)
+        deal = build_deal_from_import(db, daten, hintergrund_recherche=True)
         helpers.kwk_ergebnis_anwenden(deal, kwk_ergebnis)
+        helpers.kuendigung_ergebnis_anwenden(deal, kuendigung_ergebnis)
         vorschlag.status = matching.STATUS_UEBERNOMMEN
     for vorschlag_id in verwerfen_duplikat_ids:
         vorschlag = db.get(DealVorschlag, vorschlag_id)

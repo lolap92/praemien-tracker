@@ -184,7 +184,7 @@ def test_hintergrund_starten_recherchiert_erneut_wenn_voriger_thread_fertig_ist(
 
 def test_ergebnis_abholen_bei_zu_kurzem_timeout_liefert_none(monkeypatch):
     """Läuft die Recherche länger als der Aufrufer warten will (siehe
-    helpers.KWK_TIMEOUT_SEKUNDEN), gibt es kein Ergebnis statt einer
+    helpers.HINTERGRUND_RECHERCHE_TIMEOUT_SEKUNDEN), gibt es kein Ergebnis statt einer
     blockierenden Wartezeit - der Aufrufer fällt dann auf eine einfache
     Erinnerungs-Aufgabe zurück (helpers.kwk_ergebnis_anwenden)."""
 

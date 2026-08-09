@@ -11,6 +11,7 @@ import pytest
 from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
 
+from praemien_tracker import helpers
 from praemien_tracker.main import app
 from praemien_tracker.models import Deal, DealVorschlag, FinderLauf, Inhaber, VorschlagPraemie
 
@@ -403,6 +404,43 @@ def test_uebernehmen_vorschau_und_bestaetigen_nutzen_dieselbe_hintergrund_recher
     kwk_urls = [u.url for u in deal.urls if u.bezeichnung == "Kunden wirbt Kunden"]
     assert kwk_urls == ["https://bank.example/kwk"]
     assert len(aufrufe) == 1
+
+
+def test_uebernehmen_bestaetigen_teilt_sich_ein_gemeinsames_zeitbudget_fuer_beide_recherchen(db, inhaber, monkeypatch):
+    """KwK- und Kündigungsweg-Recherche laufen unabhängig im Hintergrund -
+    sind beide beim Bestätigen noch nicht fertig, darf sich die Wartezeit
+    nicht addieren (sonst hinge "Übernehmen" trotz Hintergrund-Recherche
+    weiterhin spürbar, nur eben doppelt so kurz wie vorher)."""
+    monkeypatch.setattr(helpers, "HINTERGRUND_RECHERCHE_TIMEOUT_SEKUNDEN", 0.3)
+
+    def _langsame_kwk(bank, kontoart):
+        time.sleep(1.0)
+        return None, False
+
+    def _langsame_kuendigung(db_, bank, kontoart):
+        time.sleep(1.0)
+        return None
+
+    monkeypatch.setattr("praemien_tracker.kwk_recherche.moeglichkeit_recherchieren", _langsame_kwk)
+    monkeypatch.setattr("praemien_tracker.kuendigung_recherche.hinweis_recherchieren", _langsame_kuendigung)
+    roh_json = (
+        '{"bank": "Zeitbudget-Testbank", "kontoart": "Girokonto", "inhaber": "Alice", '
+        '"praemien": [{"quelle": "bank", "betrag": "125.00", "erhalten": false}], '
+        '"bedingungen": [], "urls": [{"url": "https://www.mydealz.de/x", "bezeichnung": "mydealz-Angebot"}]}'
+    )
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen", bank_name="Zeitbudget-Testbank", roh_json=roh_json)
+
+    vorschau = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]})
+    felder = _formularfelder(vorschau.text)
+
+    start = time.monotonic()
+    client.post("/vorschlaege/uebernehmen/bestaetigen", data=felder, follow_redirects=False)
+    dauer = time.monotonic() - start
+
+    # Bei zwei unabhängigen, je 0.3s langen Wartezeiten wären es (ohne
+    # gemeinsames Budget) rund 0.6s - deutlich darunter beweist, dass beide
+    # sich ein einziges Budget teilen statt es zu verdoppeln.
+    assert dauer < 0.5
 
 
 def test_uebernehmen_bestaetigen_mit_mehreren_ids_legt_fuer_jeden_ausgewaehlten_namen_einen_deal_an(db, zwei_inhaber):

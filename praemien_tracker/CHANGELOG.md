@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.26.1
+
+"Übernehmen" hing beim Klick auf "Jetzt anlegen" trotz der Hintergrund-KwK-
+Recherche (siehe 2.24.1) weiterhin spürbar - Ursache war eine zweite, bisher
+unangetastete synchrone KI-Websuche: die Kündigungsweg-Recherche
+(helpers.kuendigung_vorschlag), die für jede noch nie recherchierte
+Bank+Kontoart-Kombination ganz ohne Zeitlimit lief (ihr DB-Cache greift erst
+ab dem zweiten Mal). Läuft jetzt wie die KwK-Recherche schon beim Öffnen der
+Vorschau im Hintergrund (siehe uebernehmen_vorschau), statt erst beim
+Bestätigen synchron zu starten. Beide Recherchen teilen sich außerdem ein
+gemeinsames Zeitbudget von jetzt 2 Sekunden (vorher 4 Sekunden nur für KwK)
+- die Wartezeiten addieren sich nicht, "Übernehmen" wartet also insgesamt
+nie länger als 2 Sekunden auf beide zusammen. Ist die Kündigungsweg-
+Recherche dann noch nicht fertig oder findet nichts Verlässliches, bleibt
+das Feld einfach leer (wie bisher schon bei fehlendem API-Key).
+
 ## 2.26.0
 
 Deal bearbeiten (Todoist "Ki/Prämien webapp", Prio 1): ein Speichern-Button
