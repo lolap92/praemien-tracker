@@ -13,7 +13,7 @@ from ..finder import matching
 from ..finder.lauf import taeglicher_lauf
 from ..helpers import build_deal_from_import
 from ..ingress import redirect
-from ..models import DealVorschlag, FinderLauf
+from ..models import DealVorschlag, FinderFund, FinderLauf
 from ..schemas import DealImport
 from ..templating import templates
 
@@ -374,4 +374,24 @@ def alle_neu_analysieren(request: Request, db: Session = Depends(get_db)):
             taeglicher_lauf(db, ignoriere_cache=True)
         except Exception:
             logger.exception("Erzwungene Neuanalyse (KI-Deal-Finder) fehlgeschlagen.")
+    return redirect(request, "vorschlaege")
+
+
+@router.post("/vorschlaege/zuruecksetzen")
+def zuruecksetzen(request: Request, db: Session = Depends(get_db)):
+    """Löscht unwiderruflich alle noch nicht übernommenen Vorschläge (offen
+    oder manuell verworfen) sowie den Rohtext-Cache (finder_funde) - bewusster
+    Neustart, z.B. nach einer Häufung von Duplikaten, um mit dem nächsten
+    "Jetzt suchen" wieder komplett frisch zu beginnen statt (noch) fehlerhaft
+    zwischengespeicherte Extraktionen weiterzuverwenden.
+
+    Bereits übernommene Vorschläge bleiben ausdrücklich erhalten: sie sind
+    längst ein echter Deal-Datensatz, und ohne ihre Vorschlags-Zeile würde
+    ein künftiger Lauf denselben Deal fälschlich erneut vorschlagen (siehe
+    lauf.py: die Dedup-Prüfung erkennt "schon bearbeitet" an der Existenz
+    dieser Zeile, unabhängig vom Status)."""
+    for vorschlag in db.query(DealVorschlag).filter(DealVorschlag.status != matching.STATUS_UEBERNOMMEN).all():
+        db.delete(vorschlag)
+    db.query(FinderFund).delete()
+    db.commit()
     return redirect(request, "vorschlaege")

@@ -64,10 +64,20 @@ spürbar mehr API-Aufrufe als ein normaler Lauf, deshalb erst nach
 Bestätigung in einem Dialog. Bereits übernommene oder verworfene Vorschläge
 bleiben dabei unangetastet.
 
-Ändert sich ein Angebot (z. B. eine höhere Prämie), entsteht bewusst ein
-neuer Vorschlag statt eines stillen Updates am alten - die Historie bleibt
-so nachvollziehbar. Ein unveränderter Fund wird dagegen nicht erneut
-vorgeschlagen, auch nicht nach dem Verwerfen.
+**Eine Quelle-URL wird nur einmal geprüft.** Existiert für einen Fund schon
+ein Vorschlag (für irgendeinen Inhaber, egal welcher Status), gilt er als
+endgültig geprüft: schwankt der Rohtext derselben URL geringfügig (z. B.
+Kommentar-/Bewertungszahlen im RSS-Feed) - selbst bei einer echten späteren
+Änderung wie einer höheren Prämie oder anderen Bedingungen - löst das keinen
+erneuten API-Aufruf und keinen zweiten Vorschlag mehr aus. Bewusste
+Entscheidung gegen unnötige API-Kosten und Duplikate durch schwankenden
+Rohtext, zulasten davon, eine echte spätere Änderung am selben Angebot nicht
+mehr automatisch mitzubekommen. Nur **"Alle neu analysieren"** überstimmt
+das gezielt. Der Button **Zurücksetzen** (ganz rechts) löscht unwiderruflich
+alle noch nicht übernommenen Vorschläge sowie den Rohtext-Cache, damit
+"Jetzt suchen" wieder komplett frisch beginnt - z. B. nach einer Häufung
+von Duplikaten. Bereits übernommene Vorschläge (schon echte Deals) bleiben
+davon unberührt.
 
 Die Suche gilt für **alle** Inhaber. Einem **minderjährigen** Inhaber wird ein
 Angebot allerdings nur dann vorgeschlagen, wenn es laut Angebotstext (auch)

@@ -435,9 +435,38 @@ def test_irrelevanter_fund_wird_nie_wieder_an_die_api_geschickt(db, zwei_inhaber
     assert db.query(DealVorschlag).count() == 0
 
 
-def test_geaenderter_rohtext_loest_erneuten_api_aufruf_aus(db, zwei_inhaber, monkeypatch):
-    """Wird derselbe Beitrag bearbeitet (z.B. höhere Prämie), muss trotz
-    gleicher URL neu geprüft werden."""
+def test_geaenderter_rohtext_bei_bestehendem_vorschlag_loest_keinen_neuen_api_aufruf_aus(db, zwei_inhaber, monkeypatch):
+    """Existiert für eine Quelle-URL schon ein Vorschlag, gilt sie als
+    endgültig geprüft: schwankender Rohtext derselben URL (z.B. Kommentar-/
+    Bewertungszahlen im RSS-Feed) - selbst eine echte Änderung wie eine
+    höhere Prämie - löst bewusst keinen erneuten API-Aufruf und keinen
+    zweiten/geänderten Vorschlag mehr aus (Bug: mehrfach identischer
+    "Deal öffnen"-Link durch schwankenden Rohtext derselben URL)."""
+    client = ZaehlenderFakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]),
+    )
+
+    fund_v1 = RohFund("mydealz", "https://mydealz.de/c24", "t", "125 Euro Praemie")
+    _patch_quellen(monkeypatch, [fund_v1])
+    lauf.taeglicher_lauf(db, client=client)
+    assert client.aufrufe == 2  # Themen-Check + Extraktion, einmalig
+
+    fund_v2 = RohFund("mydealz", "https://mydealz.de/c24", "t", "jetzt 150 Euro Praemie")
+    _patch_quellen(monkeypatch, [fund_v2])
+    lauf.taeglicher_lauf(db, client=client)
+
+    assert client.aufrufe == 2  # kein weiterer Aufruf
+    assert db.query(DealVorschlag).count() == 2  # keine dritte/vierte Zeile
+    assert {v.praemie_betrag for v in db.query(DealVorschlag).all()} == {125}
+
+
+def test_alle_neu_analysieren_ueberstimmt_bestehenden_vorschlag_gezielt(db, zwei_inhaber, monkeypatch):
+    """ignoriere_cache=True (Button "Alle neu analysieren") ist weiterhin der
+    bewusste Ausweg, um trotz eines bestehenden Vorschlags eine frische
+    Prüfung zu erzwingen - der neue "bereits vorgeschlagen" Kurzschluss
+    (siehe test_geaenderter_rohtext_bei_bestehendem_vorschlag_...) greift
+    hier bewusst nicht."""
     client = ZaehlenderFakeClient(
         RelevanzErgebnis(ist_relevant=True),
         AngebotExtraktion(bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0, bedingungen=[]),
@@ -450,9 +479,9 @@ def test_geaenderter_rohtext_loest_erneuten_api_aufruf_aus(db, zwei_inhaber, mon
 
     fund_v2 = RohFund("mydealz", "https://mydealz.de/c24", "t", "jetzt 150 Euro Praemie")
     _patch_quellen(monkeypatch, [fund_v2])
-    lauf.taeglicher_lauf(db, client=client)
+    lauf.taeglicher_lauf(db, client=client, ignoriere_cache=True)
 
-    assert client.aufrufe == 4  # erneuter Themen-Check + Extraktion
+    assert client.aufrufe == 4
 
 
 def test_kaputter_cache_eintrag_wird_neu_extrahiert_statt_den_lauf_abzubrechen(db, zwei_inhaber, monkeypatch):

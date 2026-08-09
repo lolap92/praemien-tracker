@@ -597,3 +597,43 @@ def test_alle_neu_analysieren_ruft_lauf_mit_ignoriere_cache_auf(monkeypatch):
 
     assert antwort.status_code == 303
     assert aufrufe == [True]
+
+
+def test_seite_zeigt_zuruecksetzen_button_mit_bestaetigungsdialog(db):
+    antwort = client.get("/vorschlaege")
+    assert "Zurücksetzen" in antwort.text
+    assert 'action="vorschlaege/zuruecksetzen"' in antwort.text
+    assert 'onsubmit="this.closest(\'dialog\').close()"' in antwort.text
+
+
+def test_zuruecksetzen_loescht_offene_und_verworfene_vorschlaege(db, inhaber):
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
+    _vorschlag(db, inhaber, "verworfen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2",
+               verwerfen_gruende="duplikat")
+
+    antwort = client.post("/vorschlaege/zuruecksetzen", follow_redirects=False)
+
+    assert antwort.status_code == 303
+    assert db.query(DealVorschlag).count() == 0
+
+
+def test_zuruecksetzen_laesst_uebernommene_vorschlaege_unangetastet(db, inhaber):
+    uebernommen = _vorschlag(db, inhaber, "uebernommen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
+    _vorschlag(db, inhaber, "vorgeschlagen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2")
+
+    client.post("/vorschlaege/zuruecksetzen", follow_redirects=False)
+
+    verbleibend = db.query(DealVorschlag).all()
+    assert len(verbleibend) == 1
+    assert verbleibend[0].id == uebernommen.id
+
+
+def test_zuruecksetzen_leert_den_rohtext_cache(db, inhaber):
+    from praemien_tracker.models import FinderFund
+
+    db.add(FinderFund(quelle="mydealz", quelle_url="https://www.mydealz.de/1", rohtext_hash="abc", ist_relevant=True))
+    db.commit()
+
+    client.post("/vorschlaege/zuruecksetzen", follow_redirects=False)
+
+    assert db.query(FinderFund).count() == 0

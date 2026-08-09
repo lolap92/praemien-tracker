@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.19.0
+
+**Strikterer Schutz vor Duplikaten und unnötigen API-Kosten.** Existiert für
+eine Quelle-URL schon ein Vorschlag (für irgendeinen Inhaber, egal welcher
+Status), gilt sie jetzt dauerhaft als geprüft: geringfügig schwankender
+Rohtext derselben URL (z. B. Kommentar-/Bewertungszahlen im RSS-Feed) löst
+keinen erneuten API-Aufruf mehr aus - selbst dann nicht, wenn sich das
+Angebot dabei tatsächlich ändert (z. B. eine höhere Prämie oder andere
+Bedingungen). Bewusste Entscheidung: zuverlässig keine Duplikate und keine
+unnötigen API-Kosten mehr, zulasten davon, eine echte spätere Änderung am
+selben Angebot nicht mehr automatisch mitzubekommen. **"Alle neu
+analysieren"** überstimmt das weiterhin gezielt und erzwingt eine frische
+Prüfung.
+
+**Neuer Button "Zurücksetzen"** im Vorschläge-Tab: löscht unwiderruflich
+alle noch nicht übernommenen Vorschläge (offen oder manuell verworfen)
+sowie den Rohtext-Cache, damit "Jetzt suchen" wieder komplett frisch
+beginnt - z. B. um nach einer Häufung von Duplikaten sauber neu zu starten.
+Bereits übernommene Vorschläge (schon echte Deals) bleiben davon unberührt.
+
 ## 2.18.1
 
 Fehlerbehebung: derselbe mydealz-/Spartanien-/DealDoktor-Link konnte über die

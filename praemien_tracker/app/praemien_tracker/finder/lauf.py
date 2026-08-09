@@ -9,12 +9,20 @@ Bevor ein Rohfund gegen die Anthropic-API geschickt wird, prüft der Lauf
 gegen FinderFund (models.py), ob dieselbe Quelle-URL mit demselben Rohtext
 schon einmal geprüft wurde. Trifft das zu, entfällt der API-Aufruf: ein
 bereits als irrelevant erkannter Fund wird direkt übersprungen, ein bereits
-extrahiertes Angebot wird aus dem Cache übernommen. Nur wenn sich der
-Rohtext geändert hat (z.B. ein bearbeiteter Beitrag) oder die URL neu ist,
-wird tatsächlich Themen-Check und/oder Struktur-Extraktion aufgerufen. Das
-deterministische Matching läuft trotzdem bei jedem Lauf erneut, weil sich
-z.B. eine Sperrfrist rein durch Zeitablauf ändern kann, ohne dass sich am
-Angebot selbst etwas ändert.
+extrahiertes Angebot wird aus dem Cache übernommen. Existiert für eine
+Quelle-URL bereits mindestens ein Vorschlag (für irgendeinen Inhaber, egal
+welcher Status), gilt sie zusätzlich als endgültig geprüft: geringfügig
+schwankender Rohtext derselben URL (z.B. Kommentar-/Bewertungszahlen im
+RSS-Feed) - selbst eine echte spätere Änderung an Prämie oder Bedingungen -
+löst dann keinen erneuten API-Aufruf mehr aus, bewusst zulasten davon, eine
+solche spätere Änderung zu verpassen (verhindert dafür zuverlässig
+unnötige API-Kosten und Duplikate durch schwankenden Rohtext derselben
+URL). Nur bei einer wirklich neuen URL wird tatsächlich Themen-Check
+und/oder Struktur-Extraktion aufgerufen, oder wenn "Alle neu analysieren"
+(ignoriere_cache) das gezielt überstimmt. Das deterministische Matching
+läuft trotzdem bei jedem Lauf erneut, weil sich z.B. eine Sperrfrist rein
+durch Zeitablauf ändern kann, ohne dass sich am Angebot selbst etwas
+ändert.
 
 Jeder Aufruf von taeglicher_lauf() schreibt am Ende immer eine FinderLauf-
 Zeile (models.py) - Grundlage für die Statusanzeige im Vorschläge-Tab:
@@ -213,10 +221,27 @@ def taeglicher_lauf(
             rohtext_hash = _rohtext_hash(fund.text)
             cache_eintrag = db.query(FinderFund).filter(FinderFund.quelle_url == fund.quelle_url).one_or_none()
 
+            # Sobald für diese Quelle-URL schon mindestens ein Vorschlag
+            # existiert (für irgendeinen Inhaber, egal welcher Status), gilt
+            # sie bewusst als endgültig geprüft: geringfügig schwankender
+            # Rohtext derselben URL (z.B. Kommentar-/Bewertungszahlen im
+            # RSS-Feed) löst dann keine erneute KI-Extraktion mehr aus - auch
+            # nicht bei einer echten Änderung von Prämie oder Bedingungen.
+            # Bewusste Entscheidung gegen zusätzliche API-Kosten und
+            # Duplikate zulasten davon, eine spätere echte Änderung am Deal
+            # nicht mehr mitzubekommen. "Alle neu analysieren" (ignoriere_cache)
+            # überstimmt das weiterhin gezielt.
+            bereits_vorgeschlagen = (
+                not ignoriere_cache
+                and db.query(DealVorschlag.id).filter(DealVorschlag.quelle_url == fund.quelle_url).first() is not None
+            )
+
             aus_cache = False
             extrahiert: AngebotExtraktion | None = None
 
-            if not ignoriere_cache and cache_eintrag is not None and cache_eintrag.rohtext_hash == rohtext_hash:
+            if not ignoriere_cache and cache_eintrag is not None and (
+                cache_eintrag.rohtext_hash == rohtext_hash or bereits_vorgeschlagen
+            ):
                 cache_eintrag.zuletzt_gesehen_am = datetime.datetime.utcnow()
                 if not cache_eintrag.ist_relevant:
                     zaehler["aus_cache"] += 1

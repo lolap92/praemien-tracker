@@ -79,6 +79,7 @@
       <button type="submit" class="secondary">Jetzt suchen</button>
     </form>
     <button type="button" class="secondary" onclick="document.getElementById('dlg-neu-analysieren').showModal()">Alle neu analysieren</button>
+    <button type="button" class="secondary" onclick="document.getElementById('dlg-zuruecksetzen').showModal()">Zurücksetzen</button>
   </div>
   {% endif %}
 </div>
@@ -97,6 +98,23 @@
     <div class="vk-dialog-aktionen">
       <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
       <button type="submit" class="warn">Ja, alle neu analysieren</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-zuruecksetzen" class="vk-dialog">
+  <h3>Alle Vorschläge löschen und neu starten?</h3>
+  <p class="vk-dialog-frage">
+    Löscht unwiderruflich alle noch nicht übernommenen Vorschläge (offen oder
+    manuell verworfen) sowie den Rohtext-Cache - danach beginnt "Jetzt
+    suchen" komplett frisch, ohne zwischengespeicherte Extraktionen weiter zu
+    verwenden. Bereits übernommene Vorschläge (schon echte Deals) bleiben
+    davon unberührt.
+  </p>
+  <form method="post" action="vorschlaege/zuruecksetzen" onsubmit="this.closest('dialog').close()">
+    <div class="vk-dialog-aktionen">
+      <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
+      <button type="submit" class="danger">Ja, alle löschen</button>
     </div>
   </form>
 </dialog>
