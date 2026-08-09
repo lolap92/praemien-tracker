@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}{{ deal.bank.name }} · {{ deal.inhaber.name }} – Prämien-Tracker{% endblock %}
+{% block appbar_title %}Deal ansehen{% endblock %}
+{% block appbar_actions %}
+<a class="icon-btn accent" href="deals/{{ deal.id }}/edit">Bearbeiten</a>
+{% endblock %}
+{% block content %}
+
+<div class="form-status">
+  <div class="card-label">Status</div>
+  <span class="chip status-{{ status }}">{{ status_labels[status] }}</span>
+</div>
+
+<div class="sec-t">Konto</div>
+<div class="card">
+  <dl class="detail-liste">
+    <div class="detail-zeile"><dt>Bank</dt><dd>{{ deal.bank.name }}</dd></div>
+    <div class="detail-zeile"><dt>Inhaber</dt><dd>{{ deal.inhaber.name }}</dd></div>
+    <div class="detail-zeile"><dt>Kontoart</dt><dd>{{ deal.kontoart }}</dd></div>
+    <div class="detail-zeile"><dt>Kontonummer</dt><dd>{{ deal.kontonummer or "–" }}</dd></div>
+    <div class="detail-zeile"><dt>Zugangsdaten gesichert</dt><dd>{{ "ja" if deal.zugangsdaten_gespeichert else "nein" }}</dd></div>
+  </dl>
+</div>
+
+<div class="sec-t">Kündigung</div>
+<div class="card">
+  <dl class="detail-liste">
+    <div class="detail-zeile"><dt>Kündbar ab</dt><dd>{{ deal.kuendbar_ab | datum if deal.kuendbar_ab else "keine Sperrfrist" }}</dd></div>
+    <div class="detail-zeile"><dt>Gekündigt</dt><dd>{{ "ja" if deal.gekuendigt else "nein" }}{% if deal.gekuendigt_im_monat %} ({{ deal.gekuendigt_im_monat }}){% endif %}</dd></div>
+    <div class="detail-zeile"><dt>Kündigung bestätigt</dt><dd>{{ "ja" if deal.kuendigung_bestaetigt else "nein" }}</dd></div>
+    {% if deal.kuendigung_hinweis %}
+    <div class="detail-zeile">
+      <dt>Anweisungen</dt>
+      <dd>
+        {{ deal.kuendigung_hinweis }}
+        {% if deal.kuendigung_hinweis_ki %}<span class="chip chip-ki-recherchiert" title="Von der KI per Websuche recherchiert, nicht manuell geprüft.">KI-recherchiert</span>{% endif %}
+        {% if deal.kuendigung_hinweis_url %}<br><a href="{{ deal.kuendigung_hinweis_url }}" target="_blank" rel="noopener">{{ deal.kuendigung_hinweis_url }}</a>{% endif %}
+      </dd>
+    </div>
+    {% endif %}
+  </dl>
+</div>
+
+<div class="sec-t">Steuer &amp; Notiz</div>
+<div class="card">
+  <dl class="detail-liste">
+    <div class="detail-zeile"><dt>Freibetrag</dt><dd>{{ deal.freibetrag | eur if deal.freibetrag is not none else "–" }}{% if deal.freibetrag_jahr %} ({{ deal.freibetrag_jahr }}){% endif %}</dd></div>
+    <div class="detail-zeile"><dt>Prämien auf Sparkonto</dt><dd>{{ "ja" if deal.praemien_auf_sparkonto == True else ("nein" if deal.praemien_auf_sparkonto == False else "unbekannt") }}</dd></div>
+    {% if deal.kommentar %}<div class="detail-zeile"><dt>Kommentar</dt><dd>{{ deal.kommentar }}</dd></div>{% endif %}
+  </dl>
+</div>
+
+<div class="sec-t">Prämien</div>
+<div class="card">
+  <ul class="unterliste">
+    {% for p in deal.praemien %}
+    <li>
+      <span style="flex:1;">{{ p.quelle | quelle }} · {{ p.betrag | eur }}{% if p.auszahlung_erwartet %} · erwartet {{ p.auszahlung_erwartet }}{% endif %}</span>
+      <span class="chip {{ 'status-abgeschlossen' if p.erhalten else 'status-praemie_warten' }}">{{ "erhalten" if p.erhalten else "offen" }}</span>
+    </li>
+    {% else %}
+    <li class="leer">Noch keine Prämien erfasst.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div class="sec-t">Bedingungen</div>
+<div class="card">
+  <ul class="unterliste">
+    {% for b in deal.bedingungen %}
+    <li>
+      <span style="flex:1;">{{ b.beschreibung }}{% if b.faellig_bis %} <span class="frist">(bis {{ b.faellig_bis | datum }})</span>{% endif %}</span>
+      <span class="chip {{ 'status-abgeschlossen' if b.erfuellt else 'status-bedingungen' }}">{{ "erfüllt" if b.erfuellt else "offen" }}</span>
+    </li>
+    {% else %}
+    <li class="leer">Keine Bedingungen hinterlegt – gilt als erfüllt.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div class="sec-t">Aufgaben</div>
+<div class="card">
+  <ul class="unterliste">
+    {% for a in deal.aufgaben %}
+    <li>
+      <span style="flex:1;">{{ a.beschreibung }}{% if a.faellig_bis %} <span class="frist">(bis {{ a.faellig_bis | datum }})</span>{% endif %}</span>
+      <span class="chip {{ 'status-abgeschlossen' if a.erledigt else 'status-bedingungen' }}">{{ "erledigt" if a.erledigt else "offen" }}</span>
+    </li>
+    {% else %}
+    <li class="leer">Keine freien Aufgaben.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div class="sec-t">Links</div>
+<div class="card">
+  <ul class="unterliste">
+    {% for u in deal.urls %}
+    <li><a href="{{ u.url }}" target="_blank" rel="noopener">{{ u.bezeichnung or u.url }}</a></li>
+    {% else %}
+    <li class="leer">Keine Links hinterlegt.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div class="card">
+  <a class="button" href="deals/{{ deal.id }}/edit">Bearbeiten</a>
+</div>
+
+{% endblock %}

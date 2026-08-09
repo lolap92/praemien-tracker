@@ -46,10 +46,15 @@
       <div class="cnt">{{ vorschlag_zaehler.zu_pruefen }}</div>
       <div class="nm">Zu prüfen</div>
     </a>
-    <a class="seg" href="vorschlaege?status=automatisch_abgelehnt&status=verworfen">
+    <a class="seg" href="vorschlaege?status=automatisch_abgelehnt">
       <div class="bar pipe-bar-vorschlag-abgelehnt"></div>
-      <div class="cnt">{{ vorschlag_zaehler.abgelehnt + vorschlag_zaehler.verworfen }}</div>
+      <div class="cnt">{{ vorschlag_zaehler.abgelehnt }}</div>
       <div class="nm">Abgelehnt</div>
+    </a>
+    <a class="seg" href="vorschlaege?status=verworfen">
+      <div class="bar pipe-bar-vorschlag-verworfen"></div>
+      <div class="cnt">{{ vorschlag_zaehler.verworfen }}</div>
+      <div class="nm">Verworfen</div>
     </a>
   </div>
 </div>

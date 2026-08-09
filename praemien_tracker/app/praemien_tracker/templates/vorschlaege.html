@@ -344,6 +344,9 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
   <p class="vk-dialog-frage">Warum verwerfen? (Mehrfachauswahl möglich)</p>
   <form method="post" action="vorschlaege/verwerfen" class="vk-verwerfen-form" onsubmit="return vkPruefeGrund(this)">
     {% for m in g.mitglieder %}<input type="hidden" name="vorschlag_ids" value="{{ m.id }}">{% endfor %}
+    {% for q in filter_quelle %}<input type="hidden" name="quelle" value="{{ q }}">{% endfor %}
+    {% for t in filter_typ %}<input type="hidden" name="typ" value="{{ t }}">{% endfor %}
+    {% for s in filter_status %}<input type="hidden" name="status" value="{{ s }}">{% endfor %}
     <div class="vk-dialog-gruende">
       {% for code, label in verwerfen_gruende_optionen.items() %}
       <label class="vorschlag-mitglied">
@@ -423,6 +426,9 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
     <p class="vk-dialog-frage">Warum verwerfen? (Mehrfachauswahl möglich, gilt für alle {{ d.funde | length }} Fundstellen)</p>
     <form method="post" action="vorschlaege/verwerfen" class="vk-verwerfen-form" onsubmit="return vkPruefeGrund(this)">
       {% for vid in alle_ids %}<input type="hidden" name="vorschlag_ids" value="{{ vid }}">{% endfor %}
+      {% for q in filter_quelle %}<input type="hidden" name="quelle" value="{{ q }}">{% endfor %}
+      {% for t in filter_typ %}<input type="hidden" name="typ" value="{{ t }}">{% endfor %}
+      {% for s in filter_status %}<input type="hidden" name="status" value="{{ s }}">{% endfor %}
       <div class="vk-dialog-gruende">
         {% for code, label in verwerfen_gruende_optionen.items() %}
         <label class="vorschlag-mitglied">

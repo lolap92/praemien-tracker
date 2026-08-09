@@ -5,7 +5,7 @@ from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
 from .config import DEMO_MODUS
-from .derived import quelle_label
+from .derived import praemie_naechste_pruefung, quelle_label
 from .finder.matching import VERWERFEN_GRUENDE_LABELS
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -125,3 +125,4 @@ templates.env.filters["verwerfen_gruende"] = format_verwerfen_gruende
 # Bewusst nicht "aktiver_tab": diesen Namen belegt der ToDo-Router schon
 # mit dem gewählten ToDo-Reiter, er würde den Helfer hier überschatten.
 templates.env.globals["nav_tab"] = nav_tab
+templates.env.globals["praemie_naechste_pruefung"] = praemie_naechste_pruefung

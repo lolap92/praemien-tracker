@@ -188,6 +188,21 @@ def toggle_praemie(
     return _todos_redirect(request, tab, dialog)
 
 
+@router.post("/todos/praemien/{praemie_id}/pruefung-verschieben")
+def praemie_pruefung_verschieben(
+    request: Request,
+    praemie_id: int,
+    tab: str = Form(""),
+    dialog: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    p = db.get(Praemie, praemie_id)
+    if p:
+        derived.praemie_pruefung_verschieben(p)
+        db.commit()
+    return _todos_redirect(request, tab, dialog)
+
+
 @router.post("/todos/deals/{deal_id}/kuendigen-toggle")
 def toggle_kuendigen(
     request: Request, deal_id: int, tab: str = Form(""), wert: str = Form(""), db: Session = Depends(get_db)

@@ -105,6 +105,13 @@ class Praemie(Base):
     betrag: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     erhalten: Mapped[bool] = mapped_column(Boolean, default=False)
     auszahlung_erwartet: Mapped[str | None] = mapped_column(String(10), nullable=True)  # "YYYY-MM"
+    # Bis wann die Prämie zuletzt/als nächstes auf Eingang geprüft wurde -
+    # reiner Merkposten fürs "Prämien-Hopping" ("wo hatte ich schon
+    # nachgeschaut?"), unabhängig vom Überfälligkeits-Datum in derived.py.
+    # Nur gesetzt, wenn der Nutzer aktiv "+2 Wochen" geklickt hat; solange
+    # leer, zeigt die Oberfläche stattdessen einen berechneten Vorschlag an
+    # (siehe derived.praemie_naechste_pruefung).
+    naechste_pruefung_am: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
 
     deal: Mapped["Deal"] = relationship(back_populates="praemien")
 

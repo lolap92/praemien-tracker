@@ -22,6 +22,7 @@ from ..helpers import (
     monat_aus_formular,
     parse_date,
     parse_decimal,
+    spartanien_aufgabe_sicherstellen,
 )
 from ..ingress import redirect
 from ..models import Aufgabe, Bank, Bedingung, Deal, DealUrl, Inhaber, Praemie
@@ -286,6 +287,27 @@ def deal_json_import(request: Request, json_text: str = Form(...), db: Session =
     return redirect(request, "deals")
 
 
+@router.get("/deals/{deal_id}")
+def deal_detail_view(request: Request, deal_id: int, db: Session = Depends(get_db)):
+    """Nur-Lese-Ansicht aller Deal-Daten - Landing-Page beim Klick aus der
+    Deal-Liste, bevor man aktiv auf "Bearbeiten" geht. Verhindert versehentliche
+    Änderungen, die beim direkten Öffnen des Bearbeiten-Formulars leicht
+    passieren (z.B. ein Tippfehler in einem Feld, das man nur ansehen wollte)."""
+    deal = _deal_query(db).filter(Deal.id == deal_id).one_or_none()
+    if deal is None:
+        raise HTTPException(status_code=404, detail=f"Deal {deal_id} existiert nicht.")
+    return templates.TemplateResponse(
+        "deal_detail.html",
+        {
+            "request": request,
+            "deal": deal,
+            "status": derived.status(deal),
+            "status_labels": derived.STATUS_LABELS,
+            "kennzahlen": derived.kennzahlen(deal.praemien),
+        },
+    )
+
+
 def _geschwister(db: Session, deal: Deal) -> list[dict]:
     """Andere Deals mit derselben Kombination Bank/Kontoart/Inhaber.
 
@@ -454,16 +476,16 @@ def praemie_add(
     auszahlung_erwartet: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    _hole_deal(db, deal_id)
-    db.add(
+    deal = _hole_deal(db, deal_id)
+    deal.praemien.append(
         Praemie(
-            deal_id=deal_id,
             quelle=_quelle_oder_400(quelle),
             betrag=parse_decimal(betrag) or 0,
             erhalten=erhalten == "on",
             auszahlung_erwartet=monat_aus_formular(auszahlung_erwartet),
         )
     )
+    spartanien_aufgabe_sicherstellen(deal)
     db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
 
@@ -485,6 +507,7 @@ def praemie_update(
         p.betrag = parse_decimal(betrag) or 0
         p.erhalten = erhalten == "on"
         p.auszahlung_erwartet = monat_aus_formular(auszahlung_erwartet)
+        spartanien_aufgabe_sicherstellen(p.deal)
         db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
 

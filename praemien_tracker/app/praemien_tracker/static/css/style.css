@@ -458,6 +458,9 @@ main {
   background: var(--st-wait);
 }
 .pipe-bar-vorschlag-abgelehnt {
+  background: var(--ink-faint);
+}
+.pipe-bar-vorschlag-verworfen {
   background: var(--danger);
 }
 
@@ -717,6 +720,21 @@ a.chip:focus-visible {
 .todo-item .frist.ueberfaellig {
   color: var(--danger);
   font-weight: 600;
+}
+
+.pruef-datum {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  margin-top: 0.25rem;
+}
+
+.pruef-btn {
+  padding: 0.1rem 0.5rem;
+  font-size: 0.68rem;
 }
 
 /* echte, anklickbare Checkbox statt der dekorativen .check-Fläche */
@@ -1209,6 +1227,35 @@ button.warn,
   width: 100%;
   padding: 0.85rem;
   font-size: 0.95rem;
+}
+
+/* ---------- read-only detail view (deal_detail.html) ---------- */
+
+.detail-liste {
+  margin: 0;
+}
+
+.detail-zeile {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.detail-zeile:last-child {
+  border-bottom: none;
+}
+
+.detail-zeile dt {
+  flex: 0 0 180px;
+  color: var(--ink-faint);
+  font-size: 0.85rem;
+}
+
+.detail-zeile dd {
+  flex: 1 1 200px;
+  margin: 0;
 }
 
 /* ---------- sub-lists (Prämien / Bedingungen / Aufgaben / Links) ---------- */

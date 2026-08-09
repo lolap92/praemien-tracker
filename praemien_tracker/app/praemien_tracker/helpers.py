@@ -130,6 +130,24 @@ def kwk_vorschlag(db: Session, deal: Deal) -> bool:
     return fehlgeschlagen
 
 
+SPARTANIEN_AUFGABE_TEXT = "Spartanien Tracking überprüfen"
+
+
+def spartanien_aufgabe_sicherstellen(deal: Deal) -> None:
+    """Legt die Aufgabe "Spartanien Tracking überprüfen" an, sobald der Deal
+    (mindestens) eine Prämie mit Quelle "spartanien" trägt - Spartanien zahlt
+    unabhängig von der Bank aus und will separat im Blick behalten werden.
+
+    Dedupliziert über den exakten Aufgabentext: unabhängig davon, wie oft
+    diese Funktion für denselben Deal aufgerufen wird (Anlage, jede weitere
+    Prämie), entsteht die Aufgabe nur einmal."""
+    if not any(p.quelle == "spartanien" for p in deal.praemien):
+        return
+    if any(a.beschreibung == SPARTANIEN_AUFGABE_TEXT for a in deal.aufgaben):
+        return
+    deal.aufgaben.append(Aufgabe(beschreibung=SPARTANIEN_AUFGABE_TEXT))
+
+
 def get_or_create_bank(db: Session, name: str) -> Bank:
     """Bank per Name finden oder neu anlegen - der Abgleich ignoriert Groß-/
     Kleinschreibung, Leerzeichen und Interpunktion (z.B. "SMARTBROKER" ==
@@ -206,6 +224,7 @@ def build_deal_from_import(db: Session, daten: DealImport) -> Deal:
             Aufgabe(beschreibung=a.beschreibung.strip(), erledigt=a.erledigt, faellig_bis=a.faellig_bis)
         )
     kuendigung_vorschlag(db, deal)
+    spartanien_aufgabe_sicherstellen(deal)
     # Nicht in der Datenbank gespeichert (kein mapped_column) - reiner
     # In-Memory-Marker, damit der Übernehmen-Endpunkt direkt am
     # zurückgegebenen Deal ablesen kann, ob die KwK-Recherche fehlgeschlagen

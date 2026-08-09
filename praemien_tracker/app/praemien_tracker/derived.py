@@ -352,6 +352,38 @@ def praemie_ueberfaellig(deal: Deal, praemie, heute: datetime.date | None = None
     return ab is not None and heute >= ab
 
 
+PRUEFUNG_KARENZ_TAGE = 14
+
+
+def praemie_naechste_pruefung(praemie, heute: datetime.date | None = None) -> datetime.date:
+    """Wann die offene Prämie als nächstes auf Eingang geprüft werden sollte.
+
+    Ohne eigenen Eintrag (Nutzer hat noch nie "+2 Wochen" geklickt) gilt als
+    Ausgangspunkt das erwartete Auszahlungsdatum, falls hinterlegt, sonst der
+    heutige Tag - so zeigt die Oberfläche von Anfang an ein sinnvolles Datum,
+    ohne dass beim Anlegen der Prämie schon etwas gespeichert werden muss."""
+    if praemie.naechste_pruefung_am:
+        return praemie.naechste_pruefung_am
+    if praemie.auszahlung_erwartet:
+        erwartet = parse_monat(praemie.auszahlung_erwartet)
+        if erwartet:
+            return erwartet
+    return heute or datetime.date.today()
+
+
+def praemie_pruefung_verschieben(praemie, heute: datetime.date | None = None) -> None:
+    """Setzt naechste_pruefung_am auf den aktuellen Ausgangspunkt plus 2
+    Wochen - der Button in der Todo-Liste markiert damit "gerade
+    nachgeschaut, nächstes Mal in 2 Wochen wieder". Liegt der bisherige
+    Ausgangspunkt (z.B. ein längst verstrichenes erwartetes
+    Auszahlungsdatum) schon in der Vergangenheit, wird stattdessen ab heute
+    gerechnet - sonst würde "verschieben" ein weiterhin überfälliges Datum
+    liefern."""
+    heute = heute or datetime.date.today()
+    basis = max(praemie_naechste_pruefung(praemie, heute), heute)
+    praemie.naechste_pruefung_am = basis + datetime.timedelta(days=PRUEFUNG_KARENZ_TAGE)
+
+
 # --- Zu prüfen: querliegende Auffälligkeiten ---
 #
 # Kein siebter Pipeline-Status: "zu prüfen" ist keine Stufe im Lebenszyklus,

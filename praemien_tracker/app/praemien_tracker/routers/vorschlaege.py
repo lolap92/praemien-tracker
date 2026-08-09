@@ -154,6 +154,19 @@ def _quellenuebergreifend_gruppieren(gruppen: list[VorschlagGruppe]) -> list[Vor
     return ergebnis
 
 
+def _filter_ziel(quelle: list[str], typ: list[str], status: list[str]) -> str:
+    """Baut das Redirect-Ziel "vorschlaege" mit den übergebenen Filtern als
+    Query-Parametern - damit ein Verwerfen/Übernehmen aus einer gefilterten
+    Ansicht heraus wieder in dieselbe gefilterte Ansicht zurückführt, statt
+    die Filterleiste unbemerkt zurückzusetzen."""
+    teile = [("quelle", q) for q in quelle if q in QUELLEN]
+    teile += [("typ", t) for t in typ if t in TYPEN]
+    teile += [("status", s) for s in status if s in STATUS_FILTERBAR]
+    if not teile:
+        return "vorschlaege"
+    return "vorschlaege?" + "&".join(f"{k}={v}" for k, v in teile)
+
+
 def _nach_quelle_typ_filtern(
     vorschlaege: list[DealVorschlag], filter_quelle: list[str], filter_typ: list[str]
 ) -> list[DealVorschlag]:
@@ -348,6 +361,9 @@ def verwerfen(
     request: Request,
     vorschlag_ids: list[int] = Form(default=[]),
     gruende: list[str] = Form(default=[]),
+    quelle: list[str] = Form(default=[]),
+    typ: list[str] = Form(default=[]),
+    status: list[str] = Form(default=[]),
     db: Session = Depends(get_db),
 ):
     """Setzt nur den Status der ausgewählten Zeilen, keine Löschung - taucht
@@ -358,19 +374,25 @@ def verwerfen(
     Ein manuelles Verwerfen braucht immer mindestens einen Grund aus dem
     festen Enum (Dialog erzwingt das clientseitig per Checkbox-Auswahl) -
     ohne gültigen Grund passiert serverseitig nichts, damit nie ein Vorschlag
-    ohne Begründung verworfen werden kann."""
+    ohne Begründung verworfen werden kann.
+
+    quelle/typ/status kommen als versteckte Formularfelder aus der zum
+    Zeitpunkt des Verwerfens aktiven Filterleiste (siehe vorschlaege.html) -
+    der Redirect führt damit in dieselbe gefilterte Ansicht zurück, statt sie
+    unbemerkt zurückzusetzen."""
+    ziel = _filter_ziel(quelle, typ, status)
     gueltige_gruende = [g for g in gruende if g in matching.VERWERFEN_GRUENDE]
     if not gueltige_gruende:
-        return redirect(request, "vorschlaege")
-    gruende_text = ",".join(gueltige_gruende)
+        return redirect(request, ziel)
 
+    gruende_text = ",".join(gueltige_gruende)
     for vorschlag_id in vorschlag_ids:
         vorschlag = db.get(DealVorschlag, vorschlag_id)
         if vorschlag is not None and vorschlag.status in STATUS_OFFEN:
             vorschlag.status = matching.STATUS_VERWORFEN
             vorschlag.verwerfen_gruende = gruende_text
     db.commit()
-    return redirect(request, "vorschlaege")
+    return redirect(request, ziel)
 
 
 @router.post("/vorschlaege/jetzt-suchen")

@@ -1,5 +1,41 @@
 # Changelog
 
+## 2.24.0
+
+Sechs kleinere Verbesserungen an Vorschläge, Deals und ToDos:
+
+- **Verwerfen behält den Filter:** Wird ein Vorschlag aus einer gefilterten
+  Ansicht heraus (z. B. nur Quelle "mydealz", Status "zu prüfen") verworfen,
+  führt der Redirect jetzt in dieselbe gefilterte Ansicht zurück statt die
+  Filterleiste unbemerkt zurückzusetzen. Betrifft sowohl das Verwerfen
+  einzelner Vorschläge als auch "Alle verwerfen" bei Duplikat-Kacheln.
+- **Übersicht zeigt alle vier Vorschläge-Zahlen:** Die Kachel "Vorschläge"
+  auf der Startseite fasste "Automatisch abgelehnt" und "Verworfen" bisher
+  zu einer Zahl zusammen. Jetzt stehen dort wie auf der Vorschläge-Seite
+  selbst vier eigene Segmente (Vorgeschlagen, Zu prüfen, Abgelehnt,
+  Verworfen), jedes verlinkt auf die passend gefilterte Ansicht.
+- **Automatische Aufgabe "Spartanien Tracking überprüfen":** Sobald ein Deal
+  eine Prämie mit Quelle "Spartanien" trägt - egal ob per KI-Vorschlag
+  übernommen, per JSON importiert, manuell angelegt oder nachträglich
+  hinzugefügt/geändert - legt die App automatisch diese Aufgabe an (einmalig,
+  keine Duplikate bei mehreren Spartanien-Prämien am selben Deal).
+- **Deal-Detailansicht vor dem Bearbeiten:** Ein Klick auf einen Deal in der
+  Deals-Liste öffnet jetzt zuerst eine Nur-Lese-Übersicht aller erfassten
+  Daten (Konto, Kündigung, Prämien, Bedingungen, Aufgaben, Links) statt
+  direkt das Bearbeiten-Formular - mit eigenem "Bearbeiten"-Button, wenn
+  wirklich etwas geändert werden soll. Verhindert versehentliche Änderungen
+  beim bloßen Nachschauen.
+- **Neuer Verwerfen-Grund "Nicht anwendbar":** Ergänzt die bisherigen vier
+  Gründe (Duplikat, Bedingungen zu aufwendig, noch nicht wieder Neukunde,
+  Prämie zu niedrig) für Fälle, die in keine der bestehenden Kategorien
+  passen.
+- **Prüfdatum bei "Auf Prämie warten":** Jede offene Prämie zeigt in der
+  ToDo-Liste jetzt an, bis wann sie zuletzt/als nächstes auf Eingang geprüft
+  wurde (Startwert: erwartetes Auszahlungsdatum, sonst heute) - ein Klick auf
+  "+2 Wochen" schiebt das Datum weiter. Reiner Merkposten fürs
+  Prämien-Hopping, damit klar bleibt, welche Prämie schon gecheckt wurde und
+  welche als nächstes dran ist.
+
 ## 2.23.3
 
 Fehlerbehebung: bei aktivem Status-Filter (z. B. nur "Zu prüfen") konnte

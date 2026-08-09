@@ -120,6 +120,14 @@
                   <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
                   <span>{{ p.quelle | quelle }}, {{ p.betrag }} €{% if p.auszahlung_erwartet %} – erwartet {{ p.auszahlung_erwartet }}{% endif %}</span>
                 </form>
+                <div class="pruef-datum">
+                  <span>Nächste Prüfung {{ praemie_naechste_pruefung(p) | datum }}</span>
+                  <form action="todos/praemien/{{ p.id }}/pruefung-verschieben" method="post" class="inline">
+                    <input type="hidden" name="tab" value="{{ slug }}">
+                    <input type="hidden" name="dialog" value="praemie-{{ todo.deal.id }}">
+                    <button type="submit" class="secondary pruef-btn">+2 Wochen</button>
+                  </form>
+                </div>
               </li>
               {% endfor %}
             </ul>
@@ -127,14 +135,22 @@
           </dialog>
 
           {% elif kategorie == "Auf Prämie warten" %}
+          {% set p = todo.elemente[0] %}
           <div class="todo-item cat-{{ slug }}">
-            <form action="todos/praemien/{{ todo.elemente[0].id }}/toggle" method="post" class="todo-check-form">
+            <form action="todos/praemien/{{ p.id }}/toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
               <input type="hidden" name="wert" value="on">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
             <div class="ti-main">
               <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+              <div class="pruef-datum">
+                <span>Nächste Prüfung {{ praemie_naechste_pruefung(p) | datum }}</span>
+                <form action="todos/praemien/{{ p.id }}/pruefung-verschieben" method="post" class="inline">
+                  <input type="hidden" name="tab" value="{{ slug }}">
+                  <button type="submit" class="secondary pruef-btn">+2 Wochen</button>
+                </form>
+              </div>
             </div>
           </div>
 

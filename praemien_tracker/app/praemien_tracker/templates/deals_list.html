@@ -41,7 +41,7 @@
   <ul class="deal-liste">
     {% for zeile in zeilen %}
     <li>
-    <a class="deal-zeile" href="deals/{{ zeile.deal.id }}/edit">
+    <a class="deal-zeile" href="deals/{{ zeile.deal.id }}">
       <div class="titel">
         <div>
           <div class="bank">{{ zeile.deal.bank.name }}</div>
@@ -75,7 +75,7 @@
       <tbody>
         {% for zeile in zeilen %}
         <tr>
-          <td class="bank"><a href="deals/{{ zeile.deal.id }}/edit">{{ zeile.deal.bank.name }}</a></td>
+          <td class="bank"><a href="deals/{{ zeile.deal.id }}">{{ zeile.deal.bank.name }}</a></td>
           <td>{{ zeile.deal.kontoart }}</td>
           <td>{{ zeile.deal.inhaber.name }}</td>
           <td class="geld">{{ zeile.kennzahlen.gesamt | eur }}</td>
