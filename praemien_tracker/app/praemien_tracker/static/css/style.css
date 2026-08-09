@@ -1275,7 +1275,9 @@ button.warn,
 
 .detail-zeile dd {
   flex: 1 1 200px;
+  min-width: 0;
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 /* ---------- sub-lists (Prämien / Bedingungen / Aufgaben / Links) ---------- */

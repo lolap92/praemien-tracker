@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.24.3
+
+Fehlerbehebung Deal-Detailansicht (siehe 2.24.0): lange Werte wie die
+Kündigungs-Anweisungen samt Link liefen über den rechten Kartenrand hinaus,
+statt innerhalb des Feldes umzubrechen - Ursache war eine Flexbox-Falle
+(Wert-Spalte hatte kein `min-width: 0`, wodurch sie sich nicht unter ihre
+Inhaltsbreite schrumpfen ließ). Die Wert-Spalte bricht lange Wörter/Links
+jetzt bei Bedarf um und bleibt sichtbar innerhalb der Karte.
+
 ## 2.24.2
 
 Die vier Kacheln der "Vorschläge"-Übersicht auf der Startseite (Vorgeschlagen/
