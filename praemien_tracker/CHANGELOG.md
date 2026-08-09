@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.23.0
+
+Automatisch abgelehnte Vorschläge zeigen jetzt oben auf der Kachel, direkt
+unter den Tags, gut sichtbar die konkrete(n) Begründung(en) (z. B. "Prämie
+liegt unter der Mindestprämie", "Bedingung nicht erfüllbar: Gehaltseingang
+nötig", "bereits Neukunde in der Sperrfrist") - bisher stand das nur
+versteckt im "Übernehmen"-Dialog. Betrifft sowohl einzelne Vorschläge als
+auch quellenübergreifend gebündelte Duplikat-Kacheln (mydealz + Spartanien
+etc.); haben mehrere Empfänger einer Gruppe unterschiedliche Gründe (z. B.
+Sperrfrist nur für eine Person), werden alle vereint gezeigt, doppelte
+Gründe nur einmal.
+
 ## 2.22.2
 
 Die Lauf-Zusammenfassungstabelle ("Letzter Lauf erfolgreich" aufgeklappt)

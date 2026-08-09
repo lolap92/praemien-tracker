@@ -51,6 +51,7 @@ class VorschlagGruppe:
     praemien: list
     status: str
     verwerfen_gruende: object
+    ablehnungsgruende: object
     mitglieder: list[DealVorschlag]
 
 
@@ -71,6 +72,15 @@ def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
         mitglieder = sorted(mitglieder, key=lambda v: v.gefunden_am, reverse=True)
         fuehrend = mitglieder[0]
         status = min((m.status for m in mitglieder), key=lambda s: _STATUS_PRIORITAET.get(s, 99))
+        # Über alle Mitglieder vereinigt statt nur fuehrend.ablehnungsgruende:
+        # die Sperrfrist-/Neukunden-Prüfung ist inhaberabhängig, zwei
+        # Mitglieder derselben Gruppe können deshalb unterschiedliche Gründe
+        # haben (z.B. für eine Person schon Sperrfrist, für die andere nicht).
+        alle_gruende: list[str] = []
+        for m in mitglieder:
+            for grund in (m.ablehnungsgruende or "").split("; "):
+                if grund and grund not in alle_gruende:
+                    alle_gruende.append(grund)
         gruppen.append(
             VorschlagGruppe(
                 quelle=fuehrend.quelle,
@@ -84,6 +94,7 @@ def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
                 praemien=fuehrend.praemien,
                 status=status,
                 verwerfen_gruende=fuehrend.verwerfen_gruende,
+                ablehnungsgruende=alle_gruende,
                 mitglieder=mitglieder,
             )
         )

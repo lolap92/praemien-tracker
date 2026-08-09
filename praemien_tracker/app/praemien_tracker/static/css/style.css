@@ -1967,6 +1967,15 @@ table.lauf-tabelle tr:hover {
   background: rgba(180, 70, 42, 0.1);
 }
 
+.vorschlag-begruendung ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.vorschlag-begruendung li + li {
+  margin-top: 0.15rem;
+}
+
 /* Aufschlüsselung mehrerer Teilprämien mit je eigener Voraussetzung. */
 .vorschlag-praemien {
   list-style: none;

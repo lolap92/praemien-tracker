@@ -139,6 +139,23 @@ def test_bester_status_bestimmt_die_sektion(db, inhaber):
     assert "0 abgelehnt" in antwort.text
 
 
+def test_automatisch_abgelehnte_duplikat_gruppe_zeigt_begruendung(db, inhaber):
+    """Sind alle gebündelten Fundstellen automatisch abgelehnt, soll die
+    Kachel trotz mehrerer Quellen oben eine gemeinsame Begründung zeigen -
+    dedupliziert, falls beide Quellen denselben Grund liefern."""
+    _vorschlag(db, inhaber, "automatisch_abgelehnt", quelle="mydealz", quelle_url="https://www.mydealz.de/ing",
+               inhalt_hash="h1", bank_name="ING", ablehnungsgruende="Bereits Kundin.")
+    _vorschlag(db, inhaber, "automatisch_abgelehnt", quelle="spartanien", quelle_url="https://www.spartanien.de/ing",
+               inhalt_hash="h2", bank_name="ING", ablehnungsgruende="Bereits Kundin.")
+
+    antwort = client.get("/vorschlaege")
+    assert "dup-gruppe" in antwort.text
+    box_start = antwort.text.index("Automatisch abgelehnt:")
+    box_ende = antwort.text.index("</div>", box_start)
+    box = antwort.text[box_start:box_ende]
+    assert box.count("Bereits Kundin.") == 1
+
+
 def test_uebernehmen_verwirft_andere_quellen_automatisch(db, inhaber):
     gewinner = _vorschlag(db, inhaber, "vorgeschlagen", quelle="mydealz", quelle_url="https://www.mydealz.de/ing",
                            inhalt_hash="h1", bank_name="ING", praemie_betrag=Decimal("175.00"))

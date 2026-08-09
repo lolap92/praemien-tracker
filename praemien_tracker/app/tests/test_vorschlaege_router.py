@@ -72,6 +72,52 @@ def test_vorschlaege_seite_gruppiert_nach_status(db, inhaber):
     assert "1 abgelehnt" in antwort.text
 
 
+def test_automatisch_abgelehnte_karte_zeigt_begruendung(db, inhaber):
+    _vorschlag(
+        db, inhaber, "automatisch_abgelehnt",
+        ablehnungsgruende="Prämie 0.00 € liegt unter der Mindestprämie von 50 €.",
+    )
+
+    antwort = client.get("/vorschlaege")
+
+    assert "Automatisch abgelehnt:" in antwort.text
+    assert "Prämie 0.00 € liegt unter der Mindestprämie von 50 €." in antwort.text
+
+
+def test_automatisch_abgelehnte_karte_vereint_gruende_ueber_mitglieder(db, zwei_inhaber):
+    """Die Sperrfrist-/Neukunden-Prüfung ist inhaberabhängig - zwei Mitglieder
+    derselben Gruppe können unterschiedliche Gründe haben. Beide sollen auf
+    der Kachel sichtbar sein, ein gemeinsamer Grund nur einmal."""
+    alice, max_ = zwei_inhaber
+    _vorschlag(
+        db, alice, "automatisch_abgelehnt", inhalt_hash="gleich",
+        ablehnungsgruende="Bedingung nicht erfüllbar: Gehaltseingang nötig.",
+    )
+    _vorschlag(
+        db, max_, "automatisch_abgelehnt", inhalt_hash="gleich",
+        ablehnungsgruende="Bedingung nicht erfüllbar: Gehaltseingang nötig.; Bereits Kunde bei dieser Bank.",
+    )
+
+    antwort = client.get("/vorschlaege")
+    # Nur die Begründungsbox selbst prüfen (nicht die ganze Seite) - der
+    # ungekürzte Grund taucht je Mitglied zusätzlich im "Übernehmen"-Dialog
+    # auf, dort ist die Dopplung erwünscht (Konzept: pro Person nachvollziehbar).
+    box_start = antwort.text.index("Automatisch abgelehnt:")
+    box_ende = antwort.text.index("</div>", box_start)
+    box = antwort.text[box_start:box_ende]
+
+    assert box.count("Bedingung nicht erfüllbar: Gehaltseingang nötig.") == 1
+    assert "Bereits Kunde bei dieser Bank." in box
+
+
+def test_ohne_ablehnungsgruende_erscheint_keine_begruendungsbox(db, inhaber):
+    _vorschlag(db, inhaber, "automatisch_abgelehnt", ablehnungsgruende=None)
+
+    antwort = client.get("/vorschlaege")
+
+    assert "Automatisch abgelehnt:" not in antwort.text
+
+
 def test_karte_hat_deal_link_und_tags(db, inhaber):
     _vorschlag(
         db,
