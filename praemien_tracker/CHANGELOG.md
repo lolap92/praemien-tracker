@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.27.0
+
+Verworfene Vorschläge lassen sich jetzt doch noch übernehmen.
+
+- Bisher gab es aus der "Verworfen"-Sektion keinen Weg zurück: ein manuell
+  verworfener Vorschlag blieb für immer verworfen, selbst wenn sich das im
+  Nachhinein als Fehlentscheidung herausstellte - z.B. weil jemand einen
+  Kinder-Vorschlag nur verworfen hat, um die lästig weiter offene Karte
+  loszuwerden (siehe 2.26.2/2.26.3), obwohl der Deal für das Kind eigentlich
+  zutraf und eigentlich hätte übernommen werden sollen.
+- Jede verworfene Karte hat jetzt einen **"Doch übernehmen"**-Button, der wie
+  gewohnt in die Übernehmen-Vorschau führt - bewusstes Überstimmen der
+  eigenen früheren Entscheidung, genau wie "Trotzdem übernehmen" bereits bei
+  automatisch abgelehnten Funden funktioniert.
+
 ## 2.26.3
 
 Bereinigung stehen gebliebener Kinder-Vorschläge aus 2.26.2 wirkte bisher nur,

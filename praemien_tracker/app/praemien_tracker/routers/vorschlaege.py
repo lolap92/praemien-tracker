@@ -38,6 +38,11 @@ _STATUS_PRIORITAET = {matching.STATUS_VORGESCHLAGEN: 0, matching.STATUS_ZU_PRUEF
 # filtern (eigene Sektion, siehe vorschlaege_view) - fachlich kein "offener"
 # Status mehr, aber über dieselbe Status-Filterleiste erreichbar.
 STATUS_FILTERBAR = STATUS_OFFEN + (matching.STATUS_VERWORFEN,)
+# "Übernehmen" akzeptiert zusätzlich zu den drei offenen Status auch bereits
+# manuell verworfene Zeilen - bewusstes Überstimmen einer eigenen
+# Fehlentscheidung (z.B. aus Versehen verworfen, obwohl der Deal eigentlich
+# zutraf), analog zum "Trotzdem übernehmen" bei automatisch_abgelehnt.
+STATUS_UEBERNEHMBAR = STATUS_OFFEN + (matching.STATUS_VERWORFEN,)
 
 QUELLEN = ("mydealz", "spartanien", "dealdoktor")
 TYPEN = ("erwachsen", "kind")
@@ -348,10 +353,10 @@ def uebernehmen_vorschau(
     Formulars (uebernehmen_bestaetigen) legt die Deals wirklich an.
 
     Die Auswahl kommt aus den Checkboxen je Person in der Gruppen-Karte, auch
-    aus "automatisch_abgelehnt" möglich (bewusstes Überstimmen). Unbekannte
-    oder bereits entschiedene IDs werden hier wie beim späteren Anlegen
-    übergangen; bleibt dadurch keine gültige Auswahl übrig, geht es ohne
-    Vorschau direkt zurück zur Übersicht.
+    aus "automatisch_abgelehnt" oder "verworfen" möglich (bewusstes
+    Überstimmen - STATUS_UEBERNEHMBAR). Bereits übernommene IDs werden hier
+    wie beim späteren Anlegen übergangen; bleibt dadurch keine gültige
+    Auswahl übrig, geht es ohne Vorschau direkt zurück zur Übersicht.
 
     Stößt die Kunden-wirbt-Kunden- und die Kündigungsweg-Recherche für
     Bank+Kontoart schon jetzt im Hintergrund an (helpers.
@@ -359,7 +364,9 @@ def uebernehmen_vorschau(
     die der Nutzer mit der Vorschau verbringt, überbrückt beide KI-Websuchen,
     ohne "Übernehmen" wie früher spürbar zu blockieren (siehe
     uebernehmen_bestaetigen)."""
-    gueltig = [v for v in (db.get(DealVorschlag, vid) for vid in vorschlag_ids) if v is not None and v.status in STATUS_OFFEN]
+    gueltig = [
+        v for v in (db.get(DealVorschlag, vid) for vid in vorschlag_ids) if v is not None and v.status in STATUS_UEBERNEHMBAR
+    ]
     if not gueltig:
         return redirect(request, "vorschlaege")
 
@@ -518,7 +525,7 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
 
     for vorschlag_id in vorschlag_ids:
         vorschlag = db.get(DealVorschlag, vorschlag_id)
-        if vorschlag is None or vorschlag.status not in STATUS_OFFEN:
+        if vorschlag is None or vorschlag.status not in STATUS_UEBERNEHMBAR:
             continue
         daten = DealImport.model_validate_json(vorschlag.roh_json)
         daten.kuendbar_ab = kuendbar_ab
