@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.30.1
+
+Keine Verhaltensänderung, nur zusätzliche Testabsicherung: bestätigt per
+Test, dass ein reiner Erwachsenen-Deal nach Übernahme durch beide
+Erwachsenen vollständig aus den Vorschlägen verschwindet - sowohl bei nur
+den Erwachsenen als auch mit beiden Kindern zusätzlich über "trotzdem
+hinzufügen" (2.30.0).
+
 ## 2.30.0
 
 "Für wen übernehmen?"-Dialog: ausgeschlossene Kinder trotzdem hinzufügen
