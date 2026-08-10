@@ -545,6 +545,84 @@ def test_trotzdem_hinzufuegen_ohne_gueltige_auswahl_tut_nichts(db, zwei_inhaber)
     assert db.query(DealVorschlag).count() == 0
 
 
+@pytest.fixture()
+def haushalt_vier(db):
+    """Zwei Erwachsene, zwei minderjährige Kinder - wie ein typischer
+    Familien-Haushalt (siehe Konversation: reiner Erwachsenen-Deal soll nach
+    Übernahme durch beide Erwachsene verschwinden, auch mit "trotzdem
+    hinzufügen" für die Kinder)."""
+    erwachsen_1 = Inhaber(name="Alice")
+    erwachsen_2 = Inhaber(name="Bob")
+    kind_1 = Inhaber(name="Kim", ist_minderjaehrig=True)
+    kind_2 = Inhaber(name="Jo", ist_minderjaehrig=True)
+    db.add_all([erwachsen_1, erwachsen_2, kind_1, kind_2])
+    db.commit()
+    return erwachsen_1, erwachsen_2, kind_1, kind_2
+
+
+def test_reiner_erwachsenen_deal_verschwindet_nach_uebernahme_beider_erwachsener(db, haushalt_vier):
+    """Reiner Erwachsenen-Deal (die Kinder haben laut Fachlogik gar keine
+    eigene Zeile, siehe finder/lauf.py): werden beide Erwachsenen übernommen,
+    bleibt keine offene Zeile mehr übrig - der Vorschlag verschwindet
+    vollständig von der Vorschläge-Seite."""
+    erwachsen_1, erwachsen_2, kind_1, kind_2 = haushalt_vier
+    v1 = _vorschlag(db, erwachsen_1, "vorgeschlagen", inhalt_hash="gleich", quelle_url="https://www.mydealz.de/erw")
+    v2 = _vorschlag(db, erwachsen_2, "vorgeschlagen", inhalt_hash="gleich", quelle_url="https://www.mydealz.de/erw")
+    # Bewusst keine Zeilen für kind_1/kind_2 - genau der Zustand, den die
+    # Fachlogik für einen reinen Erwachsenen-Deal herstellt.
+
+    vor = client.get("/vorschlaege")
+    assert "1 vorgeschlagen" in vor.text
+
+    antwort = _uebernehmen_vorschau_und_bestaetigen([v1.id, v2.id])
+    assert antwort.status_code == 303
+
+    db.refresh(v1)
+    db.refresh(v2)
+    assert v1.status == "uebernommen"
+    assert v2.status == "uebernommen"
+    assert db.query(Deal).count() == 2
+    assert {d.inhaber_id for d in db.query(Deal).all()} == {erwachsen_1.id, erwachsen_2.id}
+    # Für die Kinder ist und bleibt nie eine Zeile entstanden.
+    assert db.query(DealVorschlag).filter(DealVorschlag.inhaber_id.in_([kind_1.id, kind_2.id])).count() == 0
+
+    nach = client.get("/vorschlaege")
+    assert "0 vorgeschlagen" in nach.text
+    assert "0 verworfen" in nach.text
+    assert v1.bank_name not in nach.text
+
+
+def test_erwachsenen_deal_fuer_alle_vier_verschwindet_ebenfalls_vollstaendig(db, haushalt_vier):
+    """Werden über "trotzdem hinzufügen" zusätzlich beide Kinder mit
+    übernommen, entstehen für sie eigene Deals und eigene (sofort
+    "uebernommen"e) Vorschlagszeilen - der Vorschlag verschwindet genauso
+    vollständig wie bei nur den Erwachsenen."""
+    erwachsen_1, erwachsen_2, kind_1, kind_2 = haushalt_vier
+    v1 = _vorschlag(db, erwachsen_1, "vorgeschlagen", inhalt_hash="gleich", quelle_url="https://www.mydealz.de/erw2")
+    v2 = _vorschlag(db, erwachsen_2, "vorgeschlagen", inhalt_hash="gleich", quelle_url="https://www.mydealz.de/erw2")
+
+    vorschau = client.post(
+        "/vorschlaege/uebernehmen",
+        data={"vorschlag_ids": [v1.id, v2.id], "zusaetzliche_inhaber_ids": [kind_1.id, kind_2.id]},
+    )
+    felder = _formularfelder(vorschau.text)
+    assert sorted(felder.get("zusaetzliche_inhaber_ids", [])) == sorted([str(kind_1.id), str(kind_2.id)])
+
+    antwort = client.post("/vorschlaege/uebernehmen/bestaetigen", data=felder, follow_redirects=False)
+    assert antwort.status_code == 303
+
+    db.expire_all()
+    alle_zeilen = db.query(DealVorschlag).filter(DealVorschlag.quelle_url == "https://www.mydealz.de/erw2").all()
+    assert len(alle_zeilen) == 4
+    assert {z.status for z in alle_zeilen} == {"uebernommen"}
+    assert {z.inhaber_id for z in alle_zeilen} == {erwachsen_1.id, erwachsen_2.id, kind_1.id, kind_2.id}
+    assert db.query(Deal).count() == 4
+
+    nach = client.get("/vorschlaege")
+    assert "0 vorgeschlagen" in nach.text
+    assert v1.bank_name not in nach.text
+
+
 def test_uebernehmen_bestaetigen_funktioniert_auch_bei_verworfen(db, inhaber):
     """Bewusstes Überstimmen einer eigenen Fehlentscheidung: ein aus Versehen
     (oder als Workaround, um eine hängende Karte loszuwerden) manuell
