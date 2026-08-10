@@ -298,7 +298,15 @@ def bewerten(
     # Quellen). Ohne KI-Aufteilung fällt alles auf die Fund-Quelle zurück.
     if extraktion.praemien:
         praemien_json = [
-            {"quelle": _quelle_aus_geber(p.geber, fund.quelle), "betrag": str(p.betrag), "erhalten": False}
+            {
+                "quelle": _quelle_aus_geber(p.geber, fund.quelle),
+                "betrag": str(p.betrag),
+                "erhalten": False,
+                # Zweck der Teilprämie (wofuer) mitführen, damit die Aufteilung
+                # "50 € fürs Eröffnen / 250 € für den Wechselservice" auch am
+                # übernommenen Deal erhalten bleibt (siehe Praemie.zweck).
+                "zweck": p.bedingung,
+            }
             for p in teilpraemien
         ]
     else:

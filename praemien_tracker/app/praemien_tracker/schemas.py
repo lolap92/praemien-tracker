@@ -30,6 +30,9 @@ class PraemieIn(BaseModel):
     betrag: Decimal
     erhalten: bool = False
     auszahlung_erwartet: Optional[str] = None
+    # Wofür es diese Teilprämie gibt (z.B. "für den Kontowechselservice") -
+    # rein informativ, optional.
+    zweck: Optional[str] = None
 
     @field_validator("quelle")
     @classmethod

@@ -55,7 +55,7 @@
   <ul class="unterliste">
     {% for p in deal.praemien %}
     <li>
-      <span style="flex:1;">{{ p.quelle | quelle }} · {{ p.betrag | eur }}{% if p.auszahlung_erwartet %} · erwartet {{ p.auszahlung_erwartet }}{% endif %}</span>
+      <span style="flex:1;">{{ p.quelle | quelle }} · {{ p.betrag | eur }}{% if p.zweck %} <span class="praemie-zweck">{{ p.zweck }}</span>{% endif %}{% if p.auszahlung_erwartet %} · erwartet {{ p.auszahlung_erwartet }}{% endif %}</span>
       <span class="chip {{ 'status-abgeschlossen' if p.erhalten else 'status-praemie_warten' }}">{{ "erhalten" if p.erhalten else "offen" }}</span>
     </li>
     {% else %}

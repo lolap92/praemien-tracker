@@ -421,10 +421,18 @@ def uebernehmen_vorschau(
 
     praemien_zeilen = _zeilen_mit_leerzeilen(
         [
-            {"quelle": p.quelle, "betrag": str(p.betrag), "auszahlung_erwartet": p.auszahlung_erwartet or "", "erhalten": p.erhalten}
+            {
+                "quelle": p.quelle,
+                "betrag": str(p.betrag),
+                "auszahlung_erwartet": p.auszahlung_erwartet or "",
+                "erhalten": p.erhalten,
+                # Zweck der Teilprämie sichtbar anzeigen und verdeckt mitführen,
+                # damit er beim Übernehmen am Deal erhalten bleibt.
+                "zweck": p.zweck or "",
+            }
             for p in daten.praemien
         ],
-        {"quelle": "bank", "betrag": "", "auszahlung_erwartet": "", "erhalten": False},
+        {"quelle": "bank", "betrag": "", "auszahlung_erwartet": "", "erhalten": False, "zweck": ""},
         _LEERZEILEN_PRAEMIEN,
     )
     bedingungen_zeilen = _zeilen_mit_leerzeilen(
@@ -536,7 +544,9 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
     kommentar = (form.get("kommentar") or "").strip() or None
 
     praemien: list[PraemieIn] = []
-    for zeile in _form_zeilen(form, "praemie", "praemien_anzahl", ("quelle", "betrag", "auszahlung_erwartet", "erhalten")):
+    for zeile in _form_zeilen(
+        form, "praemie", "praemien_anzahl", ("quelle", "betrag", "auszahlung_erwartet", "erhalten", "zweck")
+    ):
         betrag = parse_decimal(zeile["betrag"])
         if betrag is None:
             continue
@@ -546,6 +556,7 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
                 betrag=betrag,
                 erhalten=zeile["erhalten"] is not None,
                 auszahlung_erwartet=(zeile["auszahlung_erwartet"] or "").strip() or None,
+                zweck=(zeile["zweck"] or "").strip() or None,
             )
         )
 

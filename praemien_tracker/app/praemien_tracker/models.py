@@ -103,6 +103,11 @@ class Praemie(Base):
     deal_id: Mapped[int] = mapped_column(ForeignKey("deals.id"), index=True)
     quelle: Mapped[str] = mapped_column(String(20))  # "spartanien" | "bank"
     betrag: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    # Wofür es diese (Teil-)Prämie gibt, Freitext aus dem Angebot (z.B. "für den
+    # Kontowechselservice"). Nur zur Anzeige, macht bei aufgeteilten Prämien
+    # nachvollziehbar, welcher Teilbetrag woran hängt. NULL, wenn das Angebot
+    # keine Aufteilung mit eigenem Zweck nennt.
+    zweck: Mapped[str | None] = mapped_column(String(255), nullable=True)
     erhalten: Mapped[bool] = mapped_column(Boolean, default=False)
     auszahlung_erwartet: Mapped[str | None] = mapped_column(String(10), nullable=True)  # "YYYY-MM"
     # Bis wann die Prämie zuletzt/als nächstes auf Eingang geprüft wurde -

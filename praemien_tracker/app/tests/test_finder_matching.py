@@ -144,6 +144,11 @@ def test_mehrere_teilpraemien_werden_aufgeschluesselt_und_summiert(db, alice):
     daten = DealImport.model_validate_json(ergebnis.roh_json)
     quellen = {(p.betrag, p.quelle) for p in daten.praemien}
     assert quellen == {(Decimal("50"), "spartanien"), (Decimal("250"), "bank")}
+    # Zweck der Teilprämie wandert ins roh_json, damit er beim Übernehmen am
+    # Deal erhalten bleibt (Praemie.zweck).
+    zwecke = {p.betrag: p.zweck for p in daten.praemien}
+    assert zwecke[Decimal("50")] == "für die Kontoeröffnung"
+    assert zwecke[Decimal("250")] == "für den Kontowechselservice"
 
 
 def test_einzelpraemie_ohne_aufteilung_bleibt_eine_zeile(db, alice):

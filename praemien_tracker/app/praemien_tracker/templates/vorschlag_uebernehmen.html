@@ -67,6 +67,11 @@
           <input type="checkbox" name="praemie_{{ loop.index0 }}_erhalten" id="praemie_{{ loop.index0 }}_erhalten" {{ "checked" if zeile.erhalten else "" }}>
           <label for="praemie_{{ loop.index0 }}_erhalten" style="margin:0;">erhalten</label>
         </span>
+        {# Zweck der Teilprämie sichtbar zeigen und verdeckt mitführen, damit die
+           Aufteilung "50 € fürs Eröffnen / 250 € für den Wechselservice" beim
+           Anlegen erkennbar ist und am Deal erhalten bleibt. #}
+        <input type="hidden" name="praemie_{{ loop.index0 }}_zweck" value="{{ zeile.zweck }}">
+        {% if zeile.zweck %}<span class="teilpraemie-zweck">{{ zeile.zweck }}</span>{% endif %}
       </li>
       {% endfor %}
     </ul>
@@ -87,6 +92,9 @@
         <input type="hidden" name="bedingung_{{ loop.index0 }}_betrag_euro" value="{{ zeile.betrag_euro }}">
         <input type="hidden" name="bedingung_{{ loop.index0 }}_frist_wochen" value="{{ zeile.frist_wochen }}">
         <input type="hidden" name="bedingung_{{ loop.index0 }}_gilt_fuer" value="{{ zeile.gilt_fuer }}">
+        {# Teilbetrags-Zuordnung sichtbar machen, damit beim Anlegen erkennbar
+           ist, welche Bedingung zu welchem Teilbetrag gehört. #}
+        {% if zeile.gilt_fuer %}<span class="bed-zuordnung-vorschau">nur für {{ zeile.gilt_fuer }}</span>{% endif %}
       </li>
       {% endfor %}
     </ul>

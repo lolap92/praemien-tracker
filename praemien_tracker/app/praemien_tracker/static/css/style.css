@@ -2170,6 +2170,23 @@ table.lauf-tabelle tr:hover {
   margin-top: 0.15rem;
 }
 
+/* Sichtbare Zuordnungs-Labels in der Übernehmen-Vorschau: der Zweck einer
+   Teilprämie bzw. die Teilbetrags-Zuordnung einer Bedingung, jeweils auf eigener
+   Zeile unter den Eingabefeldern der Zeile (siehe vorschlag_uebernehmen.html). */
+.reihe > .teilpraemie-zweck,
+.reihe > .bed-zuordnung-vorschau {
+  flex: 0 0 100%;
+  margin-top: -0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--st-wait);
+}
+
+/* Zweck einer Teilprämie auf der Deal-Detailseite - dezent inline hinter Betrag. */
+.praemie-zweck {
+  color: var(--ink-soft);
+}
+
 /* Bedingungen immer sichtbar: Kopf mit Anzahl + Ampel-Status, darunter die Liste. */
 .vk-bedingungen {
   margin-top: 0.6rem;

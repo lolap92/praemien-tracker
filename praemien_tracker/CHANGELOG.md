@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.35.0
+
+Teilprämien und ihre Bedingungen beim Anlegen sichtbar - und der Prämienzweck
+bleibt am Deal erhalten.
+
+**A) Zuordnung in der Anlegen-Vorschau sichtbar.** Der „Übernehmen bestätigen"-
+Dialog zeigt jetzt zu jeder Teilprämie ihren Zweck („für den
+Kontowechselservice") und zu jeder Bedingung, falls zutreffend, die
+Teilbetrags-Zuordnung („nur für 250 € von Santander"). So ist schon beim
+Anlegen erkennbar, welche Auflage zu welchem Teilbetrag gehört und welche
+Zeilen sich weglassen lassen, wenn ein Teilbetrag nicht mitgenommen wird
+(bisher lief das nur verdeckt mit).
+
+**B) Prämienzweck wird am Deal gespeichert.** Die reale Prämie kannte bisher nur
+Quelle und Betrag; der Zweck-Text aus dem Angebot ging beim Übernehmen
+verloren. Jede Prämie trägt jetzt ein optionales Feld `zweck` - die Extraktion
+füllt es aus der Prämien-Aufteilung, es wandert über die Vorschau bis zum Deal
+und erscheint auf der Deal-Detailseite hinter dem Betrag. Neue Migration `0018`
+ergänzt die Spalte `zweck` auf `praemien`.
+
 ## 2.34.0
 
 Bedingungen werden auf der Vorschlagskarte jetzt nach Teilprämie gruppiert

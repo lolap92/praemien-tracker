@@ -416,6 +416,42 @@ def test_uebernehmen_bewahrt_strukturierte_bedingungs_kennzahlen(db, inhaber):
     assert bed.gilt_fuer == "50 EUR fuer die Kartennutzung"
 
 
+def test_uebernehmen_zeigt_und_bewahrt_teilpraemien_zuordnung(db, inhaber):
+    """Santander-Fall: die Vorschau macht den Zweck jeder Teilprämie und die
+    Teilbetrags-Zuordnung der Bedingungen sichtbar; beide überstehen den
+    Roundtrip bis zum angelegten Deal (Praemie.zweck, Bedingung.gilt_fuer)."""
+    roh_json = (
+        '{"bank": "Santander", "kontoart": "Girokonto", "inhaber": "%s", '
+        '"praemien": ['
+        '{"quelle": "spartanien", "betrag": "50.00", "erhalten": false, "zweck": "fuer die Kontoeroeffnung"}, '
+        '{"quelle": "bank", "betrag": "250.00", "erhalten": false, "zweck": "fuer den Kontowechselservice"}], '
+        '"bedingungen": ['
+        '{"beschreibung": "Neukunde sein", "erfuellt": false}, '
+        '{"beschreibung": "Kontowechselservice nutzen", "erfuellt": false, "gilt_fuer": "250 EUR von Santander"}], '
+        '"urls": [{"url": "https://www.spartanien.de/Santander+BestGiro", "bezeichnung": "spartanien-Angebot"}]}'
+    ) % inhaber.name
+    vorschlag = _vorschlag(
+        db, inhaber, "vorgeschlagen", bank_name="Santander", kontoart="Girokonto", roh_json=roh_json
+    )
+
+    # A: Zweck und Zuordnung sind in der Vorschau sichtbar (nicht nur verdeckt).
+    vorschau = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]})
+    assert 'name="praemie_0_zweck" value="fuer die Kontoeroeffnung"' in vorschau.text
+    assert ">fuer den Kontowechselservice<" in vorschau.text
+    assert "nur für 250 EUR von Santander" in vorschau.text
+
+    _uebernehmen_vorschau_und_bestaetigen([vorschlag.id])
+
+    # B: Zweck der Teilprämie landet am Deal.
+    deal = db.query(Deal).one()
+    zwecke = {p.betrag: p.zweck for p in deal.praemien}
+    assert zwecke[Decimal("50.00")] == "fuer die Kontoeroeffnung"
+    assert zwecke[Decimal("250.00")] == "fuer den Kontowechselservice"
+    zuordnung = {b.beschreibung: b.gilt_fuer for b in deal.bedingungen}
+    assert zuordnung["Kontowechselservice nutzen"] == "250 EUR von Santander"
+    assert zuordnung["Neukunde sein"] is None
+
+
 def test_uebernehmen_bestaetigen_ueberspringt_leer_gelassene_zusatzzeilen(db, inhaber):
     """Die zusätzlich angebotenen leeren Zeilen (siehe
     routers/vorschlaege._LEERZEILEN_*) dürfen, wenn sie leer bleiben, keine

@@ -277,6 +277,7 @@ def build_deal_from_import(db: Session, daten: DealImport, *, hintergrund_recher
                 betrag=p.betrag,
                 erhalten=p.erhalten,
                 auszahlung_erwartet=_leer_zu_none(p.auszahlung_erwartet),
+                zweck=_leer_zu_none(p.zweck),
             )
         )
     for b in daten.bedingungen:
