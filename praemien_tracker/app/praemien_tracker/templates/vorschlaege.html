@@ -222,11 +222,21 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
 </div>
 {% endif %}
 
+{% macro bed_kennzahlen(b) %}
+{# Kompakte, strukturierte Kurzform der Auflage - nur die Größen, die die KI
+   tatsächlich aus dem Text gezogen hat (sonst NULL). #}
+{%- set teile = [] -%}
+{%- if b.anzahl %}{% set _ = teile.append(b.anzahl ~ '×') %}{% endif -%}
+{%- if b.betrag_euro %}{% set _ = teile.append(b.betrag_euro | eur) %}{% endif -%}
+{%- if b.frist_wochen %}{% set _ = teile.append(b.frist_wochen ~ ' Wochen') %}{% endif -%}
+{%- if teile %}<span class="bed-kennzahlen">{{ teile | join(' · ') }}</span>{% endif -%}
+{% endmacro %}
+
 {% macro bedingungen_liste(g) %}
 {% if g.bedingungen %}
 <ul class="vorschlag-bedingungen">
   {% for b in g.bedingungen %}
-  <li class="{{ b.einschaetzung }}">{{ b.beschreibung }}</li>
+  <li class="{{ b.einschaetzung }}">{{ b.beschreibung }}{{ bed_kennzahlen(b) }}</li>
   {% endfor %}
 </ul>
 {% endif %}

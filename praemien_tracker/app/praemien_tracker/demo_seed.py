@@ -127,7 +127,20 @@ def lade_demo_daten(db: Session) -> None:
     vorschlag("Neubank Demo", max_, "vorgeschlagen", 1)
     vorschlag("Wechselbank Beispiel", erika, "vorgeschlagen", 2)
     v3 = vorschlag("Prüfbank Beispiel", max_, "zu_pruefen", 3)
-    v3.bedingungen.append(VorschlagBedingung(beschreibung="Mindesteinlage 2.000 €", einschaetzung="zu_pruefen"))
+    v3.bedingungen.append(
+        VorschlagBedingung(
+            beschreibung="Mindesteinlage 2.000 €", einschaetzung="zu_pruefen", betrag_euro=Decimal("2000")
+        )
+    )
+    v3.bedingungen.append(
+        VorschlagBedingung(
+            beschreibung="Kreditkarte innerhalb von 4 Wochen mindestens 2x für insgesamt 50 € einsetzen",
+            einschaetzung="erfuellt",
+            anzahl=2,
+            betrag_euro=Decimal("50"),
+            frist_wochen=4,
+        )
+    )
     vorschlag("Abgelehnt-Bank", erika, "automatisch_abgelehnt", 4, ablehnungsgruende="Prämie unter Mindestbetrag")
     vorschlag("Verworfen-Bank", max_, "verworfen", 5, verwerfen_gruende="bestandskunde")
 

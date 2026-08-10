@@ -80,6 +80,12 @@
       <li class="reihe" style="align-items:center;">
         <input type="text" name="bedingung_{{ loop.index0 }}_beschreibung" placeholder="z. B. 3 Trades ausführen" style="flex:1 1 200px;" value="{{ zeile.beschreibung }}">
         <input type="date" name="bedingung_{{ loop.index0 }}_faellig_bis" style="flex:0 0 150px;" value="{{ zeile.faellig_bis }}">
+        {# Strukturierte Kennzahlen (Anzahl/Betrag/Frist) werden nur verdeckt
+           mitgeführt, damit sie beim Übernehmen erhalten bleiben - die
+           beschreibung oben bleibt das bearbeitbare Feld. #}
+        <input type="hidden" name="bedingung_{{ loop.index0 }}_anzahl" value="{{ zeile.anzahl }}">
+        <input type="hidden" name="bedingung_{{ loop.index0 }}_betrag_euro" value="{{ zeile.betrag_euro }}">
+        <input type="hidden" name="bedingung_{{ loop.index0 }}_frist_wochen" value="{{ zeile.frist_wochen }}">
       </li>
       {% endfor %}
     </ul>

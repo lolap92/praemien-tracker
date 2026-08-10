@@ -1,5 +1,43 @@
 # Changelog
 
+## 2.32.0
+
+KI-Deal-Finder erkennt jetzt deutlich mehr Bedingungen - und stellt sie
+strukturiert dar.
+
+**Warum:** Bei Angeboten wie der awa7® Visa Kreditkarte tauchte auf der
+Vorschlagskarte nur "1 Bedingung: Kontoeröffnung" auf, obwohl der Deal in
+Wahrheit verlangt, die Karte *innerhalb von vier Wochen mindestens zweimal
+für insgesamt 50 €* einzusetzen. Ursache war nicht das KI-Modell, sondern der
+**Eingabetext**: dealdoktor und mydealz liefern im RSS-Feed pro Beitrag zwei
+Felder - einen gekürzten Anreißer (`<description>`) und den vollständigen
+Artikel (`<content:encoded>`). Der Finder las bisher nur den Anreißer, in dem
+die eigentliche Auflage (Fußnoten, "Bonusbedingungen") gar nicht steht.
+
+- **Volltext statt Anreißer:** `finder/quellen.py` bevorzugt jetzt
+  `<content:encoded>` und fällt nur, wenn es fehlt, auf `<description>`
+  zurück. Damit sieht die KI-Extraktion die kompletten Bonusbedingungen.
+  Nebenwirkung: Der Rohtext ändert sich, weshalb bereits gecachte Funde beim
+  nächsten Lauf **einmalig neu analysiert** werden (danach wie gewohnt aus dem
+  Cache).
+- **Bessere Prompts:** Der Extraktions-Prompt fordert nun ausdrücklich *alle*
+  Bedingungen inklusive Fußnoten/Kleingedrucktem, verlangt die konkreten
+  Zahlen (Anzahl, Betrag, Frist) wörtlich in der Beschreibung und weist an,
+  abgelaufene Alt-Aktionen sowie fremde, nur nebenbei verlinkte Deals zu
+  ignorieren. Der Themen-Check bewertet ebenfalls nur noch das Hauptangebot.
+  Die beiden Websuche-Prompts (Kündigungsweg, Kunden-werben-Kunden) bevorzugen
+  jetzt offizielle Quellen bzw. die konkrete Programm-Seite.
+- **Strukturierte Bedingungen:** Jede Bedingung trägt jetzt optionale
+  Kennzahlen (Anzahl, Betrag in €, Frist in Wochen). Auf der Vorschlagskarte
+  und in der Deal-Detailansicht erscheinen sie als kompakte Kurzform
+  ("2× · 50 € · 4 Wochen"); beim Übernehmen wandern sie über die Vorschau bis
+  zur angelegten Bedingung mit. Die Freitext-Beschreibung bleibt die
+  verbindliche Quelle - fehlt eine Kennzahl im Angebot, bleibt sie leer
+  (kein geratener Wert).
+- Neue Datenbank-Migration `0016` ergänzt die Spalten `anzahl`,
+  `betrag_euro` und `frist_wochen` auf `bedingungen` und
+  `vorschlag_bedingungen`.
+
 ## 2.31.0
 
 Erwachsene werden jetzt auch von reinen Kinderdeals ausgeschlossen -

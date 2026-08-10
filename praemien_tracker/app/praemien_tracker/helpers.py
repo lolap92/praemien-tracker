@@ -281,7 +281,14 @@ def build_deal_from_import(db: Session, daten: DealImport, *, hintergrund_recher
         )
     for b in daten.bedingungen:
         deal.bedingungen.append(
-            Bedingung(beschreibung=b.beschreibung.strip(), erfuellt=b.erfuellt, faellig_bis=b.faellig_bis)
+            Bedingung(
+                beschreibung=b.beschreibung.strip(),
+                erfuellt=b.erfuellt,
+                faellig_bis=b.faellig_bis,
+                anzahl=b.anzahl,
+                betrag_euro=b.betrag_euro,
+                frist_wochen=b.frist_wochen,
+            )
         )
     for u in daten.urls:
         deal.urls.append(DealUrl(url=u.url.strip(), bezeichnung=_leer_zu_none(u.bezeichnung)))

@@ -2111,6 +2111,22 @@ table.lauf-tabelle tr:hover {
   background: var(--danger);
 }
 
+/* Kompakte, strukturierte Kurzform der Auflage ("2× · 50 € · 4 Wochen") -
+   rechtsbündig neben dem Bedingungstext, monospace für schnelle Lesbarkeit
+   der Zahlen. Erscheint nur, wenn die KI mindestens eine Kennzahl erkannt hat. */
+.bed-kennzahlen {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.vorschlag-bedingungen li .bed-kennzahlen {
+  margin-left: auto;
+  padding-left: 0.5rem;
+}
+
 /* Bedingungen immer sichtbar: Kopf mit Anzahl + Ampel-Status, darunter die Liste. */
 .vk-bedingungen {
   margin-top: 0.6rem;

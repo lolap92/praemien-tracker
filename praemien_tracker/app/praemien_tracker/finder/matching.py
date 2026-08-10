@@ -53,6 +53,11 @@ EINSCHAETZUNG_NICHT_ERFUELLT = "nicht_erfuellt"
 class BedingungBewertung:
     beschreibung: str
     einschaetzung: str
+    # Strukturierte Kennzahlen der Auflage (aus der KI-Extraktion), nur zur
+    # Anzeige und für den späteren Deal - None, wenn im Angebot nicht genannt.
+    anzahl: int | None = None
+    betrag_euro: Decimal | None = None
+    frist_wochen: int | None = None
 
 
 @dataclass(frozen=True)
@@ -260,7 +265,14 @@ def bewerten(
     # 3) Von der KI erkannte Einzel-Bedingungen (können mehrere sein - siehe
     # VorschlagBedingung in models.py).
     bedingungen = [
-        BedingungBewertung(b.beschreibung.strip(), b.einschaetzung) for b in extraktion.bedingungen
+        BedingungBewertung(
+            b.beschreibung.strip(),
+            b.einschaetzung,
+            anzahl=b.anzahl,
+            betrag_euro=_praemie_betrag(b.betrag_euro) if b.betrag_euro is not None else None,
+            frist_wochen=b.frist_wochen,
+        )
+        for b in extraktion.bedingungen
     ]
     for b in bedingungen:
         if b.einschaetzung == EINSCHAETZUNG_NICHT_ERFUELLT:
@@ -302,7 +314,16 @@ def bewerten(
             # neu angelegte Bedingung beim Übernehmen schon abgehakt in der
             # Todo-Liste erscheinen, ohne dass die/der Nutzer/in sie je
             # bestätigt hat.
-            "bedingungen": [{"beschreibung": b.beschreibung, "erfuellt": False} for b in bedingungen],
+            "bedingungen": [
+                {
+                    "beschreibung": b.beschreibung,
+                    "erfuellt": False,
+                    "anzahl": b.anzahl,
+                    "betrag_euro": str(b.betrag_euro) if b.betrag_euro is not None else None,
+                    "frist_wochen": b.frist_wochen,
+                }
+                for b in bedingungen
+            ],
             "urls": [{"url": fund.quelle_url, "bezeichnung": f"{fund.quelle}-Angebot"}],
         },
         ensure_ascii=False,

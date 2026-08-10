@@ -163,7 +163,14 @@ def _vorschlag_felder_setzen(
     vorschlag.roh_json = match.roh_json
     vorschlag.status = match.status
     vorschlag.bedingungen = [
-        VorschlagBedingung(beschreibung=b.beschreibung, einschaetzung=b.einschaetzung) for b in match.bedingungen
+        VorschlagBedingung(
+            beschreibung=b.beschreibung,
+            einschaetzung=b.einschaetzung,
+            anzahl=b.anzahl,
+            betrag_euro=b.betrag_euro,
+            frist_wochen=b.frist_wochen,
+        )
+        for b in match.bedingungen
     ]
     vorschlag.praemien = [
         VorschlagPraemie(betrag=p.betrag, geber=p.geber, bedingung=p.bedingung) for p in match.praemien

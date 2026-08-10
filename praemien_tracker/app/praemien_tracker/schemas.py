@@ -50,6 +50,12 @@ class BedingungIn(BaseModel):
     beschreibung: str
     erfuellt: bool = False
     faellig_bis: Optional[date] = None
+    # Strukturierte Kennzahlen der Auflage (rein informativ, für die kompakte
+    # Anzeige "2× · 50 € · 4 Wochen"). Optional - fehlen sie im Import, bleibt
+    # allein die beschreibung maßgeblich.
+    anzahl: Optional[int] = None
+    betrag_euro: Optional[Decimal] = None
+    frist_wochen: Optional[int] = None
 
 
 class AufgabeIn(BaseModel):

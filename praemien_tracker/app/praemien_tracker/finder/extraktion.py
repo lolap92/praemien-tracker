@@ -31,6 +31,14 @@ class BedingungExtraktion(BaseModel):
     # nicht_erfuellt: eindeutig eine Hürde (z.B. "Gehaltseingang zwingend
     # erforderlich"). Sonstiger Geldeingang statt Gehalt zählt als erfuellt.
     einschaetzung: Literal["erfuellt", "zu_pruefen", "nicht_erfuellt"]
+    # Strukturierte Kennzahlen der Auflage, sofern im Text ausdrücklich
+    # genannt - erlauben eine kompakte Darstellung ("2× · 50 € · 4 Wochen") und
+    # eine spätere maschinelle Prüfung. Jeweils None, wenn die Größe im Text
+    # nicht vorkommt: nicht raten, der Freitext in beschreibung bleibt die
+    # verbindliche Quelle.
+    anzahl: int | None = None  # geforderte Anzahl (z.B. Kartenzahlungen)
+    betrag_euro: float | None = None  # zugehöriger Mindest-/Umsatzbetrag in Euro
+    frist_wochen: int | None = None  # Frist in Wochen (1 Monat = 4 Wochen)
 
 
 class PraemieExtraktion(BaseModel):
@@ -83,12 +91,21 @@ Eröffnung eines Girokontos, Tagesgeldkontos, Depots oder einer Kreditkarte \
 (mit Prämie) beschreibt - im Unterschied zu z.B. Versicherungen, reinen \
 Gutscheincodes, Kreditkarten ohne Prämie oder anderen Themen.
 
+Beurteile nur das im Titel bzw. Hauptteil beschriebene Hauptangebot. \
+Ignoriere Kommentare, Randspalten, andere nur nebenbei verlinkte Deals und \
+Blog-Beiwerk - ein solcher Nebentreffer macht den Text nicht relevant.
+
 Text:
 {text}"""
 
 EXTRAKTION_PROMPT = """\
 Extrahiere aus dem folgenden Angebotstext für eine Bank-Neukunden-Prämie \
 die strukturierten Angaben.
+
+Beziehe dich ausschließlich auf die aktuell beworbene Aktion. Der Text kann \
+zusätzlich Kommentare, Fußnoten, andere verlinkte Deals sowie erkennbar \
+abgelaufene oder frühere Aktionen (alte Beträge/Zeiträume) enthalten - solche \
+Nebeninhalte ignorierst du vollständig.
 
 - bank_name: Name der Bank/des Instituts.
 - kontoart: Art des Kontos (z.B. "Girokonto", "Tagesgeld", "Depot", \
@@ -113,10 +130,25 @@ Minderjährige/Kinder offensteht - z.B. ein Kinderdepot, Junior-Depot, \
 Junior-Konto oder Kinder-Tagesgeld, oder wenn der Text explizit sagt, dass \
 Minderjährige teilnehmen können. Im Zweifel false (die meisten \
 Neukunden-Prämien setzen Volljährigkeit voraus).
-- bedingungen: Liste der einzelnen Bedingungen, die für die Prämie erfüllt \
-werden müssen (z.B. Mindesteinlage, Kontoeröffnung online, TAN-Verfahren \
-aktivieren, Anzahl Kartenzahlungen, Gehaltseingang, Vertragslaufzeit). Jede \
-Bedingung einzeln mit eigener beschreibung und einschaetzung:
+- bedingungen: ALLE einzelnen Bedingungen, die für die Prämie erfüllt werden \
+müssen (z.B. Mindesteinlage, Kontoeröffnung online, TAN-Verfahren aktivieren, \
+Anzahl Kartenzahlungen, Mindestumsatz, Gehaltseingang, Vertragslaufzeit). \
+Suche sie im gesamten Text, ausdrücklich auch in Fußnoten, Kleingedrucktem \
+und Abschnitten wie "Bonusbedingungen" - die eigentliche Auflage steht oft \
+nicht im Einleitungssatz. Jede Bedingung einzeln mit eigener beschreibung und \
+einschaetzung.
+  Übernimm in die beschreibung alle konkreten Zahlen einer zusammengehörenden \
+Auflage wörtlich: geforderte Anzahl, Mindest-/Umsatzbeträge, Fristen und \
+Reihenfolge. Fasse mehrere Zahlen einer Auflage NICHT zu "Karte nutzen" \
+zusammen. Gutes Beispiel für eine beschreibung: "Kreditkarte innerhalb von \
+4 Wochen nach Kontoeröffnung mindestens 2x für insgesamt 50 € einsetzen".
+  Fülle zusätzlich, sofern im Text ausdrücklich genannt, die strukturierten \
+Felder der Bedingung (sonst weglassen/null, nicht raten):
+    - anzahl: geforderte Anzahl (z.B. 2 bei "mindestens 2x einsetzen").
+    - betrag_euro: zugehöriger Mindest-/Umsatzbetrag in Euro als Zahl.
+    - frist_wochen: Frist in Wochen; rechne dabei 1 Monat = 4 Wochen, 3 Monate \
+= 12 Wochen.
+  einschaetzung je Bedingung:
   - "erfuellt": keine erkennbare Hürde für einen typischen Neukunden (z.B. \
 "3 Kartenzahlungen im ersten Monat").
   - "nicht_erfuellt": eindeutig eine Hürde laut Text, z.B. ein zwingend \

@@ -22,6 +22,14 @@ logger = logging.getLogger("praemien_tracker.finder")
 USER_AGENT = "praemien-tracker/1 (privater Gebrauch, siehe github.com/lolap92/praemien-tracker)"
 MYDEALZ_RSS_URL = "https://www.mydealz.de/rss/gruppe/{gruppe}"
 
+# WordPress-/Pepper-Feeds (dealdoktor, mydealz) liefern pro Item zwei
+# Textfelder: <description> ist nur ein gekürzter Anreißer ("... [...]"),
+# während <content:encoded> den vollständigen Beitrag inkl. Fußnoten und
+# Bonusbedingungen enthält. Genau dort steht die eigentliche Auflage (z.B.
+# "Karte 2x in 4 Wochen einsetzen"), die im Anreißer fehlt - deshalb wird der
+# Volltext bevorzugt und nur als Rückfall der Anreißer genutzt.
+CONTENT_ENCODED_TAG = "{http://purl.org/rss/1.0/modules/content/}encoded"
+
 
 @dataclass(frozen=True)
 class RohFund:
@@ -56,8 +64,10 @@ def _parse_rss(xml_text: str, quelle: str) -> list[RohFund]:
     for item in root.iter("item"):
         titel = (item.findtext("title") or "").strip()
         link = (item.findtext("link") or "").strip()
-        beschreibung_html = item.findtext("description") or ""
-        text = BeautifulSoup(beschreibung_html, "html.parser").get_text(" ", strip=True)
+        # Volltext (content:encoded) bevorzugen, Anreißer (description) nur als
+        # Rückfall - siehe CONTENT_ENCODED_TAG.
+        roh_html = item.findtext(CONTENT_ENCODED_TAG) or item.findtext("description") or ""
+        text = BeautifulSoup(roh_html, "html.parser").get_text(" ", strip=True)
         if not link or not titel or link in gesehene_urls:
             continue
         gesehene_urls.add(link)

@@ -31,10 +31,11 @@ KWK_PROMPT = (
     "Bietet die Bank \"{bank}\" in Deutschland für ein {kontoart} ein "
     "\"Kunden wirbt Kunden\"-Programm an (Empfehlungsprämie für die Werbung "
     "neuer Kundinnen/Kunden)? Recherchiere über die Websuche den aktuellen "
-    "Stand und gib bei Erfolg die offizielle URL der zugehörigen Seite auf "
-    "der Bank-Website an. Wenn du keine verlässliche, auf diese Bank "
-    "bezogene Information findest, setze moeglich auf false und lass url "
-    "leer."
+    "Stand und gib bei Erfolg die offizielle URL der konkreten Programm-Seite "
+    "auf der Bank-Website an (die Seite, die das Werbeprogramm selbst "
+    "beschreibt - nicht die Startseite oder eine allgemeine Produktseite). "
+    "Wenn du keine verlässliche, auf diese Bank bezogene Information findest, "
+    "setze moeglich auf false und lass url leer."
 )
 
 

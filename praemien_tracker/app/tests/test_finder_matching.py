@@ -50,6 +50,39 @@ def test_echter_neukunde_wird_vorgeschlagen(db, alice):
     DealImport.model_validate_json(ergebnis.roh_json)
 
 
+def test_bedingung_kennzahlen_landen_in_bewertung_und_roh_json(db, alice):
+    """Die strukturierten Kennzahlen einer Bedingung (Anzahl/Betrag/Frist)
+    fließen in die Bewertung und ins roh_json, damit sie über 'Übernehmen'
+    bis zur späteren Bedingung erhalten bleiben (awa7-Fall)."""
+    fund = RohFund("dealdoktor", "https://www.dealdoktor.de/awa7-bonus-deal/", "t", "x")
+    ext = AngebotExtraktion(
+        bank_name="Hanseatic Bank",
+        kontoart="Kreditkarte",
+        praemie_betrag=50.0,
+        bedingungen=[
+            BedingungExtraktion(
+                beschreibung="Karte innerhalb von 4 Wochen mindestens 2x für insgesamt 50 € einsetzen",
+                einschaetzung="erfuellt",
+                anzahl=2,
+                betrag_euro=50.0,
+                frist_wochen=4,
+            )
+        ],
+    )
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
+
+    (bewertet,) = ergebnis.bedingungen
+    assert bewertet.anzahl == 2
+    assert bewertet.betrag_euro == Decimal("50")
+    assert bewertet.frist_wochen == 4
+
+    daten = DealImport.model_validate_json(ergebnis.roh_json)
+    (bed_in,) = daten.bedingungen
+    assert bed_in.anzahl == 2
+    assert bed_in.betrag_euro == Decimal("50")
+    assert bed_in.frist_wochen == 4
+
+
 def test_mehrere_teilpraemien_werden_aufgeschluesselt_und_summiert(db, alice):
     """Beispiel Santander: 50 EUR von Spartanien für die Kontoeröffnung + 250
     EUR von der Bank für den Kontowechselservice. Gesamtprämie = Summe, jede

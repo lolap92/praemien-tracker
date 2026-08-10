@@ -51,6 +51,42 @@ def test_mydealz_rss_wird_geparst():
     assert "Gehaltseingang" in funde[0].text
 
 
+MYDEALZ_RSS_MIT_VOLLTEXT = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+    xmlns:content="http://purl.org/rss/1.0/modules/content/">
+<channel><title>mydealz</title>
+<item>
+<title>Hanseatic awa7 Visa: 50&#8364; Bonus</title>
+<link>https://www.mydealz.de/deals/awa7-visa-50-euro-999999</link>
+<description>&lt;p&gt;awa7 Visa Kreditkarte mit 50&#8364; Bonus bei Eroeffnung. [&#8230;]&lt;/p&gt;</description>
+<content:encoded>&lt;p&gt;Als Neukunde bekommt ihr 50&#8364; Bonus, wenn ihr die Karte innerhalb \
+von vier Wochen nach Kontoeroeffnung mindestens zwei Mal fuer insgesamt 50&#8364; \
+einsetzt.&lt;/p&gt;</content:encoded>
+</item>
+</channel></rss>"""
+
+
+def test_rss_bevorzugt_content_encoded_vor_description():
+    """Der Anreißer (description) endet mit '[...]' und enthaelt die eigentliche
+    Bonusbedingung nicht - der Volltext (content:encoded) schon. Genau deshalb
+    wird content:encoded bevorzugt (siehe quellen.CONTENT_ENCODED_TAG)."""
+    funde = parse_mydealz_rss(MYDEALZ_RSS_MIT_VOLLTEXT)
+    assert len(funde) == 1
+    text = funde[0].text
+    assert "zwei Mal" in text
+    assert "vier Wochen" in text
+    # Der Anreißer-Platzhalter darf nicht im an die KI gereichten Text landen.
+    assert "[" not in text
+
+
+def test_rss_faellt_auf_description_zurueck_ohne_content_encoded():
+    """Fehlt content:encoded (z.B. ein anders aufgebauter Feed), bleibt das
+    bisherige Verhalten: der description-Text wird genutzt."""
+    funde = parse_mydealz_rss(MYDEALZ_RSS_BEISPIEL)
+    assert len(funde) == 1
+    assert "Gehaltseingang" in funde[0].text
+
+
 def test_mydealz_rss_verkraftet_kaputtes_xml():
     assert parse_mydealz_rss("das ist kein xml") == []
 

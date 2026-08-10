@@ -68,8 +68,12 @@
 <div class="card">
   <ul class="unterliste">
     {% for b in deal.bedingungen %}
+    {%- set kz = [] -%}
+    {%- if b.anzahl %}{% set _ = kz.append(b.anzahl ~ '×') %}{% endif -%}
+    {%- if b.betrag_euro %}{% set _ = kz.append(b.betrag_euro | eur) %}{% endif -%}
+    {%- if b.frist_wochen %}{% set _ = kz.append(b.frist_wochen ~ ' Wochen') %}{% endif -%}
     <li>
-      <span style="flex:1;">{{ b.beschreibung }}{% if b.faellig_bis %} <span class="frist">(bis {{ b.faellig_bis | datum }})</span>{% endif %}</span>
+      <span style="flex:1;">{{ b.beschreibung }}{% if kz %} <span class="bed-kennzahlen">{{ kz | join(' · ') }}</span>{% endif %}{% if b.faellig_bis %} <span class="frist">(bis {{ b.faellig_bis | datum }})</span>{% endif %}</span>
       <span class="chip {{ 'status-abgeschlossen' if b.erfuellt else 'status-bedingungen' }}">{{ "erfüllt" if b.erfuellt else "offen" }}</span>
     </li>
     {% else %}

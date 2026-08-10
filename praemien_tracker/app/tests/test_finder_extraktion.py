@@ -62,3 +62,37 @@ def test_struktur_extraktion_liefert_alle_felder():
 def test_struktur_extraktion_ohne_ergebnis_liefert_none():
     client = FakeClient(None)
     assert extrahiere_angebot(client, "Text", model="claude-haiku-4-5") is None
+
+
+def test_bedingung_kennzahlen_optional_und_default_none():
+    """Die strukturierten Kennzahlen sind optional - eine Bedingung ohne
+    Zahlenangaben lässt sie auf None (nicht 0)."""
+    b = BedingungExtraktion(beschreibung="Kontoeröffnung", einschaetzung="erfuellt")
+    assert b.anzahl is None
+    assert b.betrag_euro is None
+    assert b.frist_wochen is None
+
+
+def test_bedingung_kennzahlen_werden_uebernommen():
+    """awa7-Fall: 'mindestens 2x innerhalb von 4 Wochen für insgesamt 50 €'
+    landet als strukturierte Kennzahlen an der Bedingung."""
+    ergebnis = AngebotExtraktion(
+        bank_name="Hanseatic Bank",
+        kontoart="Kreditkarte",
+        praemie_betrag=50.0,
+        bedingungen=[
+            BedingungExtraktion(
+                beschreibung="Karte innerhalb von 4 Wochen mindestens 2x für insgesamt 50 € einsetzen",
+                einschaetzung="erfuellt",
+                anzahl=2,
+                betrag_euro=50.0,
+                frist_wochen=4,
+            )
+        ],
+    )
+    out = extrahiere_angebot(FakeClient(ergebnis), "Text", model="claude-haiku-4-5")
+    assert out is not None
+    (bed,) = out.bedingungen
+    assert bed.anzahl == 2
+    assert bed.betrag_euro == 50.0
+    assert bed.frist_wochen == 4

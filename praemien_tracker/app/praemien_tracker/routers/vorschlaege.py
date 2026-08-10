@@ -29,6 +29,15 @@ _LEERZEILEN_BEDINGUNGEN = 2
 _LEERZEILEN_URLS = 1
 _LEERZEILEN_AUFGABEN = 3
 
+
+def _int_oder_none(wert: str | None) -> int | None:
+    """Ganzzahl aus einem (versteckten) Formularfeld lesen - für die
+    strukturierten Bedingungs-Kennzahlen (Anzahl, Frist in Wochen), die in der
+    Übernehmen-Vorschau nur mitgeführt (nicht bearbeitet) werden. Leere oder
+    unlesbare Eingabe wird zu None, nicht zu 0."""
+    dez = parse_decimal(wert)
+    return int(dez) if dez is not None else None
+
 # Reihenfolge der Statusgruppen wie im Konzept-Mockup: erst eindeutig
 # vorgeschlagene, dann zu prüfende, ganz unten (eingeklappt) die
 # automatisch abgelehnten.
@@ -419,8 +428,19 @@ def uebernehmen_vorschau(
         _LEERZEILEN_PRAEMIEN,
     )
     bedingungen_zeilen = _zeilen_mit_leerzeilen(
-        [{"beschreibung": b.beschreibung, "faellig_bis": b.faellig_bis.isoformat() if b.faellig_bis else ""} for b in daten.bedingungen],
-        {"beschreibung": "", "faellig_bis": ""},
+        [
+            {
+                "beschreibung": b.beschreibung,
+                "faellig_bis": b.faellig_bis.isoformat() if b.faellig_bis else "",
+                # Strukturierte Kennzahlen nur verdeckt mitführen, damit sie
+                # beim Übernehmen erhalten bleiben (siehe uebernehmen_bestaetigen).
+                "anzahl": "" if b.anzahl is None else b.anzahl,
+                "betrag_euro": "" if b.betrag_euro is None else b.betrag_euro,
+                "frist_wochen": "" if b.frist_wochen is None else b.frist_wochen,
+            }
+            for b in daten.bedingungen
+        ],
+        {"beschreibung": "", "faellig_bis": "", "anzahl": "", "betrag_euro": "", "frist_wochen": ""},
         _LEERZEILEN_BEDINGUNGEN,
     )
     url_zeilen = _zeilen_mit_leerzeilen(
@@ -529,11 +549,22 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
         )
 
     bedingungen: list[BedingungIn] = []
-    for zeile in _form_zeilen(form, "bedingung", "bedingungen_anzahl", ("beschreibung", "faellig_bis")):
+    for zeile in _form_zeilen(
+        form, "bedingung", "bedingungen_anzahl", ("beschreibung", "faellig_bis", "anzahl", "betrag_euro", "frist_wochen")
+    ):
         beschreibung = (zeile["beschreibung"] or "").strip()
         if not beschreibung:
             continue
-        bedingungen.append(BedingungIn(beschreibung=beschreibung, erfuellt=False, faellig_bis=parse_date(zeile["faellig_bis"])))
+        bedingungen.append(
+            BedingungIn(
+                beschreibung=beschreibung,
+                erfuellt=False,
+                faellig_bis=parse_date(zeile["faellig_bis"]),
+                anzahl=_int_oder_none(zeile["anzahl"]),
+                betrag_euro=parse_decimal(zeile["betrag_euro"]),
+                frist_wochen=_int_oder_none(zeile["frist_wochen"]),
+            )
+        )
 
     urls: list[UrlIn] = []
     for zeile in _form_zeilen(form, "url", "urls_anzahl", ("bezeichnung", "url")):

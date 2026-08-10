@@ -45,10 +45,11 @@ RECHERCHE_PROMPT = (
     "Recherchiere über die Websuche den aktuellen, offiziellen Kündigungsweg "
     "(z. B. Online-Kündigung im Kundenportal, Kündigungsformular, schriftliche "
     "Kündigung per Post) und fasse die konkreten Schritte in 2-4 Sätzen auf "
-    "Deutsch zusammen. Gib außerdem die URL der Quelle an, auf der du die "
-    "Information gefunden hast. Wenn du keine verlässliche, auf diese Bank "
-    "bezogene Information findest, setze gefunden auf false und lass "
-    "anleitung sowie quelle_url leer."
+    "Deutsch zusammen. Stütze dich bevorzugt auf die offizielle Bank-Website "
+    "oder seriöse Verbraucherquellen, nicht auf Foren- oder Kommentarseiten. "
+    "Gib außerdem die URL der Quelle an, auf der du die Information gefunden "
+    "hast. Wenn du keine verlässliche, auf diese Bank bezogene Information "
+    "findest, setze gefunden auf false und lass anleitung sowie quelle_url leer."
 )
 
 

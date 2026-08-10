@@ -128,6 +128,13 @@ class Bedingung(Base):
     # solange kein Auszahlungsdatum hinterlegt ist. Kalenderdatum, weil in
     # Monaten gerechnet wird. Wird beim Zurücknehmen wieder geleert.
     erfuellt_am: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+    # Strukturierte Kennzahlen der Auflage (von der KI extrahiert, sonst von
+    # Hand), rein informativ für eine kompakte Anzeige "2× · 50 € · 4 Wochen".
+    # beschreibung bleibt die verbindliche Quelle; jeweils NULL, wenn die Größe
+    # im Angebot nicht genannt war.
+    anzahl: Mapped[int | None] = mapped_column(nullable=True)
+    betrag_euro: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    frist_wochen: Mapped[int | None] = mapped_column(nullable=True)
 
     deal: Mapped["Deal"] = relationship(back_populates="bedingungen")
 
@@ -251,6 +258,13 @@ class VorschlagBedingung(Base):
     # Nur "nicht_erfuellt" fließt in eine automatische Ablehnung ein, siehe
     # matching.py.
     einschaetzung: Mapped[str] = mapped_column(String(20))
+    # Strukturierte Kennzahlen der Auflage aus der KI-Extraktion, sofern im
+    # Text genannt - erlauben die kompakte Anzeige "2× · 50 € · 4 Wochen" auf
+    # der Vorschlagskarte und wandern beim Übernehmen über roh_json auf die
+    # spätere Bedingung. Jeweils NULL, wenn im Angebotstext nicht genannt.
+    anzahl: Mapped[int | None] = mapped_column(nullable=True)
+    betrag_euro: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    frist_wochen: Mapped[int | None] = mapped_column(nullable=True)
 
     vorschlag: Mapped["DealVorschlag"] = relationship(back_populates="bedingungen")
 

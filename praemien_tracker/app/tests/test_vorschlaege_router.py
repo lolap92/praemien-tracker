@@ -346,6 +346,35 @@ def test_uebernehmen_bestaetigen_uebernimmt_bearbeitete_felder(db, inhaber):
     assert any(u.bezeichnung == "Login" for u in deal.urls)
 
 
+def test_uebernehmen_bewahrt_strukturierte_bedingungs_kennzahlen(db, inhaber):
+    """Browser-Roundtrip: die strukturierten Kennzahlen einer Bedingung werden
+    in der Vorschau nur verdeckt mitgeführt (nicht bearbeitet) und müssen den
+    Weg bis zur angelegten Bedingung überstehen (awa7-Fall)."""
+    roh_json = (
+        '{"bank": "Hanseatic Bank", "kontoart": "Kreditkarte", "inhaber": "%s", '
+        '"praemien": [{"quelle": "bank", "betrag": "50.00", "erhalten": false}], '
+        '"bedingungen": [{"beschreibung": "Karte in 4 Wochen 2x fuer 50 EUR einsetzen", '
+        '"erfuellt": false, "anzahl": 2, "betrag_euro": "50", "frist_wochen": 4}], '
+        '"urls": [{"url": "https://www.dealdoktor.de/awa7-bonus-deal/", "bezeichnung": "dealdoktor-Angebot"}]}'
+    ) % inhaber.name
+    vorschlag = _vorschlag(
+        db, inhaber, "vorgeschlagen", bank_name="Hanseatic Bank", kontoart="Kreditkarte", roh_json=roh_json
+    )
+
+    # Vorschau muss die Kennzahlen als versteckte Felder rendern.
+    vorschau = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]})
+    assert 'name="bedingung_0_anzahl" value="2"' in vorschau.text
+    assert 'name="bedingung_0_frist_wochen" value="4"' in vorschau.text
+
+    _uebernehmen_vorschau_und_bestaetigen([vorschlag.id])
+
+    deal = db.query(Deal).one()
+    (bed,) = deal.bedingungen
+    assert bed.anzahl == 2
+    assert bed.betrag_euro == Decimal("50")
+    assert bed.frist_wochen == 4
+
+
 def test_uebernehmen_bestaetigen_ueberspringt_leer_gelassene_zusatzzeilen(db, inhaber):
     """Die zusätzlich angebotenen leeren Zeilen (siehe
     routers/vorschlaege._LEERZEILEN_*) dürfen, wenn sie leer bleiben, keine
