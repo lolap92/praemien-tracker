@@ -2136,12 +2136,38 @@ table.lauf-tabelle tr:hover {
 
 /* Zuordnung einer Bedingung zu ihrem Teilbetrag ("nur für 250 € …") - eigene
    Zeile, damit auch längere Labels lesbar bleiben; dezent, aber farblich vom
-   Fließtext abgesetzt. */
+   Fließtext abgesetzt. Auf der Vorschlagskarte werden Bedingungen stattdessen
+   nach Teilbetrag gruppiert (siehe .bed-gruppe); dieser Inline-Hinweis wird
+   noch auf der Deal-Detailseite genutzt. */
 .bed-gilt-fuer {
   flex-basis: 100%;
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--st-wait);
+}
+
+/* Gruppierung der Bedingungen nach Teilprämie auf der Vorschlagskarte: je eine
+   Gruppe mit kleiner Überschrift ("Für alle Teilbeträge" bzw. "Nur für …"),
+   darunter die zugehörigen Bedingungen. Macht auf einen Blick sichtbar, welche
+   Auflagen sich mit einem weggelassenen Teilbetrag erübrigen. */
+.bed-gruppen {
+  margin-top: 0.4rem;
+}
+
+.bed-gruppe + .bed-gruppe {
+  margin-top: 0.55rem;
+}
+
+.bed-gruppe-kopf {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.bed-gruppe .vorschlag-bedingungen {
+  margin-top: 0.15rem;
 }
 
 /* Bedingungen immer sichtbar: Kopf mit Anzahl + Ampel-Status, darunter die Liste. */

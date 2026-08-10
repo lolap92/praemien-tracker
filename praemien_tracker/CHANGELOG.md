@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.34.0
+
+Bedingungen werden auf der Vorschlagskarte jetzt nach Teilprämie gruppiert
+dargestellt.
+
+- Sind einer oder mehreren Bedingungen Teilbeträge zugeordnet (`gilt_fuer`,
+  siehe 2.33.0), zeigt die Karte je Teilbetrag eine eigene Gruppe mit
+  Überschrift: zuerst **„Für alle Teilbeträge"** (Grundvoraussetzungen ohne
+  Zuordnung), darunter je eine Gruppe **„Nur für &lt;Teilprämie&gt;"** mit den
+  Auflagen, die genau diesen Teilbetrag freischalten. So ist auf einen Blick
+  erkennbar, welche Bedingungen sich erübrigen, wenn ein Teilbetrag bewusst
+  nicht mitgenommen wird.
+- Gibt es keine Teilbetrags-Zuordnung, bleibt die Bedingungsliste wie bisher
+  schlicht (flach, ohne Überschriften). Der Inline-Hinweis „nur für …" bleibt
+  auf der Deal-Detailseite erhalten; keine Datenbank- oder Schemaänderung
+  nötig, reine Anzeige.
+
 ## 2.33.0
 
 Bedingungen lassen sich jetzt einzelnen Teilprämien zuordnen - sichtbar, welche

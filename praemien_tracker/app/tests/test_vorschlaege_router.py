@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 
 from praemien_tracker import helpers
 from praemien_tracker.main import app
-from praemien_tracker.models import Deal, DealVorschlag, FinderLauf, Inhaber, VorschlagPraemie
+from praemien_tracker.models import Deal, DealVorschlag, FinderLauf, Inhaber, VorschlagBedingung, VorschlagPraemie
 
 client = TestClient(app)
 
@@ -183,6 +183,43 @@ def test_karte_zeigt_mehrere_teilpraemien_mit_bedingung(db, inhaber):
     assert "für die Kontoeröffnung" in antwort.text
     assert "Santander" in antwort.text
     assert "für den Kontowechselservice" in antwort.text
+
+
+def test_karte_gruppiert_bedingungen_nach_teilpraemie(db, inhaber):
+    """Sind Bedingungen einzelnen Teilbeträgen zugeordnet (gilt_fuer), zeigt die
+    Karte je Teilbetrag eine eigene Gruppe mit Überschrift; Bedingungen ohne
+    Zuordnung stehen unter 'Für alle Teilbeträge'."""
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen", praemie_betrag=Decimal("300.00"))
+    vorschlag.bedingungen.append(VorschlagBedingung(beschreibung="Neukunde sein", einschaetzung="erfuellt"))
+    vorschlag.bedingungen.append(
+        VorschlagBedingung(
+            beschreibung="Kontowechselservice nutzen",
+            einschaetzung="zu_pruefen",
+            gilt_fuer="250 € für den Kontowechselservice",
+        )
+    )
+    db.commit()
+
+    antwort = client.get("/vorschlaege")
+    assert antwort.status_code == 200
+    assert "Für alle Teilbeträge" in antwort.text
+    assert "Nur für 250 € für den Kontowechselservice" in antwort.text
+    # Grundvoraussetzung erscheint nicht mehr mit dem Inline-"nur für"-Tag,
+    # sondern in ihrer Gruppe.
+    assert "Neukunde sein" in antwort.text
+
+
+def test_karte_ohne_teilpraemien_zuordnung_bleibt_flache_liste(db, inhaber):
+    """Ohne jede gilt_fuer-Zuordnung keine Gruppen-Überschriften - die Liste
+    bleibt schlicht."""
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+    vorschlag.bedingungen.append(VorschlagBedingung(beschreibung="3 Kartenzahlungen", einschaetzung="erfuellt"))
+    db.commit()
+
+    antwort = client.get("/vorschlaege")
+    assert "3 Kartenzahlungen" in antwort.text
+    assert "Für alle Teilbeträge" not in antwort.text
+    assert "Nur für" not in antwort.text
 
 
 def test_karte_zeigt_kinderdepot_tag_nur_bei_minderjaehrigem(db, zwei_inhaber):

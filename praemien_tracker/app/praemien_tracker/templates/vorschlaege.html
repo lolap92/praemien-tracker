@@ -232,21 +232,45 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
 {%- if teile %}<span class="bed-kennzahlen">{{ teile | join(' · ') }}</span>{% endif -%}
 {% endmacro %}
 
-{% macro bedingungen_liste(g) %}
-{% if g.bedingungen %}
+{% macro bed_items(items) %}
 <ul class="vorschlag-bedingungen">
-  {% for b in g.bedingungen %}
+  {% for b in items %}
   <li class="{{ b.einschaetzung }}">
-    <span class="bed-text">
-      {{ b.beschreibung }}{{ bed_kennzahlen(b) }}
-      {# Zeigt, zu welchem Teilbetrag die Auflage gehört - so lässt sich
-         erkennen, welche Bedingungen entfallen, wenn ein Teilbetrag bewusst
-         nicht mitgenommen wird. Fehlt der Label, ist es eine Grundvoraussetzung. #}
-      {% if b.gilt_fuer %}<span class="bed-gilt-fuer">nur für {{ b.gilt_fuer }}</span>{% endif %}
-    </span>
+    <span class="bed-text">{{ b.beschreibung }}{{ bed_kennzahlen(b) }}</span>
   </li>
   {% endfor %}
 </ul>
+{% endmacro %}
+
+{% macro bedingungen_liste(g) %}
+{% if g.bedingungen %}
+{% set mit_label = g.bedingungen | selectattr('gilt_fuer') | list %}
+{% if mit_label %}
+{# Mindestens eine Bedingung ist einem Teilbetrag zugeordnet: nach Teilprämie
+   gruppieren, damit sichtbar wird, welche Auflagen entfallen, wenn ein
+   Teilbetrag bewusst nicht mitgenommen wird. Grundvoraussetzungen (ohne Label)
+   stehen als eigene Gruppe zuerst. #}
+{% set grund = g.bedingungen | rejectattr('gilt_fuer') | list %}
+{% set labels = [] %}
+{% for b in mit_label %}{% if b.gilt_fuer not in labels %}{% set _ = labels.append(b.gilt_fuer) %}{% endif %}{% endfor %}
+<div class="bed-gruppen">
+  {% if grund %}
+  <div class="bed-gruppe">
+    <div class="bed-gruppe-kopf">Für alle Teilbeträge</div>
+    {{ bed_items(grund) }}
+  </div>
+  {% endif %}
+  {% for label in labels %}
+  <div class="bed-gruppe">
+    <div class="bed-gruppe-kopf">Nur für {{ label }}</div>
+    {{ bed_items(g.bedingungen | selectattr('gilt_fuer', 'equalto', label) | list) }}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+{# Keine Teilbetrags-Zuordnung: schlichte, flache Liste wie bisher. #}
+{{ bed_items(g.bedingungen) }}
+{% endif %}
 {% endif %}
 {% endmacro %}
 
