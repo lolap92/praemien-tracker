@@ -490,6 +490,61 @@ def test_uebernehmen_bestaetigen_funktioniert_auch_bei_automatisch_abgelehnt(db,
     assert db.query(Deal).count() == 1
 
 
+def test_karte_bietet_ausgeschlossene_minderjaehrige_zum_hinzufuegen_an(db, zwei_inhaber):
+    """Ein minderjähriger Inhaber ohne eigene Zeile zu diesem Fund (z.B. weil
+    das Angebot kein Kinderdeal ist) taucht im "Für wen übernehmen?"-Dialog
+    trotzdem als "trotzdem hinzufügen"-Option auf - Überstimmen dieser
+    Einschätzung."""
+    alice, max_ = zwei_inhaber  # max_ ist laut Fixture minderjährig
+    _vorschlag(db, alice, "vorgeschlagen")
+
+    antwort = client.get("/vorschlaege")
+    assert "Max" in antwort.text
+    assert f'name="zusaetzliche_inhaber_ids" value="{max_.id}"' in antwort.text
+
+
+def test_trotzdem_hinzufuegen_legt_deal_fuer_ausgeschlossenes_kind_an(db, zwei_inhaber):
+    alice, max_ = zwei_inhaber
+    vorschlag = _vorschlag(db, alice, "vorgeschlagen")
+
+    vorschau = client.post(
+        "/vorschlaege/uebernehmen",
+        data={"vorschlag_ids": [vorschlag.id], "zusaetzliche_inhaber_ids": [max_.id]},
+    )
+    felder = _formularfelder(vorschau.text)
+    assert felder.get("zusaetzliche_inhaber_ids") == [str(max_.id)]
+
+    antwort = client.post("/vorschlaege/uebernehmen/bestaetigen", data=felder, follow_redirects=False)
+    assert antwort.status_code == 303
+
+    db.refresh(vorschlag)
+    assert vorschlag.status == "uebernommen"
+    assert db.query(Deal).count() == 2
+    neue_kind_zeile = (
+        db.query(DealVorschlag)
+        .filter(DealVorschlag.inhaber_id == max_.id, DealVorschlag.quelle_url == vorschlag.quelle_url)
+        .one()
+    )
+    assert neue_kind_zeile.status == "uebernommen"
+    kind_deal = next(d for d in db.query(Deal).all() if d.inhaber_id == max_.id)
+    assert kind_deal.bank.name == vorschlag.bank_name
+
+
+def test_trotzdem_hinzufuegen_ohne_gueltige_auswahl_tut_nichts(db, zwei_inhaber):
+    """Ohne mindestens ein gültiges bereits ausgewähltes Mitglied als Vorlage
+    (Bank/Kontoart/Prämie) lässt sich niemand zusätzlich hinzufügen."""
+    alice, max_ = zwei_inhaber
+
+    antwort = client.post(
+        "/vorschlaege/uebernehmen/bestaetigen",
+        data={"zusaetzliche_inhaber_ids": [max_.id]},
+        follow_redirects=False,
+    )
+    assert antwort.status_code == 303
+    assert db.query(Deal).count() == 0
+    assert db.query(DealVorschlag).count() == 0
+
+
 def test_uebernehmen_bestaetigen_funktioniert_auch_bei_verworfen(db, inhaber):
     """Bewusstes Überstimmen einer eigenen Fehlentscheidung: ein aus Versehen
     (oder als Workaround, um eine hängende Karte loszuwerden) manuell

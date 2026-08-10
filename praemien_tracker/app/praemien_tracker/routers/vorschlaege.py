@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 
 from fastapi import APIRouter, Depends, Form, Query, Request
@@ -12,7 +13,7 @@ from ..finder import matching, notify
 from ..finder.lauf import lauf_im_hintergrund_starten, lauf_status
 from ..helpers import build_deal_from_import, parse_date, parse_decimal
 from ..ingress import redirect
-from ..models import DealVorschlag, FinderFund, FinderLauf
+from ..models import DealVorschlag, FinderFund, FinderLauf, Inhaber
 from ..schemas import AufgabeIn, BedingungIn, DealImport, PraemieIn, UrlIn
 from ..templating import templates
 
@@ -300,6 +301,14 @@ def vorschlaege_view(
     letzter_lauf = db.query(FinderLauf).order_by(FinderLauf.id.desc()).first()
     lauf_laeuft, lauf_gestartet_am = lauf_status()
 
+    # Für den "trotzdem hinzufügen"-Abschnitt im Übernehmen-Dialog (siehe
+    # vorschlag_dialoge): alle minderjährigen Inhaber, unabhängig davon, ob
+    # sie für diesen Fund überhaupt eine (offene oder verworfene) Zeile haben
+    # - fehlt eine, weil das Angebot laut KI-Extraktion nicht für Kinder gilt
+    # oder die Zeile automatisch bereinigt wurde (siehe finder/lauf.py), lässt
+    # sich das Kind darüber trotzdem manuell ergänzen.
+    alle_minderjaehrige = db.query(Inhaber).filter(Inhaber.ist_minderjaehrig.is_(True)).order_by(Inhaber.name).all()
+
     return templates.TemplateResponse(
         "vorschlaege.html",
         {
@@ -321,6 +330,7 @@ def vorschlaege_view(
             "filter_typ": filter_typ,
             "filter_status": filter_status,
             "filter_aktiv": bool(filter_quelle or filter_typ or filter_status),
+            "alle_minderjaehrige": alle_minderjaehrige,
         },
     )
 
@@ -338,6 +348,7 @@ def uebernehmen_vorschau(
     request: Request,
     vorschlag_ids: list[int] = Form(default=[]),
     verwerfen_duplikat_ids: list[int] = Form(default=[]),
+    zusaetzliche_inhaber_ids: list[int] = Form(default=[]),
     db: Session = Depends(get_db),
 ):
     """Erster Schritt des Übernehmens: zeigt statt sofort einen Deal je
@@ -357,6 +368,14 @@ def uebernehmen_vorschau(
     wie beim späteren Anlegen übergangen; bleibt dadurch keine gültige
     Auswahl übrig, geht es ohne Vorschau direkt zurück zur Übersicht.
 
+    zusaetzliche_inhaber_ids kommt aus dem "trotzdem hinzufügen"-Abschnitt für
+    minderjährige Inhaber ohne eigene Zeile zu diesem Fund (z.B. weil das
+    Angebot laut KI-Extraktion kein Kinderdeal ist) - bewusstes Überstimmen
+    dieser Einschätzung. Nur zur Anzeige zwischengespeichert (als Inhaber,
+    noch keine DealVorschlag-Zeile); die eigentliche Zeile entsteht erst beim
+    Bestätigen (uebernehmen_bestaetigen), damit ein Abbrechen im Dialog keine
+    Spur hinterlässt.
+
     Stößt die Kunden-wirbt-Kunden-Recherche für Bank+Kontoart schon jetzt im
     Hintergrund an (helpers.kwk_recherche_vorab_starten) - die Zeit, die der
     Nutzer mit der Vorschau verbringt, überbrückt die KI-Websuche, ohne
@@ -370,6 +389,18 @@ def uebernehmen_vorschau(
     ]
     if not gueltig:
         return redirect(request, "vorschlaege")
+
+    vorhandene_inhaber_ids = {v.inhaber_id for v in gueltig}
+    gesehen: set[int] = set()
+    zusaetzliche_inhaber = []
+    for inhaber_id in zusaetzliche_inhaber_ids:
+        if inhaber_id in vorhandene_inhaber_ids or inhaber_id in gesehen:
+            continue
+        inhaber = db.get(Inhaber, inhaber_id)
+        if inhaber is None:
+            continue
+        gesehen.add(inhaber_id)
+        zusaetzliche_inhaber.append(inhaber)
 
     fuehrend = gueltig[0]
     daten = DealImport.model_validate_json(fuehrend.roh_json)
@@ -412,6 +443,7 @@ def uebernehmen_vorschau(
             "url_zeilen": url_zeilen,
             "aufgaben_zeilen": aufgaben_zeilen,
             "mitglieder": gueltig,
+            "zusaetzliche_inhaber": zusaetzliche_inhaber,
             "verwerfen_duplikat_ids": verwerfen_duplikat_ids,
             "kwk_schluessel": kwk_schluessel,
         },
@@ -455,6 +487,11 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
     automatisch mit Grund "Duplikat" verworfen - kein zusätzlicher
     Bestätigungsschritt nötig.
 
+    zusaetzliche_inhaber_ids ("trotzdem hinzufügen", siehe
+    uebernehmen_vorschau) bekommen hier tatsächlich eine neue
+    DealVorschlag-Zeile, dupliziert von der ersten gültigen bereits
+    ausgewählten - erst ab hier existiert überhaupt ein Datensatz dafür.
+
     Die KwK-Recherche wurde schon beim Öffnen der Vorschau einmal im
     Hintergrund für Bank+Kontoart gestartet (uebernehmen_vorschau) und gilt
     für alle hier angelegten Deals gleichermaßen - hier wird höchstens noch
@@ -468,6 +505,7 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
     form = await request.form()
     vorschlag_ids = [int(v) for v in form.getlist("vorschlag_ids")]
     verwerfen_duplikat_ids = [int(v) for v in form.getlist("verwerfen_duplikat_ids")]
+    zusaetzliche_inhaber_ids = [int(v) for v in form.getlist("zusaetzliche_inhaber_ids")]
     kwk_schluessel = form.get("kwk_schluessel", "")
     kuendbar_ab = parse_date((form.get("kuendbar_ab") or "").strip() or None)
     kommentar = (form.get("kommentar") or "").strip() or None
@@ -508,6 +546,50 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
         aufgaben.append(AufgabeIn(beschreibung=beschreibung, erledigt=False, faellig_bis=parse_date(zeile["faellig_bis"])))
 
     kwk_ergebnis = helpers.kwk_recherche_ergebnis_abholen(kwk_schluessel, timeout=helpers.KWK_TIMEOUT_SEKUNDEN)
+
+    # "Trotzdem hinzufügen": für minderjährige Inhaber ohne eigene Zeile zu
+    # diesem Fund (siehe uebernehmen_vorschau/vorschlag_dialoge) legt erst
+    # dieser Schritt tatsächlich eine DealVorschlag-Zeile an - dupliziert vom
+    # ersten gültigen bereits ausgewählten Mitglied (Bank/Kontoart/Prämie/
+    # Inhalts-Hash identisch, nur "inhaber" im roh_json ausgetauscht), damit
+    # sie danach im selben Anlege-Durchlauf wie alle anderen mitläuft. Ohne
+    # mindestens ein gültiges bereits ausgewähltes Mitglied als Vorlage
+    # passiert nichts - die Karte kennt Bank/Kontoart/Prämie nur über eine
+    # bestehende Zeile.
+    if zusaetzliche_inhaber_ids:
+        referenz = next(
+            (v for v in (db.get(DealVorschlag, vid) for vid in vorschlag_ids) if v is not None and v.status in STATUS_UEBERNEHMBAR),
+            None,
+        )
+        if referenz is not None:
+            vorhandene_inhaber_ids = {
+                v.inhaber_id for v in (db.get(DealVorschlag, vid) for vid in vorschlag_ids) if v is not None
+            }
+            gesehen: set[int] = set()
+            for inhaber_id in zusaetzliche_inhaber_ids:
+                if inhaber_id in vorhandene_inhaber_ids or inhaber_id in gesehen:
+                    continue
+                inhaber = db.get(Inhaber, inhaber_id)
+                if inhaber is None:
+                    continue
+                gesehen.add(inhaber_id)
+                roh = json.loads(referenz.roh_json)
+                roh["inhaber"] = inhaber.name
+                neu = DealVorschlag(
+                    inhaber_id=inhaber.id,
+                    quelle=referenz.quelle,
+                    quelle_url=referenz.quelle_url,
+                    bank_name=referenz.bank_name,
+                    kontoart=referenz.kontoart,
+                    praemie_betrag=referenz.praemie_betrag,
+                    sperrfrist_monate=referenz.sperrfrist_monate,
+                    roh_json=json.dumps(roh, ensure_ascii=False),
+                    inhalt_hash=referenz.inhalt_hash,
+                    status=matching.STATUS_VORGESCHLAGEN,
+                )
+                db.add(neu)
+                db.flush()
+                vorschlag_ids.append(neu.id)
 
     for vorschlag_id in vorschlag_ids:
         vorschlag = db.get(DealVorschlag, vorschlag_id)

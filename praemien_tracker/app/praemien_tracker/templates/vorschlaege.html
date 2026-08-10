@@ -330,6 +330,19 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
       </label>
       {% endfor %}
     </div>
+    {% set vorhandene_ids = g.mitglieder | map(attribute='inhaber_id') | list %}
+    {% set weitere_minderjaehrige = alle_minderjaehrige | rejectattr('id', 'in', vorhandene_ids) | list %}
+    {% if weitere_minderjaehrige %}
+    <div class="vk-dialog-namen vk-dialog-weitere">
+      <p class="auto">Nicht vorgeschlagen (z. B. kein Kinderdeal) - trotzdem hinzufügen:</p>
+      {% for inhaber in weitere_minderjaehrige %}
+      <label class="vorschlag-mitglied">
+        <input type="checkbox" name="zusaetzliche_inhaber_ids" value="{{ inhaber.id }}">
+        <span class="vk-name">{{ inhaber.name }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% endif %}
     {% for vid in duplikat_verwerfen_ids %}<input type="hidden" name="verwerfen_duplikat_ids" value="{{ vid }}">{% endfor %}
     <div class="vk-dialog-aktionen">
       <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>

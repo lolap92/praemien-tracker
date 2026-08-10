@@ -12,7 +12,8 @@
     </div>
     <div class="feld">
       <label>Inhaber</label>
-      <p>{% for m in mitglieder %}{{ m.inhaber.name }}{{ ", " if not loop.last else "" }}{% endfor %}</p>
+      {% set namen = (mitglieder | map(attribute='inhaber.name') | list) + (zusaetzliche_inhaber | map(attribute='name') | list) %}
+      <p>{{ namen | join(", ") }}</p>
     </div>
     <div class="feld">
       <label>Kontoart</label>
@@ -29,6 +30,7 @@
 
 <form action="vorschlaege/uebernehmen/bestaetigen" method="post">
   {% for m in mitglieder %}<input type="hidden" name="vorschlag_ids" value="{{ m.id }}">{% endfor %}
+  {% for i in zusaetzliche_inhaber %}<input type="hidden" name="zusaetzliche_inhaber_ids" value="{{ i.id }}">{% endfor %}
   {% for vid in verwerfen_duplikat_ids %}<input type="hidden" name="verwerfen_duplikat_ids" value="{{ vid }}">{% endfor %}
   <input type="hidden" name="kwk_schluessel" value="{{ kwk_schluessel }}">
   <input type="hidden" name="praemien_anzahl" value="{{ praemien_zeilen | length }}">

@@ -99,6 +99,13 @@ Kinder"** gekennzeichnet. Ob ein Inhaber als minderjährig gilt, wird unter
 **"Mehr → Inhaber"** gepflegt (siehe unten) - ein neu angelegter Inhaber gilt
 zunächst immer als erwachsen.
 
+Im "Für wen übernehmen?"-Dialog stehen unterhalb der vorgeschlagenen Personen
+zusätzlich alle minderjährigen Inhaber, die für diesen Fund (noch) keine
+eigene Zeile haben, als **"trotzdem hinzufügen"**-Option - falls die
+Einschätzung "kein Kinderdeal" im Einzelfall nicht zutrifft. Übernommen wird
+dabei mit denselben Prämien-/Bedingungen-/Aufgaben-Angaben wie für die
+übrigen ausgewählten Personen.
+
 Ob ein Angebot ein echter Neukunden-Deal ist, prüft die App über den
 Bank-Namen im Angebotstext gegen die selbst erfassten Banken - Groß-/
 Kleinschreibung, Leerzeichen und Interpunktion spielen dabei keine Rolle

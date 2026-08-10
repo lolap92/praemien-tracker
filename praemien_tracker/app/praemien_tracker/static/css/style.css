@@ -2211,6 +2211,11 @@ dialog.vk-dialog h3 {
   margin-bottom: 1.1rem;
 }
 
+.vk-dialog-weitere {
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--line);
+}
+
 .vk-dialog-fehler {
   margin: -0.6rem 0 0.9rem;
   font-size: 0.8rem;

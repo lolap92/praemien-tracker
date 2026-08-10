@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.30.0
+
+"Für wen übernehmen?"-Dialog: ausgeschlossene Kinder trotzdem hinzufügen
+können.
+
+- Ein minderjähriger Inhaber ohne eigene Zeile zu einem Fund (weil das
+  Angebot laut KI-Extraktion kein Kinderdeal ist, siehe 2.28.0/2.29.0) war
+  bisher endgültig außen vor - stellt sich die automatische Einschätzung im
+  Einzelfall als falsch heraus, gab es keinen Weg zurück außer über die neue
+  Inhaber-Seite oder direkten Datenbankzugriff.
+- Der Dialog zeigt jetzt unterhalb der vorgeschlagenen Personen zusätzlich
+  alle minderjährigen Inhaber ohne eigene Zeile zu diesem Fund als
+  **"trotzdem hinzufügen"**-Option (unangehakt). Wird eine davon ausgewählt
+  und übernommen, entsteht für sie ein Deal mit denselben Prämien-/
+  Bedingungen-/Aufgaben-Angaben wie für die übrigen ausgewählten Personen -
+  Bank, Kontoart und Prämienbetrag werden vom ersten ausgewählten Mitglied
+  übernommen.
+
 ## 2.29.0
 
 Neue Seite **Inhaber**: einzige Stelle, an der sich "minderjährig" setzen
