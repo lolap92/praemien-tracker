@@ -39,6 +39,7 @@ SEITEN = [
     ("sperrfristen", "sperrfristen"),
     ("protokoll", "protokoll"),
     ("statistiken", "statistiken"),
+    ("inhaber", "inhaber"),
 ]
 
 

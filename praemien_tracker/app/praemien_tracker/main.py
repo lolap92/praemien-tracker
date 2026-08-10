@@ -43,6 +43,7 @@ from .kuendigung_recherche import naechtlicher_lauf as kuendigung_hinweise_lauf
 from .routers import (
     completeness,
     deals,
+    inhaber,
     overview,
     protokoll as protokoll_router,
     sperrfristen,
@@ -237,6 +238,7 @@ def create_app() -> FastAPI:
     app.include_router(protokoll_router.router)
     app.include_router(vorschlaege.router)
     app.include_router(statistiken.router)
+    app.include_router(inhaber.router)
 
     return app
 

@@ -90,6 +90,7 @@ _TABS = [
     ("sperrfristen", "sperrfristen"),
     ("protokoll", "protokoll"),
     ("statistiken", "statistiken"),
+    ("inhaber", "inhaber"),
     ("overview", "overview"),
 ]
 

@@ -10,6 +10,16 @@ Du erfasst nur Fakten (Bank, Kontoart, Inhaber, Prämien, Bedingungen,
 Kündigungsdaten). Status, Kennzahlen und die ToDo-Liste berechnet die App
 automatisch daraus - sie werden nirgends redundant gepflegt.
 
+## Inhaber
+
+Ein Inhaber entsteht automatisch, sobald du ihn zum ersten Mal in einem Deal
+einträgst (Formular, JSON-Import oder KI-Deal-Finder) - eine eigene "neuer
+Inhaber"-Aktion gibt es nicht. Neu angelegte Inhaber gelten dabei zunächst
+immer als erwachsen. Unter **Mehr → Inhaber** lässt sich für jedes
+Haushaltsmitglied ein Häkchen **"minderjährig"** setzen; das steuert im
+KI-Deal-Finder, ob ein reines Erwachsenen-Angebot für diese Person überhaupt
+als Vorschlag erscheint (siehe unten).
+
 ## Zu erledigen
 
 Die Liste ist nach Kategorien getrennt. Ganz rechts steht **Zu prüfen** -
@@ -85,7 +95,9 @@ für Kinder abschließbar ist (z. B. Junior-Depot, Kinderkonto). Die meisten
 Neukunden-Prämien setzen Volljährigkeit voraus; steht nichts dergleichen im
 Text, gilt der Deal als reines Erwachsenen-Angebot und das Kind erscheint gar
 nicht erst als Auswahl. Karten mit einem passenden Kind sind mit **"Auch für
-Kinder"** gekennzeichnet.
+Kinder"** gekennzeichnet. Ob ein Inhaber als minderjährig gilt, wird unter
+**"Mehr → Inhaber"** gepflegt (siehe unten) - ein neu angelegter Inhaber gilt
+zunächst immer als erwachsen.
 
 Ob ein Angebot ein echter Neukunden-Deal ist, prüft die App über den
 Bank-Namen im Angebotstext gegen die selbst erfassten Banken - Groß-/

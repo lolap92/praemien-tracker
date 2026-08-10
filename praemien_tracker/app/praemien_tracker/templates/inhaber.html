@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Inhaber – Prämien-Tracker{% endblock %}
+{% block appbar_title %}Inhaber{% endblock %}
+{% block content %}
+
+<div class="card">
+  <p style="color: var(--ink-soft); font-size: 0.88rem; margin: 0;">
+    Haushaltsmitglieder, für die Deals angelegt werden. Ein neuer Inhaber
+    entsteht automatisch beim Anlegen des ersten Deals für diesen Namen und
+    gilt zunächst als erwachsen. Ein <b>minderjähriger</b> Inhaber bekommt im
+    KI-Deal-Finder ein Angebot nur vorgeschlagen, wenn es laut Extraktion
+    (auch) für Kinder abschließbar ist - ein reiner Erwachsenen-Deal
+    erscheint für ihn im "Übernehmen"-Dialog dann gar nicht erst zur Auswahl.
+  </p>
+</div>
+
+{% if inhaber_liste %}
+<form method="post" action="inhaber">
+  <div class="card">
+    <ul class="unterliste">
+      {% for inhaber in inhaber_liste %}
+      <li class="reihe" style="align-items:center;">
+        <span style="flex:1 1 auto;">{{ inhaber.name }}</span>
+        <span class="checkbox-zeile" style="flex:0 0 auto;">
+          <input type="checkbox" name="minderjaehrig_{{ inhaber.id }}" id="minderjaehrig_{{ inhaber.id }}" {{ "checked" if inhaber.ist_minderjaehrig else "" }}>
+          <label for="minderjaehrig_{{ inhaber.id }}" style="margin:0;">minderjährig</label>
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <button type="submit">Speichern</button>
+  </div>
+</form>
+{% else %}
+<div class="card">
+  <p class="leer">Noch keine Inhaber angelegt - sie entstehen automatisch beim Anlegen des ersten Deals.</p>
+</div>
+{% endif %}
+
+{% endblock %}

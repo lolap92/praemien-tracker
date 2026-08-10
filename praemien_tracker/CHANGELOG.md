@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.29.0
+
+Neue Seite **Inhaber**: einzige Stelle, an der sich "minderjährig" setzen
+lässt.
+
+- Bisher gab es dafür keine Oberfläche - ein neuer Inhaber entsteht
+  automatisch beim Anlegen des ersten Deals für diesen Namen
+  (`helpers.get_or_create_inhaber`) und gilt dabei immer als erwachsen, egal
+  ob es sich tatsächlich um ein Kind handelt. Ergebnis: die ganze
+  Kinder-Logik aus 2.28.0 (Kinder nur bei Kinderdeals auswählbar, Karte
+  verschwindet nach Übernahme durch alle Erwachsenen) griff für ein so
+  angelegtes Kind nie, weil die App es intern von einem Erwachsenen gar
+  nicht unterscheiden konnte - im "Übernehmen"-Dialog blieben alle
+  Haushaltsmitglieder gleichberechtigt und vorausgewählt.
+- Über "Mehr → Inhaber" lässt sich jetzt für jedes Haushaltsmitglied ein
+  Häkchen "minderjährig" setzen und mit einem gemeinsamen
+  Speichern-Button übernehmen. Wirkt sofort auf neue Vorschläge sowie beim
+  nächsten Lauf auf schon bestehende (siehe 2.28.0).
+
 ## 2.28.0
 
 Kinder in Vorschlags-Gruppen: nur noch auswählbar, wenn sie wirklich
