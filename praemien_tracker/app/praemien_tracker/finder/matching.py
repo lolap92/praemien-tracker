@@ -58,6 +58,8 @@ class BedingungBewertung:
     anzahl: int | None = None
     betrag_euro: Decimal | None = None
     frist_wochen: int | None = None
+    # Für welche Teilprämie die Bedingung gilt (Label), None = Grundvoraussetzung.
+    gilt_fuer: str | None = None
 
 
 @dataclass(frozen=True)
@@ -271,6 +273,7 @@ def bewerten(
             anzahl=b.anzahl,
             betrag_euro=_praemie_betrag(b.betrag_euro) if b.betrag_euro is not None else None,
             frist_wochen=b.frist_wochen,
+            gilt_fuer=(b.gilt_fuer or "").strip() or None,
         )
         for b in extraktion.bedingungen
     ]
@@ -321,6 +324,7 @@ def bewerten(
                     "anzahl": b.anzahl,
                     "betrag_euro": str(b.betrag_euro) if b.betrag_euro is not None else None,
                     "frist_wochen": b.frist_wochen,
+                    "gilt_fuer": b.gilt_fuer,
                 }
                 for b in bedingungen
             ],

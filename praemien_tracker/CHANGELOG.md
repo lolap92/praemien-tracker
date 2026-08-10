@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.33.0
+
+Bedingungen lassen sich jetzt einzelnen Teilprämien zuordnen - sichtbar, welche
+Auflage zu welchem Teilbetrag gehört.
+
+**Warum:** Angebote teilen die Prämie oft in Teilbeträge mit je eigenen
+Auflagen auf (z. B. Santander BestGiro: 50 € nur für die Kontoeröffnung, 250 €
+nur für den Kontowechselservice). Wer einen aufwendigen Teilbetrag bewusst
+nicht mitnehmen will, konnte bisher nicht erkennen, welche Bedingungen dafür
+überhaupt nötig sind und welche zum ganzen Angebot gehören.
+
+- Jede Bedingung trägt jetzt ein optionales Feld **`gilt_fuer`**: den Label der
+  Teilprämie, die sie freischaltet (z. B. „250 € für den Kontowechselservice").
+  Die KI-Extraktion füllt es nur, wenn sich die Prämie in Teilbeträge mit je
+  eigenen Auflagen zerlegt; Grundvoraussetzungen fürs ganze Angebot (Neukunde
+  sein, Konto online eröffnen) bleiben ohne Label.
+- Auf der Vorschlagskarte und in der Deal-Detailansicht erscheint diese
+  Zuordnung als dezenter Hinweis („nur für 250 € für den Kontowechselservice")
+  unter der jeweiligen Bedingung. Beim Übernehmen wandert der Label über die
+  Vorschau bis zur angelegten Bedingung mit.
+- Neue Datenbank-Migration `0017` ergänzt die Spalte `gilt_fuer` auf
+  `bedingungen` und `vorschlag_bedingungen`.
+
 ## 2.32.0
 
 KI-Deal-Finder erkennt jetzt deutlich mehr Bedingungen - und stellt sie

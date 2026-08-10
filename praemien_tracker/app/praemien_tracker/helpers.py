@@ -288,6 +288,7 @@ def build_deal_from_import(db: Session, daten: DealImport, *, hintergrund_recher
                 anzahl=b.anzahl,
                 betrag_euro=b.betrag_euro,
                 frist_wochen=b.frist_wochen,
+                gilt_fuer=b.gilt_fuer,
             )
         )
     for u in daten.urls:

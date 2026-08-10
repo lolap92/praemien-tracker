@@ -135,6 +135,11 @@ class Bedingung(Base):
     anzahl: Mapped[int | None] = mapped_column(nullable=True)
     betrag_euro: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     frist_wochen: Mapped[int | None] = mapped_column(nullable=True)
+    # Label der Teilprämie, für die diese Bedingung erfüllt werden muss
+    # (z.B. "250 € für den Kontowechselservice"). NULL = Grundvoraussetzung
+    # fürs ganze Angebot. Macht sichtbar, welche Auflagen sich weglassen
+    # lassen, wenn ein Teilbetrag bewusst nicht mitgenommen wird.
+    gilt_fuer: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     deal: Mapped["Deal"] = relationship(back_populates="bedingungen")
 
@@ -265,6 +270,9 @@ class VorschlagBedingung(Base):
     anzahl: Mapped[int | None] = mapped_column(nullable=True)
     betrag_euro: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     frist_wochen: Mapped[int | None] = mapped_column(nullable=True)
+    # Label der Teilprämie, für die diese Bedingung gilt (z.B. "250 € für den
+    # Kontowechselservice"). NULL = Grundvoraussetzung fürs ganze Angebot.
+    gilt_fuer: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     vorschlag: Mapped["DealVorschlag"] = relationship(back_populates="bedingungen")
 

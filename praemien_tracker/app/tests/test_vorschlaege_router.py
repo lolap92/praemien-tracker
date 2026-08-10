@@ -354,17 +354,20 @@ def test_uebernehmen_bewahrt_strukturierte_bedingungs_kennzahlen(db, inhaber):
         '{"bank": "Hanseatic Bank", "kontoart": "Kreditkarte", "inhaber": "%s", '
         '"praemien": [{"quelle": "bank", "betrag": "50.00", "erhalten": false}], '
         '"bedingungen": [{"beschreibung": "Karte in 4 Wochen 2x fuer 50 EUR einsetzen", '
-        '"erfuellt": false, "anzahl": 2, "betrag_euro": "50", "frist_wochen": 4}], '
+        '"erfuellt": false, "anzahl": 2, "betrag_euro": "50", "frist_wochen": 4, '
+        '"gilt_fuer": "50 EUR fuer die Kartennutzung"}], '
         '"urls": [{"url": "https://www.dealdoktor.de/awa7-bonus-deal/", "bezeichnung": "dealdoktor-Angebot"}]}'
     ) % inhaber.name
     vorschlag = _vorschlag(
         db, inhaber, "vorgeschlagen", bank_name="Hanseatic Bank", kontoart="Kreditkarte", roh_json=roh_json
     )
 
-    # Vorschau muss die Kennzahlen als versteckte Felder rendern.
+    # Vorschau muss die Kennzahlen und die Teilprämien-Zuordnung als versteckte
+    # Felder rendern.
     vorschau = client.post("/vorschlaege/uebernehmen", data={"vorschlag_ids": [vorschlag.id]})
     assert 'name="bedingung_0_anzahl" value="2"' in vorschau.text
     assert 'name="bedingung_0_frist_wochen" value="4"' in vorschau.text
+    assert 'name="bedingung_0_gilt_fuer" value="50 EUR fuer die Kartennutzung"' in vorschau.text
 
     _uebernehmen_vorschau_und_bestaetigen([vorschlag.id])
 
@@ -373,6 +376,7 @@ def test_uebernehmen_bewahrt_strukturierte_bedingungs_kennzahlen(db, inhaber):
     assert bed.anzahl == 2
     assert bed.betrag_euro == Decimal("50")
     assert bed.frist_wochen == 4
+    assert bed.gilt_fuer == "50 EUR fuer die Kartennutzung"
 
 
 def test_uebernehmen_bestaetigen_ueberspringt_leer_gelassene_zusatzzeilen(db, inhaber):

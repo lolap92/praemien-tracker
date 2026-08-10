@@ -236,7 +236,15 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
 {% if g.bedingungen %}
 <ul class="vorschlag-bedingungen">
   {% for b in g.bedingungen %}
-  <li class="{{ b.einschaetzung }}">{{ b.beschreibung }}{{ bed_kennzahlen(b) }}</li>
+  <li class="{{ b.einschaetzung }}">
+    <span class="bed-text">
+      {{ b.beschreibung }}{{ bed_kennzahlen(b) }}
+      {# Zeigt, zu welchem Teilbetrag die Auflage gehört - so lässt sich
+         erkennen, welche Bedingungen entfallen, wenn ein Teilbetrag bewusst
+         nicht mitgenommen wird. Fehlt der Label, ist es eine Grundvoraussetzung. #}
+      {% if b.gilt_fuer %}<span class="bed-gilt-fuer">nur für {{ b.gilt_fuer }}</span>{% endif %}
+    </span>
+  </li>
   {% endfor %}
 </ul>
 {% endif %}

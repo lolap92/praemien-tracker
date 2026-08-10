@@ -22,6 +22,7 @@ def test_kennzahlen_landen_an_der_bedingung(db):
                 anzahl=2,
                 betrag_euro=Decimal("50"),
                 frist_wochen=4,
+                gilt_fuer="50 € für die Kartennutzung",
             )
         ],
     )
@@ -30,6 +31,7 @@ def test_kennzahlen_landen_an_der_bedingung(db):
     assert bed.anzahl == 2
     assert bed.betrag_euro == Decimal("50")
     assert bed.frist_wochen == 4
+    assert bed.gilt_fuer == "50 € für die Kartennutzung"
 
 
 def test_kennzahlen_optional_default_none(db):
@@ -45,3 +47,4 @@ def test_kennzahlen_optional_default_none(db):
     assert bed.anzahl is None
     assert bed.betrag_euro is None
     assert bed.frist_wochen is None
+    assert bed.gilt_fuer is None

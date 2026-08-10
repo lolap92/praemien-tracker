@@ -437,10 +437,11 @@ def uebernehmen_vorschau(
                 "anzahl": "" if b.anzahl is None else b.anzahl,
                 "betrag_euro": "" if b.betrag_euro is None else b.betrag_euro,
                 "frist_wochen": "" if b.frist_wochen is None else b.frist_wochen,
+                "gilt_fuer": b.gilt_fuer or "",
             }
             for b in daten.bedingungen
         ],
-        {"beschreibung": "", "faellig_bis": "", "anzahl": "", "betrag_euro": "", "frist_wochen": ""},
+        {"beschreibung": "", "faellig_bis": "", "anzahl": "", "betrag_euro": "", "frist_wochen": "", "gilt_fuer": ""},
         _LEERZEILEN_BEDINGUNGEN,
     )
     url_zeilen = _zeilen_mit_leerzeilen(
@@ -550,7 +551,10 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
 
     bedingungen: list[BedingungIn] = []
     for zeile in _form_zeilen(
-        form, "bedingung", "bedingungen_anzahl", ("beschreibung", "faellig_bis", "anzahl", "betrag_euro", "frist_wochen")
+        form,
+        "bedingung",
+        "bedingungen_anzahl",
+        ("beschreibung", "faellig_bis", "anzahl", "betrag_euro", "frist_wochen", "gilt_fuer"),
     ):
         beschreibung = (zeile["beschreibung"] or "").strip()
         if not beschreibung:
@@ -563,6 +567,7 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
                 anzahl=_int_oder_none(zeile["anzahl"]),
                 betrag_euro=parse_decimal(zeile["betrag_euro"]),
                 frist_wochen=_int_oder_none(zeile["frist_wochen"]),
+                gilt_fuer=(zeile["gilt_fuer"] or "").strip() or None,
             )
         )
 

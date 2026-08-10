@@ -56,6 +56,8 @@ class BedingungIn(BaseModel):
     anzahl: Optional[int] = None
     betrag_euro: Optional[Decimal] = None
     frist_wochen: Optional[int] = None
+    # Label der Teilprämie, für die diese Bedingung gilt (None = Grundvoraussetzung).
+    gilt_fuer: Optional[str] = None
 
 
 class AufgabeIn(BaseModel):

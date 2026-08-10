@@ -141,6 +141,13 @@ def lade_demo_daten(db: Session) -> None:
             frist_wochen=4,
         )
     )
+    v3.bedingungen.append(
+        VorschlagBedingung(
+            beschreibung="Kontowechselservice nutzen",
+            einschaetzung="zu_pruefen",
+            gilt_fuer="250 € für den Kontowechselservice",
+        )
+    )
     vorschlag("Abgelehnt-Bank", erika, "automatisch_abgelehnt", 4, ablehnungsgruende="Prämie unter Mindestbetrag")
     vorschlag("Verworfen-Bank", max_, "verworfen", 5, verwerfen_gruende="bestandskunde")
 

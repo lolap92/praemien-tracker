@@ -169,6 +169,7 @@ def _vorschlag_felder_setzen(
             anzahl=b.anzahl,
             betrag_euro=b.betrag_euro,
             frist_wochen=b.frist_wochen,
+            gilt_fuer=b.gilt_fuer,
         )
         for b in match.bedingungen
     ]

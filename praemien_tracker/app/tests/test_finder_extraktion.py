@@ -96,3 +96,17 @@ def test_bedingung_kennzahlen_werden_uebernommen():
     assert bed.anzahl == 2
     assert bed.betrag_euro == 50.0
     assert bed.frist_wochen == 4
+
+
+def test_bedingung_gilt_fuer_teilpraemie_default_none_und_uebernommen():
+    """Santander-Fall: eine Bedingung, die nur einen Teilbetrag freischaltet,
+    trägt dessen Label; eine Grundvoraussetzung bleibt bei None."""
+    grund = BedingungExtraktion(beschreibung="Neukunde sein", einschaetzung="erfuellt")
+    assert grund.gilt_fuer is None
+
+    teil = BedingungExtraktion(
+        beschreibung="Kontowechselservice nutzen",
+        einschaetzung="zu_pruefen",
+        gilt_fuer="250 € für den Kontowechselservice",
+    )
+    assert teil.gilt_fuer == "250 € für den Kontowechselservice"

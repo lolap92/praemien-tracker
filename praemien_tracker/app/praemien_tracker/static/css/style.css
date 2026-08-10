@@ -2122,9 +2122,26 @@ table.lauf-tabelle tr:hover {
   white-space: nowrap;
 }
 
+.vorschlag-bedingungen li .bed-text {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.5rem;
+}
+
 .vorschlag-bedingungen li .bed-kennzahlen {
   margin-left: auto;
-  padding-left: 0.5rem;
+}
+
+/* Zuordnung einer Bedingung zu ihrem Teilbetrag ("nur für 250 € …") - eigene
+   Zeile, damit auch längere Labels lesbar bleiben; dezent, aber farblich vom
+   Fließtext abgesetzt. */
+.bed-gilt-fuer {
+  flex-basis: 100%;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--st-wait);
 }
 
 /* Bedingungen immer sichtbar: Kopf mit Anzahl + Ampel-Status, darunter die Liste. */

@@ -83,6 +83,40 @@ def test_bedingung_kennzahlen_landen_in_bewertung_und_roh_json(db, alice):
     assert bed_in.frist_wochen == 4
 
 
+def test_bedingung_gilt_fuer_landet_in_bewertung_und_roh_json(db, alice):
+    """Teilprämien-Zuordnung einer Bedingung (Santander: 250 € nur für den
+    Kontowechselservice) fließt in Bewertung und roh_json - eine
+    Grundvoraussetzung bleibt ohne Label."""
+    fund = RohFund("spartanien", "https://www.spartanien.de/Santander+BestGiro", "t", "x")
+    ext = AngebotExtraktion(
+        bank_name="Santander",
+        kontoart="Girokonto",
+        praemie_betrag=300.0,
+        praemien=[
+            PraemieExtraktion(betrag=50.0, geber="Spartanien", wofuer="für die Kontoeröffnung"),
+            PraemieExtraktion(betrag=250.0, geber="Santander", wofuer="für den Kontowechselservice"),
+        ],
+        bedingungen=[
+            BedingungExtraktion(beschreibung="Neukunde sein", einschaetzung="erfuellt"),
+            BedingungExtraktion(
+                beschreibung="Kontowechselservice nutzen",
+                einschaetzung="zu_pruefen",
+                gilt_fuer="250 € für den Kontowechselservice",
+            ),
+        ],
+    )
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
+
+    nach_beschreibung = {b.beschreibung: b for b in ergebnis.bedingungen}
+    assert nach_beschreibung["Neukunde sein"].gilt_fuer is None
+    assert nach_beschreibung["Kontowechselservice nutzen"].gilt_fuer == "250 € für den Kontowechselservice"
+
+    daten = DealImport.model_validate_json(ergebnis.roh_json)
+    labels = {b.beschreibung: b.gilt_fuer for b in daten.bedingungen}
+    assert labels["Kontowechselservice nutzen"] == "250 € für den Kontowechselservice"
+    assert labels["Neukunde sein"] is None
+
+
 def test_mehrere_teilpraemien_werden_aufgeschluesselt_und_summiert(db, alice):
     """Beispiel Santander: 50 EUR von Spartanien für die Kontoeröffnung + 250
     EUR von der Bank für den Kontowechselservice. Gesamtprämie = Summe, jede

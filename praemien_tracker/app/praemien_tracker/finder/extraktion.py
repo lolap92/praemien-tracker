@@ -39,6 +39,13 @@ class BedingungExtraktion(BaseModel):
     anzahl: int | None = None  # geforderte Anzahl (z.B. Kartenzahlungen)
     betrag_euro: float | None = None  # zugehöriger Mindest-/Umsatzbetrag in Euro
     frist_wochen: int | None = None  # Frist in Wochen (1 Monat = 4 Wochen)
+    # Für welche Teilprämie diese Bedingung erfüllt werden muss - kurzer Label
+    # aus Betrag und Zweck der zugehörigen Teilprämie (z.B. "250 € für den
+    # Kontowechselservice"). None, wenn die Bedingung eine Grundvoraussetzung
+    # fürs gesamte Angebot ist (z.B. Neukunde sein) oder es nur eine einzige
+    # Prämie gibt. Erlaubt der/dem Nutzer/in zu erkennen, welche Auflagen sich
+    # weglassen lassen, wenn ein Teilbetrag bewusst nicht mitgenommen wird.
+    gilt_fuer: str | None = None
 
 
 class PraemieExtraktion(BaseModel):
@@ -148,6 +155,12 @@ Felder der Bedingung (sonst weglassen/null, nicht raten):
     - betrag_euro: zugehöriger Mindest-/Umsatzbetrag in Euro als Zahl.
     - frist_wochen: Frist in Wochen; rechne dabei 1 Monat = 4 Wochen, 3 Monate \
 = 12 Wochen.
+    - gilt_fuer: Nur wenn die Prämie in Teilbeträge mit je eigenen Auflagen \
+zerfällt und diese Bedingung nur einen bestimmten Teilbetrag freischaltet: ein \
+kurzer Label aus Betrag und Zweck der zugehörigen Teilprämie, passend zu den \
+praemien-Einträgen (z.B. "250 € für den Kontowechselservice"). Für \
+Grundvoraussetzungen, die das ganze Angebot betreffen (z.B. Neukunde sein, \
+Konto online eröffnen), oder wenn es nur eine einzige Prämie gibt, null lassen.
   einschaetzung je Bedingung:
   - "erfuellt": keine erkennbare Hürde für einen typischen Neukunden (z.B. \
 "3 Kartenzahlungen im ersten Monat").
