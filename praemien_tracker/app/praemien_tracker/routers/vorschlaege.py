@@ -301,13 +301,14 @@ def vorschlaege_view(
     letzter_lauf = db.query(FinderLauf).order_by(FinderLauf.id.desc()).first()
     lauf_laeuft, lauf_gestartet_am = lauf_status()
 
-    # Für den "trotzdem hinzufügen"-Abschnitt im Übernehmen-Dialog (siehe
-    # vorschlag_dialoge): alle minderjährigen Inhaber, unabhängig davon, ob
-    # sie für diesen Fund überhaupt eine (offene oder verworfene) Zeile haben
-    # - fehlt eine, weil das Angebot laut KI-Extraktion nicht für Kinder gilt
-    # oder die Zeile automatisch bereinigt wurde (siehe finder/lauf.py), lässt
-    # sich das Kind darüber trotzdem manuell ergänzen.
+    # Für die "+ Kinder"/"+ Eltern"-Abschnitte im Übernehmen-Dialog (siehe
+    # vorschlag_dialoge): alle Inhaber, unabhängig davon, ob sie für diesen
+    # Fund überhaupt eine Zeile haben - fehlt eine (weil das Angebot laut
+    # KI-Extraktion nur für Erwachsene bzw. nur für Kinder gilt, siehe
+    # finder/lauf.py: _ist_anwendbar), lässt sich die fehlende Gruppe darüber
+    # trotzdem manuell ergänzen.
     alle_minderjaehrige = db.query(Inhaber).filter(Inhaber.ist_minderjaehrig.is_(True)).order_by(Inhaber.name).all()
+    alle_erwachsene = db.query(Inhaber).filter(Inhaber.ist_minderjaehrig.is_(False)).order_by(Inhaber.name).all()
 
     return templates.TemplateResponse(
         "vorschlaege.html",
@@ -331,6 +332,7 @@ def vorschlaege_view(
             "filter_status": filter_status,
             "filter_aktiv": bool(filter_quelle or filter_typ or filter_status),
             "alle_minderjaehrige": alle_minderjaehrige,
+            "alle_erwachsene": alle_erwachsene,
         },
     )
 
@@ -368,12 +370,14 @@ def uebernehmen_vorschau(
     wie beim späteren Anlegen übergangen; bleibt dadurch keine gültige
     Auswahl übrig, geht es ohne Vorschau direkt zurück zur Übersicht.
 
-    zusaetzliche_inhaber_ids kommt aus dem "trotzdem hinzufügen"-Abschnitt für
-    minderjährige Inhaber ohne eigene Zeile zu diesem Fund (z.B. weil das
-    Angebot laut KI-Extraktion kein Kinderdeal ist) - bewusstes Überstimmen
-    dieser Einschätzung. Nur zur Anzeige zwischengespeichert (als Inhaber,
-    noch keine DealVorschlag-Zeile); die eigentliche Zeile entsteht erst beim
-    Bestätigen (uebernehmen_bestaetigen), damit ein Abbrechen im Dialog keine
+    zusaetzliche_inhaber_ids kommt aus den einklappbaren "+ Kinder"/"+
+    Eltern"-Abschnitten für Inhaber ohne eigene Zeile zu diesem Fund (z.B.
+    weil das Angebot laut KI-Extraktion nur für Erwachsene bzw. nur für
+    Kinder gilt, siehe finder/lauf.py: _ist_anwendbar) - bewusstes
+    Überstimmen dieser Einschätzung, in beide Richtungen. Nur zur Anzeige
+    zwischengespeichert (als Inhaber, noch keine DealVorschlag-Zeile); die
+    eigentliche Zeile entsteht erst beim Bestätigen (uebernehmen_bestaetigen),
+    damit ein Abbrechen im Dialog keine
     Spur hinterlässt.
 
     Stößt die Kunden-wirbt-Kunden-Recherche für Bank+Kontoart schon jetzt im
@@ -487,10 +491,10 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
     automatisch mit Grund "Duplikat" verworfen - kein zusätzlicher
     Bestätigungsschritt nötig.
 
-    zusaetzliche_inhaber_ids ("trotzdem hinzufügen", siehe
-    uebernehmen_vorschau) bekommen hier tatsächlich eine neue
-    DealVorschlag-Zeile, dupliziert von der ersten gültigen bereits
-    ausgewählten - erst ab hier existiert überhaupt ein Datensatz dafür.
+    zusaetzliche_inhaber_ids ("+ Kinder"/"+ Eltern", siehe uebernehmen_vorschau)
+    bekommen hier tatsächlich eine neue DealVorschlag-Zeile, dupliziert von der
+    ersten gültigen bereits ausgewählten - erst ab hier existiert überhaupt
+    ein Datensatz dafür.
 
     Die KwK-Recherche wurde schon beim Öffnen der Vorschau einmal im
     Hintergrund für Bank+Kontoart gestartet (uebernehmen_vorschau) und gilt
@@ -547,10 +551,10 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
 
     kwk_ergebnis = helpers.kwk_recherche_ergebnis_abholen(kwk_schluessel, timeout=helpers.KWK_TIMEOUT_SEKUNDEN)
 
-    # "Trotzdem hinzufügen": für minderjährige Inhaber ohne eigene Zeile zu
-    # diesem Fund (siehe uebernehmen_vorschau/vorschlag_dialoge) legt erst
-    # dieser Schritt tatsächlich eine DealVorschlag-Zeile an - dupliziert vom
-    # ersten gültigen bereits ausgewählten Mitglied (Bank/Kontoart/Prämie/
+    # "+ Kinder"/"+ Eltern": für Inhaber ohne eigene Zeile zu diesem Fund
+    # (siehe uebernehmen_vorschau/vorschlag_dialoge) legt erst dieser Schritt
+    # tatsächlich eine DealVorschlag-Zeile an - dupliziert vom ersten
+    # gültigen bereits ausgewählten Mitglied (Bank/Kontoart/Prämie/
     # Inhalts-Hash identisch, nur "inhaber" im roh_json ausgetauscht), damit
     # sie danach im selben Anlege-Durchlauf wie alle anderen mitläuft. Ohne
     # mindestens ein gültiges bereits ausgewähltes Mitglied als Vorlage

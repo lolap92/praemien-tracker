@@ -2211,9 +2211,36 @@ dialog.vk-dialog h3 {
   margin-bottom: 1.1rem;
 }
 
-.vk-dialog-weitere {
-  padding-top: 0.6rem;
-  border-top: 1px solid var(--line);
+.vk-weitere-toggle {
+  display: inline-block;
+  margin: 0 0.5rem 1.1rem 0;
+  vertical-align: top;
+}
+
+.vk-weitere-toggle > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.4rem 0.8rem;
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.vk-weitere-toggle > summary::-webkit-details-marker {
+  display: none;
+}
+
+.vk-weitere-toggle[open] > summary {
+  border-color: var(--accent);
+  color: var(--ink);
+  margin-bottom: 0.6rem;
+}
+
+.vk-weitere-toggle .vk-dialog-namen {
+  margin-bottom: 0;
 }
 
 .vk-dialog-fehler {

@@ -493,14 +493,27 @@ def test_uebernehmen_bestaetigen_funktioniert_auch_bei_automatisch_abgelehnt(db,
 def test_karte_bietet_ausgeschlossene_minderjaehrige_zum_hinzufuegen_an(db, zwei_inhaber):
     """Ein minderjähriger Inhaber ohne eigene Zeile zu diesem Fund (z.B. weil
     das Angebot kein Kinderdeal ist) taucht im "Für wen übernehmen?"-Dialog
-    trotzdem als "trotzdem hinzufügen"-Option auf - Überstimmen dieser
+    trotzdem im einklappbaren "+ Kinder"-Abschnitt auf - Überstimmen dieser
     Einschätzung."""
     alice, max_ = zwei_inhaber  # max_ ist laut Fixture minderjährig
     _vorschlag(db, alice, "vorgeschlagen")
 
     antwort = client.get("/vorschlaege")
+    assert "+ Kinder" in antwort.text
     assert "Max" in antwort.text
     assert f'name="zusaetzliche_inhaber_ids" value="{max_.id}"' in antwort.text
+
+
+def test_karte_bietet_ausgeschlossene_erwachsene_zum_hinzufuegen_an(db, zwei_inhaber):
+    """Symmetrisch: ein Erwachsener ohne eigene Zeile zu einem reinen
+    Kinderdeal taucht im "+ Eltern"-Abschnitt auf."""
+    alice, max_ = zwei_inhaber  # max_ ist laut Fixture minderjährig
+    _vorschlag(db, max_, "vorgeschlagen")
+
+    antwort = client.get("/vorschlaege")
+    assert "+ Eltern" in antwort.text
+    assert "Alice" in antwort.text
+    assert f'name="zusaetzliche_inhaber_ids" value="{alice.id}"' in antwort.text
 
 
 def test_trotzdem_hinzufuegen_legt_deal_fuer_ausgeschlossenes_kind_an(db, zwei_inhaber):
@@ -528,6 +541,33 @@ def test_trotzdem_hinzufuegen_legt_deal_fuer_ausgeschlossenes_kind_an(db, zwei_i
     assert neue_kind_zeile.status == "uebernommen"
     kind_deal = next(d for d in db.query(Deal).all() if d.inhaber_id == max_.id)
     assert kind_deal.bank.name == vorschlag.bank_name
+
+
+def test_plus_eltern_legt_deal_fuer_ausgeschlossenen_erwachsenen_an(db, zwei_inhaber):
+    """Symmetrisch zu "+ Kinder": ein Erwachsener ohne eigene Zeile zu einem
+    reinen Kinderdeal lässt sich über "+ Eltern" ebenfalls übernehmen."""
+    alice, max_ = zwei_inhaber
+    vorschlag = _vorschlag(db, max_, "vorgeschlagen")
+
+    vorschau = client.post(
+        "/vorschlaege/uebernehmen",
+        data={"vorschlag_ids": [vorschlag.id], "zusaetzliche_inhaber_ids": [alice.id]},
+    )
+    felder = _formularfelder(vorschau.text)
+    assert felder.get("zusaetzliche_inhaber_ids") == [str(alice.id)]
+
+    antwort = client.post("/vorschlaege/uebernehmen/bestaetigen", data=felder, follow_redirects=False)
+    assert antwort.status_code == 303
+
+    db.refresh(vorschlag)
+    assert vorschlag.status == "uebernommen"
+    assert db.query(Deal).count() == 2
+    neue_erwachsenen_zeile = (
+        db.query(DealVorschlag)
+        .filter(DealVorschlag.inhaber_id == alice.id, DealVorschlag.quelle_url == vorschlag.quelle_url)
+        .one()
+    )
+    assert neue_erwachsenen_zeile.status == "uebernommen"
 
 
 def test_trotzdem_hinzufuegen_ohne_gueltige_auswahl_tut_nichts(db, zwei_inhaber):
@@ -825,15 +865,19 @@ def test_filter_nach_quelle_dealdoktor(db, inhaber):
 
 
 def test_filter_nach_typ_kind_zeigt_nur_minderjaehrige(db, zwei_inhaber):
+    """Alices eigene Karte (Bank1) darf beim Filtern auf "Kind" nicht
+    erscheinen - ihr Name kann trotzdem auftauchen, nämlich im
+    "+ Eltern"-Abschnitt von Max' Karte (Bank2), der sie manuell hinzufügen
+    lässt (siehe test_karte_bietet_ausgeschlossene_erwachsene_zum_hinzufuegen_an)."""
     alice, max_ = zwei_inhaber
-    _vorschlag(db, alice, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1")
-    _vorschlag(db, max_, "vorgeschlagen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2")
+    _vorschlag(db, alice, "vorgeschlagen", quelle_url="https://www.mydealz.de/1", inhalt_hash="h1", bank_name="Bank1")
+    _vorschlag(db, max_, "vorgeschlagen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2", bank_name="Bank2")
 
     antwort = client.get("/vorschlaege", params={"typ": "kind"})
     assert antwort.status_code == 200
     assert "1 vorgeschlagen" in antwort.text
     assert "Max" in antwort.text
-    assert "Alice" not in antwort.text
+    assert "Bank1" not in antwort.text
 
 
 def test_filter_nach_status(db, inhaber):

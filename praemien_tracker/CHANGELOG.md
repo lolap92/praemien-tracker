@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.31.0
+
+Erwachsene werden jetzt auch von reinen Kinderdeals ausgeschlossen -
+symmetrisch zur bisherigen Regel für Kinder bei Erwachsenen-Deals - und
+lassen sich über einen einklappbaren Button ergänzen.
+
+- Bisher schloss die Fachlogik nur Minderjährige von reinen
+  Erwachsenen-Angeboten aus; umgekehrt bekamen Erwachsene auch einen echten
+  Kinderdeal (z. B. ein Junior-Depot) ganz normal vorgeschlagen, weil die
+  Bewertung selbst keine Altersprüfung kennt. Jetzt gilt dieselbe Prüfung in
+  beide Richtungen (`_ist_anwendbar`): ein Kinderdeal bekommt nur
+  minderjährige Inhaber, ein reines Erwachsenen-Angebot nur volljährige -
+  jeweils inklusive der automatischen Bereinigung stehen gebliebener
+  Alt-Zeilen (inline und im pauschalen Vorablauf, vormals nur für Kinder).
+- Der "Für wen übernehmen?"-Dialog zeigt die dadurch ausgeschlossene Gruppe
+  nicht mehr direkt als Checkbox, sondern hinter einem einklappbaren
+  **"+ Kinder"**- bzw. **"+ Eltern"**-Button - Übernehmen bleibt damit
+  bewusst möglich, drängt sich aber nicht mehr auf.
+
 ## 2.30.1
 
 Keine Verhaltensänderung, nur zusätzliche Testabsicherung: bestätigt per

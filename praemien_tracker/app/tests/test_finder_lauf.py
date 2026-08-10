@@ -94,7 +94,8 @@ def test_minderjaehrige_bekommen_nur_kinderdeals(db, monkeypatch):
     """Einem minderjährigen Inhaber wird ein Angebot nur vorgeschlagen, wenn es
     laut Extraktion (auch) für Kinder abschließbar ist (fuer_kinder=True).
     Reine Erwachsenen-Angebote (Default fuer_kinder=False) erscheinen für das
-    Kind gar nicht - der Erwachsene bekommt sie normal."""
+    Kind gar nicht - und umgekehrt bekommt der Erwachsene den Kinderdeal
+    nicht (symmetrische Prüfung, siehe _ist_anwendbar)."""
     erwachsen = Inhaber(name="Alice")
     kind = Inhaber(name="Kim", ist_minderjaehrig=True)
     db.add_all([erwachsen, kind])
@@ -128,10 +129,10 @@ def test_minderjaehrige_bekommen_nur_kinderdeals(db, monkeypatch):
     lauf.taeglicher_lauf(db, client=NachTextClient())
 
     zeilen = db.query(DealVorschlag).all()
-    # Erwachsener: beide Deals. Kind: nur der Junior-Deal.
+    # Erwachsener: nur der Erwachsenen-Deal. Kind: nur der Junior-Deal.
     erwachsenen_urls = {z.quelle_url for z in zeilen if z.inhaber_id == erwachsen.id}
     kind_urls = {z.quelle_url for z in zeilen if z.inhaber_id == kind.id}
-    assert erwachsenen_urls == {"https://mydealz.de/giro", "https://mydealz.de/junior"}
+    assert erwachsenen_urls == {"https://mydealz.de/giro"}
     assert kind_urls == {"https://mydealz.de/junior"}
 
 
@@ -206,7 +207,7 @@ def test_stehen_gebliebene_kinder_vorschlaege_werden_auch_ohne_erneuten_fund_gel
     db, monkeypatch
 ):
     """Regressionstest für den pauschalen Vorablauf
-    (_stehen_gebliebene_kinder_vorschlaege_bereinigen): ein Deal, der in den
+    (_nicht_mehr_anwendbare_vorschlaege_bereinigen): ein Deal, der in den
     Quellen inzwischen gar nicht mehr gelistet ist (z.B. abgelaufen), taucht
     in keinem "Jetzt suchen"/täglichen Lauf mehr unter den frisch geladenen
     Funden auf. Trotzdem muss eine dafür noch offene Kinder-Alt-Zeile
@@ -257,6 +258,56 @@ def test_stehen_gebliebene_kinder_vorschlaege_werden_auch_ohne_erneuten_fund_gel
 
     db.expire_all()
     assert db.get(DealVorschlag, kind_zeile_id) is None
+
+
+def test_stehen_gebliebene_erwachsenen_vorschlaege_werden_bei_reinem_kinderdeal_geloescht(
+    db, monkeypatch
+):
+    """Symmetrisch zum Kinder-Fall: eine für einen Erwachsenen schon
+    bestehende, noch offene Vorschlagszeile zu einem Angebot, das sich bei
+    erneuter Prüfung als reiner Kinderdeal herausstellt, wird ebenfalls
+    automatisch gelöscht (siehe _ist_anwendbar/_nicht_anwendbaren_vorschlag_entfernen)."""
+    erwachsen = Inhaber(name="Alice")
+    kind = Inhaber(name="Kim", ist_minderjaehrig=True)
+    db.add_all([erwachsen, kind])
+    db.commit()
+
+    fund = RohFund("mydealz", "https://mydealz.de/junior", "t", "Junior-Depot MARKER_KIND")
+    _patch_quellen(monkeypatch, [fund])
+    client = FakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="Bank", kontoart="Depot", praemie_betrag=125.0, fuer_kinder=True, bedingungen=[]),
+    )
+
+    # Stehen gebliebene Alt-Zeile für den Erwachsenen, wie sie vor Einführung
+    # der symmetrischen Prüfung entstanden wäre - noch offen ("vorgeschlagen").
+    alte_erwachsenen_zeile = DealVorschlag(
+        inhaber_id=erwachsen.id,
+        quelle="mydealz",
+        quelle_url=fund.quelle_url,
+        bank_name="Bank",
+        kontoart="Depot",
+        praemie_betrag=125.0,
+        roh_json="{}",
+        inhalt_hash="alt-hash",
+        status=matching.STATUS_VORGESCHLAGEN,
+    )
+    db.add(alte_erwachsenen_zeile)
+    db.commit()
+    erwachsenen_zeile_id = alte_erwachsenen_zeile.id
+
+    lauf.taeglicher_lauf(db, client=client)
+
+    db.expire_all()
+    assert db.get(DealVorschlag, erwachsenen_zeile_id) is None
+
+    # Die Kind-Zeile ist normal neu entstanden und offen.
+    kind_zeile = (
+        db.query(DealVorschlag)
+        .filter(DealVorschlag.inhaber_id == kind.id, DealVorschlag.quelle_url == fund.quelle_url)
+        .one()
+    )
+    assert kind_zeile.status == matching.STATUS_VORGESCHLAGEN
 
 
 def test_doppelter_fund_in_einem_lauf_wird_nur_einmal_verarbeitet(db, zwei_inhaber, monkeypatch):
