@@ -453,6 +453,7 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
 {% endmacro %}
 
 {% macro verworfen_karte(g) %}
+{% set kid = g.mitglieder[0].id %}
 <div class="card vorschlag-karte status-verworfen">
   <div class="vk-kopf">
     <div class="vk-titel">
@@ -470,6 +471,7 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
 
   <div class="vk-fakten">
     <span class="vk-fakt">Gefunden {{ g.gefunden_am | datum }}</span>
+    <span class="vk-fakt">Verworfen für {% for m in g.mitglieder %}{{ m.inhaber.name }}{{ ", " if not loop.last else "" }}{% endfor %}</span>
   </div>
 
   <div class="vk-tags vk-gruende">
@@ -479,8 +481,11 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
   </div>
 
   <div class="vorschlag-aktionen">
+    <button type="button" class="secondary" onclick="document.getElementById('dlg-uebernehmen-{{ kid }}').showModal()">Doch übernehmen</button>
     <a class="button secondary" href="{{ g.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
   </div>
+
+  {{ vorschlag_dialoge(g) }}
 </div>
 {% endmacro %}
 

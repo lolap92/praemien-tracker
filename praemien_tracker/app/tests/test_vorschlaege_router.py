@@ -490,6 +490,28 @@ def test_uebernehmen_bestaetigen_funktioniert_auch_bei_automatisch_abgelehnt(db,
     assert db.query(Deal).count() == 1
 
 
+def test_uebernehmen_bestaetigen_funktioniert_auch_bei_verworfen(db, inhaber):
+    """Bewusstes Überstimmen einer eigenen Fehlentscheidung: ein aus Versehen
+    (oder als Workaround, um eine hängende Karte loszuwerden) manuell
+    verworfener Vorschlag lässt sich genauso wie ein automatisch abgelehnter
+    doch noch übernehmen ("Doch übernehmen" in verworfen_karte)."""
+    vorschlag = _vorschlag(db, inhaber, "verworfen", verwerfen_gruende="nicht_anwendbar")
+
+    antwort = _uebernehmen_vorschau_und_bestaetigen([vorschlag.id])
+    assert antwort.status_code == 303
+    db.refresh(vorschlag)
+    assert vorschlag.status == "uebernommen"
+    assert db.query(Deal).count() == 1
+
+
+def test_verworfene_karte_zeigt_doch_uebernehmen_button(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "verworfen", verwerfen_gruende="nicht_anwendbar")
+
+    antwort = client.get("/vorschlaege", params={"status": "verworfen"})
+    assert "Doch übernehmen" in antwort.text
+    assert f'dlg-uebernehmen-{vorschlag.id}' in antwort.text
+
+
 def test_bereits_uebernommener_vorschlag_wird_nicht_doppelt_verarbeitet(db, inhaber):
     vorschlag = _vorschlag(db, inhaber, "uebernommen")
 
@@ -599,6 +621,17 @@ def test_verworfener_vorschlag_zeigt_begruendung_in_eigener_sektion(db, inhaber)
     assert "1 verworfene anzeigen" in antwort.text
     assert "Duplikat" in antwort.text
     assert "Noch nicht wieder Neukunde" in antwort.text
+
+
+def test_verworfene_karte_zeigt_fuer_welche_inhaber_verworfen_wurde(db, zwei_inhaber):
+    alice, max_ = zwei_inhaber
+    _vorschlag(db, alice, "verworfen", verwerfen_gruende="duplikat", inhalt_hash="gleich")
+    _vorschlag(db, max_, "verworfen", verwerfen_gruende="duplikat", inhalt_hash="gleich")
+
+    antwort = client.get("/vorschlaege", params={"status": "verworfen"})
+    assert "Verworfen für" in antwort.text
+    assert "Alice" in antwort.text
+    assert "Max" in antwort.text
 
 
 def test_verwerfen_dialog_zeigt_alle_grund_optionen(db, inhaber):

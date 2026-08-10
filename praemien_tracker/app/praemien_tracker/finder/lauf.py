@@ -170,6 +170,74 @@ def _vorschlag_felder_setzen(
     ]
 
 
+def _nicht_anwendbaren_vorschlag_entfernen(db: Session, quelle_url: str, inhaber_id: int) -> None:
+    """Löscht eine für diesen minderjährigen Inhaber schon bestehende, noch
+    offene Vorschlagszeile zu `quelle_url`, sobald die aktuelle Prüfung
+    ergibt, dass das Angebot für Kinder gar nicht anwendbar ist (siehe
+    Aufrufer). Ohne das würde eine früher - z.B. vor Einführung dieser
+    Alterprüfung oder unter einer damals abweichenden fuer_kinder-Einschätzung
+    - angelegte Zeile für immer offen hängen bleiben: der Inhaber wird ja
+    gerade übersprungen und nie wieder neu bewertet, und die Vorschlags-Karte
+    würde trotz Übernahme durch alle Erwachsenen nie verschwinden.
+
+    Bewusst gelöscht statt verworfen: ein Kind kann ein reines
+    Erwachsenen-Angebot strukturell gar nicht abschließen, das ist keine
+    Entscheidung, die "übernehmen" oder "verwerfen" bräuchte oder sich später
+    nochmal überstimmen ließe (anders als ein echtes manuelles Verwerfen,
+    siehe "Doch übernehmen" in vorschlaege.html) - die Zeile soll einfach so
+    verschwinden, als wäre sie nie entstanden."""
+    offene = (
+        db.query(DealVorschlag)
+        .filter(
+            DealVorschlag.quelle_url == quelle_url,
+            DealVorschlag.inhaber_id == inhaber_id,
+            DealVorschlag.status.in_(matching.STATUS_OFFEN),
+        )
+        .all()
+    )
+    for vorschlag in offene:
+        db.delete(vorschlag)
+
+
+def _stehen_gebliebene_kinder_vorschlaege_bereinigen(db: Session, inhaber_liste: list[Inhaber]) -> None:
+    """Pauschaler Aufräumdurchlauf vor dem eigentlichen Lauf: löscht jede noch
+    offene Vorschlagszeile eines minderjährigen Inhabers, deren
+    zwischengespeicherte Extraktion (FinderFund.extraktion_json) inzwischen
+    fuer_kinder=False ergibt - auch für Funde, die in diesem Lauf gar nicht
+    erneut aus einer Quelle geladen werden (z.B. weil das Angebot dort nicht
+    mehr gelistet ist). Ohne diesen pauschalen Vorablauf würde eine solche
+    Alt-Zeile nur bereinigt, wenn ausgerechnet noch genau derselbe Fund erneut
+    geladen wird (siehe _nicht_anwendbaren_vorschlag_entfernen weiter unten
+    im Hauptlauf) - bei einem inzwischen nicht mehr gelisteten Deal nie, auch
+    nicht durch "Jetzt suchen" oder "Alle neu analysieren". Rein lokale
+    DB-Prüfung, kein API-Aufruf nötig, da die Klassifizierung schon im Cache
+    liegt. Löscht statt zu verwerfen - siehe Begründung dort."""
+    minderjaehrige_ids = {i.id for i in inhaber_liste if i.ist_minderjaehrig}
+    if not minderjaehrige_ids:
+        return
+    offene = (
+        db.query(DealVorschlag)
+        .filter(
+            DealVorschlag.inhaber_id.in_(minderjaehrige_ids),
+            DealVorschlag.status.in_(matching.STATUS_OFFEN),
+        )
+        .all()
+    )
+    for vorschlag in offene:
+        cache_eintrag = db.query(FinderFund).filter(FinderFund.quelle_url == vorschlag.quelle_url).one_or_none()
+        if cache_eintrag is None or not cache_eintrag.ist_relevant or not cache_eintrag.extraktion_json:
+            # Kein oder kein brauchbarer Cache-Eintrag (z.B. nach einem
+            # "Zurücksetzen" ohne begleitendes Löschen der Zeile) - im
+            # Zweifel unangetastet lassen statt zu raten.
+            continue
+        try:
+            extrahiert = AngebotExtraktion.model_validate_json(cache_eintrag.extraktion_json)
+        except Exception:
+            continue
+        if not extrahiert.fuer_kinder:
+            db.delete(vorschlag)
+
+
 def _protokoll_speichern(db: Session, **werte) -> None:
     """Schreibt eine neue FinderLauf-Zeile. Läuft in einer eigenen kleinen
     Transaktion - wird nach einem db.rollback() im Hauptteil aufgerufen,
@@ -224,6 +292,8 @@ def taeglicher_lauf(
     if not inhaber_liste:
         _protokoll_speichern(db, erfolgreich=True, fehler="Kein Inhaber angelegt - Lauf übersprungen.")
         return zaehler
+
+    _stehen_gebliebene_kinder_vorschlaege_bereinigen(db, inhaber_liste)
 
     quellen = _rohfunde_holen()
     fehlermeldungen = list(quellen.fehler)
@@ -337,8 +407,12 @@ def taeglicher_lauf(
                 # Depot, Kinderkonto). Die meisten Neukunden-Prämien setzen
                 # Volljährigkeit voraus - steht nichts im Text, gilt der Deal
                 # als reines Erwachsenen-Angebot (extrahiert.fuer_kinder=False),
-                # und das Kind erscheint gar nicht erst als Auswahl.
+                # und das Kind erscheint gar nicht erst als Auswahl. Existiert
+                # dafür schon eine offene Zeile (z.B. aus einer Zeit vor dieser
+                # Prüfung), wird sie hier automatisch gelöscht statt für immer
+                # offen zu bleiben (_nicht_anwendbaren_vorschlag_entfernen).
                 if inhaber.ist_minderjaehrig and not extrahiert.fuer_kinder:
+                    _nicht_anwendbaren_vorschlag_entfernen(db, fund.quelle_url, inhaber.id)
                     continue
                 match = matching.bewerten(db, fund, extrahiert, inhaber, config.MINDESTPRAEMIE)
                 bestehend = matching.bestehenden_vorschlag_finden(

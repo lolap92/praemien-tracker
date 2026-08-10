@@ -119,7 +119,11 @@ Mehrfachauswahl möglich - der Grund festgehalten (Duplikat, Bedingungen zu
 aufwendig, noch nicht wieder Neukunde, Prämie zu niedrig). Ohne ausgewählten Grund lässt sich
 nicht verwerfen. Verworfene Funde erscheinen ganz unten in einer eigenen,
 eingeklappten Sektion, mit den gewählten Gründen als Kennzeichnung - und
-tauchen dank Dedup nicht erneut auf, solange sich am Fund nichts ändert.
+tauchen dank Dedup nicht erneut auf, solange sich am Fund nichts ändert. Ein
+**"Doch übernehmen"**-Button erlaubt es, ein zu Unrecht verworfenes Angebot
+jederzeit doch noch in einen echten Deal umzuwandeln (bewusstes Überstimmen
+der eigenen Entscheidung, analog zu "Trotzdem übernehmen" bei automatisch
+abgelehnten Funden).
 
 Über die Filterleiste lässt sich die Liste nach **Quelle** (mydealz/
 Spartanien/DealDoktor), **Typ** (Erwachsene/Für Kinder) und **Status** eingrenzen -

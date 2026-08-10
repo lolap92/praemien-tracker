@@ -181,7 +181,11 @@ class DealVorschlag(Base):
     # Komma-getrennte Codes aus matching.VERWERFEN_GRUENDE_LABELS, nur beim
     # manuellen Verwerfen durch den Nutzer gefüllt (Mehrfachauswahl im
     # Dialog) - im Unterschied zu ablehnungsgruende, das die automatische
-    # KI-Ablehnung begründet.
+    # KI-Ablehnung begründet. Für einen minderjährigen Inhaber, für den ein
+    # Angebot strukturell gar nicht gilt, wird die Zeile stattdessen direkt
+    # gelöscht statt verworfen (siehe finder/lauf.py:
+    # _nicht_anwendbaren_vorschlag_entfernen) - keine Entscheidung, die
+    # "verworfen" markiert werden müsste.
     verwerfen_gruende: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # Vollständiges JSON im Deal-Anlage-Format (schemas.DealImport) - wird
     # beim Übernehmen unverändert an build_deal_from_import() gereicht.

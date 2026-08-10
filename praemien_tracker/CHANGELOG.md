@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.28.0
+
+Kinder in Vorschlags-Gruppen: nur noch auswählbar, wenn sie wirklich
+zutreffen, und verworfene Vorschläge lassen sich doch noch übernehmen.
+
+- Ein minderjähriger Inhaber wird einem Angebot seit 2.24.0 nur noch
+  vorgeschlagen, wenn es laut KI-Extraktion (auch) für Kinder abschließbar
+  ist. Bereits vorher angelegte, noch offene Kinder-Zeilen zu reinen
+  Erwachsenen-Deals blieben davon aber unberührt und hingen für immer offen:
+  im "Übernehmen"-Dialog standen weiterhin alle Haushaltsmitglieder inkl.
+  Kinder, und selbst nachdem alle Erwachsenen übernommen hatten, blieb die
+  Vorschlags-Karte wegen der liegen gebliebenen Kinder-Zeile sichtbar. Der
+  Lauf räumt eine solche Alt-Zeile jetzt automatisch weg, sobald er
+  feststellt, dass sie für dieses Kind gar nicht zutrifft - sowohl beim
+  Verarbeiten desselben Funds als auch pauschal vorab für Funde, die gar
+  nicht mehr erneut geladen werden (z.B. weil der Deal inzwischen abgelaufen
+  ist), rein anhand des schon vorhandenen lokalen Caches, ohne neuen
+  API-Aufruf. Die Zeile wird dabei **gelöscht statt verworfen** - für ein
+  Kind bei einem reinen Erwachsenen-Angebot ist weder Übernehmen noch
+  Verwerfen eine sinnvolle Handlung, das Angebot gilt schlicht nicht.
+- Jede Karte in der "Verworfen"-Sektion zeigt jetzt zusätzlich, für welche(n)
+  Inhaber der Fund verworfen wurde, und hat einen **"Doch
+  übernehmen"**-Button - bewusstes Überstimmen einer eigenen
+  Fehlentscheidung (z.B. ein Vorschlag, der nur verworfen wurde, um eine
+  lästig offen bleibende Karte loszuwerden, obwohl der Deal eigentlich
+  zutraf), genau wie "Trotzdem übernehmen" bereits bei automatisch
+  abgelehnten Funden funktioniert. Ein automatisch (s.o.) bereinigter
+  Kinder-Vorschlag taucht dort nicht auf, weil er gelöscht statt verworfen
+  wird.
+
 ## 2.27.1
 
 Zwei Anpassungen am nächtlichen Kündigungshinweis-Batch (siehe 2.27.0):
