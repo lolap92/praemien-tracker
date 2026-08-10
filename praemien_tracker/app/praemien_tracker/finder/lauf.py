@@ -170,15 +170,22 @@ def _vorschlag_felder_setzen(
     ]
 
 
-def _nicht_anwendbaren_vorschlag_verwerfen(db: Session, quelle_url: str, inhaber_id: int) -> None:
-    """Räumt eine für diesen minderjährigen Inhaber schon bestehende, noch
-    offene Vorschlagszeile zu `quelle_url` weg, sobald die aktuelle Prüfung
+def _nicht_anwendbaren_vorschlag_entfernen(db: Session, quelle_url: str, inhaber_id: int) -> None:
+    """Löscht eine für diesen minderjährigen Inhaber schon bestehende, noch
+    offene Vorschlagszeile zu `quelle_url`, sobald die aktuelle Prüfung
     ergibt, dass das Angebot für Kinder gar nicht anwendbar ist (siehe
     Aufrufer). Ohne das würde eine früher - z.B. vor Einführung dieser
     Alterprüfung oder unter einer damals abweichenden fuer_kinder-Einschätzung
     - angelegte Zeile für immer offen hängen bleiben: der Inhaber wird ja
     gerade übersprungen und nie wieder neu bewertet, und die Vorschlags-Karte
-    würde trotz Übernahme durch alle Erwachsenen nie verschwinden."""
+    würde trotz Übernahme durch alle Erwachsenen nie verschwinden.
+
+    Bewusst gelöscht statt verworfen: ein Kind kann ein reines
+    Erwachsenen-Angebot strukturell gar nicht abschließen, das ist keine
+    Entscheidung, die "übernehmen" oder "verwerfen" bräuchte oder sich später
+    nochmal überstimmen ließe (anders als ein echtes manuelles Verwerfen,
+    siehe "Doch übernehmen" in vorschlaege.html) - die Zeile soll einfach so
+    verschwinden, als wäre sie nie entstanden."""
     offene = (
         db.query(DealVorschlag)
         .filter(
@@ -189,23 +196,22 @@ def _nicht_anwendbaren_vorschlag_verwerfen(db: Session, quelle_url: str, inhaber
         .all()
     )
     for vorschlag in offene:
-        vorschlag.status = matching.STATUS_VERWORFEN
-        vorschlag.verwerfen_gruende = matching.VERWERFEN_GRUND_NICHT_ANWENDBAR
+        db.delete(vorschlag)
 
 
 def _stehen_gebliebene_kinder_vorschlaege_bereinigen(db: Session, inhaber_liste: list[Inhaber]) -> None:
-    """Pauschaler Aufräumdurchlauf vor dem eigentlichen Lauf: räumt jede noch
-    offene Vorschlagszeile eines minderjährigen Inhabers weg, deren
+    """Pauschaler Aufräumdurchlauf vor dem eigentlichen Lauf: löscht jede noch
+    offene Vorschlagszeile eines minderjährigen Inhabers, deren
     zwischengespeicherte Extraktion (FinderFund.extraktion_json) inzwischen
     fuer_kinder=False ergibt - auch für Funde, die in diesem Lauf gar nicht
     erneut aus einer Quelle geladen werden (z.B. weil das Angebot dort nicht
     mehr gelistet ist). Ohne diesen pauschalen Vorablauf würde eine solche
     Alt-Zeile nur bereinigt, wenn ausgerechnet noch genau derselbe Fund erneut
-    geladen wird (siehe _nicht_anwendbaren_vorschlag_verwerfen weiter unten
+    geladen wird (siehe _nicht_anwendbaren_vorschlag_entfernen weiter unten
     im Hauptlauf) - bei einem inzwischen nicht mehr gelisteten Deal nie, auch
     nicht durch "Jetzt suchen" oder "Alle neu analysieren". Rein lokale
     DB-Prüfung, kein API-Aufruf nötig, da die Klassifizierung schon im Cache
-    liegt."""
+    liegt. Löscht statt zu verwerfen - siehe Begründung dort."""
     minderjaehrige_ids = {i.id for i in inhaber_liste if i.ist_minderjaehrig}
     if not minderjaehrige_ids:
         return
@@ -229,8 +235,7 @@ def _stehen_gebliebene_kinder_vorschlaege_bereinigen(db: Session, inhaber_liste:
         except Exception:
             continue
         if not extrahiert.fuer_kinder:
-            vorschlag.status = matching.STATUS_VERWORFEN
-            vorschlag.verwerfen_gruende = matching.VERWERFEN_GRUND_NICHT_ANWENDBAR
+            db.delete(vorschlag)
 
 
 def _protokoll_speichern(db: Session, **werte) -> None:
@@ -404,10 +409,10 @@ def taeglicher_lauf(
                 # als reines Erwachsenen-Angebot (extrahiert.fuer_kinder=False),
                 # und das Kind erscheint gar nicht erst als Auswahl. Existiert
                 # dafür schon eine offene Zeile (z.B. aus einer Zeit vor dieser
-                # Prüfung), wird sie hier automatisch verworfen statt für
-                # immer offen zu bleiben (_nicht_anwendbaren_vorschlag_verwerfen).
+                # Prüfung), wird sie hier automatisch gelöscht statt für immer
+                # offen zu bleiben (_nicht_anwendbaren_vorschlag_entfernen).
                 if inhaber.ist_minderjaehrig and not extrahiert.fuer_kinder:
-                    _nicht_anwendbaren_vorschlag_verwerfen(db, fund.quelle_url, inhaber.id)
+                    _nicht_anwendbaren_vorschlag_entfernen(db, fund.quelle_url, inhaber.id)
                     continue
                 match = matching.bewerten(db, fund, extrahiert, inhaber, config.MINDESTPRAEMIE)
                 bestehend = matching.bestehenden_vorschlag_finden(

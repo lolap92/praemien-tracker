@@ -135,7 +135,7 @@ def test_minderjaehrige_bekommen_nur_kinderdeals(db, monkeypatch):
     assert kind_urls == {"https://mydealz.de/junior"}
 
 
-def test_stehen_gebliebene_kinder_vorschlaege_werden_bei_reinem_erwachsenen_deal_verworfen(
+def test_stehen_gebliebene_kinder_vorschlaege_werden_bei_reinem_erwachsenen_deal_geloescht(
     db, monkeypatch
 ):
     """Regressionstest: eine für ein minderjähriges Kind schon bestehende,
@@ -143,8 +143,9 @@ def test_stehen_gebliebene_kinder_vorschlaege_werden_bei_reinem_erwachsenen_deal
     gab, oder unter einer damals abweichenden fuer_kinder-Einschätzung) darf
     nicht für immer offen hängen bleiben - sonst bliebe die Vorschlags-Karte
     trotz Übernahme durch alle Erwachsenen sichtbar (siehe
-    _nicht_anwendbaren_vorschlag_verwerfen). Sie wird beim nächsten Lauf
-    automatisch verworfen (Grund "nicht_anwendbar")."""
+    _nicht_anwendbaren_vorschlag_entfernen). Sie wird beim nächsten Lauf
+    automatisch gelöscht (nicht verworfen - für das Kind gibt es dabei
+    weder etwas zu übernehmen noch zu verwerfen, siehe Docstring dort)."""
     erwachsen = Inhaber(name="Alice")
     kind = Inhaber(name="Kim", ist_minderjaehrig=True)
     db.add_all([erwachsen, kind])
@@ -177,9 +178,7 @@ def test_stehen_gebliebene_kinder_vorschlaege_werden_bei_reinem_erwachsenen_deal
     lauf.taeglicher_lauf(db, client=client)
 
     db.expire_all()
-    kind_zeile = db.get(DealVorschlag, kind_zeile_id)
-    assert kind_zeile.status == matching.STATUS_VERWORFEN
-    assert kind_zeile.verwerfen_gruende == matching.VERWERFEN_GRUND_NICHT_ANWENDBAR
+    assert db.get(DealVorschlag, kind_zeile_id) is None
 
     # Die Erwachsenen-Zeile ist normal neu entstanden und offen.
     erwachsenen_zeile = (
@@ -203,7 +202,7 @@ def test_stehen_gebliebene_kinder_vorschlaege_werden_bei_reinem_erwachsenen_deal
     assert offene_kind_zeilen == 0
 
 
-def test_stehen_gebliebene_kinder_vorschlaege_werden_auch_ohne_erneuten_fund_bereinigt(
+def test_stehen_gebliebene_kinder_vorschlaege_werden_auch_ohne_erneuten_fund_geloescht(
     db, monkeypatch
 ):
     """Regressionstest für den pauschalen Vorablauf
@@ -257,9 +256,7 @@ def test_stehen_gebliebene_kinder_vorschlaege_werden_auch_ohne_erneuten_fund_ber
     lauf.taeglicher_lauf(db, client=client)
 
     db.expire_all()
-    kind_zeile = db.get(DealVorschlag, kind_zeile_id)
-    assert kind_zeile.status == matching.STATUS_VERWORFEN
-    assert kind_zeile.verwerfen_gruende == matching.VERWERFEN_GRUND_NICHT_ANWENDBAR
+    assert db.get(DealVorschlag, kind_zeile_id) is None
 
 
 def test_doppelter_fund_in_einem_lauf_wird_nur_einmal_verarbeitet(db, zwei_inhaber, monkeypatch):

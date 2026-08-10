@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.27.1
+
+Nicht anwendbare Kinder-Vorschläge werden jetzt gelöscht statt verworfen, und
+verworfene Karten zeigen die betroffenen Inhaber.
+
+- Die automatische Bereinigung aus 2.26.2/2.26.3 (Kinder-Zeile bei einem
+  reinen Erwachsenen-Deal räumen) setzte den Status bisher auf "verworfen"
+  (Grund "Nicht anwendbar"). Dadurch tauchte die Zeile in der
+  "Verworfen"-Sektion auf und bot seit 2.27.0 sogar einen "Doch
+  übernehmen"-Button an - obwohl für ein Kind bei einem reinen
+  Erwachsenen-Angebot weder Übernehmen noch Verwerfen eine sinnvolle
+  Handlung ist, das Angebot gilt schlicht nicht. Die Zeile wird jetzt
+  stattdessen direkt gelöscht, taucht also nirgends mehr auf und verlangt
+  keine Entscheidung mehr. Ein bewusstes manuelles Verwerfen durch den
+  Nutzer (mit "Nicht anwendbar" als selbst gewähltem Grund) bleibt davon
+  unberührt und weiterhin über "Doch übernehmen" korrigierbar.
+- Jede Karte in der "Verworfen"-Sektion zeigt jetzt zusätzlich, für welche(n)
+  Inhaber der Fund verworfen wurde.
+
 ## 2.27.0
 
 Verworfene Vorschläge lassen sich jetzt doch noch übernehmen.

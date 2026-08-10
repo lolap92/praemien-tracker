@@ -471,6 +471,7 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
 
   <div class="vk-fakten">
     <span class="vk-fakt">Gefunden {{ g.gefunden_am | datum }}</span>
+    <span class="vk-fakt">Verworfen für {% for m in g.mitglieder %}{{ m.inhaber.name }}{{ ", " if not loop.last else "" }}{% endfor %}</span>
   </div>
 
   <div class="vk-tags vk-gruende">

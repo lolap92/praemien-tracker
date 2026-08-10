@@ -620,6 +620,17 @@ def test_verworfener_vorschlag_zeigt_begruendung_in_eigener_sektion(db, inhaber)
     assert "Noch nicht wieder Neukunde" in antwort.text
 
 
+def test_verworfene_karte_zeigt_fuer_welche_inhaber_verworfen_wurde(db, zwei_inhaber):
+    alice, max_ = zwei_inhaber
+    _vorschlag(db, alice, "verworfen", verwerfen_gruende="duplikat", inhalt_hash="gleich")
+    _vorschlag(db, max_, "verworfen", verwerfen_gruende="duplikat", inhalt_hash="gleich")
+
+    antwort = client.get("/vorschlaege", params={"status": "verworfen"})
+    assert "Verworfen für" in antwort.text
+    assert "Alice" in antwort.text
+    assert "Max" in antwort.text
+
+
 def test_verwerfen_dialog_zeigt_alle_grund_optionen(db, inhaber):
     _vorschlag(db, inhaber, "vorgeschlagen")
     antwort = client.get("/vorschlaege")
