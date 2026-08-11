@@ -193,3 +193,33 @@ def test_jeder_status_hat_eine_pipeline_farbe():
     for s in derived.STATUS_ORDER:
         assert f".pipe-bar-{s} {{" in css, f"Pipeline-Farbe fehlt für {s}"
         assert f".chip.status-{s} {{" in css, f"Chip-Farbe fehlt für {s}"
+
+
+def test_todos_filtering_by_quelle(db):
+    bank_spartanien = Bank(name="SpartanienBank")
+    bank_normal = Bank(name="NormalBank")
+    inhaber = Inhaber(name="Max")
+
+    deal_sp = Deal(kontoart="Konto", bank=bank_spartanien, inhaber=inhaber)
+    deal_sp.praemien.append(Praemie(quelle="spartanien", betrag=Decimal("50"), erhalten=False))
+
+    deal_no = Deal(kontoart="Konto", bank=bank_normal, inhaber=inhaber)
+    deal_no.praemien.append(Praemie(quelle="bank", betrag=Decimal("100"), erhalten=False))
+
+    db.add_all([deal_sp, deal_no])
+    db.commit()
+
+    antwort_all = client.get("/todos")
+    assert antwort_all.status_code == 200
+    assert "SpartanienBank" in antwort_all.text
+    assert "NormalBank" in antwort_all.text
+
+    antwort_sp = client.get("/todos?quelle=spartanien")
+    assert antwort_sp.status_code == 200
+    assert "SpartanienBank · Max: Prämie prüfen" in antwort_sp.text
+    assert "NormalBank · Max: Prämie prüfen" not in antwort_sp.text
+
+    antwort_bank = client.get("/todos?quelle=bank")
+    assert antwort_bank.status_code == 200
+    assert "SpartanienBank · Max: Prämie prüfen" not in antwort_bank.text
+    assert "NormalBank · Max: Prämie prüfen" in antwort_bank.text

@@ -29,6 +29,25 @@
   </form>
 </div>
 
+<form class="filterleiste" method="get" action="todos">
+  <input type="hidden" name="tab" value="{{ aktiver_tab or '' }}" id="filter-tab-input">
+  <details class="multi-filter">
+    <summary>Quelle der Prämie{% if filter_quelle %} ({{ filter_quelle | length }}){% endif %}</summary>
+    <div class="multi-filter-panel">
+      <label>
+        <input type="checkbox" name="quelle" value="spartanien" {{ "checked" if "spartanien" in filter_quelle else "" }}>
+        Spartanien
+      </label>
+      <label>
+        <input type="checkbox" name="quelle" value="bank" {{ "checked" if "bank" in filter_quelle else "" }}>
+        Bank
+      </label>
+    </div>
+  </details>
+  <button type="submit" class="secondary">Filtern</button>
+  {% if filter_aktiv %}<a class="button secondary" href="todos?tab={{ aktiver_tab }}">Zurücksetzen</a>{% endif %}
+</form>
+
 {% if gruppen %}
 <div class="todo-tabs">
   {% set ns = namespace(erster=true) %}
@@ -245,6 +264,18 @@
   })();
 </script>
 {% endif %}
+
+<script>
+  (function () {
+    document.querySelectorAll('input[name="todotab"]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        var slug = this.id.replace('todotab-', '');
+        var tabInput = document.getElementById('filter-tab-input');
+        if (tabInput) { tabInput.value = slug; }
+      });
+    });
+  })();
+</script>
 
 {% if erledigte_aufgaben %}
 <div class="card">

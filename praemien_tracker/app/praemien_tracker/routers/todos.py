@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import re
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Request, Query
 from sqlalchemy.orm import Session, joinedload
 
 from .. import derived
@@ -68,7 +68,16 @@ def _todos_redirect(request: Request, tab: str = "", dialog: str = ""):
 
 
 @router.get("/todos")
-def todos_view(request: Request, tab: str = "", dialog: str = "", db: Session = Depends(get_db)):
+def todos_view(
+    request: Request,
+    tab: str = "",
+    dialog: str = "",
+    quelle: list[str] = Query(default=[]),
+    db: Session = Depends(get_db),
+):
+    quelle_werte = [q.strip().lower() for q in quelle if q.strip().lower() in ("spartanien", "bank")]
+    quelle_filter = quelle_werte if quelle_werte else None
+
     deals = (
         db.query(Deal)
         .options(
@@ -85,10 +94,13 @@ def todos_view(request: Request, tab: str = "", dialog: str = "", db: Session = 
         .all()
     )
 
-    alle = derived.alle_todos(deals, aufgaben)
+    alle = derived.alle_todos(deals, aufgaben, quelle_filter=quelle_filter)
     gruppen: dict[str, list[derived.Todo]] = {}
     for t in alle:
         gruppen.setdefault(t.kategorie, []).append(t)
+
+    if "Auf Prämie warten" in gruppen:
+        gruppen["Auf Prämie warten"].sort(key=lambda t: t.faellig_bis or datetime.date.max)
 
     aktiver_tab = tab if tab in KATEGORIE_SLUGS.values() and any(
         KATEGORIE_SLUGS[k] == tab and gruppen.get(k) for k in KATEGORIE_REIHENFOLGE
@@ -110,6 +122,8 @@ def todos_view(request: Request, tab: str = "", dialog: str = "", db: Session = 
             "erledigte_aufgaben": erledigte_aufgaben,
             "aktiver_tab": aktiver_tab,
             "offener_dialog": offener_dialog,
+            "filter_quelle": quelle_werte,
+            "filter_aktiv": bool(quelle_werte),
         },
     )
 

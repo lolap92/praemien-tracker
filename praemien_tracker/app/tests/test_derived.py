@@ -217,3 +217,25 @@ def test_offene_praemie_ohne_erwartungsdatum_ist_ein_offenes_feld():
 def test_vollstaendig_wenn_nichts_offen_ist():
     deal = mache_deal(kuendbar_ab=datetime.date(2026, 12, 1))
     assert derived.ist_vollstaendig(deal) is True
+
+
+def test_praemien_warten_faellig_bis_ist_gesetzt():
+    deal = mache_deal(praemien=[("bank", "100", False)])
+    deal.praemien[0].naechste_pruefung_am = datetime.date(2026, 8, 1)
+    todos = derived.deal_todos(deal, HEUTE)
+    todo = next(t for t in todos if t.kategorie == "Auf Prämie warten")
+    assert todo.faellig_bis == datetime.date(2026, 8, 1)
+
+
+def test_alle_todos_filtert_nach_quelle():
+    deal_spartanien = mache_deal(praemien=[("spartanien", "50", False)])
+    deal_bank = mache_deal(praemien=[("bank", "100", False)])
+
+    deals = [deal_spartanien, deal_bank]
+    todos_spartanien = derived.alle_todos(deals, [], HEUTE, quelle_filter=["spartanien"])
+    todos_bank = derived.alle_todos(deals, [], HEUTE, quelle_filter=["bank"])
+
+    assert len(todos_spartanien) == 1
+    assert "Spartanien" in todos_spartanien[0].text
+    assert len(todos_bank) == 1
+    assert "Bank" in todos_bank[0].text

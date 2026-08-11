@@ -221,12 +221,17 @@ def bank_name_normalisieren(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", name.lower())
 
 
-def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
+def deal_todos(deal: Deal, heute: datetime.date | None = None, quelle_filter: list[str] | None = None) -> list[Todo]:
     """Abgeleitete ToDos aus Status und offenen Bedingungen. Zukünftige
     Kündigungstermine erscheinen erst, wenn sie fällig sind. Bedingungen und
     Prämien werden pro Deal zu einem ToDo zusammengefasst (elemente trägt
     die einzelnen offenen Posten für den Abhak-Dialog)."""
     heute = heute or datetime.date.today()
+
+    if quelle_filter:
+        if not any(p.quelle in quelle_filter for p in deal.praemien):
+            return []
+
     todos: list[Todo] = []
     s = status(deal)
     bezeichnung = f"{deal.bank.name} · {deal.inhaber.name}"
@@ -244,20 +249,23 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
             )
     elif s == STATUS_PRAEMIE_WARTEN:
         offene = [p for p in deal.praemien if not p.erhalten]
-        ueberfaellig = any(praemie_ueberfaellig(deal, p, heute) for p in offene)
-        if len(offene) == 1:
-            p = offene[0]
-            text = f"{bezeichnung}: Prämie prüfen ({quelle_label(p.quelle)}, {p.betrag} €)"
-            if p.auszahlung_erwartet:
-                text += f" – erwartet {p.auszahlung_erwartet}"
-            if ueberfaellig:
-                text += " – überfällig, bei der Bank nachhaken"
-            todos.append(Todo("Auf Prämie warten", text, deal, None, ueberfaellig, offene))
-        elif offene:
-            text = f"{bezeichnung}: {len(offene)} Prämien offen"
-            if ueberfaellig:
-                text += " – davon überfällig"
-            todos.append(Todo("Auf Prämie warten", text, deal, None, ueberfaellig, offene))
+        if quelle_filter:
+            offene = [p for p in offene if p.quelle in quelle_filter]
+        if offene:
+            ueberfaellig = any(praemie_ueberfaellig(deal, p, heute) for p in offene)
+            if len(offene) == 1:
+                p = offene[0]
+                text = f"{bezeichnung}: Prämie prüfen ({quelle_label(p.quelle)}, {p.betrag} €)"
+                if p.auszahlung_erwartet:
+                    text += f" – erwartet {p.auszahlung_erwartet}"
+                if ueberfaellig:
+                    text += " – überfällig, bei der Bank nachhaken"
+                todos.append(Todo("Auf Prämie warten", text, deal, praemie_naechste_pruefung(p, heute), ueberfaellig, offene))
+            else:
+                text = f"{bezeichnung}: {len(offene)} Prämien offen"
+                if ueberfaellig:
+                    text += " – davon überfällig"
+                todos.append(Todo("Auf Prämie warten", text, deal, min(praemie_naechste_pruefung(p, heute) for p in offene), ueberfaellig, offene))
     elif s == STATUS_KUENDIGEN:
         todos.append(Todo("Kündigen", f"{bezeichnung}: jetzt kündbar – kündigen", deal, deal.kuendbar_ab))
     elif s == STATUS_BESTAETIGUNG_WARTEN:
@@ -276,16 +284,19 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
 
 
 def alle_todos(
-    deals: list[Deal], aufgaben: list[Aufgabe], heute: datetime.date | None = None
+    deals: list[Deal], aufgaben: list[Aufgabe], heute: datetime.date | None = None, quelle_filter: list[str] | None = None
 ) -> list[Todo]:
     """Führt abgeleitete ToDos und manuelle Aufgaben in einer Liste zusammen."""
     heute = heute or datetime.date.today()
     todos: list[Todo] = []
     for deal in deals:
-        todos.extend(deal_todos(deal, heute))
+        todos.extend(deal_todos(deal, heute, quelle_filter))
     for a in aufgaben:
         if a.erledigt:
             continue
+        if quelle_filter:
+            if not a.deal or not any(p.quelle in quelle_filter for p in a.deal.praemien):
+                continue
         ueberfaellig = bool(a.faellig_bis and a.faellig_bis < heute)
         prefix = f"{a.deal.bank.name} · {a.deal.inhaber.name}: " if a.deal else ""
         todos.append(Todo("Manuelle Aufgaben", f"{prefix}{a.beschreibung}", a.deal, a.faellig_bis, ueberfaellig, [a]))
