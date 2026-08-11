@@ -251,7 +251,9 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
                 text += f" – erwartet {p.auszahlung_erwartet}"
             if ueberfaellig:
                 text += " – überfällig, bei der Bank nachhaken"
-            todos.append(Todo("Auf Prämie warten", text, deal, None, ueberfaellig, [p]))
+            # Set faellig_bis to the next check date, so we can sort by it.
+            next_check = praemie_naechste_pruefung(p, heute)
+            todos.append(Todo("Auf Prämie warten", text, deal, next_check, ueberfaellig, [p]))
     elif s == STATUS_KUENDIGEN:
         todos.append(Todo("Kündigen", f"{bezeichnung}: jetzt kündbar – kündigen", deal, deal.kuendbar_ab))
     elif s == STATUS_BESTAETIGUNG_WARTEN:
