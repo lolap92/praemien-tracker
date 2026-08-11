@@ -217,3 +217,30 @@ def test_offene_praemie_ohne_erwartungsdatum_ist_ein_offenes_feld():
 def test_vollstaendig_wenn_nichts_offen_ist():
     deal = mache_deal(kuendbar_ab=datetime.date(2026, 12, 1))
     assert derived.ist_vollstaendig(deal) is True
+
+
+def test_praemie_naechste_pruefung_korrigiert_mismatch():
+    p = Praemie(quelle="bank", betrag=Decimal("100"), erhalten=False, auszahlung_erwartet="2026-12")
+    # Set a manual check date in August (which is earlier than December)
+    p.naechste_pruefung_am = datetime.date(2026, 8, 24)
+    naechste = derived.praemie_naechste_pruefung(p, datetime.date(2026, 8, 11))
+    # It should correct it to 2026-12-01 (first day of December)
+    assert naechste == datetime.date(2026, 12, 1)
+
+
+def test_deal_todos_creates_separate_todos_for_each_open_reward():
+    deal = mache_deal(
+        praemien=[("spartanien", "60", False), ("bank", "95", False)]
+    )
+    deal.praemien[0].auszahlung_erwartet = "2026-12"
+    deal.praemien[1].auszahlung_erwartet = "2026-12"
+
+    todos = derived.deal_todos(deal, HEUTE)
+    praemie_todos = [t for t in todos if t.kategorie == "Auf Prämie warten"]
+
+    # We should have exactly 2 independent Todos for "Auf Prämie warten"
+    assert len(praemie_todos) == 2
+    assert "Spartanien" in praemie_todos[0].text
+    assert "Bank" in praemie_todos[1].text
+    assert praemie_todos[0].elemente == [deal.praemien[0]]
+    assert praemie_todos[1].elemente == [deal.praemien[1]]
