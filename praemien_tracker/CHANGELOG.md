@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.35.1
+
+- **Fehlerbehebung bei "Auf Prämie warten":**
+  - Das erwartete Auszahlungsdatum korrigiert nun automatisch das nächste Prüfdatum, falls dieses in der Vergangenheit oder vor dem erwarteten Monat liegt.
+  - Beim Ändern des erwarteten Auszahlungsdatums wird das manuelle Prüfdatum zurückgesetzt.
+  - Mehrere offene Prämien desselben Deals werden nun als separate Zeilen angezeigt statt in einem modalen Dialog gruppiert zu werden.
+
 ## 2.35.0
 
 Teilprämien und ihre Bedingungen beim Anlegen sichtbar - und der Prämienzweck

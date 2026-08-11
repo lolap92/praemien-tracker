@@ -244,20 +244,14 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
             )
     elif s == STATUS_PRAEMIE_WARTEN:
         offene = [p for p in deal.praemien if not p.erhalten]
-        ueberfaellig = any(praemie_ueberfaellig(deal, p, heute) for p in offene)
-        if len(offene) == 1:
-            p = offene[0]
+        for p in offene:
+            ueberfaellig = praemie_ueberfaellig(deal, p, heute)
             text = f"{bezeichnung}: Prämie prüfen ({quelle_label(p.quelle)}, {p.betrag} €)"
             if p.auszahlung_erwartet:
                 text += f" – erwartet {p.auszahlung_erwartet}"
             if ueberfaellig:
                 text += " – überfällig, bei der Bank nachhaken"
-            todos.append(Todo("Auf Prämie warten", text, deal, None, ueberfaellig, offene))
-        elif offene:
-            text = f"{bezeichnung}: {len(offene)} Prämien offen"
-            if ueberfaellig:
-                text += " – davon überfällig"
-            todos.append(Todo("Auf Prämie warten", text, deal, None, ueberfaellig, offene))
+            todos.append(Todo("Auf Prämie warten", text, deal, None, ueberfaellig, [p]))
     elif s == STATUS_KUENDIGEN:
         todos.append(Todo("Kündigen", f"{bezeichnung}: jetzt kündbar – kündigen", deal, deal.kuendbar_ab))
     elif s == STATUS_BESTAETIGUNG_WARTEN:
@@ -362,12 +356,17 @@ def praemie_naechste_pruefung(praemie, heute: datetime.date | None = None) -> da
     Ausgangspunkt das erwartete Auszahlungsdatum, falls hinterlegt, sonst der
     heutige Tag - so zeigt die Oberfläche von Anfang an ein sinnvolles Datum,
     ohne dass beim Anlegen der Prämie schon etwas gespeichert werden muss."""
-    if praemie.naechste_pruefung_am:
-        return praemie.naechste_pruefung_am
+    erwartet = None
     if praemie.auszahlung_erwartet:
         erwartet = parse_monat(praemie.auszahlung_erwartet)
-        if erwartet:
+
+    if praemie.naechste_pruefung_am:
+        if erwartet and praemie.naechste_pruefung_am < erwartet:
             return erwartet
+        return praemie.naechste_pruefung_am
+
+    if erwartet:
+        return erwartet
     return heute or datetime.date.today()
 
 

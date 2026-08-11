@@ -101,39 +101,6 @@
             </div>
           </div>
 
-          {% elif kategorie == "Auf Prämie warten" and todo.elemente | length > 1 %}
-          <div class="todo-item cat-{{ slug }}">
-            <div class="check"></div>
-            <div class="ti-main">
-              <button type="button" class="t todo-link" onclick="document.getElementById('dlg-praemie-{{ todo.deal.id }}').showModal()">{{ todo.text }}</button>
-            </div>
-          </div>
-          <dialog id="dlg-praemie-{{ todo.deal.id }}" class="todo-dialog">
-            <h3>{{ todo.deal.bank.name }} · {{ todo.deal.kontoart }} · {{ todo.deal.inhaber.name }}</h3>
-            <ul class="unterliste">
-              {% for p in todo.elemente %}
-              <li>
-                <form action="todos/praemien/{{ p.id }}/toggle" method="post" class="dialog-zeile">
-                  <input type="hidden" name="tab" value="{{ slug }}">
-                  <input type="hidden" name="dialog" value="praemie-{{ todo.deal.id }}">
-                  <input type="hidden" name="wert" value="on">
-                  <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
-                  <span>{{ p.quelle | quelle }}, {{ p.betrag }} €{% if p.auszahlung_erwartet %} – erwartet {{ p.auszahlung_erwartet }}{% endif %}</span>
-                </form>
-                <div class="pruef-datum">
-                  <span>Nächste Prüfung {{ praemie_naechste_pruefung(p) | datum }}</span>
-                  <form action="todos/praemien/{{ p.id }}/pruefung-verschieben" method="post" class="inline">
-                    <input type="hidden" name="tab" value="{{ slug }}">
-                    <input type="hidden" name="dialog" value="praemie-{{ todo.deal.id }}">
-                    <button type="submit" class="secondary pruef-btn">+2 Wochen</button>
-                  </form>
-                </div>
-              </li>
-              {% endfor %}
-            </ul>
-            <button type="button" class="secondary" onclick="this.closest('dialog').close()">Schließen</button>
-          </dialog>
-
           {% elif kategorie == "Auf Prämie warten" %}
           {% set p = todo.elemente[0] %}
           <div class="todo-item cat-{{ slug }}">

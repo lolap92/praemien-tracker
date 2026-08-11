@@ -410,7 +410,11 @@ async def deal_update(request: Request, deal_id: int, db: Session = Depends(get_
         p.quelle = _quelle_oder_400(form.get(f"{praefix}quelle") or "bank")
         p.betrag = parse_decimal(form.get(f"{praefix}betrag")) or 0
         p.erhalten = form.get(f"{praefix}erhalten") == "on"
-        p.auszahlung_erwartet = monat_aus_formular(form.get(f"{praefix}auszahlung_erwartet") or "")
+        alt_erwartet = p.auszahlung_erwartet
+        neu_erwartet = monat_aus_formular(form.get(f"{praefix}auszahlung_erwartet") or "")
+        if alt_erwartet != neu_erwartet:
+            p.auszahlung_erwartet = neu_erwartet
+            p.naechste_pruefung_am = None
     spartanien_aufgabe_sicherstellen(deal)
 
     for b in deal.bedingungen:
