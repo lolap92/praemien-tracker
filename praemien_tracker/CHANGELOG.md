@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.35.2
+
+- **Optimierung der ToDo-Liste ("Zu erledigen"):**
+  - Sortierung der Kategorie "Auf Prämie warten" nach dem Datum der nächsten Prüfung aufsteigend (frühestes Datum ganz oben).
+  - Neuer Filter oben in der ToDo-Liste für die Quelle der Prämie (Spartanien oder Bank). Der Filter bleibt bei allen Aktionen (Abhaken, Verschieben, Löschen) erhalten.
+
 ## 2.35.1
 
 - **Fehlerbehebung bei "Auf Prämie warten":**
