@@ -3,9 +3,35 @@
 {% block appbar_title %}Zu erledigen{% endblock %}
 {% block content %}
 
+<form class="filterleiste" method="get" action="todos">
+  {% if aktiver_tab %}
+  <input type="hidden" name="tab" value="{{ aktiver_tab }}">
+  {% endif %}
+  <details class="multi-filter">
+    <summary>Quelle{% if filter_quelle %} (1){% endif %}</summary>
+    <div class="multi-filter-panel">
+      <label>
+        <input type="radio" name="quelle" value="" {{ "checked" if not filter_quelle else "" }} onclick="this.form.submit()">
+        – Alle –
+      </label>
+      <label>
+        <input type="radio" name="quelle" value="spartanien" {{ "checked" if filter_quelle == "spartanien" else "" }} onclick="this.form.submit()">
+        Spartanien
+      </label>
+      <label>
+        <input type="radio" name="quelle" value="bank" {{ "checked" if filter_quelle == "bank" else "" }} onclick="this.form.submit()">
+        Bank
+      </label>
+    </div>
+  </details>
+  <button type="submit" class="secondary">Filtern</button>
+  {% if filter_quelle %}<a class="button secondary" href="todos{% if aktiver_tab %}?tab={{ aktiver_tab }}{% endif %}">Zurücksetzen</a>{% endif %}
+</form>
+
 <div class="card">
   <h2>Neue Aufgabe</h2>
   <form action="todos/aufgaben" method="post">
+    <input type="hidden" name="quelle" value="{{ filter_quelle }}">
     <div class="feld">
       <label for="beschreibung">Beschreibung</label>
       <input type="text" id="beschreibung" name="beschreibung" required>
@@ -76,6 +102,7 @@
                 <form action="todos/bedingungen/{{ b.id }}/toggle" method="post" class="dialog-zeile">
                   <input type="hidden" name="tab" value="{{ slug }}">
                   <input type="hidden" name="dialog" value="bedingungen-{{ todo.deal.id }}">
+                  <input type="hidden" name="quelle" value="{{ filter_quelle }}">
                   <input type="hidden" name="wert" value="on">
                   <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
                   <span>{{ b.beschreibung }}{% if b.faellig_bis %} <span class="frist">(bis {{ b.faellig_bis | datum }})</span>{% endif %}</span>
@@ -90,6 +117,7 @@
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/bedingungen/{{ todo.elemente[0].id }}/toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="quelle" value="{{ filter_quelle }}">
               <input type="hidden" name="wert" value="on">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
@@ -106,6 +134,7 @@
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/praemien/{{ p.id }}/toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="quelle" value="{{ filter_quelle }}">
               <input type="hidden" name="wert" value="on">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
@@ -115,6 +144,7 @@
                 <span>Nächste Prüfung {{ praemie_naechste_pruefung(p) | datum }}</span>
                 <form action="todos/praemien/{{ p.id }}/pruefung-verschieben" method="post" class="inline">
                   <input type="hidden" name="tab" value="{{ slug }}">
+                  <input type="hidden" name="quelle" value="{{ filter_quelle }}">
                   <button type="submit" class="secondary pruef-btn">+2 Wochen</button>
                 </form>
               </div>
@@ -125,6 +155,7 @@
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/deals/{{ todo.deal.id }}/kuendigen-toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="quelle" value="{{ filter_quelle }}">
               <input type="hidden" name="wert" value="on">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
@@ -138,6 +169,7 @@
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/deals/{{ todo.deal.id }}/bestaetigen-toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="quelle" value="{{ filter_quelle }}">
               <input type="hidden" name="wert" value="on">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
@@ -150,6 +182,7 @@
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/deals/{{ todo.deal.id }}/zugangsdaten-toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="quelle" value="{{ filter_quelle }}">
               <input type="hidden" name="wert" value="on">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
@@ -162,6 +195,7 @@
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/deals/{{ todo.deal.id }}/pruefung" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="quelle" value="{{ filter_quelle }}">
               <input type="hidden" name="regel" value="{{ todo.elemente[0].regel }}">
               <input type="hidden" name="signatur" value="{{ todo.elemente[0].signatur }}">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()"
@@ -176,6 +210,7 @@
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/aufgaben/{{ todo.elemente[0].id }}/toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="quelle" value="{{ filter_quelle }}">
               <input type="hidden" name="wert" value="on">
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
