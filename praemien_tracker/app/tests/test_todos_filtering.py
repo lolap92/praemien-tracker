@@ -272,13 +272,46 @@ def test_praemien_kachel_bleibt_bei_quelle_filter_auf_null_sichtbar(db):
     assert "42.00" not in mit_filter.text
 
 
-def test_praemien_kachel_fehlt_wenn_kategorie_wirklich_leer(db):
-    """Gegenprobe: existiert die Kategorie auch ungefiltert nicht (keine
-    einzige fällige/wartende Prämie), bleibt die Kachel weiterhin weg - das
-    ist kein Bug, sondern die bisherige, gewollte Regel."""
+def test_praemien_kachel_bleibt_auch_bei_wirklich_leerer_kategorie_sichtbar(db):
+    """Existiert die Kategorie auch ungefiltert nicht (keine einzige
+    fällige/wartende Prämie), bleibt die Kachel trotzdem sichtbar - nur als
+    ausgegraut markiert (todo-tab-leer), statt ganz zu verschwinden."""
     antwort = client.get("/todos")
-    assert 'id="todotab-praemie_pruefen"' not in antwort.text
-    assert 'id="todotab-praemie"' not in antwort.text
+    soup = BeautifulSoup(antwort.text, "html.parser")
+
+    assert soup.select_one("#todotab-praemie_pruefen") is not None
+    assert soup.select_one("#todotab-praemie") is not None
+
+    label = soup.select_one('label[for="todotab-praemie_pruefen"]')
+    assert label is not None
+    assert "todo-tab-leer" in label.get("class", [])
+
+    panel = soup.select_one("#panel-praemie_pruefen")
+    assert panel is not None
+    assert "Aktuell nichts offen." in panel.get_text()
+
+
+def test_praemien_kachel_nicht_ausgegraut_wenn_nur_gefiltert_leer(db):
+    """Hat die Kategorie ungefiltert Inhalt und wird nur durch den
+    Quelle-Filter geleert, bleibt sie normal (nicht ausgegraut) - das
+    unterscheidet "wirklich leer" von "nur gerade rausgefiltert"."""
+    bank = Bank(name="Ausgrau-Testbank")
+    inhaber = Inhaber(name="Ausgrau-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", zugangsdaten_gespeichert=True)
+    deal.praemien.append(Praemie(
+        quelle="spartanien", betrag=Decimal("33.00"), erhalten=False,
+        naechste_pruefung_am=datetime.date.today() - datetime.timedelta(days=1),
+    ))
+    db.add(deal)
+    db.commit()
+
+    antwort = client.get("/todos?quelle=bank")
+    soup = BeautifulSoup(antwort.text, "html.parser")
+    label = soup.select_one('label[for="todotab-praemie_pruefen"]')
+    assert label is not None
+    assert "todo-tab-leer" not in label.get("class", [])
 
 
 def test_filtern_leert_nur_die_betroffene_praemien_kachel_nicht_beide(db):

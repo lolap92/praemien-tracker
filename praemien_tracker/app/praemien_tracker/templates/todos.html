@@ -15,7 +15,7 @@
     {% for kategorie in kategorie_reihenfolge %}
       {% if kategorie in gruppen %}
       {% set slug = kategorie_slugs[kategorie] %}
-      <label for="todotab-{{ slug }}">
+      <label for="todotab-{{ slug }}" class="{{ 'todo-tab-leer' if kategorie in leere_kategorien else '' }}">
         <span class="todo-tab-dot tag-{{ slug }}"></span>
         <span class="todo-tab-label">{{ kategorie }}</span>
         <span class="num">{{ gruppen[kategorie] | length }}</span>
@@ -98,8 +98,12 @@
           <h3>{{ kategorie }}</h3>
         </div>
 
-        {% if not gruppen[kategorie] and filter_quelle %}
-        <p class="leer">Nichts für diese Quelle.</p>
+        {% if not gruppen[kategorie] %}
+          {% if kategorie in leere_kategorien %}
+          <p class="leer">Aktuell nichts offen.</p>
+          {% elif filter_quelle %}
+          <p class="leer">Nichts für diese Quelle.</p>
+          {% endif %}
         {% endif %}
 
         {% for todo in gruppen[kategorie] %}

@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.43.0
+
+„Zu erledigen": die beiden Prämien-Kacheln verschwinden nie mehr, sondern
+werden ausgegraut, wenn es dort wirklich nichts gibt.
+
+- Bislang blieben "Auf Prämie warten" und "Prämienauszahlung prüfen" nur
+  sichtbar, solange sie ohne Quelle-Filter Inhalt hätten (2.42.0) - gab es die
+  Kategorie auch ungefiltert gar nicht, verschwand die Kachel weiterhin
+  komplett. Jetzt sind beide Kacheln immer da: mit Inhalt normal, ohne
+  jeglichen Inhalt (auch ungefiltert) sichtbar ausgegraut (gestrichelter
+  Rand, gedimmt) statt versteckt. Bleibt weiterhin anklickbar und zeigt dann
+  "Aktuell nichts offen."
+- Der Hinweistext im Panel unterscheidet jetzt zwei Fälle: "Aktuell nichts
+  offen." bei wirklich leerer Kategorie, "Nichts für diese Quelle." wenn nur
+  der Filter gerade alles ausblendet.
+
 ## 2.42.0
 
 „Zu erledigen": zwei Bugs beim Filtern nach Quelle behoben.

@@ -592,6 +592,22 @@ a.chip:focus-visible {
   flex-shrink: 0;
 }
 
+/* Prämien-Kategorien ohne jeden Inhalt (auch ungefiltert) bleiben als Kachel
+   sichtbar statt zu verschwinden - dann aber ausgegraut markiert, damit auf
+   einen Blick klar ist, dass hier gerade nichts ansteht. Weiterhin normal
+   anklickbar (zeigt "Aktuell nichts offen."), nur optisch zurückgenommen. Der
+   Punkt bekommt eine eigene, spezifischere Regel, damit sie die
+   Kategoriefarbe aus .tag-<slug> sicher übersteuert (unabhängig von der
+   Reihenfolge im Stylesheet). */
+.todo-tabs-nav label.todo-tab-leer {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+.todo-tabs-nav label.todo-tab-leer .todo-tab-dot {
+  background: var(--ink-faint);
+}
+
 .todo-tab-label {
   flex: 1;
   line-height: 1.25;
