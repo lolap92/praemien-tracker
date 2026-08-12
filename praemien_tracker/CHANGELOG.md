@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.38.2
+
+Kontoart in der ToDo-Liste („Zu erledigen") und bei manuellen Aufgaben ergänzt.
+
+- Bei allen abgeleiteten Aufgaben (Bedingungen erfüllen, Prämie prüfen, Kündigen etc.) sowie bei manuellen Aufgaben wird nun die **Kontoart** (z. B. Giro, Depot) gut sichtbar zwischen dem Banknamen und dem Inhabernamen angezeigt (z. B. `Testbank · Depot · Max` statt `Testbank · Max`). Damit ist in der ToDo-Liste sofort erkennbar, um welches Produkt es sich bei der anstehenden Aufgabe handelt, ohne dass man erst das Bearbeitungs-Formular des Deals öffnen muss.
+- Auch im Auswahl-Dropdown „Deal (optional)" beim Anlegen einer neuen manuellen Aufgabe auf der ToDo-Seite wird die Kontoart nun konsequent zwischen Bank und Inhaber aufgeführt.
+
 ## 2.38.1
 
 Test-Benachrichtigung entfernt: Button und Endpoint gelöscht.
