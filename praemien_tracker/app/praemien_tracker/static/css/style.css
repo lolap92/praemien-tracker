@@ -557,33 +557,57 @@ a.chip:focus-visible {
   pointer-events: none;
 }
 
+/* Grid statt Pillen-Reihe: feste zweispaltige Kacheln, die nach unten wachsen
+   statt zur Seite zu scrollen oder unregelmäßig breite Pillen aneinanderzureihen
+   (bei 6-8 Kategorien mit teils langen Labels wie "Prämienauszahlung prüfen"
+   sah eine Flex-Reihe unruhig aus bzw. lief seitlich aus dem Bildschirm). Der
+   Farbpunkt greift dieselbe Kategoriefarbe wie der Tag im Gruppenkopf unten auf
+   (.tag-<slug>) - eine Farbsprache für Navigation und Inhalt. */
 .todo-tabs-nav {
-  display: flex;
-  gap: 0.4rem;
-  overflow-x: auto;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
 .todo-tabs-nav label {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.85rem;
-  border-radius: 20px;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 14px;
   border: 1px solid var(--line-strong);
   background: var(--surface);
   color: var(--ink-soft);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 500;
-  white-space: nowrap;
   cursor: pointer;
   margin: 0;
+}
+
+.todo-tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.todo-tab-label {
+  flex: 1;
+  line-height: 1.25;
 }
 
 .todo-tabs-nav label .num {
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: var(--ink-faint);
+  flex-shrink: 0;
+}
+
+@media (min-width: 560px) {
+  .todo-tabs-nav {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
 }
 
 .todo-panels > .todo-gruppe {

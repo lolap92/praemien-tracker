@@ -70,7 +70,12 @@
   <div class="todo-tabs-nav">
     {% for kategorie in kategorie_reihenfolge %}
       {% if gruppen.get(kategorie) %}
-      <label for="todotab-{{ kategorie_slugs[kategorie] }}">{{ kategorie }} <span class="num">{{ gruppen[kategorie] | length }}</span></label>
+      {% set slug = kategorie_slugs[kategorie] %}
+      <label for="todotab-{{ slug }}">
+        <span class="todo-tab-dot tag-{{ slug }}"></span>
+        <span class="todo-tab-label">{{ kategorie }}</span>
+        <span class="num">{{ gruppen[kategorie] | length }}</span>
+      </label>
       {% endif %}
     {% endfor %}
   </div>

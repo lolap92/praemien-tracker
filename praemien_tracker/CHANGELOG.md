@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.38.0
+
+„Zu erledigen": Status-Navigation von einer scrollenden Pillen-Reihe auf ein
+Kachel-Grid umgestellt.
+
+- Bei 6-8 Kategorien mit teils langen Labels (z. B. "Prämienauszahlung
+  prüfen") lief die bisherige Pillen-Reihe seitlich aus dem Bildschirm und
+  musste horizontal gescrollt werden; die unterschiedlich breiten Pillen
+  wirkten zudem unruhig aneinandergereiht.
+- Jetzt ein zweispaltiges Kachel-Grid: gleich breite, ausgerichtete Kacheln,
+  kein Scrollen mehr nötig (wächst nach unten statt zur Seite). Jede Kachel
+  zeigt einen farbigen Punkt in derselben Kategoriefarbe wie der Tag in der
+  Gruppen-Überschrift darunter - eine durchgängige Farbsprache zwischen
+  Navigation und Inhalt. Ab 560px Breite wächst das Grid automatisch auf mehr
+  Spalten.
+
 ## 2.37.1
 
 Keine Verhaltensänderung.
