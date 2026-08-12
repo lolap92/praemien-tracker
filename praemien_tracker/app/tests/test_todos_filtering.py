@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 from decimal import Decimal
+from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
 
 from praemien_tracker.main import app
@@ -201,19 +202,22 @@ def test_neue_aufgabe_und_erledigte_aufgaben_stecken_im_manuell_tab(db):
 
 def test_quelle_filter_traegt_css_klasse_fuer_praemien_tabs(db):
     """Der Quelle-Filter bekommt dieselbe Bindung wie die Aufgaben-Karten,
-    nur an die beiden Prämien-Tabs statt an 'manuell' (siehe style.css)."""
+    nur an die beiden Prämien-Tabs statt an 'manuell' (siehe style.css). Es
+    gibt zwei Formulare - je eins pro Prämien-Tab, siehe
+    test_filtern_bleibt_auf_dem_jeweiligen_praemien_tab für den Grund."""
     antwort = client.get("/todos")
-    assert 'class="filterleiste todo-quelle-filter"' in antwort.text
+    assert 'class="filterleiste todo-quelle-filter todo-quelle-filter-praemie"' in antwort.text
+    assert 'class="filterleiste todo-quelle-filter todo-quelle-filter-praemie_pruefen"' in antwort.text
 
 
 def test_quelle_filter_steht_hinter_den_kacheln_vor_den_todos(db):
     """Der Filter soll unter der Status-Kachel-Navigation stehen, aber über
     dem eigentlichen ToDo-Inhalt - also im Markup nach .todo-tabs-nav und vor
-    .todo-panels."""
+    .todo-panels. Geprüft am ersten der beiden Filter-Formulare."""
     antwort = client.get("/todos")
     html = antwort.text
     idx_kacheln = html.index('class="todo-tabs-nav"')
-    idx_filter = html.index('class="filterleiste todo-quelle-filter"')
+    idx_filter = html.index('class="filterleiste todo-quelle-filter todo-quelle-filter-praemie"')
     idx_panels = html.index('class="todo-panels"')
     assert idx_kacheln < idx_filter < idx_panels
 
@@ -228,3 +232,125 @@ def test_neue_aufgabe_button_steht_hinter_den_kacheln_vor_den_todos(db):
     idx_neue_aufgabe = html.index('<details class="neue-aufgabe-card">')
     idx_panels = html.index('class="todo-panels"')
     assert idx_kacheln < idx_neue_aufgabe < idx_panels
+
+
+# ---------------------------------------------------------------------------
+# Bug 1: eine Prämien-Kachel verschwand komplett, sobald der Quelle-Filter
+# ihren einzigen Eintrag ausblendete - obwohl die Kategorie ungefiltert
+# durchaus existierte. Von dort aus ließ sich der Filter dann nicht mehr
+# zurücksetzen. Fix: die Kachel bleibt (mit Zähler 0) sichtbar, wenn es dafür
+# OHNE den Quelle-Filter Einträge gäbe (siehe todos.py:
+# kategorien_mit_inhalt_ungefiltert).
+# ---------------------------------------------------------------------------
+
+
+def test_praemien_kachel_bleibt_bei_quelle_filter_auf_null_sichtbar(db):
+    bank = Bank(name="Kachel-Testbank")
+    inhaber = Inhaber(name="Kachel-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+
+    # Einzige faellige Praemie kommt von Spartanien.
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", zugangsdaten_gespeichert=True)
+    deal.praemien.append(Praemie(
+        quelle="spartanien", betrag=Decimal("42.00"), erhalten=False,
+        naechste_pruefung_am=datetime.date.today() - datetime.timedelta(days=1),
+    ))
+    db.add(deal)
+    db.commit()
+
+    ohne_filter = client.get("/todos")
+    assert 'id="todotab-praemie_pruefen"' in ohne_filter.text
+
+    # quelle=bank blendet den einzigen (Spartanien-)Eintrag aus - die Kachel
+    # selbst darf dabei nicht verschwinden.
+    mit_filter = client.get("/todos?quelle=bank")
+    assert mit_filter.status_code == 200
+    assert 'id="todotab-praemie_pruefen"' in mit_filter.text
+    assert "Prämienauszahlung prüfen" in mit_filter.text
+    assert "Nichts für diese Quelle." in mit_filter.text
+    assert "42.00" not in mit_filter.text
+
+
+def test_praemien_kachel_fehlt_wenn_kategorie_wirklich_leer(db):
+    """Gegenprobe: existiert die Kategorie auch ungefiltert nicht (keine
+    einzige fällige/wartende Prämie), bleibt die Kachel weiterhin weg - das
+    ist kein Bug, sondern die bisherige, gewollte Regel."""
+    antwort = client.get("/todos")
+    assert 'id="todotab-praemie_pruefen"' not in antwort.text
+    assert 'id="todotab-praemie"' not in antwort.text
+
+
+def test_filtern_leert_nur_die_betroffene_praemien_kachel_nicht_beide(db):
+    """Zwei Deals mit unterschiedlicher Quelle in je einer der beiden
+    Prämien-Kategorien: quelle=bank filtern darf nur die Spartanien-Kategorie
+    leeren (Kachel bleibt aber da), die Bank-Kategorie behält ihren Inhalt."""
+    bank = Bank(name="Gemischt-Testbank")
+    inhaber = Inhaber(name="Gemischt-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+
+    faellig_spartanien = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", zugangsdaten_gespeichert=True)
+    faellig_spartanien.praemien.append(Praemie(
+        quelle="spartanien", betrag=Decimal("77.00"), erhalten=False,
+        naechste_pruefung_am=datetime.date.today() - datetime.timedelta(days=1),
+    ))
+    wartend_bank = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Depot", zugangsdaten_gespeichert=True)
+    wartend_bank.praemien.append(Praemie(
+        quelle="bank", betrag=Decimal("88.00"), erhalten=False,
+        naechste_pruefung_am=datetime.date.today() + datetime.timedelta(days=10),
+    ))
+    db.add_all([faellig_spartanien, wartend_bank])
+    db.commit()
+
+    antwort = client.get("/todos?quelle=bank")
+    assert 'id="todotab-praemie_pruefen"' in antwort.text  # Kachel bleibt trotz leerem Inhalt
+    assert 'id="todotab-praemie"' in antwort.text
+    assert "77.00" not in antwort.text  # Spartanien rausgefiltert
+    assert "88.00" in antwort.text  # Bank bleibt
+
+
+# ---------------------------------------------------------------------------
+# Bug 2: "Filtern" sprang immer auf "Manuelle Aufgaben", weil das versteckte
+# tab-Feld den beim SEITENAUFRUF aktiven Tab enthielt - ein Tab-Wechsel ist
+# aber rein clientseitig (CSS-Radio ohne Navigation), sodass dieser Wert beim
+# Absenden meist nicht mehr dem gerade sichtbaren Tab entsprach. Fix: zwei
+# eigene Formulare mit je fest eingetragenem tab_slug (siehe
+# todos.html: quelle_filter-Makro).
+# ---------------------------------------------------------------------------
+
+
+def test_filter_formulare_tragen_je_ihren_eigenen_tab_fest_eingetragen(db):
+    antwort = client.get("/todos")
+    soup = BeautifulSoup(antwort.text, "html.parser")
+
+    form_praemie = soup.select_one("form.todo-quelle-filter-praemie")
+    form_praemie_pruefen = soup.select_one("form.todo-quelle-filter-praemie_pruefen")
+    assert form_praemie is not None
+    assert form_praemie_pruefen is not None
+
+    tab_feld_praemie = form_praemie.select_one('input[name="tab"]')
+    tab_feld_pruefen = form_praemie_pruefen.select_one('input[name="tab"]')
+    assert tab_feld_praemie["value"] == "praemie"
+    assert tab_feld_pruefen["value"] == "praemie_pruefen"
+
+
+def test_filtern_bleibt_auf_dem_jeweiligen_praemien_tab(db):
+    """Sendet man genau das Formular ab, das zum Tab 'Prämienauszahlung
+    prüfen' gehört (fester tab=praemie_pruefen), zeigt die Antwort wieder
+    genau diesen Tab aktiv - unabhängig davon, welcher Tab beim vorherigen
+    Seitenaufruf berechnet worden wäre."""
+    bank = Bank(name="Filtern-Testbank")
+    inhaber = Inhaber(name="Filtern-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", zugangsdaten_gespeichert=True)
+    deal.praemien.append(Praemie(
+        quelle="bank", betrag=Decimal("5.00"), erhalten=False,
+        naechste_pruefung_am=datetime.date.today() - datetime.timedelta(days=1),
+    ))
+    db.add(deal)
+    db.commit()
+
+    antwort = client.get("/todos?tab=praemie_pruefen&quelle=bank")
+    assert 'id="todotab-praemie_pruefen" checked' in antwort.text

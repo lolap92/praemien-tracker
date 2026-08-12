@@ -89,18 +89,19 @@ def todos_view(request: Request, tab: str = "", dialog: str = "", quelle: str | 
         .all()
     )
 
-    alle = derived.alle_todos(deals, aufgaben)
+    alle_ungefiltert = derived.alle_todos(deals, aufgaben)
     norm_quelle = derived.normalisiere_quelle(quelle) if quelle else None
     if norm_quelle:
-        filtered_alle = []
-        for t in alle:
+        alle = []
+        for t in alle_ungefiltert:
             if t.kategorie in ("Auf Prämie warten", "Prämienauszahlung prüfen"):
                 if any(p.quelle == norm_quelle for p in t.elemente):
-                    filtered_alle.append(t)
+                    alle.append(t)
             else:
                 if t.deal and any(p.quelle == norm_quelle for p in t.deal.praemien):
-                    filtered_alle.append(t)
-        alle = filtered_alle
+                    alle.append(t)
+    else:
+        alle = alle_ungefiltert
 
     gruppen: dict[str, list[derived.Todo]] = {}
     for t in alle:
@@ -111,6 +112,18 @@ def todos_view(request: Request, tab: str = "", dialog: str = "", quelle: str | 
     # diesem Tab, siehe todos.html) und muss deshalb immer erreichbar sein.
     gruppen.setdefault("Manuelle Aufgaben", [])
 
+    # Die beiden Prämien-Tabs bleiben ebenfalls wählbar, sobald es dafür OHNE
+    # den Quelle-Filter Einträge gäbe - sonst verschwindet die Kachel, sobald
+    # der Filter gerade alle ihre Einträge einer Kategorie ausblendet (z.B.
+    # "Prämienauszahlung prüfen" bei quelle=bank, wenn dort nur Spartanien-
+    # Prämien fällig sind), und man kann den Filter von dort aus nicht mehr
+    # zurücksetzen (Bug). Ohne aktiven Quelle-Filter ist alle_ungefiltert ==
+    # alle, das setdefault hier also ein no-op.
+    kategorien_mit_inhalt_ungefiltert = {t.kategorie for t in alle_ungefiltert}
+    for kategorie in ("Auf Prämie warten", "Prämienauszahlung prüfen"):
+        if kategorie in kategorien_mit_inhalt_ungefiltert:
+            gruppen.setdefault(kategorie, [])
+
     # Sort "Auf Prämie warten" and "Prämienauszahlung prüfen" by faellig_bis ascending
     if "Auf Prämie warten" in gruppen:
         # Since faellig_bis is set to praemie_naechste_pruefung, which returns a date, we can sort by it.
@@ -119,19 +132,18 @@ def todos_view(request: Request, tab: str = "", dialog: str = "", quelle: str | 
     if "Prämienauszahlung prüfen" in gruppen:
         gruppen["Prämienauszahlung prüfen"].sort(key=lambda x: x.faellig_bis or datetime.date.max)
 
-    # Sichtbare Kategorien: "Manuelle Aufgaben" immer, alle anderen nur mit
-    # tatsächlichem Inhalt - dieselbe Regel steht in todos.html noch einmal
-    # (dort für die Radios/Kacheln/Panels), da die Anzeige rein clientseitig
-    # per CSS umschaltet und deshalb pro Kategorie selbst entscheiden muss.
-    sichtbare_slugs = {
-        KATEGORIE_SLUGS[k] for k in KATEGORIE_REIHENFOLGE if gruppen.get(k) or k == "Manuelle Aufgaben"
-    }
+    # Sichtbare Kategorien: jede, die (ggf. leer) in gruppen steht - siehe die
+    # setdefault-Aufrufe oben. Dieselbe Regel steht in todos.html noch einmal
+    # (dort für die Radios/Kacheln/Panels als "kategorie in gruppen"), da die
+    # Anzeige rein clientseitig per CSS umschaltet und deshalb pro Kategorie
+    # selbst entscheiden muss.
+    sichtbare_slugs = {KATEGORIE_SLUGS[k] for k in KATEGORIE_REIHENFOLGE if k in gruppen}
     if tab in sichtbare_slugs:
         aktiver_tab = tab
     else:
-        # Default: die erste Kategorie mit tatsächlichem Inhalt - sonst
-        # "Manuelle Aufgaben" (immer erreichbar, um die erste Aufgabe
-        # anzulegen, wenn sonst nichts ansteht).
+        # Default: die erste Kategorie mit tatsächlichem (gefiltertem)
+        # Inhalt - sonst "Manuelle Aufgaben" (immer erreichbar, um die erste
+        # Aufgabe anzulegen, wenn sonst nichts ansteht).
         mit_inhalt = [k for k in KATEGORIE_REIHENFOLGE if gruppen.get(k)]
         default_kategorie = mit_inhalt[0] if mit_inhalt else "Manuelle Aufgaben"
         aktiver_tab = KATEGORIE_SLUGS[default_kategorie]

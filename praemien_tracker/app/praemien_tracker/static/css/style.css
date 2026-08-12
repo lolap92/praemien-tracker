@@ -622,7 +622,15 @@ a.chip:focus-visible {
    .filterleiste.todo-quelle-filter (zwei Klassen) statt nur
    .todo-quelle-filter, damit die Regel unabhängig von der Reihenfolge im
    Stylesheet die geteilte .filterleiste-Basis (auch von deals_list.html und
-   vorschlaege.html genutzt) sicher übersticht. */
+   vorschlaege.html genutzt) sicher übersticht.
+
+   Der Quelle-Filter existiert als ZWEI Formulare, je eins pro Prämien-Tab
+   mit fest eingetragenem tab_slug (siehe todos.html, quelle_filter-Makro) -
+   nötig, damit "Filtern" immer auf dem gerade sichtbaren Tab bleibt statt auf
+   den beim Seitenaufruf aktiven zurückzuspringen (ein Tab-Wechsel ist rein
+   clientseitig, ohne Navigation). Jedes Formular blendet deshalb gezielt nur
+   für seinen eigenen Tab ein (.todo-quelle-filter-<slug>), nicht für beide
+   zugleich. */
 .neue-aufgabe-card,
 .erledigte-aufgaben-card,
 .filterleiste.todo-quelle-filter {
@@ -634,8 +642,8 @@ body:has(#todotab-manuell:checked) .erledigte-aufgaben-card {
   display: block;
 }
 
-body:has(#todotab-praemie:checked) .filterleiste.todo-quelle-filter,
-body:has(#todotab-praemie_pruefen:checked) .filterleiste.todo-quelle-filter {
+body:has(#todotab-praemie:checked) .todo-quelle-filter-praemie,
+body:has(#todotab-praemie_pruefen:checked) .todo-quelle-filter-praemie_pruefen {
   display: flex;
 }
 

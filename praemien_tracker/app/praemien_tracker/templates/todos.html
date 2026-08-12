@@ -5,7 +5,7 @@
 
 <div class="todo-tabs">
   {% for kategorie in kategorie_reihenfolge %}
-    {% if gruppen.get(kategorie) or kategorie == "Manuelle Aufgaben" %}
+    {% if kategorie in gruppen %}
     {% set slug = kategorie_slugs[kategorie] %}
     <input type="radio" name="todotab" id="todotab-{{ slug }}" {{ "checked" if aktiver_tab == slug else "" }}>
     {% endif %}
@@ -13,7 +13,7 @@
 
   <div class="todo-tabs-nav">
     {% for kategorie in kategorie_reihenfolge %}
-      {% if gruppen.get(kategorie) or kategorie == "Manuelle Aufgaben" %}
+      {% if kategorie in gruppen %}
       {% set slug = kategorie_slugs[kategorie] %}
       <label for="todotab-{{ slug }}">
         <span class="todo-tab-dot tag-{{ slug }}"></span>
@@ -53,10 +53,17 @@
     </div>
   </details>
 
-  <form class="filterleiste todo-quelle-filter" method="get" action="todos">
-    {% if aktiver_tab %}
-    <input type="hidden" name="tab" value="{{ aktiver_tab }}">
-    {% endif %}
+  {% macro quelle_filter(tab_slug) %}
+  {# Eigenes Formular je Prämien-Tab statt eines gemeinsamen mit dynamischem
+     aktiver_tab-Feld: ein Tab-Wechsel ist rein clientseitig (CSS-Radio, keine
+     Navigation) - aktiver_tab spiegelt deshalb nur den Stand beim letzten
+     Seitenaufruf wider, nicht zwangsläufig den gerade sichtbaren Tab. Mit
+     einem festen tab_slug pro Formular landet "Filtern" immer auf dem Tab,
+     zu dem das sichtbare Formular gehört (Sichtbarkeit weiterhin über
+     body:has(#todotab-{{ tab_slug }}:checked) .todo-quelle-filter-{{ tab_slug }}
+     in style.css - pro Tab höchstens ein Formular sichtbar). #}
+  <form class="filterleiste todo-quelle-filter todo-quelle-filter-{{ tab_slug }}" method="get" action="todos">
+    <input type="hidden" name="tab" value="{{ tab_slug }}">
     <details class="multi-filter">
       <summary>Quelle{% if filter_quelle %} (1){% endif %}</summary>
       <div class="multi-filter-panel">
@@ -75,18 +82,25 @@
       </div>
     </details>
     <button type="submit" class="secondary">Filtern</button>
-    {% if filter_quelle %}<a class="button secondary" href="todos{% if aktiver_tab %}?tab={{ aktiver_tab }}{% endif %}">Zurücksetzen</a>{% endif %}
+    {% if filter_quelle %}<a class="button secondary" href="todos?tab={{ tab_slug }}">Zurücksetzen</a>{% endif %}
   </form>
+  {% endmacro %}
+  {{ quelle_filter(kategorie_slugs["Auf Prämie warten"]) }}
+  {{ quelle_filter(kategorie_slugs["Prämienauszahlung prüfen"]) }}
 
   <div class="todo-panels">
     {% for kategorie in kategorie_reihenfolge %}
-      {% if gruppen.get(kategorie) or kategorie == "Manuelle Aufgaben" %}
+      {% if kategorie in gruppen %}
       {% set slug = kategorie_slugs[kategorie] %}
       <div class="card todo-gruppe" id="panel-{{ slug }}">
         <div class="todo-gruppe-head">
           <div class="tag tag-{{ slug }}"></div>
           <h3>{{ kategorie }}</h3>
         </div>
+
+        {% if not gruppen[kategorie] and filter_quelle %}
+        <p class="leer">Nichts für diese Quelle.</p>
+        {% endif %}
 
         {% for todo in gruppen[kategorie] %}
 

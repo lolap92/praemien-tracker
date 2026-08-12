@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.42.0
+
+„Zu erledigen": zwei Bugs beim Filtern nach Quelle behoben.
+
+- **Verschwindende Kachel:** Blendete der Quelle-Filter alle Einträge einer
+  der beiden Prämien-Kategorien aus, verschwand die zugehörige Kachel
+  komplett - von dort aus ließ sich der Filter dann nicht mehr zurücksetzen.
+  Die Kachel bleibt jetzt (mit Zähler 0 und dem Hinweis "Nichts für diese
+  Quelle.") sichtbar, solange es für sie ohne den Filter Einträge gäbe; nur
+  wenn eine Kategorie wirklich komplett leer ist, bleibt sie weiterhin weg.
+- **"Filtern" sprang auf "Manuelle Aufgaben":** Ein Tab-Wechsel läuft rein
+  clientseitig über CSS (kein Seitenaufruf), das versteckte tab-Feld im
+  Filterformular enthielt deshalb weiterhin den beim letzten Laden aktiven
+  Tab, nicht den gerade sichtbaren. Der Quelle-Filter besteht jetzt aus zwei
+  eigenen Formularen - je eines pro Prämien-Tab mit fest eingetragenem
+  Tab-Wert - sodass "Filtern" immer auf dem sichtbaren Tab bleibt.
+- Neue Tests für beide Fehlerbilder.
+
 ## 2.41.1
 
 **Kontoart** in der ToDo-Liste und bei manuellen Aufgaben: Die Kontoart
