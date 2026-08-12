@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.45.2
+
+Beim Löschen eines Elements auf der Deal Detailseite wird die Seite nicht mehr neu geladen und andere gemachte Änderungen an Texten gehen nicht mehr verloren.
+
+- Das Löschen von Prämien, Bedingungen, Aufgaben und Links auf der Bearbeitungsseite eines Deals erfolgt nun asynchron im Hintergrund über die Fetch-API.
+- Die gelöschte Zeile wird direkt aus der Ansicht entfernt, ohne die Seite neu zu laden. Dadurch bleiben alle noch nicht gespeicherten Eingaben in anderen Textfeldern erhalten.
+
 ## 2.45.1
 
 Nach dem Speichern der Deal-Detailseite wechselt die Ansicht wieder automatisch in den Nur-Lese-Modus (Read-Only-Modus).
@@ -11,8 +18,8 @@ Nach dem Speichern der Deal-Detailseite wechselt die Ansicht wieder automatisch 
 
 Layout der Deal-Bearbeitungsseite optimiert und Sicherheitsabfragen über Modal-Dialoge eingeführt.
 
-- **Speichern-Button ganz nach unten verschoben:** Auf der Bearbeitungsseite eines Deals wurde der "Speichern"-Button ganz an das Ende der Seite verschoben.
-- **Buttons für Löschen und Abbrechen/Stornieren platziert:** Direkt über dem Speichern-Button befinden sich nun die Buttons "Deal abbrechen (stornieren)" und "Deal löschen".
+- **Speichern-Button ganz nach unten verschoben:** Auf der Bearbeitungsseite eines Deals wurde der “Speichern”-Button ganz an das Ende der Seite verschoben.
+- **Buttons für Löschen und Abbrechen/Stornieren platziert:** Direkt über dem Speichern-Button befinden sich nun die Buttons “Deal abbrechen (stornieren)” und “Deal löschen”.
 - **Einführung von Modal-Dialogen zur Bestätigung:** Statt der bisherigen einfachen Browser-Bestätigung öffnen diese Buttons nun moderne, benutzerfreundliche Modal-Dialoge zur Bestätigung der Aktionen.
 
 ## 2.44.4

@@ -130,7 +130,7 @@
 
 <div class="sec-t">Prämien</div>
 <div class="card">
-  <ul class="unterliste">
+  <ul class="unterliste" data-leer-text="Noch keine Prämien erfasst.">
     {% for p in deal.praemien %}
     <li>
       <div class="reihe" style="flex:1; align-items:center;">
@@ -145,7 +145,7 @@
           <label for="praemie_{{ p.id }}_erhalten" style="margin:0;">erhalten</label>
         </span>
       </div>
-      <button type="submit" class="danger" formaction="deals/{{ deal.id }}/praemien/{{ p.id }}/delete" formnovalidate>×</button>
+      <button type="submit" class="danger js-delete-sub-element" formaction="deals/{{ deal.id }}/praemien/{{ p.id }}/delete" formnovalidate>×</button>
     </li>
     {% else %}
     <li class="leer">Noch keine Prämien erfasst.</li>
@@ -164,7 +164,7 @@
 
 <div class="sec-t">Bedingungen</div>
 <div class="card">
-  <ul class="unterliste">
+  <ul class="unterliste" data-leer-text="Keine Bedingungen hinterlegt – gilt als erfüllt.">
     {% for b in deal.bedingungen %}
     <li>
       <div class="reihe" style="flex:1; align-items:center;">
@@ -175,7 +175,7 @@
           <label for="bedingung_{{ b.id }}_erfuellt" style="margin:0;">erfüllt</label>
         </span>
       </div>
-      <button type="submit" class="danger" formaction="deals/{{ deal.id }}/bedingungen/{{ b.id }}/delete" formnovalidate>×</button>
+      <button type="submit" class="danger js-delete-sub-element" formaction="deals/{{ deal.id }}/bedingungen/{{ b.id }}/delete" formnovalidate>×</button>
     </li>
     {% else %}
     <li class="leer">Keine Bedingungen hinterlegt – gilt als erfüllt.</li>
@@ -190,7 +190,7 @@
 
 <div class="sec-t">Aufgaben (frei)</div>
 <div class="card">
-  <ul class="unterliste">
+  <ul class="unterliste" data-leer-text="Keine freien Aufgaben.">
     {% for a in deal.aufgaben %}
     <li>
       <div class="reihe" style="flex:1; align-items:center;">
@@ -201,7 +201,7 @@
           <label for="aufgabe_{{ a.id }}_erledigt" style="margin:0;">erledigt</label>
         </span>
       </div>
-      <button type="submit" class="danger" formaction="deals/{{ deal.id }}/aufgaben/{{ a.id }}/delete" formnovalidate>×</button>
+      <button type="submit" class="danger js-delete-sub-element" formaction="deals/{{ deal.id }}/aufgaben/{{ a.id }}/delete" formnovalidate>×</button>
     </li>
     {% else %}
     <li class="leer">Keine freien Aufgaben.</li>
@@ -218,12 +218,12 @@
 
 <div class="sec-t">Links</div>
 <div class="card">
-  <ul class="unterliste">
+  <ul class="unterliste" data-leer-text="Keine Links hinterlegt.">
     {% for u in deal.urls %}
     <li>
       <span style="flex:1;"><a href="{{ u.url }}" target="_blank" rel="noopener">{{ u.bezeichnung or u.url }}</a></span>
-      <form action="deals/{{ deal.id }}/urls/{{ u.id }}/delete" method="post">
-        <button type="submit" class="danger">×</button>
+      <form action="deals/{{ deal.id }}/urls/{{ u.id }}/delete" method="post" style="display:inline;">
+        <button type="submit" class="danger js-delete-sub-element" formaction="deals/{{ deal.id }}/urls/{{ u.id }}/delete">×</button>
       </form>
     </li>
     {% else %}
@@ -273,6 +273,51 @@
     </div>
   </form>
 </dialog>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('click', function(event) {
+    const btn = event.target.closest('.js-delete-sub-element');
+    if (!btn) return;
+
+    event.preventDefault();
+    const url = btn.getAttribute('formaction');
+    if (!url) return;
+
+    btn.disabled = true;
+
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      }
+    })
+    .then(response => {
+      if (response.ok) {
+        const li = btn.closest('li');
+        if (li) {
+          const ul = li.closest('ul');
+          li.remove();
+          if (ul && ul.querySelectorAll('li:not(.leer)').length === 0 && ul.getAttribute('data-leer-text')) {
+            const leerLi = document.createElement('li');
+            leerLi.className = 'leer';
+            leerLi.textContent = ul.getAttribute('data-leer-text');
+            ul.appendChild(leerLi);
+          }
+        }
+      } else {
+        alert('Fehler beim Löschen des Elements.');
+        btn.disabled = false;
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Netzwerkfehler beim Löschen des Elements.');
+      btn.disabled = false;
+    });
+  });
+});
+</script>
 
 {% else %}
 
