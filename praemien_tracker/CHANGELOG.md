@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.38.2
+
+Schönere Benennung und Beschreibung der Option für den nächtlichen Kündigungshinweis-Batch in den Übersetzungstabellen.
+
+- Die Option `kuendigung_hinweise_batch_aktiv` wird nun im Home Assistant Konfigurations-Interface unter dem Namen "Kündigungshinweis-Batch aktiv" mitsamt einer verständlichen Beschreibung angezeigt.
+
 ## 2.38.1
 
 Test-Benachrichtigung entfernt: Button und Endpoint gelöscht.

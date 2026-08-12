@@ -18,3 +18,10 @@ configuration:
       Automatischen KI-Deal-Finder-Lauf jeden Tag um 06:00 Uhr ein- oder
       ausschalten. Bei Deaktivierung lässt sich der Lauf weiterhin jederzeit
       manuell über "Jetzt suchen" anstoßen.
+  kuendigung_hinweise_batch_aktiv:
+    name: Kündigungshinweis-Batch aktiv
+    description: >-
+      Automatischen nächtlichen Kündigungshinweis-Batch um 02:00 Uhr ein- oder
+      ausschalten. Der Batch durchsucht alle aktiven Deals ohne Kündigungsweg
+      und recherchiert diesen per KI-Websuche nach (erfordert einen
+      konfigurierten Anthropic-API-Key).
