@@ -5,7 +5,7 @@ from decimal import Decimal
 from fastapi.testclient import TestClient
 
 from praemien_tracker.main import app
-from praemien_tracker.models import Bank, Deal, Inhaber, Praemie
+from praemien_tracker.models import Aufgabe, Bank, Bedingung, Deal, Inhaber, Praemie
 
 client = TestClient(app)
 
@@ -151,3 +151,53 @@ def test_todos_filtering_by_new_statuses(db):
     html_bank = antwort_bank.text
     assert "Prämie prüfen (Spartanien, 150.00 €)" not in html_bank
     assert "Prämie prüfen (Bank, 200.00 €)" in html_bank
+
+
+def test_manuelle_aufgaben_tab_bleibt_ohne_offene_aufgabe_erreichbar(db):
+    """Ohne jede offene manuelle Aufgabe (und ohne Deals) muss der Tab
+    trotzdem existieren - er ist die einzige Stelle, an der sich die erste
+    Aufgabe anlegen lässt (siehe todos.py: gruppen.setdefault)."""
+    antwort = client.get("/todos")
+    assert antwort.status_code == 200
+    assert 'id="todotab-manuell"' in antwort.text
+    assert 'id="panel-manuell"' in antwort.text
+    # Ohne echten Inhalt sonst nirgendwo ist "Manuelle Aufgaben" der Default-Tab.
+    assert 'id="todotab-manuell" checked' in antwort.text
+
+
+def test_default_tab_ist_erste_kategorie_mit_inhalt_nicht_manuelle_aufgaben(db):
+    """Gibt es woanders echten Inhalt, gewinnt der (in der Reihenfolge erste)
+    damit - nicht die leere 'Manuelle Aufgaben'-Kachel, obwohl sie zuerst in
+    KATEGORIE_REIHENFOLGE steht und jetzt immer sichtbar ist."""
+    bank = Bank(name="Default-Tab-Testbank")
+    inhaber = Inhaber(name="Default-Tab-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", zugangsdaten_gespeichert=True)
+    deal.bedingungen.append(Bedingung(beschreibung="offen", erfuellt=False))
+    db.add(deal)
+    db.commit()
+
+    antwort = client.get("/todos")
+    assert 'id="todotab-bedingungen" checked' in antwort.text
+    assert 'id="todotab-manuell" checked' not in antwort.text
+
+
+def test_neue_aufgabe_und_erledigte_aufgaben_stecken_im_manuell_tab(db):
+    """Beide Karten tragen die CSS-Klasse, die sie an den 'manuell'-Tab
+    bindet (siehe body:has(#todotab-manuell:checked) in style.css) - das
+    HTML selbst liefert der Server immer, die Sichtbarkeit regelt reines CSS."""
+    db.add(Aufgabe(beschreibung="Erledigt", erledigt=True))
+    db.commit()
+
+    antwort = client.get("/todos")
+    assert 'class="card neue-aufgabe-card"' in antwort.text
+    assert 'class="card erledigte-aufgaben-card"' in antwort.text
+    assert "Erledigte Aufgaben" in antwort.text
+
+
+def test_quelle_filter_traegt_css_klasse_fuer_praemien_tabs(db):
+    """Der Quelle-Filter bekommt dieselbe Bindung wie die Aufgaben-Karten,
+    nur an die beiden Prämien-Tabs statt an 'manuell' (siehe style.css)."""
+    antwort = client.get("/todos")
+    assert 'class="filterleiste todo-quelle-filter"' in antwort.text

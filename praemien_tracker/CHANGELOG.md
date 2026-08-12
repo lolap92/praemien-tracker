@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.39.0
+
+„Zu erledigen": „Neue Aufgabe"/„Erledigte Aufgaben" und der Quelle-Filter
+erscheinen jetzt nur noch dort, wo sie inhaltlich hingehören.
+
+- „Neue Aufgabe" und „Erledigte Aufgaben" waren bisher immer sichtbar,
+  unabhängig vom gewählten Tab - dabei gehören beide fachlich zu „Manuelle
+  Aufgaben". Sie erscheinen jetzt ausschließlich, wenn dieser Tab aktiv ist.
+- Der Quelle-Filter (Spartanien/Bank) ergibt nur auf den beiden Prämien-Tabs
+  „Auf Prämie warten" und „Prämienauszahlung prüfen" einen Sinn und wird
+  jetzt auch nur dort angezeigt.
+- Umgesetzt über CSS (`body:has(#todotab-<slug>:checked) ...`), dieselbe
+  Technik wie die bestehende Tab-Umschaltung - kein JavaScript nötig.
+- „Manuelle Aufgaben" bleibt jetzt immer als Tab wählbar, auch ganz ohne
+  offene Aufgabe - sonst gäbe es keine Möglichkeit mehr, die erste Aufgabe
+  anzulegen. Der Tab, der beim Öffnen der Seite automatisch aktiv ist, bleibt
+  aber weiterhin die erste Kategorie mit tatsächlichem Inhalt.
+
 ## 2.38.1
 
 Test-Benachrichtigung entfernt: Button und Endpoint gelöscht.
