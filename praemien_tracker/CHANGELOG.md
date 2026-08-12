@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.44.2
+
+Beim Abbrechen/Stornieren eines Deals werden nun auch alle zugehörigen
+Aufgaben automatisch geschlossen (erledigt) und nicht nur die Bedingungen.
+
 ## 2.44.1
 
 Schönere Benennung und Beschreibung der Option für den nächtlichen Kündigungshinweis-Batch in den Übersetzungstabellen.
@@ -107,6 +112,7 @@ erscheinen jetzt nur noch dort, wo sie inhaltlich hingehören.
   angezeigt (z. B. `Testbank · Depot · Max`). Auch im Auswahl-Dropdown „Deal"
   beim Anlegen einer neuen manuellen Aufgabe wird die Kontoart nun konsequent
   zwischen Bank und Inhaber aufgeführt.
+
 ## 2.38.1
 
 Test-Benachrichtigung entfernt: Button und Endpoint gelöscht.

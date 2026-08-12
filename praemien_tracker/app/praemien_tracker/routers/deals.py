@@ -467,6 +467,7 @@ def deal_stornieren(request: Request, deal_id: int, db: Session = Depends(get_db
     Anders als bei einem echt gekündigten Konto werden offene Bedingungen
     hier bewusst abgehakt - ein stornierter Deal ist erledigt und soll nicht
     erneut unter "Zu prüfen" auftauchen.
+    Zugehörige Aufgaben werden ebenfalls geschlossen (auf erledigt gesetzt).
     """
     deal = _hole_deal(db, deal_id)
     for b in deal.bedingungen:
@@ -475,6 +476,8 @@ def deal_stornieren(request: Request, deal_id: int, db: Session = Depends(get_db
         if not p.erhalten:
             p.betrag = Decimal("0")
             p.erhalten = True
+    for a in deal.aufgaben:
+        a.erledigt = True
     deal.storniert = True
     db.commit()
     return redirect(request, f"deals/{deal_id}/edit")
