@@ -27,6 +27,12 @@ STATUS_VERWORFEN = "verworfen"
 # darf lauf.py diese Zeilen bei einer erneuten Bewertung noch verändern.
 STATUS_OFFEN = (STATUS_VORGESCHLAGEN, STATUS_ZU_PRUEFEN, STATUS_ABGELEHNT)
 
+# Karten, die "Alle neu analysieren" (ignoriere_cache) auffrischt: nur die
+# handlungsrelevanten. Automatisch abgelehnte bleiben bewusst unangetastet -
+# der Nutzer will sie nicht erneut prüfen (und keine ungewollte
+# Wiederbelebung); verworfene/übernommene sind ohnehin Nutzerentscheidungen.
+STATUS_NEU_ANALYSIERBAR = (STATUS_VORGESCHLAGEN, STATUS_ZU_PRUEFEN)
+
 # Feste Gründe für ein manuelles Verwerfen (Mehrfachauswahl im Dialog) -
 # bewusst ein Enum statt Freitext, damit die Gründe später auswertbar bleiben
 # (z.B. "wie oft wird wegen zu aufwendiger Bedingungen verworfen?").

@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.36.0
+
+„Alle neu analysieren" frischt jetzt gezielt nur die handlungsrelevanten Karten
+auf, entfernt veraltete Dubletten und erklärt sich im Bestätigungsdialog.
+
+- **Nur vorgeschlagen/zu prüfen wird neu analysiert.** Funde, die aktuell keine
+  vorgeschlagene oder zu prüfende Karte haben, werden übersprungen -
+  automatisch abgelehnte Karten bleiben unangetastet (keine ungewollte
+  Wiederbelebung), übernommene und verworfene ohnehin. Nebeneffekt: deutlich
+  weniger API-Aufrufe, weil nur die wirklich gemeinten Karten erneut extrahiert
+  werden. Neue, noch nicht vorgeschlagene Angebote sucht weiterhin „Jetzt
+  suchen".
+- **Keine Dubletten mehr.** Findet die Neuanalyse mehr oder andere Bedingungen
+  (dadurch anderer Inhalts-Hash), ersetzt die aufgefrischte Karte die alte
+  automatisch - die veraltete, noch offene Zeile derselben URL/Person wird
+  entfernt statt daneben stehen zu bleiben. Damit lassen sich bestehende
+  Vorschläge auf die neue Struktur (Bedingungs-Kennzahlen, Teilprämien-
+  Zuordnung, Prämienzweck) heben, ohne vorher „Zurücksetzen" zu brauchen.
+- **Erklärender Bestätigungsdialog.** Der Dialog hinter „Alle neu analysieren"
+  benennt jetzt ausdrücklich, was aufgefrischt wird, was unangetastet bleibt
+  und dass neue Angebote über „Jetzt suchen" kommen.
+
 ## 2.35.2
 
 - **Optimierung der ToDo-Liste ("Zu erledigen"):**

@@ -898,6 +898,73 @@ def test_ignoriere_cache_laesst_entschiedene_vorschlaege_unangetastet(db, zwei_i
     assert eintrag.bank_name == "Von Hand geändert"
 
 
+def test_ignoriere_cache_entfernt_veraltete_dublette_bei_mehr_bedingungen(db, zwei_inhaber, monkeypatch):
+    """Findet die Neuanalyse mehr Bedingungen (anderer Inhalts-Hash), soll die
+    aufgefrischte Karte die alte, dünnere ersetzen - keine Dublette."""
+    fund = RohFund("mydealz", "https://mydealz.de/c24", "t", "C24 Praemie")
+    _patch_quellen(monkeypatch, [fund])
+
+    duenn = AngebotExtraktion(
+        bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0,
+        bedingungen=[BedingungExtraktion(beschreibung="Kontoeröffnung", einschaetzung="erfuellt")],
+    )
+    lauf.taeglicher_lauf(db, client=FakeClient(RelevanzErgebnis(ist_relevant=True), duenn))
+    alice = zwei_inhaber[0]
+    vorher = db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == alice.id).one()
+    assert len(vorher.bedingungen) == 1
+    alter_hash = vorher.inhalt_hash
+
+    reich = AngebotExtraktion(
+        bank_name="C24", kontoart="Girokonto", praemie_betrag=125.0,
+        bedingungen=[
+            BedingungExtraktion(beschreibung="Kontoeröffnung", einschaetzung="erfuellt"),
+            BedingungExtraktion(beschreibung="3 Kartenzahlungen im ersten Monat", einschaetzung="erfuellt",
+                                anzahl=3, frist_wochen=4),
+        ],
+    )
+    lauf.taeglicher_lauf(db, client=FakeClient(RelevanzErgebnis(ist_relevant=True), reich), ignoriere_cache=True)
+
+    # Genau eine Karte je Inhaber, mit der neuen (reicheren) Struktur - die alte
+    # mit anderem Hash wurde entfernt, nicht danebengestellt.
+    karten = db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == alice.id).all()
+    assert len(karten) == 1
+    assert karten[0].inhalt_hash != alter_hash
+    assert len(karten[0].bedingungen) == 2
+    assert any(b.anzahl == 3 for b in karten[0].bedingungen)
+
+
+def test_ignoriere_cache_laesst_abgelehnte_karten_unberuehrt_ohne_api(db, zwei_inhaber, monkeypatch):
+    """Nur vorgeschlagene/zu prüfende Karten werden neu analysiert. Ein Fund,
+    der nur abgelehnte Karten hat, wird übersprungen - ohne API-Aufruf und ohne
+    die abgelehnte Karte wiederzubeleben."""
+    fund = RohFund("mydealz", "https://mydealz.de/consors", "t", "Consors Depot")
+    _patch_quellen(monkeypatch, [fund])
+
+    # nicht_erfuellt -> automatisch_abgelehnt, unabhängig von der Prämienhöhe.
+    abgelehnt = AngebotExtraktion(
+        bank_name="Consorsbank", kontoart="Depot", praemie_betrag=100.0,
+        bedingungen=[BedingungExtraktion(beschreibung="Gehaltseingang zwingend", einschaetzung="nicht_erfuellt")],
+    )
+    erst = ZaehlenderFakeClient(RelevanzErgebnis(ist_relevant=True), abgelehnt)
+    lauf.taeglicher_lauf(db, client=erst)
+    assert erst.aufrufe == 2
+    karten = db.query(DealVorschlag).all()
+    assert karten and all(k.status == matching.STATUS_ABGELEHNT for k in karten)
+
+    # Neuanalyse mit einem Ergebnis, das sonst vorgeschlagen würde - darf die
+    # abgelehnten Karten aber nicht anfassen und keine API-Kosten auslösen.
+    zweit = ZaehlenderFakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="Consorsbank", kontoart="Depot", praemie_betrag=100.0, bedingungen=[]),
+    )
+    lauf.taeglicher_lauf(db, client=zweit, ignoriere_cache=True)
+
+    assert zweit.aufrufe == 0  # Fund ohne handlungsrelevante Karte -> keine Extraktion
+    unveraendert = db.query(DealVorschlag).all()
+    assert len(unveraendert) == len(karten)
+    assert all(k.status == matching.STATUS_ABGELEHNT for k in unveraendert)
+
+
 # ---------------------------------------------------------------------------
 # lauf_status()/lauf_im_hintergrund_starten(): Live-Anzeige "Suche läuft" im
 # Vorschläge-Tab, damit ein Klick auf "Jetzt suchen"/"Alle neu analysieren"

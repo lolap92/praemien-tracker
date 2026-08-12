@@ -111,12 +111,20 @@
 <dialog id="dlg-neu-analysieren" class="vk-dialog">
   <h3>Alle Angebote neu analysieren?</h3>
   <p class="vk-dialog-frage">
-    Jeder aktuell gelistete Fund wird erneut per KI geprüft - auch wenn sich am
-    Angebotstext nichts geändert hat und er eigentlich aus dem Cache bedient
-    würde. Damit lassen sich bestehende Karten mit neuen Feldern auffrischen
-    (z. B. eine erst später eingeführte Prämien-Aufschlüsselung). Das kostet
-    spürbar mehr API-Aufrufe als "Jetzt suchen" und kann je nach Anzahl der
-    Funde eine Weile dauern.
+    Frischt die aktuell <b>vorgeschlagenen</b> und <b>zu&nbsp;prüfenden</b>
+    Karten neu auf: Sie werden erneut per KI geprüft (auch bei unverändertem
+    Angebotstext) und bekommen die neueste Struktur - z.&nbsp;B.
+    Bedingungs-Kennzahlen, die Zuordnung zu Teilprämien und den Prämienzweck.
+    Findet die Neuanalyse dabei mehr oder andere Bedingungen, ersetzt die
+    aufgefrischte Karte die alte automatisch; die veraltete Dublette wird
+    entfernt.
+  </p>
+  <p class="vk-dialog-frage">
+    <b>Abgelehnte und verworfene Karten bleiben unangetastet</b>, ebenso bereits
+    übernommene Deals. Neue, noch nicht vorgeschlagene Angebote werden hier
+    nicht gesucht - dafür ist „Jetzt suchen". Das kostet spürbar mehr
+    API-Aufrufe als „Jetzt suchen" und kann je nach Anzahl der Karten eine
+    Weile dauern.
   </p>
   <form method="post" action="vorschlaege/alle-neu-analysieren" onsubmit="this.closest('dialog').close()">
     <div class="vk-dialog-aktionen">

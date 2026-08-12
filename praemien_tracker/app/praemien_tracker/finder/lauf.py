@@ -178,6 +178,34 @@ def _vorschlag_felder_setzen(
     ]
 
 
+def _veraltete_analysierbare_offene_entfernen(
+    db: Session, quelle_url: str, inhaber_id: int, behalten_id: int
+) -> int:
+    """Bei "Alle neu analysieren" (ignoriere_cache): entfernt für dieselbe
+    Quelle-URL und denselben Inhaber alle noch handlungsrelevanten
+    (vorgeschlagen/zu prüfen) Vorschlagszeilen außer der eben frisch
+    erzeugten/aktualisierten (behalten_id).
+
+    Ohne das bliebe nach einer Neuanalyse, die mehr oder andere Bedingungen
+    findet (dadurch anderer Inhalts-Hash), die alte, dünnere Karte als
+    veraltete Dublette stehen. Automatisch abgelehnte Karten bleiben bewusst
+    unangetastet (der Nutzer will sie nicht erneut prüfen), übernommene und
+    verworfene ohnehin. Liefert die Anzahl entfernter Zeilen."""
+    veraltet = (
+        db.query(DealVorschlag)
+        .filter(
+            DealVorschlag.quelle_url == quelle_url,
+            DealVorschlag.inhaber_id == inhaber_id,
+            DealVorschlag.id != behalten_id,
+            DealVorschlag.status.in_(matching.STATUS_NEU_ANALYSIERBAR),
+        )
+        .all()
+    )
+    for zeile in veraltet:
+        db.delete(zeile)
+    return len(veraltet)
+
+
 def _ist_anwendbar(ist_minderjaehrig: bool, fuer_kinder: bool) -> bool:
     """Ob ein Angebot für einen Inhaber mit dieser Alterseinstufung
     grundsätzlich infrage kommt - symmetrisch: ein Kinderdeal
@@ -330,6 +358,24 @@ def taeglicher_lauf(
             rohtext_hash = _rohtext_hash(fund.text)
             cache_eintrag = db.query(FinderFund).filter(FinderFund.quelle_url == fund.quelle_url).one_or_none()
 
+            # "Alle neu analysieren" frischt nur handlungsrelevante Karten
+            # (vorgeschlagen/zu prüfen) auf. Hat dieser Fund keine solche Karte
+            # - nur abgelehnt/verworfen/übernommen oder noch gar nicht
+            # vorgeschlagen -, wird er übersprungen, ohne die teure KI-Extraktion
+            # erneut auszulösen (Kostenersparnis; keine ungewollte Wiederbelebung
+            # abgelehnter oder Entdeckung neuer Funde - dafür ist "Jetzt suchen").
+            if ignoriere_cache and (
+                db.query(DealVorschlag.id)
+                .filter(
+                    DealVorschlag.quelle_url == fund.quelle_url,
+                    DealVorschlag.status.in_(matching.STATUS_NEU_ANALYSIERBAR),
+                )
+                .first()
+                is None
+            ):
+                kategorie[fund.quelle]["vorhanden"] += 1
+                continue
+
             # Sobald für diese Quelle-URL schon mindestens ein Vorschlag
             # existiert (für irgendeinen Inhaber, egal welcher Status), gilt
             # sie bewusst als endgültig geprüft: geringfügig schwankender
@@ -437,6 +483,53 @@ def taeglicher_lauf(
                     _nicht_anwendbaren_vorschlag_entfernen(db, fund.quelle_url, inhaber.id)
                     continue
                 match = matching.bewerten(db, fund, extrahiert, inhaber, config.MINDESTPRAEMIE)
+
+                if ignoriere_cache:
+                    # "Alle neu analysieren": nur die handlungsrelevanten Karten
+                    # dieses Inhabers für diesen Fund (vorgeschlagen/zu prüfen)
+                    # werden aufgefrischt. Hat der Inhaber hier keine solche
+                    # Karte (abgelehnt/verworfen/übernommen oder noch keine),
+                    # wird nichts angefasst und nichts neu angelegt.
+                    if (
+                        db.query(DealVorschlag.id)
+                        .filter(
+                            DealVorschlag.quelle_url == fund.quelle_url,
+                            DealVorschlag.inhaber_id == inhaber.id,
+                            DealVorschlag.status.in_(matching.STATUS_NEU_ANALYSIERBAR),
+                        )
+                        .first()
+                        is None
+                    ):
+                        continue
+
+                    # Genau eine frische Karte erzeugen: die bestehende
+                    # handlungsrelevante Karte mit gleichem Inhalts-Hash direkt
+                    # überschreiben, sonst (z.B. weil die Neuanalyse jetzt mehr
+                    # Bedingungen findet -> anderer Hash) eine neue anlegen.
+                    # Danach die veraltete, noch offene Dublette entfernen.
+                    bestehend = matching.bestehenden_vorschlag_finden(
+                        db, fund.quelle_url, inhaber.id, match.inhalt_hash
+                    )
+                    if bestehend is not None and bestehend.status in matching.STATUS_NEU_ANALYSIERBAR:
+                        _vorschlag_felder_setzen(bestehend, extrahiert, match)
+                        behalten_id = bestehend.id
+                    else:
+                        neu = DealVorschlag(
+                            inhaber_id=inhaber.id,
+                            quelle=fund.quelle,
+                            quelle_url=fund.quelle_url,
+                            inhalt_hash=match.inhalt_hash,
+                        )
+                        _vorschlag_felder_setzen(neu, extrahiert, match)
+                        db.add(neu)
+                        db.flush()
+                        behalten_id = neu.id
+                    _veraltete_analysierbare_offene_entfernen(db, fund.quelle_url, inhaber.id, behalten_id)
+                    zaehler["aktualisiert"] += 1
+                    aktualisiert_fuer_fund = True
+                    zaehler[match.status] = zaehler.get(match.status, 0) + 1
+                    continue
+
                 bestehend = matching.bestehenden_vorschlag_finden(
                     db, fund.quelle_url, inhaber.id, match.inhalt_hash
                 )
@@ -445,16 +538,7 @@ def taeglicher_lauf(
                         # Bereits vom Nutzer übernommen oder verworfen -
                         # bleibt in jedem Fall unangetastet.
                         continue
-                    if ignoriere_cache:
-                        # Erzwungene Neuprüfung: die Zeile komplett mit dem
-                        # frischen Ergebnis überschreiben, auch wenn sich der
-                        # Inhalts-Hash nicht geändert hat (z.B. weil jetzt
-                        # erstmals eine Prämien-Aufschlüsselung erkannt wurde).
-                        _vorschlag_felder_setzen(bestehend, extrahiert, match)
-                        zaehler["aktualisiert"] += 1
-                        aktualisiert_fuer_fund = True
-                        zaehler[match.status] = zaehler.get(match.status, 0) + 1
-                    elif bestehend.status != match.status:
+                    if bestehend.status != match.status:
                         # Gleicher Inhalt wie zuvor - i.d.R. nichts zu tun.
                         # Nur wenn sich die Bewertung rein durch Zeitablauf
                         # geändert hat (z.B. eine Sperrfrist ist inzwischen
