@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.44.4
+
+Nach dem Speichern der Deal-Detailseite wechselt die Ansicht wieder automatisch in den Nur-Lese-Modus (Read-Only-Modus).
+
+- Bisher verblieb die App nach dem Klicken auf „Speichern“ auf der Bearbeitungs-Seite im Editier-Modus.
+- Nun wird der Nutzer direkt auf die Nur-Lese-Detailansicht des Deals weitergeleitet, um versehentliche Änderungen zu vermeiden.
+
 ## 2.44.3
 
 Übersicht: Pipeline-Kacheln verlinken nun auf den zugehörigen Bereich in „Zu erledigen" (ToDos) statt auf die Deals-Liste.

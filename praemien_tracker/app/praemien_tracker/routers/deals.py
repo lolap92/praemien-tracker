@@ -434,7 +434,7 @@ async def deal_update(request: Request, deal_id: int, db: Session = Depends(get_
         a.faellig_bis = parse_date(form.get(f"{praefix}faellig_bis") or "")
 
     db.commit()
-    return redirect(request, f"deals/{deal_id}/edit")
+    return redirect(request, f"deals/{deal_id}")
 
 
 @router.post("/deals/{deal_id}/kuendigung-hinweis")

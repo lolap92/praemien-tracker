@@ -60,3 +60,19 @@ def test_deal_update_setzt_ki_flag_ebenfalls_zurueck(db, ki_deal):
 
     db.refresh(ki_deal)
     assert ki_deal.kuendigung_hinweis_ki is False
+
+
+def test_deal_update_redirects_to_detail(db, ki_deal):
+    antwort = client.post(
+        f"/deals/{ki_deal.id}",
+        data={
+            "bank": "Testbank",
+            "inhaber": "Alice",
+            "kontoart": "Girokonto",
+            "kuendigung_hinweis": "KI-Text",
+            "kuendigung_hinweis_url": "https://x",
+        },
+        follow_redirects=False,
+    )
+    assert antwort.status_code == 303
+    assert antwort.headers["location"] == f"/deals/{ki_deal.id}"
