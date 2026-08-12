@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.38.2
+
+Beim Abbrechen/Stornieren eines Deals werden nun auch alle zugehörigen
+Aufgaben automatisch geschlossen (erledigt) und nicht nur die Bedingungen.
+
 ## 2.38.1
 
 Test-Benachrichtigung entfernt: Button und Endpoint gelöscht.
