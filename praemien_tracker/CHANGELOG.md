@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.46.0
+
+Deal-Detailseite wird standardmäßig im Read-only Modus geöffnet.
+
+- **Detailseite statt Bearbeiten-Formular beim Navigieren:** Jeder Navigationslink, der bisher direkt zur Bearbeitungsseite (`/deals/{id}/edit`) geführt hat (unter anderem aus der ToDo-Liste, der Vollständigkeit, den Sperrfristen und dem Änderungsprotokoll), öffnet nun standardmäßig die schreibgeschützte Detailseite (`/deals/{id}`).
+- **Sicherheit vor versehentlichen Änderungen:** Damit wird ein versehentliches Ändern oder Löschen von Daten beim bloßen Anschauen von Deals zuverlässig verhindert. Über den dortigen "Bearbeiten"-Button kann die Bearbeitungsseite weiterhin gezielt aufgerufen werden.
+
 ## 2.45.0
 
 Layout der Deal-Bearbeitungsseite optimiert und Sicherheitsabfragen über Modal-Dialoge eingeführt.

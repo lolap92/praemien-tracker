@@ -143,7 +143,7 @@
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
             <div class="ti-main">
-              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+              <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.text }}</a>
               {% if todo.faellig_bis %}
               <div class="frist {{ 'ueberfaellig' if todo.ueberfaellig else '' }}">Fällig bis {{ todo.faellig_bis | datum }}</div>
               {% endif %}
@@ -160,7 +160,7 @@
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
             <div class="ti-main">
-              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+              <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.text }}</a>
               <div class="pruef-datum">
                 <span>Nächste Prüfung {{ praemie_naechste_pruefung(p) | datum }}</span>
                 <form action="todos/praemien/{{ p.id }}/pruefung-verschieben" method="post" class="inline">
@@ -181,7 +181,7 @@
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
             <div class="ti-main">
-              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+              <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.text }}</a>
               {% if todo.faellig_bis %}<div class="frist">Kündbar seit {{ todo.faellig_bis | datum }}</div>{% endif %}
             </div>
           </div>
@@ -195,7 +195,7 @@
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
             <div class="ti-main">
-              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+              <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.text }}</a>
             </div>
           </div>
 
@@ -208,7 +208,7 @@
               <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
             </form>
             <div class="ti-main">
-              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+              <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.text }}</a>
             </div>
           </div>
 
@@ -223,7 +223,7 @@
                      title="Angesehen, passt so">
             </form>
             <div class="ti-main">
-              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+              <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.text }}</a>
             </div>
           </div>
 
@@ -237,7 +237,7 @@
             </form>
             <div class="ti-main">
               {% if todo.deal %}
-              <a class="t" href="deals/{{ todo.deal.id }}/edit">{{ todo.text }}</a>
+              <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.text }}</a>
               {% else %}
               <div class="t">{{ todo.text }}</div>
               {% endif %}
