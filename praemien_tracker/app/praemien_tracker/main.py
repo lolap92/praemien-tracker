@@ -41,7 +41,6 @@ from .demo_seed import lade_demo_daten
 from .finder.lauf import geplanter_lauf
 from .kuendigung_recherche import naechtlicher_lauf as kuendigung_hinweise_lauf
 from .routers import (
-    completeness,
     deals,
     inhaber,
     overview,
@@ -233,7 +232,6 @@ def create_app() -> FastAPI:
     app.include_router(overview.router)
     app.include_router(todos.router)
     app.include_router(deals.router)
-    app.include_router(completeness.router)
     app.include_router(sperrfristen.router)
     app.include_router(protokoll_router.router)
     app.include_router(vorschlaege.router)

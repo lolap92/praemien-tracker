@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.46.1
+
+Neue ToDo-Kategorie "Deal pflegen": führt die bisherige eigene
+"Vollständigkeit"-Seite und die alte "Zugangsdaten"-Kategorie in "Zu
+erledigen" zusammen.
+
+- Die Seite "Vollständigkeit" (Menüpunkt unter "Mehr") entfällt komplett -
+  ihr Inhalt steckt jetzt als eigene Kategorie "Deal pflegen" direkt hinter
+  "Manuelle Aufgaben" in "Zu erledigen", noch vor "Bedingungen". Jeder Deal
+  mit einer fehlenden Kontonummer, ungesicherten Zugangsdaten oder einer
+  offenen Prämie ohne erwartetes Auszahlungsdatum landet dort als eigener
+  Eintrag mit einem Feld-Chip je offener Angabe - "+" springt zum jeweiligen
+  Feld im Bearbeiten-Formular, "×" markiert es als "nicht nötig" (wie bisher
+  auf der Vollständigkeits-Seite). Freibetrag ist bewusst nicht mehr Teil
+  davon.
+- Die alte "Zugangsdaten"-Kategorie mit ihrer Einzel-Checkbox entfällt - das
+  Feld wird jetzt genauso wie Kontonummer/Auszahlung über "Deal pflegen"
+  gepflegt.
+- "Deal pflegen" ist bewusst kein siebter Pipeline-Status: ein Deal kann
+  gleichzeitig einen der sechs echten Status UND offene Angaben haben. Auf
+  der Übersicht bekommt es deshalb eine eigene Kachel neben der
+  Pipeline-Kachel, nicht ein zusätzliches Pipeline-Segment.
+- Migrations-Hinweis für bestehende Add-on-Installationen: keine, die
+  zugrunde liegenden Datenbank-Felder (kontonummer, zugangsdaten_gespeichert,
+  auszahlung_erwartet, uebersprungene_felder) bleiben unverändert.
+
 ## 2.46.0
 
 Deal-Detailseite wird standardmäßig im Read-only Modus geöffnet.

@@ -66,8 +66,8 @@ a {
    Fonts/Tokens): helle sticky Appbar mit Kontext-Zeile + Seitentitel,
    3 Hauptreiter (Übersicht/Zu erledigen/Deals) unten als Tabbar auf dem
    Handy bzw. oben als Pill-Nav ab 720px, plus ein "Mehr"-Menü für die
-   selten gebrauchten Nebenfunktionen (Vorschläge, Vollständigkeit,
-   Sperrfristen, Protokoll) statt eigener Reiter dafür. */
+   selten gebrauchten Nebenfunktionen (Vorschläge, Sperrfristen, Protokoll)
+   statt eigener Reiter dafür. */
 
 .appbar {
   background: var(--surface);
@@ -452,6 +452,9 @@ main {
   margin-top: 0.1rem;
 }
 
+.pipe-bar-pflegen {
+  background: var(--ink-faint);
+}
 .pipe-bar-bedingungen {
   background: var(--st-cond);
 }
@@ -696,12 +699,12 @@ body:has(#todotab-praemie_pruefen:checked) .todo-quelle-filter-praemie_pruefen {
 }
 
 #todotab-manuell:checked ~ .todo-tabs-nav label[for="todotab-manuell"],
+#todotab-pflegen:checked ~ .todo-tabs-nav label[for="todotab-pflegen"],
 #todotab-bedingungen:checked ~ .todo-tabs-nav label[for="todotab-bedingungen"],
 #todotab-praemie:checked ~ .todo-tabs-nav label[for="todotab-praemie"],
 #todotab-praemie_pruefen:checked ~ .todo-tabs-nav label[for="todotab-praemie_pruefen"],
 #todotab-kuendigen:checked ~ .todo-tabs-nav label[for="todotab-kuendigen"],
 #todotab-bestaetigung:checked ~ .todo-tabs-nav label[for="todotab-bestaetigung"],
-#todotab-zugangsdaten:checked ~ .todo-tabs-nav label[for="todotab-zugangsdaten"],
 #todotab-pruefen:checked ~ .todo-tabs-nav label[for="todotab-pruefen"] {
   background: var(--ink);
   color: #fff;
@@ -709,23 +712,23 @@ body:has(#todotab-praemie_pruefen:checked) .todo-quelle-filter-praemie_pruefen {
 }
 
 #todotab-manuell:checked ~ .todo-tabs-nav label[for="todotab-manuell"] .num,
+#todotab-pflegen:checked ~ .todo-tabs-nav label[for="todotab-pflegen"] .num,
 #todotab-bedingungen:checked ~ .todo-tabs-nav label[for="todotab-bedingungen"] .num,
 #todotab-praemie:checked ~ .todo-tabs-nav label[for="todotab-praemie"] .num,
 #todotab-praemie_pruefen:checked ~ .todo-tabs-nav label[for="todotab-praemie_pruefen"] .num,
 #todotab-kuendigen:checked ~ .todo-tabs-nav label[for="todotab-kuendigen"] .num,
 #todotab-bestaetigung:checked ~ .todo-tabs-nav label[for="todotab-bestaetigung"] .num,
-#todotab-zugangsdaten:checked ~ .todo-tabs-nav label[for="todotab-zugangsdaten"] .num,
 #todotab-pruefen:checked ~ .todo-tabs-nav label[for="todotab-pruefen"] .num {
   color: rgba(255, 255, 255, 0.7);
 }
 
 #todotab-manuell:checked ~ .todo-panels #panel-manuell,
+#todotab-pflegen:checked ~ .todo-panels #panel-pflegen,
 #todotab-bedingungen:checked ~ .todo-panels #panel-bedingungen,
 #todotab-praemie:checked ~ .todo-panels #panel-praemie,
 #todotab-praemie_pruefen:checked ~ .todo-panels #panel-praemie_pruefen,
 #todotab-kuendigen:checked ~ .todo-panels #panel-kuendigen,
 #todotab-bestaetigung:checked ~ .todo-panels #panel-bestaetigung,
-#todotab-zugangsdaten:checked ~ .todo-panels #panel-zugangsdaten,
 #todotab-pruefen:checked ~ .todo-panels #panel-pruefen {
   display: block;
 }
@@ -776,7 +779,7 @@ body:has(#todotab-praemie_pruefen:checked) .todo-quelle-filter-praemie_pruefen {
 .tag-bestaetigung {
   background: var(--st-confirm);
 }
-.tag-zugangsdaten {
+.tag-pflegen {
   background: var(--ink-faint);
 }
 .tag-manuell {
@@ -1442,7 +1445,7 @@ button.warn,
   margin-bottom: 1rem;
 }
 
-/* ---------- Vollständigkeit ---------- */
+/* ---------- Deal pflegen: Feld-Chips (+ befüllen, × nicht nötig) ---------- */
 
 .miss {
   display: flex;

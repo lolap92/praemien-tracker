@@ -180,11 +180,11 @@ def test_ueberfaellige_bedingung_wird_markiert():
     assert todo.ueberfaellig is True
 
 
-def test_zugangsdaten_todo_nur_wenn_nicht_gesichert():
+def test_zugangsdaten_erzeugt_deal_pflegen_todo_nur_wenn_nicht_gesichert():
     ohne = mache_deal(zugangsdaten_gespeichert=False)
     mit = mache_deal(zugangsdaten_gespeichert=True)
-    assert any(t.kategorie == "Zugangsdaten" for t in derived.deal_todos(ohne, HEUTE))
-    assert not any(t.kategorie == "Zugangsdaten" for t in derived.deal_todos(mit, HEUTE))
+    assert any(t.kategorie == "Deal pflegen" for t in derived.deal_todos(ohne, HEUTE))
+    assert not any(t.kategorie == "Deal pflegen" for t in derived.deal_todos(mit, HEUTE))
 
 
 def test_erledigte_aufgaben_erscheinen_nicht_in_der_liste():
@@ -203,16 +203,26 @@ def test_quelle_label_uebersetzt_bekannte_werte():
 
 
 def test_offene_felder_meldet_fehlende_angaben():
-    deal = mache_deal(kontonummer=None, freibetrag=None)
+    deal = mache_deal(kontonummer=None, zugangsdaten_gespeichert=False)
     assert {f.feld for f in derived.offene_felder(deal)} == set(derived.WUENSCHENSWERTE_FELDER)
 
 
 def test_uebersprungene_felder_gelten_nicht_als_offen():
-    deal = mache_deal(kontonummer=None, freibetrag=None)
+    deal = mache_deal(kontonummer=None, zugangsdaten_gespeichert=False)
     derived.uebersprungene_felder_speichern(deal, ["kontonummer"])
     offen = {f.feld for f in derived.offene_felder(deal)}
     assert "kontonummer" not in offen
-    assert "freibetrag" in offen
+    assert "zugangsdaten_gespeichert" in offen
+
+
+def test_zugangsdaten_gelten_bei_gekuendigtem_oder_storniertem_deal_nicht_als_offen():
+    """Anders als Kontonummer/Auszahlung ist ein leerer Wert hier nur solange
+    eine Lücke, wie das Konto noch läuft."""
+    gekuendigt = mache_deal(zugangsdaten_gespeichert=False, gekuendigt=True)
+    storniert = mache_deal(zugangsdaten_gespeichert=False)
+    storniert.storniert = True
+    assert "zugangsdaten_gespeichert" not in {f.feld for f in derived.offene_felder(gekuendigt)}
+    assert "zugangsdaten_gespeichert" not in {f.feld for f in derived.offene_felder(storniert)}
 
 
 def test_kaputte_uebersprungene_felder_werden_ignoriert():
