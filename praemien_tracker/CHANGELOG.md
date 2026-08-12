@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.44.5
+
+Beim Löschen eines Elements auf der Deal Detailseite wird die Seite nicht mehr neu geladen und andere gemachte Änderungen an Texten gehen nicht mehr verloren.
+
+- Das Löschen von Prämien, Bedingungen, Aufgaben und Links auf der Bearbeitungsseite eines Deals erfolgt nun asynchron im Hintergrund über die Fetch-API.
+- Die gelöschte Zeile wird direkt aus der Ansicht entfernt, ohne die Seite neu zu laden. Dadurch bleiben alle noch nicht gespeicherten Eingaben in anderen Textfeldern erhalten.
+
 ## 2.44.4
 
 Übersicht: Kachel „Abgeschlossen" in der Pipeline-Karte verlinkt nun auf die Deals-Liste und zeigt dort alle abgeschlossenen Deals an.
