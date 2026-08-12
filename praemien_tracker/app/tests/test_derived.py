@@ -281,3 +281,30 @@ def test_deal_todos_sortiert_gemischte_praemien_je_nach_eigenem_pruefdatum():
     assert pruefen[0].elemente == [deal.praemien[0]]
     assert len(warten) == 1
     assert warten[0].elemente == [deal.praemien[1]]
+
+
+def test_deal_todos_and_alle_todos_contain_kontoart():
+    # Setup a deal with conditions and an open task
+    deal = mache_deal(
+        bedingungen=[("3 Trades", False)],
+        kontonummer="DE123",
+        freibetrag=Decimal("100"),
+    )
+    # The default kontoart in mache_deal is "Depot"
+    assert deal.kontoart == "Depot"
+
+    # Verify that the deal todo text contains the kontoart "Depot"
+    todos = derived.deal_todos(deal, HEUTE)
+    assert len(todos) > 0
+    for t in todos:
+        if t.kategorie != "Zu prüfen":
+            assert "Depot" in t.text
+            assert f"{deal.bank.name} · {deal.kontoart} · {deal.inhaber.name}" in t.text
+
+    # Verify that manual task prefix contains the kontoart "Depot"
+    aufgabe = Aufgabe(beschreibung="Manuelle Aktion", erledigt=False, deal=deal)
+    all_t = derived.alle_todos([deal], [aufgabe], HEUTE)
+    manuelle_todos = [t for t in all_t if t.kategorie == "Manuelle Aufgaben"]
+    assert len(manuelle_todos) == 1
+    assert "Depot" in manuelle_todos[0].text
+    assert f"{deal.bank.name} · {deal.kontoart} · {deal.inhaber.name}" in manuelle_todos[0].text

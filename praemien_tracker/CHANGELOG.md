@@ -31,6 +31,12 @@ erscheinen jetzt nur noch dort, wo sie inhaltlich hingehören.
   offene Aufgabe - sonst gäbe es keine Möglichkeit mehr, die erste Aufgabe
   anzulegen. Der Tab, der beim Öffnen der Seite automatisch aktiv ist, bleibt
   aber weiterhin die erste Kategorie mit tatsächlichem Inhalt.
+- **Kontoart** in der ToDo-Liste („Zu erledigen") und bei manuellen Aufgaben:
+  Bei allen abgeleiteten Aufgaben sowie bei manuellen Aufgaben wird die Kontoart
+  (z. B. Giro, Depot) gut sichtbar zwischen dem Banknamen und dem Inhabernamen
+  angezeigt (z. B. `Testbank · Depot · Max`). Auch im Auswahl-Dropdown „Deal"
+  beim Anlegen einer neuen manuellen Aufgabe wird die Kontoart nun konsequent
+  zwischen Bank und Inhaber aufgeführt.
 
 ## 2.38.1
 

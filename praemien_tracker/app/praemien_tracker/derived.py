@@ -237,7 +237,7 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
     heute = heute or datetime.date.today()
     todos: list[Todo] = []
     s = status(deal)
-    bezeichnung = f"{deal.bank.name} · {deal.inhaber.name}"
+    bezeichnung = f"{deal.bank.name} · {deal.kontoart} · {deal.inhaber.name}"
 
     if s == STATUS_BEDINGUNGEN:
         offene = [b for b in deal.bedingungen if not b.erfuellt]
@@ -300,7 +300,7 @@ def alle_todos(
         if a.erledigt:
             continue
         ueberfaellig = bool(a.faellig_bis and a.faellig_bis < heute)
-        prefix = f"{a.deal.bank.name} · {a.deal.inhaber.name}: " if a.deal else ""
+        prefix = f"{a.deal.bank.name} · {a.deal.kontoart} · {a.deal.inhaber.name}: " if a.deal else ""
         todos.append(Todo("Manuelle Aufgaben", f"{prefix}{a.beschreibung}", a.deal, a.faellig_bis, ueberfaellig, [a]))
     return todos
 

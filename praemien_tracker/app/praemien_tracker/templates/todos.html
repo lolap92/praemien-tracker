@@ -18,7 +18,7 @@
           <select id="deal_id" name="deal_id">
             <option value="">– allgemein –</option>
             {% for d in deals %}
-            <option value="{{ d.id }}">{{ d.bank.name }} · {{ d.inhaber.name }}</option>
+            <option value="{{ d.id }}">{{ d.bank.name }} · {{ d.kontoart }} · {{ d.inhaber.name }}</option>
             {% endfor %}
           </select>
         </div>
