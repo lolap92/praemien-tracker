@@ -189,6 +189,9 @@ async def lifespan(app: FastAPI):
     if DEMO_MODUS:
         _demo_datenbank_zuruecksetzen()
     run_migrations()
+    if not DEMO_MODUS:
+        anzahl = auszahlungs_sync.sende_alle_aktuellen()
+        logger.info("Auszahlungs-Sync: %d Prämie(n) beim Start an den Budget-Tracker gemeldet.", anzahl)
     # Im Demo-Modus läuft der KI-Deal-Finder nicht im Hintergrund - er würde
     # sonst bei jedem Add-on-Start echte, kostenpflichtige API-/Website-
     # Anfragen auslösen und die Demo-Vorschläge mit echten Funden vermischen.

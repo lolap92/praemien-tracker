@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.47.1
+
+Nachtrag bestehender Prämien für den Budget-Tracker-Sync (2.47.0).
+
+- **Bestehende Prämien mit erwarteter Auszahlung wurden nach dem Update auf 2.47.0 nicht sichtbar, solange niemand sie bearbeitet hat:** Der Sync meldete bisher nur *künftige* Änderungen - eine Prämie, die schon vorher einen erwarteten Monat hatte, löste nie ein Ereignis aus. Bei jedem Start wird jetzt einmal der aktuelle Stand aller Prämien an den Budget-Tracker gemeldet (`auszahlungs_sync.sende_alle_aktuellen()`), unabhängig davon, ob sich etwas geändert hat - über die external_id im Budget-Tracker ohnehin idempotent.
+- **Erfolgreich gesendete Sync-Events werden jetzt geloggt** (vorher nur bei Fehlern oder fehlendem SUPERVISOR_TOKEN) - macht im Log sichtbar, ob ein Ereignis überhaupt abgeschickt wurde.
+
 ## 2.47.0
 
 Automatischer Sync von Prämien-Auszahlungen in den Budget-Tracker.

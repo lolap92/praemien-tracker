@@ -132,3 +132,38 @@ def test_unveraenderter_commit_loest_kein_event_aus(db, deal, aufrufe):
     db.commit()
 
     assert aufrufe == []
+
+
+class TestSendeAlleAktuellen:
+    """Nachtrag beim Start (auszahlungs_sync.sende_alle_aktuellen) - meldet
+    auch Prämien, an denen seit dem Update nichts geändert wurde."""
+
+    def test_meldet_jede_bestehende_faellige_praemie(self, db, deal, aufrufe):
+        p1 = Praemie(deal_id=deal.id, quelle="bank", betrag=Decimal("100"), erhalten=False, auszahlung_erwartet="2026-09")
+        p2 = Praemie(deal_id=deal.id, quelle="spartanien", betrag=Decimal("50"), erhalten=False, auszahlung_erwartet="2026-10")
+        db.add_all([p1, p2])
+        db.commit()
+        aufrufe.clear()
+
+        anzahl = auszahlungs_sync.sende_alle_aktuellen()
+
+        assert anzahl == 2
+        external_ids = {a["external_id"] for a in aufrufe}
+        assert external_ids == {f"praemientracker:{p1.id}", f"praemientracker:{p2.id}"}
+        assert all(a["aktion"] == "upsert" for a in aufrufe)
+
+    def test_meldet_loeschen_fuer_bereits_erhaltene_praemie(self, db, deal, aufrufe):
+        praemie = Praemie(deal_id=deal.id, quelle="bank", betrag=Decimal("100"), erhalten=True, auszahlung_erwartet="2026-09")
+        db.add(praemie)
+        db.commit()
+        aufrufe.clear()
+
+        auszahlungs_sync.sende_alle_aktuellen()
+
+        assert aufrufe == [{"external_id": f"praemientracker:{praemie.id}", "aktion": "loeschen"}]
+
+    def test_ohne_praemien_passiert_nichts(self, db, aufrufe):
+        anzahl = auszahlungs_sync.sende_alle_aktuellen()
+
+        assert anzahl == 0
+        assert aufrufe == []

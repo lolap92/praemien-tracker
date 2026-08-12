@@ -24,6 +24,7 @@ import httpx
 from sqlalchemy import event, inspect
 from sqlalchemy.orm import Session, attributes
 
+from .database import SessionLocal
 from .models import Praemie
 
 logger = logging.getLogger("praemien_tracker.sync")
@@ -76,6 +77,33 @@ def _sende_event(payload: dict, *, timeout: float = 10.0) -> None:
         antwort.raise_for_status()
     except Exception:
         logger.exception("Auszahlungs-Sync-Event fehlgeschlagen: %s", payload)
+    else:
+        # Bestätigt nur, dass Home Assistant das Event entgegengenommen hat -
+        # nicht, dass der Budget-Tracker gerade zuhört (HA-Events werden nicht
+        # nachgeliefert). Ohne diese Zeile liesse sich im Log nicht
+        # unterscheiden, ob ein Event nie gesendet oder nur nie empfangen wurde.
+        logger.info("Auszahlungs-Sync-Event gesendet: %s", payload)
+
+
+def sende_alle_aktuellen() -> int:
+    """Meldet den aktuellen Stand jeder vorhandenen Prämie, unabhängig von
+    einer Änderung - für den Nachtrag beim Start (siehe main.py).
+
+    Die Ereignis-Listener unten melden nur, was sich *ab jetzt* ändert. Ohne
+    diesen Nachtrag bliebe jede Prämie, die schon vor der Einführung dieses
+    Sync-Mechanismus einen erwarteten Auszahlungsmonat hatte, im
+    Budget-Tracker unsichtbar, bis sie zufällig einmal bearbeitet wird. Läuft
+    bei jedem Start erneut - kostet nur ein paar HTTP-Aufrufe und ist über die
+    external_id beim Budget-Tracker ohnehin idempotent."""
+    with SessionLocal() as db:
+        praemien = db.query(Praemie).all()
+    for praemie in praemien:
+        payload = _vorkommen_payload(praemie)
+        if payload is not None:
+            _sende_event(payload)
+        else:
+            _sende_event({"external_id": _external_id(praemie.id), "aktion": "loeschen"})
+    return len(praemien)
 
 
 @event.listens_for(Session, "before_flush")
