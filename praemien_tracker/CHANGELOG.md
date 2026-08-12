@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.40.0
+
+„Zu erledigen": „Neue Aufgabe" hinter einem Button verborgen, Quelle-Filter
+unter die Status-Kacheln verschoben.
+
+- „Neue Aufgabe" stand bisher als dauerhaft offenes Formular über den
+  Status-Kacheln. Es ist jetzt ein `<details>`-Umschalter ("+ Neue Aufgabe"),
+  standardmäßig eingeklappt - reines HTML/CSS wie die übrigen
+  Aufklapp-Elemente im Projekt, kein JavaScript.
+- Der Quelle-Filter stand bisher ganz oben, unabhängig vom gewählten Tab.
+  Er steht jetzt unterhalb der Status-Kacheln und oberhalb des eigentlichen
+  ToDo-Inhalts - weiterhin nur sichtbar auf „Auf Prämie warten" und
+  „Prämienauszahlung prüfen" (siehe 2.39.0).
+
 ## 2.39.0
 
 „Zu erledigen": „Neue Aufgabe"/„Erledigte Aufgaben" und der Quelle-Filter

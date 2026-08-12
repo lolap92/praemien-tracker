@@ -184,14 +184,17 @@ def test_default_tab_ist_erste_kategorie_mit_inhalt_nicht_manuelle_aufgaben(db):
 
 
 def test_neue_aufgabe_und_erledigte_aufgaben_stecken_im_manuell_tab(db):
-    """Beide Karten tragen die CSS-Klasse, die sie an den 'manuell'-Tab
+    """Beide Blöcke tragen die CSS-Klasse, die sie an den 'manuell'-Tab
     bindet (siehe body:has(#todotab-manuell:checked) in style.css) - das
-    HTML selbst liefert der Server immer, die Sichtbarkeit regelt reines CSS."""
+    HTML selbst liefert der Server immer, die Sichtbarkeit regelt reines CSS.
+    "Neue Aufgabe" ist zusätzlich ein <details> hinter einem Button-Umschalter
+    (per default eingeklappt, kein dauerhaft offenes Formular mehr)."""
     db.add(Aufgabe(beschreibung="Erledigt", erledigt=True))
     db.commit()
 
     antwort = client.get("/todos")
-    assert 'class="card neue-aufgabe-card"' in antwort.text
+    assert '<details class="neue-aufgabe-card">' in antwort.text
+    assert "+ Neue Aufgabe" in antwort.text
     assert 'class="card erledigte-aufgaben-card"' in antwort.text
     assert "Erledigte Aufgaben" in antwort.text
 
@@ -201,3 +204,15 @@ def test_quelle_filter_traegt_css_klasse_fuer_praemien_tabs(db):
     nur an die beiden Prämien-Tabs statt an 'manuell' (siehe style.css)."""
     antwort = client.get("/todos")
     assert 'class="filterleiste todo-quelle-filter"' in antwort.text
+
+
+def test_quelle_filter_steht_hinter_den_kacheln_vor_den_todos(db):
+    """Der Filter soll unter der Status-Kachel-Navigation stehen, aber über
+    dem eigentlichen ToDo-Inhalt - also im Markup nach .todo-tabs-nav und vor
+    .todo-panels."""
+    antwort = client.get("/todos")
+    html = antwort.text
+    idx_kacheln = html.index('class="todo-tabs-nav"')
+    idx_filter = html.index('class="filterleiste todo-quelle-filter"')
+    idx_panels = html.index('class="todo-panels"')
+    assert idx_kacheln < idx_filter < idx_panels

@@ -3,57 +3,34 @@
 {% block appbar_title %}Zu erledigen{% endblock %}
 {% block content %}
 
-<form class="filterleiste todo-quelle-filter" method="get" action="todos">
-  {% if aktiver_tab %}
-  <input type="hidden" name="tab" value="{{ aktiver_tab }}">
-  {% endif %}
-  <details class="multi-filter">
-    <summary>Quelle{% if filter_quelle %} (1){% endif %}</summary>
-    <div class="multi-filter-panel">
-      <label>
-        <input type="radio" name="quelle" value="" {{ "checked" if not filter_quelle else "" }} onclick="this.form.submit()">
-        – Alle –
-      </label>
-      <label>
-        <input type="radio" name="quelle" value="spartanien" {{ "checked" if filter_quelle == "spartanien" else "" }} onclick="this.form.submit()">
-        Spartanien
-      </label>
-      <label>
-        <input type="radio" name="quelle" value="bank" {{ "checked" if filter_quelle == "bank" else "" }} onclick="this.form.submit()">
-        Bank
-      </label>
-    </div>
-  </details>
-  <button type="submit" class="secondary">Filtern</button>
-  {% if filter_quelle %}<a class="button secondary" href="todos{% if aktiver_tab %}?tab={{ aktiver_tab }}{% endif %}">Zurücksetzen</a>{% endif %}
-</form>
-
-<div class="card neue-aufgabe-card">
-  <h2>Neue Aufgabe</h2>
-  <form action="todos/aufgaben" method="post">
-    <input type="hidden" name="quelle" value="{{ filter_quelle }}">
-    <div class="feld">
-      <label for="beschreibung">Beschreibung</label>
-      <input type="text" id="beschreibung" name="beschreibung" required>
-    </div>
-    <div class="reihe">
+<details class="neue-aufgabe-card">
+  <summary class="neue-aufgabe-toggle">+ Neue Aufgabe</summary>
+  <div class="card">
+    <form action="todos/aufgaben" method="post">
+      <input type="hidden" name="quelle" value="{{ filter_quelle }}">
       <div class="feld">
-        <label for="deal_id">Deal (optional)</label>
-        <select id="deal_id" name="deal_id">
-          <option value="">– allgemein –</option>
-          {% for d in deals %}
-          <option value="{{ d.id }}">{{ d.bank.name }} · {{ d.inhaber.name }}</option>
-          {% endfor %}
-        </select>
+        <label for="beschreibung">Beschreibung</label>
+        <input type="text" id="beschreibung" name="beschreibung" required>
       </div>
-      <div class="feld">
-        <label for="faellig_bis">Frist (optional)</label>
-        <input type="date" id="faellig_bis" name="faellig_bis">
+      <div class="reihe">
+        <div class="feld">
+          <label for="deal_id">Deal (optional)</label>
+          <select id="deal_id" name="deal_id">
+            <option value="">– allgemein –</option>
+            {% for d in deals %}
+            <option value="{{ d.id }}">{{ d.bank.name }} · {{ d.inhaber.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="feld">
+          <label for="faellig_bis">Frist (optional)</label>
+          <input type="date" id="faellig_bis" name="faellig_bis">
+        </div>
       </div>
-    </div>
-    <button type="submit">Aufgabe anlegen</button>
-  </form>
-</div>
+      <button type="submit">Aufgabe anlegen</button>
+    </form>
+  </div>
+</details>
 
 <div class="todo-tabs">
   {% for kategorie in kategorie_reihenfolge %}
@@ -75,6 +52,31 @@
       {% endif %}
     {% endfor %}
   </div>
+
+  <form class="filterleiste todo-quelle-filter" method="get" action="todos">
+    {% if aktiver_tab %}
+    <input type="hidden" name="tab" value="{{ aktiver_tab }}">
+    {% endif %}
+    <details class="multi-filter">
+      <summary>Quelle{% if filter_quelle %} (1){% endif %}</summary>
+      <div class="multi-filter-panel">
+        <label>
+          <input type="radio" name="quelle" value="" {{ "checked" if not filter_quelle else "" }} onclick="this.form.submit()">
+          – Alle –
+        </label>
+        <label>
+          <input type="radio" name="quelle" value="spartanien" {{ "checked" if filter_quelle == "spartanien" else "" }} onclick="this.form.submit()">
+          Spartanien
+        </label>
+        <label>
+          <input type="radio" name="quelle" value="bank" {{ "checked" if filter_quelle == "bank" else "" }} onclick="this.form.submit()">
+          Bank
+        </label>
+      </div>
+    </details>
+    <button type="submit" class="secondary">Filtern</button>
+    {% if filter_quelle %}<a class="button secondary" href="todos{% if aktiver_tab %}?tab={{ aktiver_tab }}{% endif %}">Zurücksetzen</a>{% endif %}
+  </form>
 
   <div class="todo-panels">
     {% for kategorie in kategorie_reihenfolge %}

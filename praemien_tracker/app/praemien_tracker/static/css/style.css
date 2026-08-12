@@ -636,6 +636,34 @@ body:has(#todotab-praemie_pruefen:checked) .filterleiste.todo-quelle-filter {
   display: flex;
 }
 
+/* "Neue Aufgabe" ist ein <details>: standardmäßig eingeklappt, öffnet auf
+   Klick auf den Button ("+ Neue Aufgabe") und zeigt das Formular in einer
+   eigenen Karte darunter - keine dauerhaft sichtbare Eingabemaske mehr. */
+.neue-aufgabe-toggle {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  border-radius: 20px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.neue-aufgabe-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.neue-aufgabe-card[open] > .neue-aufgabe-toggle {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
 .todo-panels > .todo-gruppe {
   display: none;
 }
