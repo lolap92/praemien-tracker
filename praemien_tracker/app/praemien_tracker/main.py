@@ -27,6 +27,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect
 
+from . import auszahlungs_sync  # noqa: F401  (registriert die Budget-Tracker-Sync-Events)
 from . import protokoll  # noqa: F401  (registriert die Änderungsprotokoll-Events)
 from .config import (
     DATABASE_URL,

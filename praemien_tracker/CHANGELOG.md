@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.47.0
+
+Automatischer Sync von Prämien-Auszahlungen in den Budget-Tracker.
+
+- **Jede Auszahlung wird jetzt als Forecast im Budget-Tracker nachgeführt:** Wird eine Prämie angelegt, im Betrag oder im erwarteten Auszahlungsmonat geändert oder gelöscht, meldet der Prämien-Tracker das automatisch per Home-Assistant-Event an das Budget-Tracker-Add-on, das daraus einen Forecast-Eintrag im Topf "Sonderausgaben" anlegt, aktualisiert oder wieder entfernt (siehe `app/praemien_tracker/auszahlungs_sync.py`). Wird eine Prämie als "erhalten" markiert oder ist kein erwarteter Monat gepflegt, entfernt der Budget-Tracker einen zuvor angelegten Forecast-Eintrag wieder - eine bereits erhaltene Auszahlung soll die Prognose nicht länger belasten.
+- Da `auszahlung_erwartet` nur einen Monat kennt, wird für den Forecast-Termin der 15. dieses Monats als Näherung verwendet.
+- Setzt voraus, dass das Budget-Tracker-Add-on ab Version 1.34.0 läuft (dort neu: der Empfang dieser Events).
+
 ## 2.46.0
 
 Deal-Detailseite wird standardmäßig im Read-only Modus geöffnet.
