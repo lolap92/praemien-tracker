@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.44.4
+
+Übersicht: Kachel „Abgeschlossen" in der Pipeline-Karte verlinkt nun auf die Deals-Liste und zeigt dort alle abgeschlossenen Deals an.
+
+- Wenn ein Nutzer auf die Kachel „Abgeschlossen" in der Pipeline der Übersichtskarte klickt, wird er nun auf `/deals?status=abgeschlossen` weitergeleitet.
+- Dadurch lassen sich die bereits erfolgreich beendeten Deals direkt und gefiltert betrachten, anstatt auf die leere ToDo-Seite geführt zu werden.
+
 ## 2.44.3
 
 Übersicht: Pipeline-Kacheln verlinken nun auf den zugehörigen Bereich in „Zu erledigen" (ToDos) statt auf die Deals-Liste.

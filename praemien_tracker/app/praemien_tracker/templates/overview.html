@@ -31,8 +31,12 @@
       'bestaetigung_warten': 'bestaetigung'
     } %}
     {% for s in status_order %}
+    {% if s == 'abgeschlossen' %}
+    <a class="seg" href="deals?status=abgeschlossen">
+    {% else %}
     {% set tab_slug = status_to_tab.get(s) %}
     <a class="seg" href="todos{% if tab_slug %}?tab={{ tab_slug }}{% endif %}">
+    {% endif %}
       <div class="bar pipe-bar-{{ s }}"></div>
       <div class="cnt">{{ nach_status[s] | length }}</div>
       <div class="nm">{{ status_labels[s] }}</div>
