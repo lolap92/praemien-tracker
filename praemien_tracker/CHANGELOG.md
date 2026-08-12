@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.41.0
+
+„Zu erledigen": Der „+ Neue Aufgabe"-Button steht jetzt an derselben Stelle
+wie der Quelle-Filter.
+
+- Analog zum Quelle-Filter (2.40.0) steht auch „+ Neue Aufgabe" jetzt unter
+  der Status-Kachel-Navigation und über dem eigentlichen ToDo-Inhalt, statt
+  wie bisher ganz oben vor den Kacheln. Sichtbar bleibt er weiterhin nur auf
+  dem Tab „Manuelle Aufgaben".
+
 ## 2.40.0
 
 „Zu erledigen": „Neue Aufgabe" hinter einem Button verborgen, Quelle-Filter

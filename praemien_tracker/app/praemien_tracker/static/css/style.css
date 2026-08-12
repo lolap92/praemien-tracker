@@ -613,9 +613,12 @@ a.chip:focus-visible {
 /* Kontextabhängige Blöcke: "Neue Aufgabe"/"Erledigte Aufgaben" gehören
    inhaltlich zu "Manuelle Aufgaben" und erscheinen deshalb nur, wenn dieser
    Tab aktiv ist; der Quelle-Filter ergibt nur auf den beiden Prämien-Tabs
-   einen Sinn. Ausgewertet über :has() auf body, weil alle drei Blöcke an
-   anderer Stelle im Markup stehen als die Tab-Radios (siehe todos.html) -
-   dieselbe reine-CSS-Technik wie die Tabs selbst, kein JS nötig.
+   einen Sinn. Ausgewertet über :has() auf body statt eines einfachen
+   #todotab-x:checked ~ .block (wie beim Umschalten der Panels), weil
+   "Erledigte Aufgaben" ganz am Ende der Seite steht, außerhalb von
+   .todo-tabs - :has() funktioniert unabhängig von der Position im Markup und
+   wird hier für alle drei Blöcke einheitlich verwendet, dieselbe reine-CSS-
+   Technik wie die Tabs selbst, kein JS nötig.
    .filterleiste.todo-quelle-filter (zwei Klassen) statt nur
    .todo-quelle-filter, damit die Regel unabhängig von der Reihenfolge im
    Stylesheet die geteilte .filterleiste-Basis (auch von deals_list.html und

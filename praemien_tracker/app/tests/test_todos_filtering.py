@@ -216,3 +216,15 @@ def test_quelle_filter_steht_hinter_den_kacheln_vor_den_todos(db):
     idx_filter = html.index('class="filterleiste todo-quelle-filter"')
     idx_panels = html.index('class="todo-panels"')
     assert idx_kacheln < idx_filter < idx_panels
+
+
+def test_neue_aufgabe_button_steht_hinter_den_kacheln_vor_den_todos(db):
+    """Analog zum Quelle-Filter: der "+ Neue Aufgabe"-Umschalter steht unter
+    der Status-Kachel-Navigation und über dem eigentlichen ToDo-Inhalt, nicht
+    mehr ganz oben vor den Kacheln."""
+    antwort = client.get("/todos")
+    html = antwort.text
+    idx_kacheln = html.index('class="todo-tabs-nav"')
+    idx_neue_aufgabe = html.index('<details class="neue-aufgabe-card">')
+    idx_panels = html.index('class="todo-panels"')
+    assert idx_kacheln < idx_neue_aufgabe < idx_panels

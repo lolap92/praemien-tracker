@@ -3,35 +3,6 @@
 {% block appbar_title %}Zu erledigen{% endblock %}
 {% block content %}
 
-<details class="neue-aufgabe-card">
-  <summary class="neue-aufgabe-toggle">+ Neue Aufgabe</summary>
-  <div class="card">
-    <form action="todos/aufgaben" method="post">
-      <input type="hidden" name="quelle" value="{{ filter_quelle }}">
-      <div class="feld">
-        <label for="beschreibung">Beschreibung</label>
-        <input type="text" id="beschreibung" name="beschreibung" required>
-      </div>
-      <div class="reihe">
-        <div class="feld">
-          <label for="deal_id">Deal (optional)</label>
-          <select id="deal_id" name="deal_id">
-            <option value="">– allgemein –</option>
-            {% for d in deals %}
-            <option value="{{ d.id }}">{{ d.bank.name }} · {{ d.kontoart }} · {{ d.inhaber.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="feld">
-          <label for="faellig_bis">Frist (optional)</label>
-          <input type="date" id="faellig_bis" name="faellig_bis">
-        </div>
-      </div>
-      <button type="submit">Aufgabe anlegen</button>
-    </form>
-  </div>
-</details>
-
 <div class="todo-tabs">
   {% for kategorie in kategorie_reihenfolge %}
     {% if gruppen.get(kategorie) or kategorie == "Manuelle Aufgaben" %}
@@ -52,6 +23,35 @@
       {% endif %}
     {% endfor %}
   </div>
+
+  <details class="neue-aufgabe-card">
+    <summary class="neue-aufgabe-toggle">+ Neue Aufgabe</summary>
+    <div class="card">
+      <form action="todos/aufgaben" method="post">
+        <input type="hidden" name="quelle" value="{{ filter_quelle }}">
+        <div class="feld">
+          <label for="beschreibung">Beschreibung</label>
+          <input type="text" id="beschreibung" name="beschreibung" required>
+        </div>
+        <div class="reihe">
+          <div class="feld">
+            <label for="deal_id">Deal (optional)</label>
+            <select id="deal_id" name="deal_id">
+              <option value="">– allgemein –</option>
+              {% for d in deals %}
+              <option value="{{ d.id }}">{{ d.bank.name }} · {{ d.kontoart }} · {{ d.inhaber.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="feld">
+            <label for="faellig_bis">Frist (optional)</label>
+            <input type="date" id="faellig_bis" name="faellig_bis">
+          </div>
+        </div>
+        <button type="submit">Aufgabe anlegen</button>
+      </form>
+    </div>
+  </details>
 
   <form class="filterleiste todo-quelle-filter" method="get" action="todos">
     {% if aktiver_tab %}
