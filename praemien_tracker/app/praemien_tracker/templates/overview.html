@@ -23,8 +23,16 @@
 <div class="card">
   <div class="card-label">Pipeline · {{ anzahl_deals }} Deals</div>
   <div class="pipe">
+    {% set status_to_tab = {
+      'bedingungen': 'bedingungen',
+      'praemie_warten': 'praemie',
+      'praemie_pruefen': 'praemie_pruefen',
+      'kuendigen': 'kuendigen',
+      'bestaetigung_warten': 'bestaetigung'
+    } %}
     {% for s in status_order %}
-    <a class="seg" href="deals?status={{ s }}">
+    {% set tab_slug = status_to_tab.get(s) %}
+    <a class="seg" href="todos{% if tab_slug %}?tab={{ tab_slug }}{% endif %}">
       <div class="bar pipe-bar-{{ s }}"></div>
       <div class="cnt">{{ nach_status[s] | length }}</div>
       <div class="nm">{{ status_labels[s] }}</div>
