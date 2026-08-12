@@ -81,3 +81,73 @@ def test_todos_sorting_and_filtering(db):
     html_bank = antwort_bank.text
     assert "Prämie prüfen (Spartanien, 50.00 €)" not in html_bank
     assert "Prämie prüfen (Bank, 100.00 €)" in html_bank
+
+
+def test_todos_filtering_by_new_statuses(db):
+    # Setup test data
+    bank = Bank(name="Test Bank 2")
+    inhaber = Inhaber(name="Max Mustermann 2")
+    db.add_all([bank, inhaber])
+    db.commit()
+
+    # Deal 1: "Prämienauszahlung prüfen" because check date is reached
+    deal_pruefen = Deal(
+        bank_id=bank.id,
+        inhaber_id=inhaber.id,
+        kontoart="Giro",
+        kontonummer="DE3333",
+        zugangsdaten_gespeichert=True
+    )
+    p_pruefen = Praemie(
+        quelle="spartanien",
+        betrag=Decimal("150.00"),
+        erhalten=False,
+        auszahlung_erwartet="2026-08",
+        naechste_pruefung_am=datetime.date.today() - datetime.timedelta(days=1)  # reached (yesterday)
+    )
+    deal_pruefen.praemien.append(p_pruefen)
+
+    # Deal 2: "Auf Prämie warten" because check date is in the future
+    deal_warten = Deal(
+        bank_id=bank.id,
+        inhaber_id=inhaber.id,
+        kontoart="Depot",
+        kontonummer="DE4444",
+        zugangsdaten_gespeichert=True
+    )
+    p_warten = Praemie(
+        quelle="bank",
+        betrag=Decimal("200.00"),
+        erhalten=False,
+        auszahlung_erwartet="2026-08",
+        naechste_pruefung_am=datetime.date.today() + datetime.timedelta(days=10)  # in future
+    )
+    deal_warten.praemien.append(p_warten)
+
+    db.add_all([deal_pruefen, deal_warten])
+    db.commit()
+
+    # Get /todos
+    antwort = client.get("/todos")
+    assert antwort.status_code == 200
+    html = antwort.text
+
+    # Verify both categories show up as tabs / panels
+    assert "Prämienauszahlung prüfen" in html
+    assert "Auf Prämie warten" in html
+
+    # Verify the specific texts are present in the HTML response
+    assert "Prämie prüfen (Spartanien, 150.00 €)" in html
+    assert "Prämie prüfen (Bank, 200.00 €)" in html
+
+    # Test filtering by source: Spartanien
+    antwort_spartanien = client.get("/todos?quelle=spartanien")
+    html_spartanien = antwort_spartanien.text
+    assert "Prämie prüfen (Spartanien, 150.00 €)" in html_spartanien
+    assert "Prämie prüfen (Bank, 200.00 €)" not in html_spartanien
+
+    # Test filtering by source: Bank
+    antwort_bank = client.get("/todos?quelle=bank")
+    html_bank = antwort_bank.text
+    assert "Prämie prüfen (Spartanien, 150.00 €)" not in html_bank
+    assert "Prämie prüfen (Bank, 200.00 €)" in html_bank

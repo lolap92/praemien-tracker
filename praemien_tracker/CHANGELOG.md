@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.37.0
+
+Neuer Status **"Prämienauszahlung prüfen"**: der bisherige Status "Auf Prämie
+warten" trennt jetzt danach, ob das nächste Prüfdatum schon erreicht ist.
+
+- Der bisherige Status `"Auf Prämie warten"` deckte zwei fachlich
+  unterschiedliche Situationen ab: "wartet noch" und "sollte jetzt geprüft
+  werden". Ein Deal ist jetzt in `"Prämienauszahlung prüfen"`, sobald das
+  Prüfdatum einer offenen Prämie erreicht oder überschritten ist - solange
+  alle offenen Prämien noch in der Zukunft liegen, bleibt er in
+  `"Auf Prämie warten"`.
+- Der neue Status erscheint in der Pipeline-Karte der Übersicht und ist auf
+  der "Zu erledigen"-Seite voll integriert (eigener Tab, Sortierung nach
+  Prüfdatum, Filterung nach der Quelle der Prämie).
+- Die Zuordnung der ToDo-Zeilen erfolgt je Einzelprämie nach ihrem eigenen
+  Prüfdatum, nicht pauschal nach dem Deal-Status - ein Deal mit mehreren
+  offenen Prämien kann dadurch gleichzeitig in beiden Kategorien auftauchen,
+  jede Prämie an der fachlich richtigen Stelle. Der Deal-Status selbst bleibt
+  eindeutig: er zeigt "Prämienauszahlung prüfen", sobald irgendeine offene
+  Prämie fällig ist.
+
 ## 2.36.0
 
 „Alle neu analysieren" frischt jetzt gezielt nur die handlungsrelevanten Karten

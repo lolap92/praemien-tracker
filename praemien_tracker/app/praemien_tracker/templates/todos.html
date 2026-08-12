@@ -129,7 +129,7 @@
             </div>
           </div>
 
-          {% elif kategorie == "Auf Prämie warten" %}
+          {% elif kategorie == "Auf Prämie warten" or kategorie == "Prämienauszahlung prüfen" %}
           {% set p = todo.elemente[0] %}
           <div class="todo-item cat-{{ slug }}">
             <form action="todos/praemien/{{ p.id }}/toggle" method="post" class="todo-check-form">

@@ -64,7 +64,21 @@ def test_offene_bedingung_haelt_den_deal_in_stufe_eins():
 
 def test_ohne_bedingungen_gilt_als_erfuellt():
     deal = mache_deal(praemien=[("bank", "100", False)])
-    assert derived.status(deal) == derived.STATUS_PRAEMIE_WARTEN
+    assert derived.status(deal, HEUTE) == derived.STATUS_PRAEMIE_WARTEN
+
+
+def test_status_pruefen_wenn_naechste_pruefung_erreicht():
+    # Next check is today (HEUTE), so we should be in STATUS_PRAEMIE_PRUEFEN
+    deal = mache_deal(praemien=[("bank", "100", False)])
+    deal.praemien[0].auszahlung_erwartet = "2026-07"  # First day of July 2026, which is <= HEUTE (2026-07-30)
+    assert derived.status(deal, HEUTE) == derived.STATUS_PRAEMIE_PRUEFEN
+
+
+def test_status_warten_wenn_naechste_pruefung_in_zukunft():
+    # Next check is in the future (August 2026), so we should be in STATUS_PRAEMIE_WARTEN
+    deal = mache_deal(praemien=[("bank", "100", False)])
+    deal.praemien[0].auszahlung_erwartet = "2026-08"  # August 2026, which is in the future relative to HEUTE
+    assert derived.status(deal, HEUTE) == derived.STATUS_PRAEMIE_WARTEN
 
 
 def test_deal_ohne_praemien_bleibt_in_praemie_warten():
@@ -244,3 +258,26 @@ def test_deal_todos_creates_separate_todos_for_each_open_reward():
     assert "Bank" in praemie_todos[1].text
     assert praemie_todos[0].elemente == [deal.praemien[0]]
     assert praemie_todos[1].elemente == [deal.praemien[1]]
+
+
+def test_deal_todos_sortiert_gemischte_praemien_je_nach_eigenem_pruefdatum():
+    """Ein Deal mit zwei offenen Prämien, von denen nur eine fällig ist, muss
+    beide ToDo-Kategorien bedienen - je Prämie nach ihrem eigenen Prüfdatum,
+    nicht pauschal nach dem (auf 'prüfen' stehenden) Deal-Status. Sonst würde
+    die noch nicht fällige Prämie fälschlich unter 'Prämienauszahlung
+    prüfen' auftauchen."""
+    deal = mache_deal(praemien=[("spartanien", "60", False), ("bank", "95", False)])
+    deal.praemien[0].auszahlung_erwartet = "2026-07"  # fällig (<= HEUTE)
+    deal.praemien[1].auszahlung_erwartet = "2026-08"  # noch in der Zukunft
+
+    # Der Deal-Status schlägt "prüfen" an, sobald irgendeine Prämie fällig ist.
+    assert derived.status(deal, HEUTE) == derived.STATUS_PRAEMIE_PRUEFEN
+
+    todos = derived.deal_todos(deal, HEUTE)
+    pruefen = [t for t in todos if t.kategorie == "Prämienauszahlung prüfen"]
+    warten = [t for t in todos if t.kategorie == "Auf Prämie warten"]
+
+    assert len(pruefen) == 1
+    assert pruefen[0].elemente == [deal.praemien[0]]
+    assert len(warten) == 1
+    assert warten[0].elemente == [deal.praemien[1]]

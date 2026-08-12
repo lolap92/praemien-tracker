@@ -19,6 +19,7 @@ KATEGORIE_SLUGS = {
     "Manuelle Aufgaben": "manuell",
     "Bedingungen": "bedingungen",
     "Auf Prämie warten": "praemie",
+    "Prämienauszahlung prüfen": "praemie_pruefen",
     "Kündigen": "kuendigen",
     "Bestätigung warten": "bestaetigung",
     "Zugangsdaten": "zugangsdaten",
@@ -31,6 +32,7 @@ KATEGORIE_REIHENFOLGE = [
     "Manuelle Aufgaben",
     "Bedingungen",
     "Auf Prämie warten",
+    "Prämienauszahlung prüfen",
     "Kündigen",
     "Bestätigung warten",
     "Zugangsdaten",
@@ -92,7 +94,7 @@ def todos_view(request: Request, tab: str = "", dialog: str = "", quelle: str | 
     if norm_quelle:
         filtered_alle = []
         for t in alle:
-            if t.kategorie == "Auf Prämie warten":
+            if t.kategorie in ("Auf Prämie warten", "Prämienauszahlung prüfen"):
                 if any(p.quelle == norm_quelle for p in t.elemente):
                     filtered_alle.append(t)
             else:
@@ -104,11 +106,13 @@ def todos_view(request: Request, tab: str = "", dialog: str = "", quelle: str | 
     for t in alle:
         gruppen.setdefault(t.kategorie, []).append(t)
 
-    # Sort "Auf Prämie warten" by faellig_bis ascending
+    # Sort "Auf Prämie warten" and "Prämienauszahlung prüfen" by faellig_bis ascending
     if "Auf Prämie warten" in gruppen:
         # Since faellig_bis is set to praemie_naechste_pruefung, which returns a date, we can sort by it.
         # Fallback to datetime.date.max if None (though praemie_naechste_pruefung always returns a date)
         gruppen["Auf Prämie warten"].sort(key=lambda x: x.faellig_bis or datetime.date.max)
+    if "Prämienauszahlung prüfen" in gruppen:
+        gruppen["Prämienauszahlung prüfen"].sort(key=lambda x: x.faellig_bis or datetime.date.max)
 
     aktiver_tab = tab if tab in KATEGORIE_SLUGS.values() and any(
         KATEGORIE_SLUGS[k] == tab and gruppen.get(k) for k in KATEGORIE_REIHENFOLGE

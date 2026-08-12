@@ -9,5 +9,6 @@ praemien_tracker/app/config/
 *.db
 *.db.bak
 seed-data.json
+*.log
 
 .DS_Store

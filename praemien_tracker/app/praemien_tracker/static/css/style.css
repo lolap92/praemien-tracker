@@ -458,6 +458,9 @@ main {
 .pipe-bar-praemie_warten {
   background: var(--st-wait);
 }
+.pipe-bar-praemie_pruefen {
+  background: var(--st-wait);
+}
 .pipe-bar-wartet_auf_kuendigung {
   background: var(--st-pending-cancel);
 }
@@ -525,6 +528,10 @@ a.chip:focus-visible {
   color: var(--st-wait);
   background: rgba(185, 130, 47, 0.13);
 }
+.chip.status-praemie_pruefen {
+  color: var(--st-wait);
+  background: rgba(185, 130, 47, 0.13);
+}
 .chip.status-wartet_auf_kuendigung {
   color: var(--st-pending-cancel);
   background: rgba(124, 106, 158, 0.13);
@@ -586,6 +593,7 @@ a.chip:focus-visible {
 #todotab-manuell:checked ~ .todo-tabs-nav label[for="todotab-manuell"],
 #todotab-bedingungen:checked ~ .todo-tabs-nav label[for="todotab-bedingungen"],
 #todotab-praemie:checked ~ .todo-tabs-nav label[for="todotab-praemie"],
+#todotab-praemie_pruefen:checked ~ .todo-tabs-nav label[for="todotab-praemie_pruefen"],
 #todotab-kuendigen:checked ~ .todo-tabs-nav label[for="todotab-kuendigen"],
 #todotab-bestaetigung:checked ~ .todo-tabs-nav label[for="todotab-bestaetigung"],
 #todotab-zugangsdaten:checked ~ .todo-tabs-nav label[for="todotab-zugangsdaten"],
@@ -598,6 +606,7 @@ a.chip:focus-visible {
 #todotab-manuell:checked ~ .todo-tabs-nav label[for="todotab-manuell"] .num,
 #todotab-bedingungen:checked ~ .todo-tabs-nav label[for="todotab-bedingungen"] .num,
 #todotab-praemie:checked ~ .todo-tabs-nav label[for="todotab-praemie"] .num,
+#todotab-praemie_pruefen:checked ~ .todo-tabs-nav label[for="todotab-praemie_pruefen"] .num,
 #todotab-kuendigen:checked ~ .todo-tabs-nav label[for="todotab-kuendigen"] .num,
 #todotab-bestaetigung:checked ~ .todo-tabs-nav label[for="todotab-bestaetigung"] .num,
 #todotab-zugangsdaten:checked ~ .todo-tabs-nav label[for="todotab-zugangsdaten"] .num,
@@ -608,6 +617,7 @@ a.chip:focus-visible {
 #todotab-manuell:checked ~ .todo-panels #panel-manuell,
 #todotab-bedingungen:checked ~ .todo-panels #panel-bedingungen,
 #todotab-praemie:checked ~ .todo-panels #panel-praemie,
+#todotab-praemie_pruefen:checked ~ .todo-panels #panel-praemie_pruefen,
 #todotab-kuendigen:checked ~ .todo-panels #panel-kuendigen,
 #todotab-bestaetigung:checked ~ .todo-panels #panel-bestaetigung,
 #todotab-zugangsdaten:checked ~ .todo-panels #panel-zugangsdaten,
@@ -650,6 +660,9 @@ a.chip:focus-visible {
   background: var(--st-cond);
 }
 .tag-praemie {
+  background: var(--st-wait);
+}
+.tag-praemie_pruefen {
   background: var(--st-wait);
 }
 .tag-kuendigen {
@@ -695,6 +708,9 @@ a.chip:focus-visible {
   border-color: var(--st-cond);
 }
 .todo-item.cat-praemie .check {
+  border-color: var(--st-wait);
+}
+.todo-item.cat-praemie_pruefen .check {
   border-color: var(--st-wait);
 }
 .todo-item.cat-kuendigen .check {
