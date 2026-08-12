@@ -1,11 +1,26 @@
 # Changelog
 
-## 2.44.4
+## 2.45.1
 
 Nach dem Speichern der Deal-Detailseite wechselt die Ansicht wieder automatisch in den Nur-Lese-Modus (Read-Only-Modus).
 
 - Bisher verblieb die App nach dem Klicken auf „Speichern“ auf der Bearbeitungs-Seite im Editier-Modus.
 - Nun wird der Nutzer direkt auf die Nur-Lese-Detailansicht des Deals weitergeleitet, um versehentliche Änderungen zu vermeiden.
+
+## 2.45.0
+
+Layout der Deal-Bearbeitungsseite optimiert und Sicherheitsabfragen über Modal-Dialoge eingeführt.
+
+- **Speichern-Button ganz nach unten verschoben:** Auf der Bearbeitungsseite eines Deals wurde der "Speichern"-Button ganz an das Ende der Seite verschoben.
+- **Buttons für Löschen und Abbrechen/Stornieren platziert:** Direkt über dem Speichern-Button befinden sich nun die Buttons "Deal abbrechen (stornieren)" und "Deal löschen".
+- **Einführung von Modal-Dialogen zur Bestätigung:** Statt der bisherigen einfachen Browser-Bestätigung öffnen diese Buttons nun moderne, benutzerfreundliche Modal-Dialoge zur Bestätigung der Aktionen.
+
+## 2.44.4
+
+Übersicht: Kachel „Abgeschlossen" in der Pipeline-Karte verlinkt nun auf die Deals-Liste und zeigt dort alle abgeschlossenen Deals an.
+
+- Wenn ein Nutzer auf die Kachel „Abgeschlossen" in der Pipeline der Übersichtskarte klickt, wird er nun auf `/deals?status=abgeschlossen` weitergeleitet.
+- Dadurch lassen sich die bereits erfolgreich beendeten Deals direkt und gefiltert betrachten, anstatt auf die leere ToDo-Seite geführt zu werden.
 
 ## 2.44.3
 
@@ -60,7 +75,7 @@ werden ausgegraut, wenn es dort wirklich nichts gibt.
 
 - **Verschwindende Kachel:** Blendete der Quelle-Filter alle Einträge einer
   der beiden Prämien-Kategorien aus, verschwand die zugehörige Kachel
-  komplett - von dort aus ließ sich der Filter dann nicht mehr zurücksetzen.
+  komplett - von dort aus ließ sich der Filter then nicht mehr zurücksetzen.
   Die Kachel bleibt jetzt (mit Zähler 0 und dem Hinweis "Nichts für diese
   Quelle.") sichtbar, solange es für sie ohne den Filter Einträge gäbe; nur
   wenn eine Kategorie wirklich komplett leer ist, bleibt sie weiterhin weg.
@@ -484,7 +499,7 @@ Vier kleinere Verbesserungen (Todoist "Ki/Prämien webapp", Prio 4):
   "gepflegt"-Anteil unnötig.
 - **"KwK möglich?" auch bei manueller Anlage:** Schlägt die automatische
   Kunden-wirbt-Kunden-Recherche beim manuellen Anlegen eines Deals fehl
-  (Formular `/deals/new` oder JSON-Import), legt die App jetzt wie beim
+  (Formular `/deals/new` or JSON-Import), legt die App jetzt wie beim
   Übernehmen eines Vorschlags eine Erinnerungs-Aufgabe "KwK möglich?
   Kunden-wirbt-Kunden-Programm manuell prüfen." an, statt den Fehlschlag
   stillschweigend zu verwerfen.
@@ -685,7 +700,7 @@ einer der Feeds aus (z. B. geändertes URL-Schema), wird nur dieser eine
 
 ## 2.20.3
 
-Klarstellung: der Dialog von "Zurücksetzen" hieß "...und neu starten?" und
+Klarstellung: the Dialog von "Zurücksetzen" hieß "...und neu starten?" und
 sprach von "danach beginnt 'Jetzt suchen' komplett frisch" - das ließ sich
 so lesen, als würde der Button selbst eine neue Suche anstoßen. Tatsächlich
 löscht er nur (kein Aufruf des Finder-Laufs) - der Dialogtitel heißt jetzt
@@ -792,7 +807,7 @@ stabilen Weg wie mydealz, ohne HTML-Scraping.
   die Prämie wird deshalb (wie bei mydealz) standardmäßig der **Bank** als
   Geber zugeordnet, nicht dem Portal.
 - Die Lauf-Statistik im Tab **Vorschläge** und der Quelle-Filter zeigen
-  DealDoktor als eigene Spalte bzw. Auswahl.
+  DealDoktor as eigene Spalte bzw. Auswahl.
 
 ## 2.16.0
 
@@ -969,7 +984,7 @@ Behandlung von Angeboten für Minderjährige.
   mydealz-/spartanien-Seite in einem neuen Browser-Tab.
 - **Mehr Tags je Karte:** zusätzlich zur Quelle nun auch die Kontoart
   (z. B. Depot, Tagesgeld) und - falls zutreffend - „Auch für Kinder".
-- **Kinder bekommen nur Kinderdeals vorgeschlagen.** Einem minderjährigen
+- **Kinder bekommen nur Kinderdeals vorgeschlagen.** Einem minderjährigem
   Inhaber wird ein Angebot nur noch dann vorgeschlagen, wenn es laut
   Angebotstext (auch) für Kinder abschließbar ist (z. B. Junior-Depot,
   Kinderkonto). Steht nichts dergleichen im Text, gilt der Deal als reines
@@ -1103,7 +1118,7 @@ vorher wird automatisch eine Sicherheitskopie angelegt.
 
 - **Status-Übersicht im Vorschläge-Tab.** Zeigt zum letzten Lauf: erfolgreich
   oder fehlgeschlagen, wie viele Funde je Quelle (mydealz/spartanien)
-  geladen wurden, wie viele davon neu sind, wie viele wegen Fehlern
+  geladen wurden, wie many davon neu sind, wie viele wegen Fehlern
   übersprungen wurden - inklusive Klartext-Fehlermeldung, falls welche
   auftraten (z. B. eine Quelle nicht erreichbar). `taeglicher_lauf()` wirft
   jetzt nie mehr nach außen: ein unerwarteter Fehler führt zu einem
@@ -1352,7 +1367,7 @@ Keine Datenbank-Migration nötig.
 - Fix: CSS-Datei wird jetzt mit einer Versions-Kennung geladen, damit der
   Browser nach einem Update nicht mehr eine veraltete, gecachte Version
   anzeigt (das ließ z.B. den Sperrfristen-Tab unformatiert aussehen).
-- "Pro Inhaber" in der Übersicht ist jetzt eine echte Tabelle mit den
+- "Pro Inhaber" in der Übersicht is jetzt eine echte Tabelle mit den
   Spalten Person, Erhalten, Offen und Freibetrag.
 
 ## 1.5.0
@@ -1401,7 +1416,7 @@ Keine Datenbank-Migration nötig.
 
 - Neues Feld "Kündigung Anweisungen" je Deal (Freitext + optionaler Link,
   z. B. zu einem PDF-Kündigungsformular).
-- Excel-Export aller Deals (Deals → Export) mit Sheets für Deals, Prämien,
+- Excel-Export aller Deals (Deals → Export) with Sheets für Deals, Prämien,
   Bedingungen, Aufgaben und Links.
 
 ## 1.0.2
