@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.37.1
+
+Keine Verhaltensänderung.
+
 ## 2.37.0
 
 Neuer Status **"Prämienauszahlung prüfen"**: der bisherige Status "Auf Prämie
