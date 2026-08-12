@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.44.0
+
+„Zu erledigen": das Ausgrauen-statt-Verstecken aus 2.43.0 gilt jetzt für
+alle Kacheln, nicht nur für die beiden Prämien-Bereiche.
+
+- Bisher blieben nur "Auf Prämie warten" und "Prämienauszahlung prüfen"
+  immer sichtbar. Alle anderen Kategorien - auch "Manuelle Aufgaben" -
+  verschwanden weiterhin komplett aus der Navigation, sobald es dort gerade
+  nichts gab. Jetzt sind alle acht Kacheln immer da: mit Inhalt normal, ganz
+  ohne Inhalt sichtbar ausgegraut statt versteckt - inklusive "Manuelle
+  Aufgaben", die weiterhin normal anklickbar bleibt und dahinter unverändert
+  den "+ Neue Aufgabe"-Button zeigt.
+
 ## 2.43.0
 
 „Zu erledigen": die beiden Prämien-Kacheln verschwinden nie mehr, sondern

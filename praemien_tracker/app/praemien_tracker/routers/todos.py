@@ -106,24 +106,20 @@ def todos_view(request: Request, tab: str = "", dialog: str = "", quelle: str | 
     gruppen: dict[str, list[derived.Todo]] = {}
     for t in alle:
         gruppen.setdefault(t.kategorie, []).append(t)
-    # "Manuelle Aufgaben" bleibt immer ein eigener, wählbarer Tab, auch ohne
-    # offene Aufgabe - er ist die einzige Stelle, an der sich eine neue
-    # Aufgabe anlegen lässt ("Neue Aufgabe"/"Erledigte Aufgaben" stecken in
-    # diesem Tab, siehe todos.html) und muss deshalb immer erreichbar sein.
-    gruppen.setdefault("Manuelle Aufgaben", [])
 
-    # Die beiden Prämien-Tabs bleiben immer wählbar, auch ganz ohne Inhalt -
-    # sonst verschwindet die Kachel entweder dauerhaft (wenn es die Kategorie
-    # nie gab) oder sobald der Quelle-Filter gerade alle ihre Einträge
-    # ausblendet (z.B. "Prämienauszahlung prüfen" bei quelle=bank, wenn dort
-    # nur Spartanien-Prämien fällig sind) - in beiden Fällen kommt man von
-    # dort dann nicht mehr an den Filter, um ihn zurückzusetzen (Bug).
+    # Jede Kachel bleibt immer wählbar, auch ganz ohne Inhalt - sonst
+    # verschwindet sie entweder dauerhaft (wenn es die Kategorie gerade nie
+    # gibt) oder sobald der Quelle-Filter gerade alle ihre Einträge ausblendet
+    # (z.B. "Prämienauszahlung prüfen" bei quelle=bank, wenn dort nur
+    # Spartanien-Prämien fällig sind) - in beiden Fällen kommt man von dort
+    # dann nicht mehr an den Filter, um ihn zurückzusetzen (Bug), bzw. eine
+    # Kategorie taucht nie wieder auf, sobald sie einmal leer war.
     # kategorien_mit_inhalt_ungefiltert unterscheidet für die Anzeige die
     # beiden Leer-Fälle: "nur durch den Filter leer" (Kachel normal, siehe
     # "Nichts für diese Quelle." unten) vs. "wirklich komplett leer,
     # unabhängig vom Filter" (Kachel ausgegraut, siehe todos.html).
     kategorien_mit_inhalt_ungefiltert = {t.kategorie for t in alle_ungefiltert}
-    for kategorie in ("Auf Prämie warten", "Prämienauszahlung prüfen"):
+    for kategorie in KATEGORIE_REIHENFOLGE:
         gruppen.setdefault(kategorie, [])
 
     # Sort "Auf Prämie warten" and "Prämienauszahlung prüfen" by faellig_bis ascending
@@ -157,10 +153,11 @@ def todos_view(request: Request, tab: str = "", dialog: str = "", quelle: str | 
     # Kategorien, deren Kachel zwar (jetzt immer) sichtbar ist, aber komplett
     # leer bleibt, unabhängig vom Quelle-Filter - dort gibt es also wirklich
     # nichts, im Unterschied zu "nur durch den Filter leer". Das Template
-    # graut diese Kachel aus, statt sie normal (aktionsfähig) anzuzeigen.
-    leere_kategorien = {
-        k for k in ("Auf Prämie warten", "Prämienauszahlung prüfen") if k not in kategorien_mit_inhalt_ungefiltert
-    }
+    # graut diese Kachel aus, statt sie normal (aktionsfähig) anzuzeigen. Gilt
+    # auch für "Manuelle Aufgaben" - bleibt dabei weiterhin normal anklickbar
+    # (der "+ Neue Aufgabe"-Button steckt ohnehin dahinter, nicht in der
+    # Kachel selbst).
+    leere_kategorien = {k for k in KATEGORIE_REIHENFOLGE if k not in kategorien_mit_inhalt_ungefiltert}
 
     return templates.TemplateResponse(
         "todos.html",

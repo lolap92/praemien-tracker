@@ -240,7 +240,9 @@ def test_neue_aufgabe_button_steht_hinter_den_kacheln_vor_den_todos(db):
 # durchaus existierte. Von dort aus ließ sich der Filter dann nicht mehr
 # zurücksetzen. Fix: die Kachel bleibt (mit Zähler 0) sichtbar, wenn es dafür
 # OHNE den Quelle-Filter Einträge gäbe (siehe todos.py:
-# kategorien_mit_inhalt_ungefiltert).
+# kategorien_mit_inhalt_ungefiltert). Nachschlag: das gilt inzwischen für
+# ALLE Kategorien, nicht nur die beiden Prämien-Tabs - siehe
+# test_alle_kacheln_bleiben_ohne_jeden_inhalt_sichtbar_und_ausgegraut unten.
 # ---------------------------------------------------------------------------
 
 
@@ -366,6 +368,23 @@ def test_filter_formulare_tragen_je_ihren_eigenen_tab_fest_eingetragen(db):
     tab_feld_pruefen = form_praemie_pruefen.select_one('input[name="tab"]')
     assert tab_feld_praemie["value"] == "praemie"
     assert tab_feld_pruefen["value"] == "praemie_pruefen"
+
+
+def test_alle_kacheln_bleiben_ohne_jeden_inhalt_sichtbar_und_ausgegraut(db):
+    """Nicht nur die beiden Prämien-Kacheln, sondern alle acht Kategorien
+    bleiben immer als Kachel da - ganz ohne Deals/Aufgaben sind sie alle
+    wirklich leer und deshalb alle ausgegraut (todo-tab-leer), auch
+    'Manuelle Aufgaben'. Der "+ Neue Aufgabe"-Button steckt ohnehin dahinter
+    und bleibt unabhängig davon normal nutzbar."""
+    antwort = client.get("/todos")
+    soup = BeautifulSoup(antwort.text, "html.parser")
+
+    alle_slugs = {"manuell", "bedingungen", "praemie", "praemie_pruefen", "kuendigen", "bestaetigung", "zugangsdaten", "pruefen"}
+    for slug in alle_slugs:
+        assert soup.select_one(f"#todotab-{slug}") is not None, slug
+        label = soup.select_one(f'label[for="todotab-{slug}"]')
+        assert label is not None, slug
+        assert "todo-tab-leer" in label.get("class", []), slug
 
 
 def test_filtern_bleibt_auf_dem_jeweiligen_praemien_tab(db):
