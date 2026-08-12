@@ -3,7 +3,7 @@
 {% block appbar_title %}Zu erledigen{% endblock %}
 {% block content %}
 
-<form class="filterleiste" method="get" action="todos">
+<form class="filterleiste todo-quelle-filter" method="get" action="todos">
   {% if aktiver_tab %}
   <input type="hidden" name="tab" value="{{ aktiver_tab }}">
   {% endif %}
@@ -28,7 +28,7 @@
   {% if filter_quelle %}<a class="button secondary" href="todos{% if aktiver_tab %}?tab={{ aktiver_tab }}{% endif %}">Zurücksetzen</a>{% endif %}
 </form>
 
-<div class="card">
+<div class="card neue-aufgabe-card">
   <h2>Neue Aufgabe</h2>
   <form action="todos/aufgaben" method="post">
     <input type="hidden" name="quelle" value="{{ filter_quelle }}">
@@ -55,21 +55,17 @@
   </form>
 </div>
 
-{% if gruppen %}
 <div class="todo-tabs">
-  {% set ns = namespace(erster=true) %}
   {% for kategorie in kategorie_reihenfolge %}
-    {% if gruppen.get(kategorie) %}
+    {% if gruppen.get(kategorie) or kategorie == "Manuelle Aufgaben" %}
     {% set slug = kategorie_slugs[kategorie] %}
-    {% set ist_aktiv = (aktiver_tab == slug) or (not aktiver_tab and ns.erster) %}
-    <input type="radio" name="todotab" id="todotab-{{ slug }}" {{ "checked" if ist_aktiv else "" }}>
-    {% set ns.erster = false %}
+    <input type="radio" name="todotab" id="todotab-{{ slug }}" {{ "checked" if aktiver_tab == slug else "" }}>
     {% endif %}
   {% endfor %}
 
   <div class="todo-tabs-nav">
     {% for kategorie in kategorie_reihenfolge %}
-      {% if gruppen.get(kategorie) %}
+      {% if gruppen.get(kategorie) or kategorie == "Manuelle Aufgaben" %}
       {% set slug = kategorie_slugs[kategorie] %}
       <label for="todotab-{{ slug }}">
         <span class="todo-tab-dot tag-{{ slug }}"></span>
@@ -82,7 +78,7 @@
 
   <div class="todo-panels">
     {% for kategorie in kategorie_reihenfolge %}
-      {% if gruppen.get(kategorie) %}
+      {% if gruppen.get(kategorie) or kategorie == "Manuelle Aufgaben" %}
       {% set slug = kategorie_slugs[kategorie] %}
       <div class="card todo-gruppe" id="panel-{{ slug }}">
         <div class="todo-gruppe-head">
@@ -238,11 +234,6 @@
     {% endfor %}
   </div>
 </div>
-{% else %}
-<div class="card">
-  <p class="leer">Keine offenen ToDos – alles erledigt.</p>
-</div>
-{% endif %}
 
 {% if offener_dialog %}
 <script>
@@ -254,7 +245,7 @@
 {% endif %}
 
 {% if erledigte_aufgaben %}
-<div class="card">
+<div class="card erledigte-aufgaben-card">
   <h3>Erledigte Aufgaben</h3>
   <ul class="unterliste">
     {% for a in erledigte_aufgaben %}

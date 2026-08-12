@@ -105,6 +105,11 @@ def todos_view(request: Request, tab: str = "", dialog: str = "", quelle: str | 
     gruppen: dict[str, list[derived.Todo]] = {}
     for t in alle:
         gruppen.setdefault(t.kategorie, []).append(t)
+    # "Manuelle Aufgaben" bleibt immer ein eigener, wählbarer Tab, auch ohne
+    # offene Aufgabe - er ist die einzige Stelle, an der sich eine neue
+    # Aufgabe anlegen lässt ("Neue Aufgabe"/"Erledigte Aufgaben" stecken in
+    # diesem Tab, siehe todos.html) und muss deshalb immer erreichbar sein.
+    gruppen.setdefault("Manuelle Aufgaben", [])
 
     # Sort "Auf Prämie warten" and "Prämienauszahlung prüfen" by faellig_bis ascending
     if "Auf Prämie warten" in gruppen:
@@ -114,9 +119,22 @@ def todos_view(request: Request, tab: str = "", dialog: str = "", quelle: str | 
     if "Prämienauszahlung prüfen" in gruppen:
         gruppen["Prämienauszahlung prüfen"].sort(key=lambda x: x.faellig_bis or datetime.date.max)
 
-    aktiver_tab = tab if tab in KATEGORIE_SLUGS.values() and any(
-        KATEGORIE_SLUGS[k] == tab and gruppen.get(k) for k in KATEGORIE_REIHENFOLGE
-    ) else ""
+    # Sichtbare Kategorien: "Manuelle Aufgaben" immer, alle anderen nur mit
+    # tatsächlichem Inhalt - dieselbe Regel steht in todos.html noch einmal
+    # (dort für die Radios/Kacheln/Panels), da die Anzeige rein clientseitig
+    # per CSS umschaltet und deshalb pro Kategorie selbst entscheiden muss.
+    sichtbare_slugs = {
+        KATEGORIE_SLUGS[k] for k in KATEGORIE_REIHENFOLGE if gruppen.get(k) or k == "Manuelle Aufgaben"
+    }
+    if tab in sichtbare_slugs:
+        aktiver_tab = tab
+    else:
+        # Default: die erste Kategorie mit tatsächlichem Inhalt - sonst
+        # "Manuelle Aufgaben" (immer erreichbar, um die erste Aufgabe
+        # anzulegen, wenn sonst nichts ansteht).
+        mit_inhalt = [k for k in KATEGORIE_REIHENFOLGE if gruppen.get(k)]
+        default_kategorie = mit_inhalt[0] if mit_inhalt else "Manuelle Aufgaben"
+        aktiver_tab = KATEGORIE_SLUGS[default_kategorie]
     offener_dialog = dialog if DIALOG_PARAM.match(dialog or "") else ""
 
     offene_aufgaben = [a for a in aufgaben if not a.erledigt]
