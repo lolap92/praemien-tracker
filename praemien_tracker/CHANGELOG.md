@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.41.1
+
+**Kontoart** in der ToDo-Liste und bei manuellen Aufgaben: Die Kontoart
+(z. B. Giro, Depot) wird nun sichtbar zwischen Banknamen und Inhabernamen
+angezeigt – auch im Auswahl-Dropdown „Deal" beim Anlegen einer neuen manuellen
+Aufgabe (z. B. `Testbank · Depot · Max`).
+
 ## 2.41.0
 
 „Zu erledigen": Der „+ Neue Aufgabe"-Button steht jetzt an derselben Stelle
