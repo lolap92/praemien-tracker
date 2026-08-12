@@ -258,3 +258,26 @@ def test_deal_todos_creates_separate_todos_for_each_open_reward():
     assert "Bank" in praemie_todos[1].text
     assert praemie_todos[0].elemente == [deal.praemien[0]]
     assert praemie_todos[1].elemente == [deal.praemien[1]]
+
+
+def test_deal_todos_sortiert_gemischte_praemien_je_nach_eigenem_pruefdatum():
+    """Ein Deal mit zwei offenen Prämien, von denen nur eine fällig ist, muss
+    beide ToDo-Kategorien bedienen - je Prämie nach ihrem eigenen Prüfdatum,
+    nicht pauschal nach dem (auf 'prüfen' stehenden) Deal-Status. Sonst würde
+    die noch nicht fällige Prämie fälschlich unter 'Prämienauszahlung
+    prüfen' auftauchen."""
+    deal = mache_deal(praemien=[("spartanien", "60", False), ("bank", "95", False)])
+    deal.praemien[0].auszahlung_erwartet = "2026-07"  # fällig (<= HEUTE)
+    deal.praemien[1].auszahlung_erwartet = "2026-08"  # noch in der Zukunft
+
+    # Der Deal-Status schlägt "prüfen" an, sobald irgendeine Prämie fällig ist.
+    assert derived.status(deal, HEUTE) == derived.STATUS_PRAEMIE_PRUEFEN
+
+    todos = derived.deal_todos(deal, HEUTE)
+    pruefen = [t for t in todos if t.kategorie == "Prämienauszahlung prüfen"]
+    warten = [t for t in todos if t.kategorie == "Auf Prämie warten"]
+
+    assert len(pruefen) == 1
+    assert pruefen[0].elemente == [deal.praemien[0]]
+    assert len(warten) == 1
+    assert warten[0].elemente == [deal.praemien[1]]

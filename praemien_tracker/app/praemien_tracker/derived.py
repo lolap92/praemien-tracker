@@ -250,7 +250,16 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
             todos.append(
                 Todo("Bedingungen", f"{bezeichnung}: {len(offene)} Bedingungen offen", deal, None, ueberfaellig, offene)
             )
-    elif s == STATUS_PRAEMIE_PRUEFEN:
+    elif s in (STATUS_PRAEMIE_PRUEFEN, STATUS_PRAEMIE_WARTEN):
+        # Jede offene Prämie wird einzeln nach ihrem eigenen Prüfdatum
+        # einsortiert, nicht pauschal nach dem Deal-Status: der Deal-Status
+        # (oben in status()) schlägt schon "prüfen" an, sobald irgendeine
+        # Prämie fällig ist - bei mehreren offenen Prämien mit
+        # unterschiedlichen Prüfdaten würde eine pauschale Zuordnung sonst
+        # eine noch nicht fällige Prämie fälschlich unter "prüfen" einsortieren
+        # (oder umgekehrt). Ein Deal kann dadurch gleichzeitig in beiden
+        # ToDo-Kategorien auftauchen - für eine ToDo-Liste korrekt, jede
+        # Prämie steht dort, wo sie fachlich hingehört.
         offene = [p for p in deal.praemien if not p.erhalten]
         for p in offene:
             ueberfaellig = praemie_ueberfaellig(deal, p, heute)
@@ -260,18 +269,8 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
             if ueberfaellig:
                 text += " – überfällig, bei der Bank nachhaken"
             next_check = praemie_naechste_pruefung(p, heute)
-            todos.append(Todo("Prämienauszahlung prüfen", text, deal, next_check, ueberfaellig, [p]))
-    elif s == STATUS_PRAEMIE_WARTEN:
-        offene = [p for p in deal.praemien if not p.erhalten]
-        for p in offene:
-            ueberfaellig = praemie_ueberfaellig(deal, p, heute)
-            text = f"{bezeichnung}: Prämie prüfen ({quelle_label(p.quelle)}, {p.betrag} €)"
-            if p.auszahlung_erwartet:
-                text += f" – erwartet {p.auszahlung_erwartet}"
-            if ueberfaellig:
-                text += " – überfällig, bei der Bank nachhaken"
-            next_check = praemie_naechste_pruefung(p, heute)
-            todos.append(Todo("Auf Prämie warten", text, deal, next_check, ueberfaellig, [p]))
+            kategorie = "Prämienauszahlung prüfen" if next_check <= heute else "Auf Prämie warten"
+            todos.append(Todo(kategorie, text, deal, next_check, ueberfaellig, [p]))
     elif s == STATUS_KUENDIGEN:
         todos.append(Todo("Kündigen", f"{bezeichnung}: jetzt kündbar – kündigen", deal, deal.kuendbar_ab))
     elif s == STATUS_BESTAETIGUNG_WARTEN:
