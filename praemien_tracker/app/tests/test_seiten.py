@@ -105,6 +105,34 @@ def test_deal_formular_gehoert_zum_deals_reiter(deal):
     assert aktiver_reiter(antwort.text) == "deals"
 
 
+def test_links_oeffnen_read_only_detailseite(db, deal):
+    """Prüft, dass die relevanten Navigations-Links nun auf die schreibgeschützte Detailseite statt auf edit verweisen."""
+    # ToDos
+    todos_html = client.get("/todos").text
+    assert f'href="deals/{deal.id}"' in todos_html
+    assert f'href="deals/{deal.id}/edit"' not in todos_html
+
+    # Vollständigkeit
+    completeness_html = client.get("/completeness").text
+    assert f'href="deals/{deal.id}"' in completeness_html
+    # plus button should still point to edit
+    assert f'href="deals/{deal.id}/edit#' in completeness_html
+
+    # Sperrfristen
+    sperrfristen_html = client.get("/sperrfristen").text
+    assert f'href="deals/{deal.id}"' in sperrfristen_html
+    assert f'href="deals/{deal.id}/edit"' not in sperrfristen_html
+
+    # Protokoll
+    # Zuerst einen Eintrag im Protokoll erzeugen
+    deal.kontoart = "Girokonto"
+    db.add(deal)
+    db.commit()
+    protokoll_html = client.get("/protokoll").text
+    assert f'href="deals/{deal.id}"' in protokoll_html
+    assert f'href="deals/{deal.id}/edit"' not in protokoll_html
+
+
 def test_startseite_leitet_auf_die_uebersicht(deal):
     antwort = client.get("/", follow_redirects=False)
     assert antwort.status_code == 303

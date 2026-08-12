@@ -15,7 +15,7 @@
 {% if zeilen %}
 <div class="card" style="padding: 0.2rem 1rem;">
   {% for zeile in zeilen %}
-  <a class="sperr-zeile sperr-{{ zeile.stufe }}" href="deals/{{ zeile.deal.id }}/edit">
+  <a class="sperr-zeile sperr-{{ zeile.stufe }}" href="deals/{{ zeile.deal.id }}">
     <div>
       <div class="bank">{{ zeile.deal.bank.name }}</div>
       <div class="meta">{{ zeile.deal.kontoart }} · {{ zeile.deal.inhaber.name }} · gekündigt {{ zeile.deal.gekuendigt_im_monat }}</div>

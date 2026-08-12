@@ -33,7 +33,7 @@
           <td>{{ e.tabelle }}</td>
           <td class="geld">{{ e.objekt_id }}</td>
           <td class="geld">
-            {% if e.deal_id %}<a href="deals/{{ e.deal_id }}/edit">#{{ e.deal_id }}</a>{% else %}–{% endif %}
+            {% if e.deal_id %}<a href="deals/{{ e.deal_id }}">#{{ e.deal_id }}</a>{% else %}–{% endif %}
           </td>
           <td>{{ e.inhaber_name or "–" }}</td>
           <td>{{ e.bank_name or "–" }}</td>

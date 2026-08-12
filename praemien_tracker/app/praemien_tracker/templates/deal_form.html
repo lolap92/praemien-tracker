@@ -20,7 +20,7 @@
 {% for g in geschwister %}
 <div class="{{ 'hinweis' if g.stufe == 'warnung' else 'notiz' }}">
   Dieselbe Kombination gibt es schon:
-  <a href="deals/{{ g.deal.id }}/edit">{{ g.deal.bank.name }} · {{ g.deal.kontoart }} · {{ g.deal.inhaber.name }}</a>
+  <a href="deals/{{ g.deal.id }}">{{ g.deal.bank.name }} · {{ g.deal.kontoart }} · {{ g.deal.inhaber.name }}</a>
   – {{ g.hinweis }}.
 </div>
 {% endfor %}
