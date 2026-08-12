@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.38.1
+
+Test-Benachrichtigung entfernt: Button und Endpoint gelöscht.
+
 ## 2.38.0
 
 „Zu erledigen": Status-Navigation von einer scrollenden Pillen-Reihe auf ein

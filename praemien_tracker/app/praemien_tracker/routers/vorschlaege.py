@@ -325,7 +325,6 @@ def vorschlaege_view(
             "request": request,
             "lauf_laeuft": lauf_laeuft,
             "lauf_gestartet_am": lauf_gestartet_am,
-            "test_benachrichtigung": request.query_params.get("test_benachrichtigung"),
             "vorgeschlagen": eingeteilt[matching.STATUS_VORGESCHLAGEN],
             "zu_pruefen": eingeteilt[matching.STATUS_ZU_PRUEFEN],
             "automatisch_abgelehnt": eingeteilt[matching.STATUS_ABGELEHNT],
@@ -722,26 +721,6 @@ def jetzt_suchen(request: Request, db: Session = Depends(get_db)):
     if not DEMO_MODUS:
         lauf_im_hintergrund_starten()
     return redirect(request, "vorschlaege")
-
-
-@router.post("/vorschlaege/test-benachrichtigung")
-def test_benachrichtigung(request: Request):
-    """Sendet sofort eine Testnachricht an die konfigurierten Geräte -
-    unabhängig vom Ein/Aus-Schalter für den täglichen Lauf (sonst ließe sich
-    bei deaktiviertem Schalter nichts testen) und ohne dass dafür neue
-    Vorschläge gefunden werden müssen. Beantwortet die Frage "Funktioniert
-    die Benachrichtigung?", ohne bis zum nächsten echten Fund oder 06:00 Uhr
-    zu warten. Das Ergebnis (angekommen oder nicht) wird als Query-Parameter
-    zurückgegeben und auf der Seite angezeigt (siehe vorschlaege_view)."""
-    erfolgreich = notify.benachrichtigen(
-        0,
-        0,
-        aktiv=True,
-        geraete=NOTIFY_GERAETE,
-        nachricht="Prämien-Tracker: Test-Benachrichtigung",
-    )
-    status = "ok" if erfolgreich else "fehler"
-    return redirect(request, f"vorschlaege?test_benachrichtigung={status}")
 
 
 @router.post("/vorschlaege/alle-neu-analysieren")

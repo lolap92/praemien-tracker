@@ -1207,38 +1207,6 @@ def test_jetzt_suchen_startet_lauf_im_hintergrund(monkeypatch):
     assert aufrufe == [{}]
 
 
-def test_test_benachrichtigung_sendet_sofort_unabhaengig_vom_schalter(monkeypatch):
-    """"Funktioniert die Benachrichtigung?" - der Button muss auch bei
-    deaktiviertem täglichen Lauf senden können, sonst ließe sich damit nichts
-    testen."""
-    aufrufe = []
-    monkeypatch.setattr(
-        "praemien_tracker.routers.vorschlaege.notify.benachrichtigen",
-        lambda *a, **kw: aufrufe.append(kw) or True,
-    )
-
-    antwort = client.post("/vorschlaege/test-benachrichtigung", follow_redirects=False)
-
-    assert antwort.status_code == 303
-    assert antwort.headers["location"].endswith("test_benachrichtigung=ok")
-    assert aufrufe == [{"aktiv": True, "geraete": ["notify"], "nachricht": "Prämien-Tracker: Test-Benachrichtigung"}]
-
-
-def test_test_benachrichtigung_meldet_fehlschlag_ueber_query_param(monkeypatch):
-    monkeypatch.setattr("praemien_tracker.routers.vorschlaege.notify.benachrichtigen", lambda *a, **kw: False)
-
-    antwort = client.post("/vorschlaege/test-benachrichtigung", follow_redirects=False)
-
-    assert antwort.headers["location"].endswith("test_benachrichtigung=fehler")
-
-
-def test_seite_zeigt_ergebnis_der_test_benachrichtigung_an(db):
-    antwort = client.get("/vorschlaege?test_benachrichtigung=ok")
-    assert "Test-Benachrichtigung gesendet" in antwort.text
-
-    antwort = client.get("/vorschlaege?test_benachrichtigung=fehler")
-    assert "Test-Benachrichtigung fehlgeschlagen" in antwort.text
-
 
 def test_seite_zeigt_zuruecksetzen_button_mit_bestaetigungsdialog(db):
     antwort = client.get("/vorschlaege")
