@@ -174,7 +174,7 @@ def test_default_tab_ist_erste_kategorie_mit_inhalt_nicht_manuelle_aufgaben(db):
     inhaber = Inhaber(name="Default-Tab-Inhaber")
     db.add_all([bank, inhaber])
     db.commit()
-    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", zugangsdaten_gespeichert=True)
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer="DE1", zugangsdaten_gespeichert=True)
     deal.bedingungen.append(Bedingung(beschreibung="offen", erfuellt=False))
     db.add(deal)
     db.commit()
@@ -379,7 +379,7 @@ def test_alle_kacheln_bleiben_ohne_jeden_inhalt_sichtbar_und_ausgegraut(db):
     antwort = client.get("/todos")
     soup = BeautifulSoup(antwort.text, "html.parser")
 
-    alle_slugs = {"manuell", "bedingungen", "praemie", "praemie_pruefen", "kuendigen", "bestaetigung", "zugangsdaten", "pruefen"}
+    alle_slugs = {"manuell", "pflegen", "bedingungen", "praemie", "praemie_pruefen", "kuendigen", "bestaetigung", "pruefen"}
     for slug in alle_slugs:
         assert soup.select_one(f"#todotab-{slug}") is not None, slug
         label = soup.select_one(f'label[for="todotab-{slug}"]')
@@ -406,3 +406,90 @@ def test_filtern_bleibt_auf_dem_jeweiligen_praemien_tab(db):
 
     antwort = client.get("/todos?tab=praemie_pruefen&quelle=bank")
     assert 'id="todotab-praemie_pruefen" checked' in antwort.text
+
+
+# ---------------------------------------------------------------------------
+# "Deal pflegen": Zusammenführung der früheren Vollständigkeits-Seite mit der
+# alten "Zugangsdaten"-ToDo-Kategorie zu einer einzigen ToDo-Kategorie mit
+# Feld-Chips (+ befüllen, × nicht nötig) statt einer einzelnen Checkbox.
+# ---------------------------------------------------------------------------
+
+
+def test_deal_pflegen_zeigt_alle_offenen_felder_als_chips(db):
+    bank = Bank(name="Pflegen-Testbank")
+    inhaber = Inhaber(name="Pflegen-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer=None, zugangsdaten_gespeichert=False)
+    deal.praemien.append(Praemie(quelle="bank", betrag=Decimal("50.00"), erhalten=False, auszahlung_erwartet=None))
+    db.add(deal)
+    db.commit()
+
+    antwort = client.get("/todos")
+    soup = BeautifulSoup(antwort.text, "html.parser")
+
+    panel = soup.select_one("#panel-pflegen")
+    assert panel is not None
+    chips = {mf.get_text(strip=True).rstrip("+×") for mf in panel.select(".miss .mf")}
+    assert any("Kontonummer" in c for c in chips)
+    assert any("Zugangsdaten sichern" in c for c in chips)
+    assert any("Erwartete Auszahlung" in c for c in chips)
+
+    plus_link = panel.select_one('a.plus[href*="kontonummer"]')
+    assert plus_link is not None
+    assert plus_link["href"] == f"deals/{deal.id}/edit#kontonummer"
+
+
+def test_deal_pflegen_skip_field_entfernt_den_chip_und_bleibt_beim_pflegen_tab(db):
+    bank = Bank(name="Skip-Testbank")
+    inhaber = Inhaber(name="Skip-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer=None, zugangsdaten_gespeichert=True)
+    db.add(deal)
+    db.commit()
+
+    antwort = client.post(f"/deals/{deal.id}/skip-field", data={"feld": "kontonummer"}, follow_redirects=False)
+    assert antwort.status_code == 303
+    assert antwort.headers["location"] == "/todos?tab=pflegen"
+
+    folgeantwort = client.get(antwort.headers["location"])
+    assert 'id="todotab-pflegen" checked' in folgeantwort.text
+    assert "Kontonummer" not in (BeautifulSoup(folgeantwort.text, "html.parser").select_one("#panel-pflegen").get_text())
+
+
+def test_deal_pflegen_gekuendigter_deal_braucht_keine_zugangsdaten(db):
+    """Isoliert von der Kontonummer, die für sich schon 'offen' wäre."""
+    bank = Bank(name="Gekuendigt-Testbank")
+    inhaber = Inhaber(name="Gekuendigt-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(
+        bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro",
+        kontonummer="DE1", zugangsdaten_gespeichert=False, gekuendigt=True,
+    )
+    db.add(deal)
+    db.commit()
+
+    antwort = client.get("/todos")
+    soup = BeautifulSoup(antwort.text, "html.parser")
+    label = soup.select_one('label[for="todotab-pflegen"]')
+    assert "todo-tab-leer" in label.get("class", [])
+
+
+def test_deal_pflegen_abgeschlossener_deal_erscheint_nicht(db):
+    bank = Bank(name="Abgeschlossen-Testbank")
+    inhaber = Inhaber(name="Abgeschlossen-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(
+        bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro",
+        kontonummer=None, gekuendigt=True, kuendigung_bestaetigt=True,
+    )
+    db.add(deal)
+    db.commit()
+
+    antwort = client.get("/todos")
+    soup = BeautifulSoup(antwort.text, "html.parser")
+    label = soup.select_one('label[for="todotab-pflegen"]')
+    assert "todo-tab-leer" in label.get("class", [])

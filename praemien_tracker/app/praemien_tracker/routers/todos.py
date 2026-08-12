@@ -17,25 +17,27 @@ router = APIRouter()
 
 KATEGORIE_SLUGS = {
     "Manuelle Aufgaben": "manuell",
+    "Deal pflegen": "pflegen",
     "Bedingungen": "bedingungen",
     "Auf Prämie warten": "praemie",
     "Prämienauszahlung prüfen": "praemie_pruefen",
     "Kündigen": "kuendigen",
     "Bestätigung warten": "bestaetigung",
-    "Zugangsdaten": "zugangsdaten",
     "Zu prüfen": "pruefen",
 }
 
-# "Zu prüfen" steht am Ende: das sind Dinge, die man sich ansieht, keine, die
-# jetzt zu tun sind.
+# "Deal pflegen" steht direkt hinter "Manuelle Aufgaben" und vor den echten
+# Pipeline-Status: fehlende Stammdaten sollen zuerst auffallen. "Zu prüfen"
+# steht am Ende: das sind Dinge, die man sich ansieht, keine, die jetzt zu
+# tun sind.
 KATEGORIE_REIHENFOLGE = [
     "Manuelle Aufgaben",
+    "Deal pflegen",
     "Bedingungen",
     "Auf Prämie warten",
     "Prämienauszahlung prüfen",
     "Kündigen",
     "Bestätigung warten",
-    "Zugangsdaten",
     "Zu prüfen",
 ]
 
@@ -297,17 +299,6 @@ def toggle_bestaetigen(
     deal = db.get(Deal, deal_id)
     if deal:
         deal.kuendigung_bestaetigt = _ziel(wert, deal.kuendigung_bestaetigt)
-        db.commit()
-    return _todos_redirect(request, tab, quelle=quelle)
-
-
-@router.post("/todos/deals/{deal_id}/zugangsdaten-toggle")
-def toggle_zugangsdaten(
-    request: Request, deal_id: int, tab: str = Form(""), quelle: str = Form(""), wert: str = Form(""), db: Session = Depends(get_db)
-):
-    deal = db.get(Deal, deal_id)
-    if deal:
-        deal.zugangsdaten_gespeichert = _ziel(wert, deal.zugangsdaten_gespeichert)
         db.commit()
     return _todos_redirect(request, tab, quelle=quelle)
 

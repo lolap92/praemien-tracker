@@ -62,7 +62,7 @@
   </div>
   <div class="checkbox-zeile feld">
     <input type="checkbox" id="zugangsdaten_gespeichert" name="zugangsdaten_gespeichert" {{ "checked" if deal.zugangsdaten_gespeichert else "" }}>
-    <label for="zugangsdaten_gespeichert">Zugangsdaten im Passwortmanager gesichert</label>
+    <label for="zugangsdaten_gespeichert">Zugangsdaten im Passwortmanager gesichert {{ "⚠ offen" if 'zugangsdaten_gespeichert' in offene_felder else "" }}</label>
   </div>
 </div>
 
@@ -105,7 +105,7 @@
 <div class="card">
   <div class="reihe">
     <div class="feld">
-      <label for="freibetrag">Freibetrag (€) {{ "⚠ offen" if 'freibetrag' in offene_felder else "" }}</label>
+      <label for="freibetrag">Freibetrag (€)</label>
       <input type="text" id="freibetrag" name="freibetrag" value="{{ deal.freibetrag if deal.freibetrag is not none else '' }}">
     </div>
     <div class="feld">

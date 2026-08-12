@@ -86,7 +86,6 @@ _TABS = [
     ("deals", "deals"),
     ("todos", "todos"),
     ("vorschlaege", "vorschlaege"),
-    ("completeness", "completeness"),
     ("sperrfristen", "sperrfristen"),
     ("protokoll", "protokoll"),
     ("statistiken", "statistiken"),

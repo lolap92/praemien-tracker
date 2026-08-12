@@ -37,6 +37,15 @@ def overview(request: Request, db: Session = Depends(get_db)):
     for d in deals:
         nach_status[derived.status(d)].append(d)
 
+    # "Deal pflegen" ist bewusst kein siebter Pipeline-Status (siehe
+    # derived.deal_todos): ein Deal kann gleichzeitig in einem der sechs
+    # echten Status UND hier auftauchen, deshalb läuft die Zählung getrennt
+    # von nach_status statt sie zu ersetzen. Abgeschlossene Deals zählen
+    # nicht mehr mit, ihre Daten ändern sich nicht mehr.
+    anzahl_deal_pflegen = sum(
+        1 for d in deals if derived.offene_felder(d) and derived.status(d) != derived.STATUS_ABGESCHLOSSEN
+    )
+
     vorschlag_zaehler = vorschlaege_zaehlen(db)
 
     return templates.TemplateResponse(
@@ -48,6 +57,7 @@ def overview(request: Request, db: Session = Depends(get_db)):
             "status_labels": derived.STATUS_LABELS,
             "status_order": derived.STATUS_ORDER,
             "anzahl_deals": len(deals),
+            "anzahl_deal_pflegen": anzahl_deal_pflegen,
             "vorschlag_zaehler": vorschlag_zaehler,
         },
     )

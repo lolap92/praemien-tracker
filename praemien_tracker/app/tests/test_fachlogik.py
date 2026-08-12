@@ -108,10 +108,14 @@ def test_stornierter_deal_erzeugt_keine_pruefpunkte():
 
 
 def test_zugangsdaten_todo_entfaellt_ab_gekuendigt():
+    """Isoliert die Zugangsdaten-Regel: kontonummer wird explizit gesetzt,
+    damit sie nicht als zusätzlicher Grund für "Deal pflegen" mitzählt."""
     laufend = mache_deal(zugangsdaten_gespeichert=False)
+    laufend.kontonummer = "DE1"
     gekuendigt = mache_deal(zugangsdaten_gespeichert=False, gekuendigt=True, gekuendigt_im_monat="2026-01")
-    assert any(t.kategorie == "Zugangsdaten" for t in derived.deal_todos(laufend, HEUTE))
-    assert not any(t.kategorie == "Zugangsdaten" for t in derived.deal_todos(gekuendigt, HEUTE))
+    gekuendigt.kontonummer = "DE1"
+    assert any(t.kategorie == "Deal pflegen" for t in derived.deal_todos(laufend, HEUTE))
+    assert not any(t.kategorie == "Deal pflegen" for t in derived.deal_todos(gekuendigt, HEUTE))
 
 
 # --- B3/B2: Zu prüfen ---------------------------------------------------

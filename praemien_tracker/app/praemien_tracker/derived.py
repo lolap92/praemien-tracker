@@ -276,11 +276,19 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
     elif s == STATUS_BESTAETIGUNG_WARTEN:
         todos.append(Todo("Bestätigung warten", f"{bezeichnung}: Kündigung bestätigen lassen", deal))
 
-    # Für ein gekündigtes Konto sind die Zugangsdaten gegenstandslos - das
-    # ToDo hing bisher unabhängig vom Status am Deal und blieb selbst bei
-    # abgeschlossenen Deals dauerhaft stehen.
-    if not deal.zugangsdaten_gespeichert and not deal.gekuendigt and not deal.storniert:
-        todos.append(Todo("Zugangsdaten", f"{bezeichnung}: Zugangsdaten sichern", deal))
+    # "Deal pflegen" bündelt fehlende Kontonummer, ungesicherte Zugangsdaten
+    # und ein fehlendes Auszahlungsdatum (offene_felder) zu einem einzigen
+    # ToDo pro Deal. Bewusst kein weiterer Pipeline-Status: ein Deal kann das
+    # gleichzeitig mit jedem der sechs echten Status haben (z.B. mitten in
+    # "Prämienauszahlung prüfen" trotzdem noch ohne Kontonummer) - genau wie
+    # bei "Zu prüfen" würde ein einwertiger status() das nicht abbilden
+    # können. Bei einem abgeschlossenen Deal ändert sich an den Daten nichts
+    # mehr, deshalb wird dort nicht mehr gemahnt.
+    if s != STATUS_ABGESCHLOSSEN:
+        offen = offene_felder(deal)
+        if offen:
+            text = f"{bezeichnung}: {len(offen)} Angabe(n) offen"
+            todos.append(Todo("Deal pflegen", text, deal, elemente=offen))
 
     for punkt in pruefpunkte(deal, heute):
         todos.append(Todo("Zu prüfen", f"{bezeichnung}: {punkt.text}", deal, elemente=[punkt]))
@@ -503,10 +511,13 @@ def pruefpunkte(deal: Deal, heute: datetime.date | None = None) -> list[Pruefpun
 # --- Vollständigkeits-Übersicht ---
 
 # "kuendbar_ab" steht hier bewusst nicht: ein leeres Feld ist keine Lücke,
-# sondern die Aussage "keine Sperrfrist" (siehe ist_kuendbar).
+# sondern die Aussage "keine Sperrfrist" (siehe ist_kuendbar). Nur zur
+# Anzeige des Labels - ob ein Feld tatsächlich offen ist, prüft
+# offene_felder() unten mit der jeweils passenden Regel (reiner None-Check
+# bei Kontonummer, eigene Bedingung bei den Zugangsdaten).
 WUENSCHENSWERTE_FELDER = {
     "kontonummer": "Kontonummer",
-    "freibetrag": "Freibetrag",
+    "zugangsdaten_gespeichert": "Zugangsdaten sichern",
 }
 
 
@@ -537,11 +548,19 @@ def offene_felder(deal: Deal) -> list[OffenesFeld]:
     uebersprungen = set(uebersprungene_felder_liste(deal))
     offen: list[OffenesFeld] = []
 
-    for feldname, label in WUENSCHENSWERTE_FELDER.items():
-        if feldname in uebersprungen:
-            continue
-        if getattr(deal, feldname) is None:
-            offen.append(OffenesFeld(feldname, label))
+    if "kontonummer" not in uebersprungen and deal.kontonummer is None:
+        offen.append(OffenesFeld("kontonummer", WUENSCHENSWERTE_FELDER["kontonummer"]))
+
+    # Für ein gekündigtes oder storniertes Konto sind die Zugangsdaten
+    # gegenstandslos - anders als bei Kontonummer/Auszahlung ist ein leerer
+    # Wert dort keine Lücke mehr, sondern erwartet.
+    if (
+        "zugangsdaten_gespeichert" not in uebersprungen
+        and not deal.zugangsdaten_gespeichert
+        and not deal.gekuendigt
+        and not deal.storniert
+    ):
+        offen.append(OffenesFeld("zugangsdaten_gespeichert", WUENSCHENSWERTE_FELDER["zugangsdaten_gespeichert"]))
 
     for p in deal.praemien:
         feldname = f"praemie_{p.id}_auszahlung_erwartet"

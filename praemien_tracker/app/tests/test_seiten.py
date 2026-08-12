@@ -35,7 +35,6 @@ SEITEN = [
     ("deals", "deals"),
     ("deals/new", "deals"),
     ("vorschlaege", "vorschlaege"),
-    ("completeness", "completeness"),
     ("sperrfristen", "sperrfristen"),
     ("protokoll", "protokoll"),
     ("statistiken", "statistiken"),
@@ -112,11 +111,12 @@ def test_links_oeffnen_read_only_detailseite(db, deal):
     assert f'href="deals/{deal.id}"' in todos_html
     assert f'href="deals/{deal.id}/edit"' not in todos_html
 
-    # Vollständigkeit
-    completeness_html = client.get("/completeness").text
-    assert f'href="deals/{deal.id}"' in completeness_html
-    # plus button should still point to edit
-    assert f'href="deals/{deal.id}/edit#' in completeness_html
+    # Deal pflegen (ehemals eigene Vollständigkeits-Seite, jetzt Teil von
+    # "Zu erledigen")
+    pflegen_html = client.get("/todos?tab=pflegen").text
+    assert f'href="deals/{deal.id}"' in pflegen_html
+    # +-Chip soll weiterhin auf die Bearbeiten-Seite mit Anker springen
+    assert f'href="deals/{deal.id}/edit#' in pflegen_html
 
     # Sperrfristen
     sperrfristen_html = client.get("/sperrfristen").text
@@ -199,6 +199,25 @@ def test_alle_todo_kategorien_rendern(db):
     for kategorie in {t.kategorie for t in derived.deal_todos(eintrag)}:
         slug = KATEGORIE_SLUGS[kategorie]
         assert f"panel-{slug}" in antwort.text, f"Kategorie {kategorie} wird nicht gerendert"
+
+
+def test_uebersicht_zeigt_eigene_deal_pflegen_kachel_neben_der_pipeline(db):
+    """"Deal pflegen" ist kein siebter Pipeline-Status (ein Deal kann
+    gleichzeitig einen echten Status UND offene Angaben haben), taucht also
+    als eigene Kachel auf - nicht als zusätzliches Pipeline-Segment."""
+    eintrag = Deal(
+        kontoart="Depot",
+        kontonummer=None,
+        bank=Bank(name="Pflegen-Uebersicht"),
+        inhaber=Inhaber(name="Max"),
+    )
+    db.add(eintrag)
+    db.commit()
+
+    antwort = client.get("/overview")
+    assert antwort.status_code == 200
+    assert 'href="todos?tab=pflegen"' in antwort.text
+    assert "Deal pflegen" in antwort.text
 
 
 def test_jede_todo_kategorie_hat_einen_css_reiter():

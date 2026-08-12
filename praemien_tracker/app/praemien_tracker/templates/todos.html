@@ -199,16 +199,27 @@
             </div>
           </div>
 
-          {% elif kategorie == "Zugangsdaten" %}
+          {% elif kategorie == "Deal pflegen" %}
+          {# Kein einzelner Haken: jedes offene Feld wird für sich befüllt
+             ("+", springt zum Feld im Edit-Formular) oder als "nicht nötig"
+             abgehakt ("×") - dasselbe Muster wie vorher auf der eigenen
+             Vollständigkeits-Seite, nur jetzt hier als eigene ToDo-Kategorie. #}
           <div class="todo-item cat-{{ slug }}">
-            <form action="todos/deals/{{ todo.deal.id }}/zugangsdaten-toggle" method="post" class="todo-check-form">
-              <input type="hidden" name="tab" value="{{ slug }}">
-              <input type="hidden" name="quelle" value="{{ filter_quelle }}">
-              <input type="hidden" name="wert" value="on">
-              <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
-            </form>
+            <div class="check"></div>
             <div class="ti-main">
-              <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.text }}</a>
+              <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.deal.bank.name }} · {{ todo.deal.kontoart }} · {{ todo.deal.inhaber.name }}</a>
+              <div class="miss">
+                {% for feld in todo.elemente %}
+                <span class="mf">
+                  {{ feld.label }}
+                  <a href="deals/{{ todo.deal.id }}/edit#{{ feld.feld }}" class="plus" title="Befüllen">+</a>
+                  <form action="deals/{{ todo.deal.id }}/skip-field" method="post" style="display:inline;">
+                    <input type="hidden" name="feld" value="{{ feld.feld }}">
+                    <button type="submit" class="x" title="Nicht nötig">×</button>
+                  </form>
+                </span>
+                {% endfor %}
+              </div>
             </div>
           </div>
 

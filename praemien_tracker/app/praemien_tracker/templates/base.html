@@ -10,7 +10,7 @@
 <body>
 <div class="app">
   {% set tab = nav_tab(request) %}
-  {% set nebenreiter = ('deals', 'completeness', 'sperrfristen', 'protokoll', 'statistiken', 'inhaber') %}
+  {% set nebenreiter = ('deals', 'sperrfristen', 'protokoll', 'statistiken', 'inhaber') %}
   <header class="appbar">
     {% if demo_modus %}
     <div class="demo-banner">Demo-Modus · ausschließlich Testdaten, keine echten Daten</div>
@@ -24,7 +24,6 @@
           <summary class="icon-btn">Mehr</summary>
           <div class="nav-more-panel">
             <a href="deals" class="{{ 'on' if tab == 'deals' else '' }}">Deals</a>
-            <a href="completeness" class="{{ 'on' if tab == 'completeness' else '' }}">Vollständigkeit</a>
             <a href="sperrfristen" class="{{ 'on' if tab == 'sperrfristen' else '' }}">Sperrfristen</a>
             <a href="protokoll" class="{{ 'on' if tab == 'protokoll' else '' }}">Protokoll</a>
             <a href="statistiken" class="{{ 'on' if tab == 'statistiken' else '' }}">Statistiken</a>

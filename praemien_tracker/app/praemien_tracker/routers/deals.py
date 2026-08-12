@@ -612,7 +612,7 @@ def url_delete(request: Request, deal_id: int, url_id: int, db: Session = Depend
     return redirect(request, f"deals/{deal_id}/edit")
 
 
-# --- Vollständigkeit: Felder abhaken / wieder aufnehmen ---
+# --- Deal pflegen: Felder abhaken / wieder aufnehmen ---
 
 
 @router.post("/deals/{deal_id}/skip-field")
@@ -623,7 +623,7 @@ def skip_field(request: Request, deal_id: int, feld: str = Form(...), db: Sessio
         felder.add(feld)
         derived.uebersprungene_felder_speichern(deal, sorted(felder))
         db.commit()
-    return redirect(request, "completeness")
+    return redirect(request, "todos?tab=pflegen")
 
 
 @router.post("/deals/{deal_id}/unskip-field")
@@ -634,4 +634,4 @@ def unskip_field(request: Request, deal_id: int, feld: str = Form(...), db: Sess
         felder.discard(feld)
         derived.uebersprungene_felder_speichern(deal, sorted(felder))
         db.commit()
-    return redirect(request, "completeness")
+    return redirect(request, "todos?tab=pflegen")
