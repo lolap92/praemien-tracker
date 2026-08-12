@@ -1,0 +1,37 @@
+INFO:     Started server process [146328]
+INFO:     Waiting for application startup.
+WARNING:praemien_tracker:Zeitzone: UTC, kein Versatz zu UTC. Falls die Uhrzeiten im Protokoll abweichen, ist im Container keine Zeitzone gesetzt (TZ).
+INFO:praemien_tracker:Demo-Modus aktiv: Demo-Datenbank /tmp/praemien_data/demo.db wird frisch aufgebaut.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001, initial schema
+INFO  [alembic.runtime.migration] Running upgrade 0001 -> 0002, kuendigung hinweis
+INFO  [alembic.runtime.migration] Running upgrade 0002 -> 0003, protokoll
+INFO  [alembic.runtime.migration] Running upgrade 0003 -> 0004, protokoll json snapshot und kontext
+INFO  [alembic.runtime.migration] Running upgrade 0004 -> 0005, quelle und gekuendigt_im_monat normalisieren
+INFO  [alembic.runtime.migration] Running upgrade 0005 -> 0006, storniert, freibetrag_jahr, pruefung_geprueft, bedingungen.erfuellt_am
+INFO  [alembic.runtime.migration] Running upgrade 0006 -> 0007, deal_vorschlaege, vorschlag_bedingungen
+INFO  [alembic.runtime.migration] Running upgrade 0007 -> 0008, finder_laeufe
+INFO  [alembic.runtime.migration] Running upgrade 0008 -> 0009, finder_funde, finder_laeufe.aus_cache
+INFO  [alembic.runtime.migration] Running upgrade 0009 -> 0010, kuendigung_recherchen, deals.kuendigung_hinweis_ki
+INFO  [alembic.runtime.migration] Running upgrade 0010 -> 0011, finder_laeufe: Aufschlüsselung je Quelle
+INFO  [alembic.runtime.migration] Running upgrade 0011 -> 0012, vorschlag_praemien
+INFO  [alembic.runtime.migration] Running upgrade 0012 -> 0013, deal_vorschlaege.verwerfen_gruende
+INFO  [alembic.runtime.migration] Running upgrade 0013 -> 0014, finder_laeufe: dritte Quelle dealdoktor
+INFO  [alembic.runtime.migration] Running upgrade 0014 -> 0015, praemien.naechste_pruefung_am
+INFO  [alembic.runtime.migration] Running upgrade 0015 -> 0016, Strukturierte Kennzahlen der Bedingungen
+INFO  [alembic.runtime.migration] Running upgrade 0016 -> 0017, Bedingung: Zuordnung zur Teilprämie (gilt_fuer)
+INFO  [alembic.runtime.migration] Running upgrade 0017 -> 0018, praemien.zweck
+INFO  [praemien_tracker] Neue Datenbank angelegt, Schema auf aktuellem Stand.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:47882 - "GET /overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47882 - "GET /static/css/style.css?v=1786480406 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47882 - "GET /todos HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47882 - "GET /static/css/style.css?v=1786480406 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47882 - "GET /todos?quelle=spartanien HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47882 - "GET /static/css/style.css?v=1786480406 HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [146328]

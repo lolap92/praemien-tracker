@@ -243,6 +243,6 @@ def test_offene_bedingung_verhindert_die_karenzrechnung():
 
 def test_ueberfaellige_praemie_wird_im_todo_markiert():
     deal = mache_deal(praemien=[{"erhalten": False, "auszahlung_erwartet": "2025-01"}])
-    todo = next(t for t in derived.deal_todos(deal, HEUTE) if t.kategorie == "Auf Prämie warten")
+    todo = next(t for t in derived.deal_todos(deal, HEUTE) if t.kategorie == "Prämienauszahlung prüfen")
     assert todo.ueberfaellig is True
     assert "überfällig" in todo.text

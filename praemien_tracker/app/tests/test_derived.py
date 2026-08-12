@@ -64,7 +64,21 @@ def test_offene_bedingung_haelt_den_deal_in_stufe_eins():
 
 def test_ohne_bedingungen_gilt_als_erfuellt():
     deal = mache_deal(praemien=[("bank", "100", False)])
-    assert derived.status(deal) == derived.STATUS_PRAEMIE_WARTEN
+    assert derived.status(deal, HEUTE) == derived.STATUS_PRAEMIE_WARTEN
+
+
+def test_status_pruefen_wenn_naechste_pruefung_erreicht():
+    # Next check is today (HEUTE), so we should be in STATUS_PRAEMIE_PRUEFEN
+    deal = mache_deal(praemien=[("bank", "100", False)])
+    deal.praemien[0].auszahlung_erwartet = "2026-07"  # First day of July 2026, which is <= HEUTE (2026-07-30)
+    assert derived.status(deal, HEUTE) == derived.STATUS_PRAEMIE_PRUEFEN
+
+
+def test_status_warten_wenn_naechste_pruefung_in_zukunft():
+    # Next check is in the future (August 2026), so we should be in STATUS_PRAEMIE_WARTEN
+    deal = mache_deal(praemien=[("bank", "100", False)])
+    deal.praemien[0].auszahlung_erwartet = "2026-08"  # August 2026, which is in the future relative to HEUTE
+    assert derived.status(deal, HEUTE) == derived.STATUS_PRAEMIE_WARTEN
 
 
 def test_deal_ohne_praemien_bleibt_in_praemie_warten():

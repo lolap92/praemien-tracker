@@ -17,6 +17,7 @@ from .models import Aufgabe, Deal
 
 STATUS_BEDINGUNGEN = "bedingungen"
 STATUS_PRAEMIE_WARTEN = "praemie_warten"
+STATUS_PRAEMIE_PRUEFEN = "praemie_pruefen"
 STATUS_WARTET_AUF_KUENDIGUNG = "wartet_auf_kuendigung"
 STATUS_KUENDIGEN = "kuendigen"
 STATUS_BESTAETIGUNG_WARTEN = "bestaetigung_warten"
@@ -25,6 +26,7 @@ STATUS_ABGESCHLOSSEN = "abgeschlossen"
 STATUS_ORDER = [
     STATUS_BEDINGUNGEN,
     STATUS_PRAEMIE_WARTEN,
+    STATUS_PRAEMIE_PRUEFEN,
     STATUS_WARTET_AUF_KUENDIGUNG,
     STATUS_KUENDIGEN,
     STATUS_BESTAETIGUNG_WARTEN,
@@ -34,6 +36,7 @@ STATUS_ORDER = [
 STATUS_LABELS = {
     STATUS_BEDINGUNGEN: "Bedingungen",
     STATUS_PRAEMIE_WARTEN: "Auf Prämie warten",
+    STATUS_PRAEMIE_PRUEFEN: "Prämienauszahlung prüfen",
     STATUS_WARTET_AUF_KUENDIGUNG: "Auf Kündigung warten",
     STATUS_KUENDIGEN: "Kündigen",
     STATUS_BESTAETIGUNG_WARTEN: "Bestätigung warten",
@@ -64,7 +67,7 @@ def ist_kuendbar(deal: Deal, heute: datetime.date | None = None) -> bool:
     return deal.kuendbar_ab is None or deal.kuendbar_ab <= heute
 
 
-def status(deal: Deal) -> str:
+def status(deal: Deal, heute: datetime.date | None = None) -> str:
     """Sechsstufige Pipeline (Konzept Abschnitt 6, erweitert um 'Auf
     Kündigung warten' für den Fall, dass alles erledigt ist, aber
     kuendbar_ab noch in der Zukunft liegt).
@@ -76,6 +79,7 @@ def status(deal: Deal) -> str:
     in den Sperrfristen. Offene Bedingungen verschwinden dadurch nicht,
     sie erscheinen unter 'Zu prüfen' (siehe pruefpunkte).
     """
+    heute = heute or datetime.date.today()
     if deal.storniert:
         return STATUS_ABGESCHLOSSEN
     if deal.gekuendigt and deal.kuendigung_bestaetigt:
@@ -83,9 +87,13 @@ def status(deal: Deal) -> str:
     if not bedingungen_erfuellt(deal):
         return STATUS_BEDINGUNGEN
     if not alle_praemien_erhalten(deal):
-        return STATUS_PRAEMIE_WARTEN
+        offene_praemien = [p for p in deal.praemien if not p.erhalten]
+        if any(praemie_naechste_pruefung(p, heute) <= heute for p in offene_praemien):
+            return STATUS_PRAEMIE_PRUEFEN
+        else:
+            return STATUS_PRAEMIE_WARTEN
     if not deal.gekuendigt:
-        if not ist_kuendbar(deal):
+        if not ist_kuendbar(deal, heute):
             return STATUS_WARTET_AUF_KUENDIGUNG
         return STATUS_KUENDIGEN
     return STATUS_BESTAETIGUNG_WARTEN
@@ -242,6 +250,17 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
             todos.append(
                 Todo("Bedingungen", f"{bezeichnung}: {len(offene)} Bedingungen offen", deal, None, ueberfaellig, offene)
             )
+    elif s == STATUS_PRAEMIE_PRUEFEN:
+        offene = [p for p in deal.praemien if not p.erhalten]
+        for p in offene:
+            ueberfaellig = praemie_ueberfaellig(deal, p, heute)
+            text = f"{bezeichnung}: Prämie prüfen ({quelle_label(p.quelle)}, {p.betrag} €)"
+            if p.auszahlung_erwartet:
+                text += f" – erwartet {p.auszahlung_erwartet}"
+            if ueberfaellig:
+                text += " – überfällig, bei der Bank nachhaken"
+            next_check = praemie_naechste_pruefung(p, heute)
+            todos.append(Todo("Prämienauszahlung prüfen", text, deal, next_check, ueberfaellig, [p]))
     elif s == STATUS_PRAEMIE_WARTEN:
         offene = [p for p in deal.praemien if not p.erhalten]
         for p in offene:
@@ -251,7 +270,6 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
                 text += f" – erwartet {p.auszahlung_erwartet}"
             if ueberfaellig:
                 text += " – überfällig, bei der Bank nachhaken"
-            # Set faellig_bis to the next check date, so we can sort by it.
             next_check = praemie_naechste_pruefung(p, heute)
             todos.append(Todo("Auf Prämie warten", text, deal, next_check, ueberfaellig, [p]))
     elif s == STATUS_KUENDIGEN:
