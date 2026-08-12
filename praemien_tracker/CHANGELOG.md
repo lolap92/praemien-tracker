@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.44.1
+
+Schönere Benennung und Beschreibung der Option für den nächtlichen Kündigungshinweis-Batch in den Übersetzungstabellen.
+
+- Die Option `kuendigung_hinweise_batch_aktiv` wird nun im Home Assistant Konfigurations-Interface unter dem Namen "Kündigungshinweis-Batch aktiv" mitsamt einer verständlichen Beschreibung angezeigt.
+
 ## 2.44.0
 
 „Zu erledigen": das Ausgrauen-statt-Verstecken aus 2.43.0 gilt jetzt für
@@ -101,7 +107,6 @@ erscheinen jetzt nur noch dort, wo sie inhaltlich hingehören.
   angezeigt (z. B. `Testbank · Depot · Max`). Auch im Auswahl-Dropdown „Deal"
   beim Anlegen einer neuen manuellen Aufgabe wird die Kontoart nun konsequent
   zwischen Bank und Inhaber aufgeführt.
-
 ## 2.38.1
 
 Test-Benachrichtigung entfernt: Button und Endpoint gelöscht.
