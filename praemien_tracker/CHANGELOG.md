@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.44.3
+
+Übersicht: Pipeline-Kacheln verlinken nun auf den zugehörigen Bereich in „Zu erledigen" (ToDos) statt auf die Deals-Liste.
+
+- Wenn ein Nutzer auf eine Pipeline-Kachel der Übersicht klickt, gelangt er nun direkt zu der entsprechenden ToDo-Kategorie im Tab-System der „Zu erledigen"-Seite.
+- Bisher führten diese Kacheln fälschlicherweise auf die gefilterte Deals-Liste.
+
 ## 2.44.2
 
 Beim Abbrechen/Stornieren eines Deals werden nun auch alle zugehörigen

@@ -193,3 +193,15 @@ def test_jeder_status_hat_eine_pipeline_farbe():
     for s in derived.STATUS_ORDER:
         assert f".pipe-bar-{s} {{" in css, f"Pipeline-Farbe fehlt für {s}"
         assert f".chip.status-{s} {{" in css, f"Chip-Farbe fehlt für {s}"
+
+
+def test_overview_tiles_link_to_todos(deal):
+    antwort = client.get("/overview")
+    assert antwort.status_code == 200
+    html = antwort.text
+    assert 'href="todos?tab=bedingungen"' in html
+    assert 'href="todos?tab=praemie"' in html
+    assert 'href="todos?tab=praemie_pruefen"' in html
+    assert 'href="todos?tab=kuendigen"' in html
+    assert 'href="todos?tab=bestaetigung"' in html
+    assert 'href="todos"' in html
