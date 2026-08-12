@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.45.0
+
+Layout der Deal-Bearbeitungsseite optimiert und Sicherheitsabfragen über Modal-Dialoge eingeführt.
+
+- **Speichern-Button ganz nach unten verschoben:** Auf der Bearbeitungsseite eines Deals wurde der "Speichern"-Button ganz an das Ende der Seite verschoben.
+- **Buttons für Löschen und Abbrechen/Stornieren platziert:** Direkt über dem Speichern-Button befinden sich nun die Buttons "Deal abbrechen (stornieren)" und "Deal löschen".
+- **Einführung von Modal-Dialogen zur Bestätigung:** Statt der bisherigen einfachen Browser-Bestätigung öffnen diese Buttons nun moderne, benutzerfreundliche Modal-Dialoge zur Bestätigung der Aktionen.
+
 ## 2.44.4
 
 Übersicht: Kachel „Abgeschlossen" in der Pipeline-Karte verlinkt nun auf die Deals-Liste und zeigt dort alle abgeschlossenen Deals an.

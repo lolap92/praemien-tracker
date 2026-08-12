@@ -214,10 +214,6 @@
   </div>
 </div>
 
-<div class="card">
-  <button type="submit" class="save-btn">Speichern</button>
-</div>
-
 </form>
 
 <div class="sec-t">Links</div>
@@ -241,19 +237,42 @@
   </form>
 </div>
 
-{% if status != "abgeschlossen" %}
-<div class="card">
-  <form action="deals/{{ deal.id }}/stornieren" method="post" onsubmit="return confirm('Deal stornieren? Noch nicht erhaltene Prämien werden auf 0 gesetzt und offene Bedingungen als erfüllt markiert. Der Deal gilt dann als abgeschlossen, zählt aber nicht als gekündigt und erscheint deshalb nicht in den Sperrfristen. Das lässt sich nur manuell rückgängig machen.');">
-    <button type="submit" class="secondary">Deal stornieren (auf abgeschlossen setzen)</button>
-  </form>
+<div class="card" style="display: flex; gap: 0.8rem;">
+  {% if status != "abgeschlossen" %}
+  <button type="button" class="secondary" onclick="document.getElementById('dlg-stornieren').showModal()" style="flex: 1; margin: 0; padding: 0.85rem; font-size: 0.95rem;">Deal abbrechen (stornieren)</button>
+  {% endif %}
+  <button type="button" class="danger" onclick="document.getElementById('dlg-loeschen').showModal()" style="flex: 1; margin: 0; padding: 0.85rem; font-size: 0.95rem;">Deal löschen</button>
 </div>
-{% endif %}
 
 <div class="card">
-  <form action="deals/{{ deal.id }}/delete" method="post" onsubmit="return confirm('Deal wirklich löschen?');">
-    <button type="submit" class="danger">Deal löschen</button>
-  </form>
+  <button type="submit" form="deal-form" class="save-btn">Speichern</button>
 </div>
+
+<dialog id="dlg-stornieren" class="vk-dialog">
+  <h3>Deal abbrechen (stornieren)?</h3>
+  <p class="vk-dialog-frage" style="color: var(--ink); margin-top: 0.5rem; line-height: 1.4;">
+    Noch nicht erhaltene Prämien werden auf 0 gesetzt und offene Bedingungen als erfüllt markiert. Der Deal gilt dann als abgeschlossen, zählt aber nicht als gekündigt und erscheint deshalb nicht in den Sperrfristen. Das lässt sich nur manuell rückgängig machen.
+  </p>
+  <form action="deals/{{ deal.id }}/stornieren" method="post" onsubmit="this.closest('dialog').close()">
+    <div class="vk-dialog-aktionen">
+      <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
+      <button type="submit" class="danger">Deal stornieren</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-loeschen" class="vk-dialog">
+  <h3>Deal wirklich löschen?</h3>
+  <p class="vk-dialog-frage" style="color: var(--ink); margin-top: 0.5rem; line-height: 1.4;">
+    Möchtest du diesen Deal wirklich unwiderruflich löschen? Alle zugehörigen Daten gehen dabei verloren.
+  </p>
+  <form action="deals/{{ deal.id }}/delete" method="post" onsubmit="this.closest('dialog').close()">
+    <div class="vk-dialog-aktionen">
+      <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
+      <button type="submit" class="danger">Löschen</button>
+    </div>
+  </form>
+</dialog>
 
 {% else %}
 
