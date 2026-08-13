@@ -158,7 +158,7 @@
     </select>
     <input type="text" name="neu_praemie_betrag" placeholder="Betrag" style="flex:0 0 100px;">
     <input type="text" name="neu_praemie_auszahlung_erwartet" placeholder="Erwartet JJJJ-MM" style="flex:0 0 140px;">
-    <button type="submit" formaction="deals/{{ deal.id }}/praemien" formnovalidate>+ Prämie</button>
+    <button type="submit" class="js-add-praemie" formaction="deals/{{ deal.id }}/praemien" formnovalidate>+ Prämie</button>
   </div>
 </div>
 
@@ -184,7 +184,7 @@
   <div class="reihe">
     <input type="text" name="neu_bedingung_beschreibung" placeholder="z. B. 3 Trades ausführen" style="flex:1 1 200px;">
     <input type="date" name="neu_bedingung_faellig_bis" style="flex:0 0 150px;">
-    <button type="submit" formaction="deals/{{ deal.id }}/bedingungen" formnovalidate>+ Bedingung</button>
+    <button type="submit" class="js-add-bedingung" formaction="deals/{{ deal.id }}/bedingungen" formnovalidate>+ Bedingung</button>
   </div>
 </div>
 
@@ -210,7 +210,7 @@
   <div class="reihe">
     <input type="text" name="neu_aufgabe_beschreibung" placeholder="z. B. Geld zurücküberweisen" style="flex:1 1 200px;">
     <input type="date" name="neu_aufgabe_faellig_bis" style="flex:0 0 150px;">
-    <button type="submit" formaction="deals/{{ deal.id }}/aufgaben" formnovalidate>+ Aufgabe</button>
+    <button type="submit" class="js-add-aufgabe" formaction="deals/{{ deal.id }}/aufgaben" formnovalidate>+ Aufgabe</button>
   </div>
 </div>
 
@@ -230,7 +230,7 @@
     <li class="leer">Keine Links hinterlegt.</li>
     {% endfor %}
   </ul>
-  <form class="reihe" action="deals/{{ deal.id }}/urls" method="post">
+  <form class="reihe js-add-url-form" action="deals/{{ deal.id }}/urls" method="post">
     <input type="text" name="bezeichnung" placeholder="Bezeichnung (z. B. Login)" style="flex:0 0 180px;">
     <input type="url" name="url" placeholder="https://…" style="flex:1 1 200px;" required>
     <button type="submit">+ Link</button>
@@ -316,6 +316,221 @@ document.addEventListener('DOMContentLoaded', function() {
       btn.disabled = false;
     });
   });
+
+  // AJAX adding logic
+
+  function removeLeerElement(ul) {
+    const leer = ul.querySelector('li.leer');
+    if (leer) {
+      leer.remove();
+    }
+  }
+
+  // 1. Add Premium
+  const addPraemieBtn = document.querySelector('.js-add-praemie');
+  if (addPraemieBtn) {
+    addPraemieBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const parent = addPraemieBtn.closest('.card');
+      const ul = parent.querySelector('ul.unterliste');
+      const quelleSelect = parent.querySelector('select[name="neu_praemie_quelle"]');
+      const betragInput = parent.querySelector('input[name="neu_praemie_betrag"]');
+      const erwartetInput = parent.querySelector('input[name="neu_praemie_auszahlung_erwartet"]');
+
+      const quelleVal = quelleSelect.value;
+      const betragVal = betragInput.value;
+      const erwartetVal = erwartetInput.value;
+
+      if (!betragVal.trim()) return;
+
+      const params = new URLSearchParams();
+      params.append('neu_praemie_quelle', quelleVal);
+      params.append('neu_praemie_betrag', betragVal);
+      params.append('neu_praemie_auszahlung_erwartet', erwartetVal);
+
+      fetch(addPraemieBtn.getAttribute('formaction'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: params
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'success') {
+          removeLeerElement(ul);
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <div class="reihe" style="flex:1; align-items:center;">
+              <select name="praemie_${data.id}_quelle" style="flex:0 0 130px;">
+                <option value="spartanien" ${data.quelle === 'spartanien' ? 'selected' : ''}>Spartanien</option>
+                <option value="bank" ${data.quelle === 'bank' ? 'selected' : ''}>Bank</option>
+              </select>
+              <input type="text" name="praemie_${data.id}_betrag" style="flex:0 0 100px;" value="${data.betrag}">
+              <input type="text" id="praemie_${data.id}_auszahlung_erwartet" name="praemie_${data.id}_auszahlung_erwartet" style="flex:0 0 110px;" placeholder="JJJJ-MM" value="${data.auszahlung_erwartet}">
+              <span class="checkbox-zeile" style="flex:0 0 auto;">
+                <input type="checkbox" name="praemie_${data.id}_erhalten" id="praemie_${data.id}_erhalten" ${data.erhalten ? 'checked' : ''}>
+                <label for="praemie_${data.id}_erhalten" style="margin:0;">erhalten</label>
+              </span>
+            </div>
+            <button type="submit" class="danger js-delete-sub-element" formaction="deals/${{ deal.id if deal else 0 }}/praemien/${data.id}/delete" formnovalidate>×</button>
+          `;
+          ul.appendChild(li);
+          betragInput.value = '';
+          erwartetInput.value = '';
+        }
+      });
+    });
+  }
+
+  // 2. Add Condition
+  const addBedingungBtn = document.querySelector('.js-add-bedingung');
+  if (addBedingungBtn) {
+    addBedingungBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const parent = addBedingungBtn.closest('.card');
+      const ul = parent.querySelector('ul.unterliste');
+      const beschreibungInput = parent.querySelector('input[name="neu_bedingung_beschreibung"]');
+      const faelligInput = parent.querySelector('input[name="neu_bedingung_faellig_bis"]');
+
+      const beschreibungVal = beschreibungInput.value;
+      const faelligVal = faelligInput.value;
+
+      if (!beschreibungVal.trim()) return;
+
+      const params = new URLSearchParams();
+      params.append('neu_bedingung_beschreibung', beschreibungVal);
+      params.append('neu_bedingung_faellig_bis', faelligVal);
+
+      fetch(addBedingungBtn.getAttribute('formaction'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: params
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'success') {
+          removeLeerElement(ul);
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <div class="reihe" style="flex:1; align-items:center;">
+              <input type="text" name="bedingung_${data.id}_beschreibung" style="flex:1 1 200px;" value="${data.beschreibung}">
+              <input type="date" name="bedingung_${data.id}_faellig_bis" style="flex:0 0 150px;" value="${data.faellig_bis}">
+              <span class="checkbox-zeile" style="flex:0 0 auto;">
+                <input type="checkbox" name="bedingung_${data.id}_erfuellt" id="bedingung_${data.id}_erfuellt" ${data.erfuellt ? 'checked' : ''}>
+                <label for="bedingung_${data.id}_erfuellt" style="margin:0;">erfüllt</label>
+              </span>
+            </div>
+            <button type="submit" class="danger js-delete-sub-element" formaction="deals/${{ deal.id if deal else 0 }}/bedingungen/${data.id}/delete" formnovalidate>×</button>
+          `;
+          ul.appendChild(li);
+          beschreibungInput.value = '';
+          faelligInput.value = '';
+        }
+      });
+    });
+  }
+
+  // 3. Add Task
+  const addAufgabeBtn = document.querySelector('.js-add-aufgabe');
+  if (addAufgabeBtn) {
+    addAufgabeBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const parent = addAufgabeBtn.closest('.card');
+      const ul = parent.querySelector('ul.unterliste');
+      const beschreibungInput = parent.querySelector('input[name="neu_aufgabe_beschreibung"]');
+      const faelligInput = parent.querySelector('input[name="neu_aufgabe_faellig_bis"]');
+
+      const beschreibungVal = beschreibungInput.value;
+      const faelligVal = faelligInput.value;
+
+      if (!beschreibungVal.trim()) return;
+
+      const params = new URLSearchParams();
+      params.append('neu_aufgabe_beschreibung', beschreibungVal);
+      params.append('neu_aufgabe_faellig_bis', faelligVal);
+
+      fetch(addAufgabeBtn.getAttribute('formaction'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: params
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'success') {
+          removeLeerElement(ul);
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <div class="reihe" style="flex:1; align-items:center;">
+              <input type="text" name="aufgabe_${data.id}_beschreibung" style="flex:1 1 200px;" value="${data.beschreibung}">
+              <input type="date" name="aufgabe_${data.id}_faellig_bis" style="flex:0 0 150px;" value="${data.faellig_bis}">
+              <span class="checkbox-zeile" style="flex:0 0 auto;">
+                <input type="checkbox" name="aufgabe_${data.id}_erledigt" id="aufgabe_${data.id}_erledigt" ${data.erledigt ? 'checked' : ''}>
+                <label for="aufgabe_${data.id}_erledigt" style="margin:0;">erledigt</label>
+              </span>
+            </div>
+            <button type="submit" class="danger js-delete-sub-element" formaction="deals/${{ deal.id if deal else 0 }}/aufgaben/${data.id}/delete" formnovalidate>×</button>
+          `;
+          ul.appendChild(li);
+          beschreibungInput.value = '';
+          faelligInput.value = '';
+        }
+      });
+    });
+  }
+
+  // 4. Add Link
+  const addUrlForm = document.querySelector('.js-add-url-form');
+  if (addUrlForm) {
+    addUrlForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const parent = addUrlForm.closest('.card');
+      const ul = parent.querySelector('ul.unterliste');
+      const urlInput = addUrlForm.querySelector('input[name="url"]');
+      const bezeichnungInput = addUrlForm.querySelector('input[name="bezeichnung"]');
+
+      const urlVal = urlInput.value;
+      const bezeichnungVal = bezeichnungInput.value;
+
+      if (!urlVal.trim()) return;
+
+      const params = new URLSearchParams();
+      params.append('url', urlVal);
+      params.append('bezeichnung', bezeichnungVal);
+
+      fetch(addUrlForm.getAttribute('action'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: params
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'success') {
+          removeLeerElement(ul);
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <span style="flex:1;"><a href="${data.url}" target="_blank" rel="noopener">${data.bezeichnung || data.url}</a></span>
+            <form action="deals/${{ deal.id if deal else 0 }}/urls/${data.id}/delete" method="post" style="display:inline;">
+              <button type="submit" class="danger js-delete-sub-element" formaction="deals/${{ deal.id if deal else 0 }}/urls/${data.id}/delete">×</button>
+            </form>
+          `;
+          ul.appendChild(li);
+          urlInput.value = '';
+          bezeichnungInput.value = '';
+        }
+      });
+    });
+  }
 });
 </script>
 

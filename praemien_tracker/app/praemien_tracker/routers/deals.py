@@ -511,17 +511,27 @@ def praemie_add(
     # abgeschickt über den Speichern-Button) - nichts anzulegen statt einer
     # Prämie mit 0 €.
     if betrag is None:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest" or "application/json" in request.headers.get("accept", ""):
+            return {"status": "ignored"}
         return redirect(request, f"deals/{deal_id}/edit")
-    deal.praemien.append(
-        Praemie(
-            quelle=_quelle_oder_400(neu_praemie_quelle),
-            betrag=betrag,
-            erhalten=neu_praemie_erhalten == "on",
-            auszahlung_erwartet=monat_aus_formular(neu_praemie_auszahlung_erwartet),
-        )
+    p = Praemie(
+        quelle=_quelle_oder_400(neu_praemie_quelle),
+        betrag=betrag,
+        erhalten=neu_praemie_erhalten == "on",
+        auszahlung_erwartet=monat_aus_formular(neu_praemie_auszahlung_erwartet),
     )
+    deal.praemien.append(p)
     spartanien_aufgabe_sicherstellen(deal)
     db.commit()
+    if request.headers.get("x-requested-with") == "XMLHttpRequest" or "application/json" in request.headers.get("accept", ""):
+        return {
+            "status": "success",
+            "id": p.id,
+            "quelle": p.quelle,
+            "betrag": str(p.betrag),
+            "erhalten": p.erhalten,
+            "auszahlung_erwartet": p.auszahlung_erwartet or ""
+        }
     return redirect(request, f"deals/{deal_id}/edit")
 
 
@@ -547,10 +557,21 @@ def bedingung_add(
 ):
     beschreibung = neu_bedingung_beschreibung.strip()
     if not beschreibung:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest" or "application/json" in request.headers.get("accept", ""):
+            return {"status": "ignored"}
         return redirect(request, f"deals/{deal_id}/edit")
     _hole_deal(db, deal_id)
-    db.add(Bedingung(deal_id=deal_id, beschreibung=beschreibung, faellig_bis=parse_date(neu_bedingung_faellig_bis)))
+    b = Bedingung(deal_id=deal_id, beschreibung=beschreibung, faellig_bis=parse_date(neu_bedingung_faellig_bis))
+    db.add(b)
     db.commit()
+    if request.headers.get("x-requested-with") == "XMLHttpRequest" or "application/json" in request.headers.get("accept", ""):
+        return {
+            "status": "success",
+            "id": b.id,
+            "beschreibung": b.beschreibung,
+            "faellig_bis": b.faellig_bis.isoformat() if b.faellig_bis else "",
+            "erfuellt": b.erfuellt,
+        }
     return redirect(request, f"deals/{deal_id}/edit")
 
 
@@ -576,10 +597,21 @@ def deal_aufgabe_add(
 ):
     beschreibung = neu_aufgabe_beschreibung.strip()
     if not beschreibung:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest" or "application/json" in request.headers.get("accept", ""):
+            return {"status": "ignored"}
         return redirect(request, f"deals/{deal_id}/edit")
     _hole_deal(db, deal_id)
-    db.add(Aufgabe(deal_id=deal_id, beschreibung=beschreibung, faellig_bis=parse_date(neu_aufgabe_faellig_bis)))
+    a = Aufgabe(deal_id=deal_id, beschreibung=beschreibung, faellig_bis=parse_date(neu_aufgabe_faellig_bis))
+    db.add(a)
     db.commit()
+    if request.headers.get("x-requested-with") == "XMLHttpRequest" or "application/json" in request.headers.get("accept", ""):
+        return {
+            "status": "success",
+            "id": a.id,
+            "beschreibung": a.beschreibung,
+            "faellig_bis": a.faellig_bis.isoformat() if a.faellig_bis else "",
+            "erledigt": a.erledigt,
+        }
     return redirect(request, f"deals/{deal_id}/edit")
 
 
@@ -598,8 +630,16 @@ def deal_aufgabe_delete(request: Request, deal_id: int, aufgabe_id: int, db: Ses
 @router.post("/deals/{deal_id}/urls")
 def url_add(request: Request, deal_id: int, url: str = Form(...), bezeichnung: str = Form(""), db: Session = Depends(get_db)):
     _hole_deal(db, deal_id)
-    db.add(DealUrl(deal_id=deal_id, url=url.strip(), bezeichnung=bezeichnung.strip() or None))
+    u = DealUrl(deal_id=deal_id, url=url.strip(), bezeichnung=bezeichnung.strip() or None)
+    db.add(u)
     db.commit()
+    if request.headers.get("x-requested-with") == "XMLHttpRequest" or "application/json" in request.headers.get("accept", ""):
+        return {
+            "status": "success",
+            "id": u.id,
+            "url": u.url,
+            "bezeichnung": u.bezeichnung or ""
+        }
     return redirect(request, f"deals/{deal_id}/edit")
 
 

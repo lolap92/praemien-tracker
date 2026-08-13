@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.47.2
+
+Asynchrones Anlegen von Prämien, Bedingungen, Aufgaben und Links auf der Bearbeitungsseite eines Deals ohne Neuladen der Seite.
+
+- **Kein Neuladen beim Hinzufügen von Elementen:** Das Hinzufügen von Prämien, Bedingungen, Aufgaben und Links auf der Bearbeitungsseite eines Deals erfolgt nun asynchron über die Fetch-API.
+- **Erhalten der ungespeicherten Eingaben:** Andere bereits vorgenommene Änderungen an Textfeldern (wie Kommentar, Kündigungshinweise, etc.) werden durch das Anlegen von neuen Unterelementen nicht mehr gelöscht oder zurückgesetzt.
+
 ## 2.47.1
 
 Nachtrag bestehender Prämien für den Budget-Tracker-Sync (2.47.0).
