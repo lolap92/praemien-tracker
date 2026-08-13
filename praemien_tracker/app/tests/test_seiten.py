@@ -218,7 +218,11 @@ def test_uebersicht_zeigt_eigene_deal_pflegen_kachel_neben_der_pipeline(db):
     antwort = client.get("/overview")
     assert antwort.status_code == 200
     assert 'href="todos?tab=pflegen"' in antwort.text
-    assert "Deal pflegen" in antwort.text
+    assert "Deals pflegen" in antwort.text
+    assert 'href="todos?tab=manuell"' in antwort.text
+    assert "Manuelle Aufgaben" in antwort.text
+    assert 'href="todos?tab=pruefen"' in antwort.text
+    assert "Zu prüfen" in antwort.text
 
 
 def test_jede_todo_kategorie_hat_einen_css_reiter():

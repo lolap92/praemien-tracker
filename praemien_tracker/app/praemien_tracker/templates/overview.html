@@ -21,12 +21,22 @@
 </div>
 
 <div class="card">
-  <div class="card-label">Deal pflegen</div>
+  <div class="card-label">Aufgaben &amp; Pflege</div>
   <div class="pipe">
+    <a class="seg" href="todos?tab=manuell">
+      <div class="bar pipe-bar-manuell"></div>
+      <div class="cnt">{{ anzahl_manuelle_aufgaben }}</div>
+      <div class="nm">Manuelle Aufgaben</div>
+    </a>
     <a class="seg" href="todos?tab=pflegen">
       <div class="bar pipe-bar-pflegen"></div>
       <div class="cnt">{{ anzahl_deal_pflegen }}</div>
-      <div class="nm">Deal{{ "s" if anzahl_deal_pflegen != 1 else "" }} mit offenen Angaben</div>
+      <div class="nm">Deals pflegen</div>
+    </a>
+    <a class="seg" href="todos?tab=pruefen">
+      <div class="bar pipe-bar-pruefen"></div>
+      <div class="cnt">{{ anzahl_zu_pruefen }}</div>
+      <div class="nm">Zu prüfen</div>
     </a>
   </div>
 </div>

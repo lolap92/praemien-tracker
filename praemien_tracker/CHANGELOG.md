@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.49.0
+
+Darstellung der nicht-linearen Aufgaben (Manuelle Aufgaben, Deals pflegen, Zu prüfen) auf der Startseite in einer gemeinsamen Zeile.
+
+- **Kachel „Aufgaben & Pflege“ auf der Übersicht:** Die bisherige einzelne Kachel „Deal pflegen“ wurde durch eine neue Kachel „Aufgaben & Pflege“ ersetzt, die nun „Manuelle Aufgaben“ (Verlinkung auf `todos?tab=manuell`), „Deals pflegen“ (Verlinkung auf `todos?tab=pflegen`) und „Zu prüfen“ (Verlinkung auf `todos?tab=pruefen`) in einer Zeile mit der jeweiligen Anzahl darstellt.
+- Damit sind alle offenen Aufgaben, unvollständigen Deals und auffälligen Fäden direkt von der Startseite aus aufrufbar und auf einen Blick quantifizierbar.
+
 ## 2.48.0
 
 Datenbank-Backup direkt aus der App: neue Seite „Backup" (im „Mehr"-Menü) zum Herunterladen und Wiederherstellen.
