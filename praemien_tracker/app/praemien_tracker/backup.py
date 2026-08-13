@@ -22,31 +22,44 @@ Stands und die Datei wird ausgetauscht. Ein hochgeladenes Backup kann ja von
 einer älteren Add-on-Version stammen, mit einem Schema-Stand vor der zuletzt
 hinzugekommenen Migration.
 
-Wichtige Einschränkung bei options.json, siehe Warnung dazu in
-templates/backup_wiederhergestellt.html: Supervisor schreibt options.json bei
-jedem Add-on-Start aus seinem eigenen, hier nicht angefassten
-Konfigurationsstand neu - ein Neustart würde die wiederhergestellte Datei
-also wieder verwerfen.
+Bei options.json reicht das lokale Schreiben allein nicht: Supervisor
+schreibt sie bei jedem Add-on-Start aus seinem eigenen Konfigurationsstand
+neu, ein bloß lokal abgelegtes options.json würde ein Neustart also sofort
+wieder verwerfen. wiederherstellen() legt die Datei deshalb zusätzlich über
+die Supervisor-API dauerhaft im Konfigurationsspeicher des Supervisors ab
+(siehe _supervisor_optionen_setzen()) - analog zur Push-Benachrichtigung in
+finder/notify.py, die denselben SUPERVISOR_TOKEN für eine andere
+Supervisor-vermittelte API nutzt.
 """
 from __future__ import annotations
 
 import datetime as dt
 import io
 import json
+import logging
+import os
 import sqlite3
 import zipfile
 from pathlib import Path
 from uuid import uuid4
 
+import httpx
 from alembic import command
 from alembic.config import Config as AlembicConfig
 
 from .config import BACKUP_DIR, DATA_DIR, DB_PATH, OPTIONS_PATH
 from .database import engine
 
+logger = logging.getLogger("praemien_tracker.backup")
+
 APP_DIR = Path(__file__).resolve().parent
 MIGRATIONS_DIR = APP_DIR.parent / "migrations"
 ALEMBIC_INI = APP_DIR.parent / "alembic.ini"
+
+# Supervisor-eigene REST-API (nicht der HA-Core-Proxy unter
+# .../core/api/..., den finder/notify.py nutzt) - erfordert "hassio_api:
+# true" im Manifest, damit SUPERVISOR_TOKEN dafür überhaupt berechtigt ist.
+SUPERVISOR_OPTIONS_URL = "http://supervisor/addons/self/options"
 
 # Gleiche Grenze wie im Budget-Tracker-Vorbild - nur die letzten Handvoll
 # manuellen Backups aufheben, damit /data nicht unbegrenzt wächst.
@@ -98,7 +111,7 @@ def zip_erstellen() -> tuple[str, bytes]:
     return f"praemien-tracker-backup-{zeitstempel}.zip", puffer.getvalue()
 
 
-def wiederherstellen(inhalt: bytes) -> bool:
+def wiederherstellen(inhalt: bytes) -> tuple[bool, bool]:
     """Ersetzt die laufende Datenbank durch ein hochgeladenes Backup und,
     falls im ZIP enthalten, auch options.json.
 
@@ -109,11 +122,18 @@ def wiederherstellen(inhalt: bytes) -> bool:
     options.json nicht eine ansonsten gültige DB-Wiederherstellung zur
     Hälfte durchführt.
 
-    Gibt zurück, ob zusätzlich options.json wiederhergestellt wurde.
+    Gibt ein Tupel zurück: ob options.json im Backup enthalten war, und
+    falls ja, ob sie zusätzlich über die Supervisor-API dauerhaft übernommen
+    wurde (_supervisor_optionen_setzen()) - nur dann übersteht sie einen
+    Neustart. Schlägt der API-Aufruf fehl (kein SUPERVISOR_TOKEN, z.B.
+    lokal, oder von Supervisor abgelehnt), gilt die Konfiguration trotzdem
+    sofort für die laufende Instanz (lokale options.json wird in jedem Fall
+    geschrieben) - nur eben nicht dauerhaft.
     """
     db_bytes, optionen_bytes = _inhalte_extrahieren(inhalt)
+    optionen = None
     if optionen_bytes is not None:
-        _optionen_validieren(optionen_bytes)
+        optionen = _optionen_validieren(optionen_bytes)
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     staging = DATA_DIR / f".wiederherstellung-{uuid4().hex}.db"
@@ -129,13 +149,15 @@ def wiederherstellen(inhalt: bytes) -> bool:
     finally:
         staging.unlink(missing_ok=True)
 
-    if optionen_bytes is not None:
+    dauerhaft_uebernommen = False
+    if optionen is not None:
         OPTIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
         options_staging = DATA_DIR / f".wiederherstellung-{uuid4().hex}.json"
         options_staging.write_bytes(optionen_bytes)
         options_staging.replace(OPTIONS_PATH)
+        dauerhaft_uebernommen = _supervisor_optionen_setzen(optionen)
 
-    return optionen_bytes is not None
+    return optionen is not None, dauerhaft_uebernommen
 
 
 def _inhalte_extrahieren(inhalt: bytes) -> tuple[bytes, bytes | None]:
@@ -156,11 +178,48 @@ def _inhalte_extrahieren(inhalt: bytes) -> tuple[bytes, bytes | None]:
     raise ValueError("Die Datei ist weder ein Backup-ZIP noch eine SQLite-Datenbank.")
 
 
-def _optionen_validieren(optionen_bytes: bytes) -> None:
+def _optionen_validieren(optionen_bytes: bytes) -> dict:
     try:
-        json.loads(optionen_bytes)
+        return json.loads(optionen_bytes)
     except json.JSONDecodeError as fehler:
         raise ValueError(f"Die enthaltene options.json ist kein gültiges JSON: {fehler}") from fehler
+
+
+def _supervisor_optionen_setzen(optionen: dict) -> bool:
+    """Schreibt die wiederhergestellte Konfiguration zusätzlich dauerhaft in
+    den Konfigurationsspeicher des Supervisors (statt nur in die lokale
+    options.json, die er bei jedem Neustart ohnehin aus seinem eigenen Stand
+    neu schreibt - siehe Modul-Docstring). Erst danach übersteht eine
+    wiederhergestellte Konfiguration einen Neustart.
+
+    Ohne SUPERVISOR_TOKEN (z.B. lokal außerhalb des Add-on-Containers) oder
+    bei einer ablehnenden Antwort (z.B. weil das Backup von einer älteren
+    Add-on-Version stammt und Schlüssel enthält, die das aktuelle Schema
+    nicht mehr kennt) wird nur geloggt und False zurückgegeben, kein Fehler
+    - die lokale options.json gilt in dem Fall trotzdem sofort für die
+    laufende Instanz, siehe wiederherstellen()."""
+    token = os.environ.get("SUPERVISOR_TOKEN")
+    if not token:
+        logger.info("Kein SUPERVISOR_TOKEN gesetzt - Konfiguration wird nicht dauerhaft übernommen.")
+        return False
+
+    try:
+        antwort = httpx.post(
+            SUPERVISOR_OPTIONS_URL,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json={"options": optionen},
+            timeout=10.0,
+        )
+        antwort.raise_for_status()
+        ergebnis = antwort.json()
+    except (httpx.HTTPError, ValueError) as fehler:
+        logger.warning("Supervisor-API hat die wiederhergestellte Konfiguration abgelehnt: %s", fehler)
+        return False
+
+    if ergebnis.get("result") != "ok":
+        logger.warning("Supervisor-API hat die wiederhergestellte Konfiguration abgelehnt: %s", ergebnis)
+        return False
+    return True
 
 
 def _ist_praemien_tracker_datenbank(pfad: Path) -> bool:

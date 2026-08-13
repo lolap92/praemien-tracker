@@ -12,12 +12,19 @@
   <p style="font-size: 0.88rem; margin-top: 0.7rem;">
     Die im Backup enthaltene Add-on-Konfiguration (<code>options.json</code>)
     wurde ebenfalls übernommen und gilt sofort für diese laufende Instanz.
-    <strong>Achtung:</strong> Home Assistant schreibt <code>options.json</code>
-    bei jedem Add-on-Neustart aus dem in der Add-on-Konfiguration
-    hinterlegten Stand neu – ein Neustart würde die wiederhergestellten
-    Einstellungen also wieder verwerfen. Trage sie bei Bedarf zusätzlich
-    manuell in der Add-on-Konfiguration ein, damit sie dauerhaft erhalten
-    bleiben.
+    {% if konfiguration_dauerhaft %}
+    Sie wurde zusätzlich dauerhaft in der Add-on-Konfiguration von Home
+    Assistant gespeichert und übersteht damit auch einen Neustart.
+    {% else %}
+    <strong>Achtung:</strong> Die dauerhafte Übernahme in die
+    Add-on-Konfiguration von Home Assistant ist fehlgeschlagen (z.B. weil
+    das Backup Einstellungen enthält, die es in dieser Add-on-Version nicht
+    mehr gibt). Home Assistant schreibt <code>options.json</code> bei jedem
+    Add-on-Neustart aus dem in der Add-on-Konfiguration hinterlegten Stand
+    neu – ein Neustart würde die wiederhergestellten Einstellungen also
+    wieder verwerfen. Trage sie bei Bedarf zusätzlich manuell in der
+    Add-on-Konfiguration ein, damit sie dauerhaft erhalten bleiben.
+    {% endif %}
   </p>
   {% endif %}
   <p style="font-size: 0.88rem; margin-top: 0.7rem;">

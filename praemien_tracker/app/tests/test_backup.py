@@ -19,6 +19,7 @@ import sqlite3
 import zipfile
 from io import BytesIO
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -272,14 +273,19 @@ def _zip_bauen(db_bytes: bytes, optionen: str | None) -> bytes:
     return puffer.getvalue()
 
 
-def test_wiederherstellen_uebernimmt_options_json_aus_zip(db, migration_ueberspringen):
+def test_wiederherstellen_uebernimmt_options_json_aus_zip(db, monkeypatch, migration_ueberspringen):
+    # SUPERVISOR_TOKEN bewusst nicht gesetzt: dieser Test prüft nur die
+    # lokale Übernahme, die dauerhafte Übernahme via Supervisor-API hat
+    # eigene Tests weiter unten.
+    monkeypatch.delenv("SUPERVISOR_TOKEN", raising=False)
     db_bytes = backup.erstellen().read_bytes()
     zip_bytes = _zip_bauen(db_bytes, json.dumps({"mindestpraemie": 75}))
 
     try:
-        ergebnis = backup.wiederherstellen(zip_bytes)
+        konfiguration_wiederhergestellt, konfiguration_dauerhaft = backup.wiederherstellen(zip_bytes)
 
-        assert ergebnis is True
+        assert konfiguration_wiederhergestellt is True
+        assert konfiguration_dauerhaft is False
         assert json.loads(backup.OPTIONS_PATH.read_text()) == {"mindestpraemie": 75}
     finally:
         backup.OPTIONS_PATH.unlink(missing_ok=True)
@@ -289,13 +295,79 @@ def test_wiederherstellen_ohne_options_json_gibt_false_zurueck(db, migration_ueb
     db_bytes = backup.erstellen().read_bytes()
     zip_bytes = _zip_bauen(db_bytes, optionen=None)
 
-    assert backup.wiederherstellen(zip_bytes) is False
+    assert backup.wiederherstellen(zip_bytes) == (False, False)
 
 
 def test_wiederherstellen_rohe_db_datei_gibt_false_zurueck(db, migration_ueberspringen):
     db_bytes = backup.erstellen().read_bytes()
 
-    assert backup.wiederherstellen(db_bytes) is False
+    assert backup.wiederherstellen(db_bytes) == (False, False)
+
+
+def test_supervisor_optionen_setzen_ohne_token_gibt_false_zurueck(monkeypatch):
+    monkeypatch.delenv("SUPERVISOR_TOKEN", raising=False)
+
+    assert backup._supervisor_optionen_setzen({"demo_modus": True}) is False
+
+
+def test_supervisor_optionen_setzen_erfolgreich(monkeypatch):
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "geheim")
+    aufrufe = []
+
+    def gefakter_post(url, *, headers, json, timeout):
+        aufrufe.append((url, headers, json))
+        assert url == backup.SUPERVISOR_OPTIONS_URL
+        assert headers["Authorization"] == "Bearer geheim"
+        return httpx.Response(200, json={"result": "ok"}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(backup.httpx, "post", gefakter_post)
+
+    assert backup._supervisor_optionen_setzen({"demo_modus": True}) is True
+    assert aufrufe == [
+        (backup.SUPERVISOR_OPTIONS_URL, aufrufe[0][1], {"options": {"demo_modus": True}})
+    ]
+
+
+def test_supervisor_optionen_setzen_bei_ablehnung_false(monkeypatch):
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "geheim")
+    monkeypatch.setattr(
+        backup.httpx,
+        "post",
+        lambda url, **kwargs: httpx.Response(
+            200,
+            json={"result": "error", "message": "Unbekannte Option"},
+            request=httpx.Request("POST", url),
+        ),
+    )
+
+    assert backup._supervisor_optionen_setzen({"veraltete_option": True}) is False
+
+
+def test_supervisor_optionen_setzen_bei_netzwerkfehler_false(monkeypatch):
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "geheim")
+
+    def kaputter_post(url, **kwargs):
+        raise httpx.ConnectError("nicht erreichbar")
+
+    monkeypatch.setattr(backup.httpx, "post", kaputter_post)
+
+    assert backup._supervisor_optionen_setzen({"demo_modus": True}) is False
+
+
+def test_wiederherstellen_uebernimmt_konfiguration_dauerhaft_bei_erfolgreicher_supervisor_api(
+    db, monkeypatch, migration_ueberspringen
+):
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "geheim")
+    monkeypatch.setattr(backup, "_supervisor_optionen_setzen", lambda optionen: True)
+    db_bytes = backup.erstellen().read_bytes()
+    zip_bytes = _zip_bauen(db_bytes, json.dumps({"demo_modus": True}))
+
+    try:
+        ergebnis = backup.wiederherstellen(zip_bytes)
+
+        assert ergebnis == (True, True)
+    finally:
+        backup.OPTIONS_PATH.unlink(missing_ok=True)
 
 
 def test_wiederherstellen_lehnt_ungueltiges_json_in_optionen_ab(db, baenke, migration_ueberspringen):

@@ -29,10 +29,14 @@ def herunterladen() -> Response:
 async def wiederherstellen(request: Request, datei: UploadFile = File(...)):
     inhalt = await datei.read()
     try:
-        konfiguration_wiederhergestellt = backup.wiederherstellen(inhalt)
+        konfiguration_wiederhergestellt, konfiguration_dauerhaft = backup.wiederherstellen(inhalt)
     except ValueError as fehler:
         raise HTTPException(status_code=400, detail=str(fehler)) from fehler
     return templates.TemplateResponse(
         "backup_wiederhergestellt.html",
-        {"request": request, "konfiguration_wiederhergestellt": konfiguration_wiederhergestellt},
+        {
+            "request": request,
+            "konfiguration_wiederhergestellt": konfiguration_wiederhergestellt,
+            "konfiguration_dauerhaft": konfiguration_dauerhaft,
+        },
     )

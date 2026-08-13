@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.49.0
+
+**Die beim Wiederherstellen eines Backups übernommene Add-on-Konfiguration überstand bisher keinen Neustart.** `wiederherstellen()` (seit 2.48.0) schrieb die im Backup enthaltene `options.json` nur lokal in `/data` - Supervisor überschreibt diese Datei aber bei jedem Add-on-Start unbesehen mit dem Stand aus seinem eigenen Konfigurationsspeicher. Die Bestätigungsseite wies zwar darauf hin, dass man die Werte zusätzlich von Hand in der Add-on-Konfiguration nachtragen müsse - genau das war der eigentliche Mangel.
+
+- `wiederherstellen()` schreibt die wiederhergestellte Konfiguration jetzt zusätzlich über die Supervisor-API (`POST /addons/self/options`, siehe `_supervisor_optionen_setzen()`) in den dauerhaften Konfigurationsspeicher - über dieselbe `SUPERVISOR_TOKEN`-Umgebungsvariable, die `finder/notify.py` bereits für Push-Benachrichtigungen nutzt.
+- Dafür neu im Manifest: `hassio_api: true` (bisher fehlte es hier; der Budget-Tracker hat es bereits für seine eigene Supervisor-Anbindung).
+- Gelingt der API-Aufruf, übersteht die Konfiguration jeden folgenden Neustart, ohne dass noch etwas von Hand nachgetragen werden muss. Die Bestätigungsseite unterscheidet jetzt zwischen "dauerhaft übernommen" und dem bisherigen Fallback-Hinweis (z.B. bei einem Backup mit inzwischen entfernten Optionen, das der Supervisor ablehnt, oder außerhalb des Add-on-Containers ganz ohne Token).
+
 ## 2.48.1
 
 Übernommene Vorschläge bleiben jetzt nachvollziehbar sichtbar, mit
