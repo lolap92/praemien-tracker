@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.48.0
+
+Datenbank-Backup direkt aus der App: neue Seite „Backup" (im „Mehr"-Menü) zum Herunterladen und Wiederherstellen.
+
+- **Backup herunterladen:** legt eine frische, konsistente Kopie der Datenbank an (über die SQLite-Backup-API, damit ein laufender Schreibvorgang von Scheduler/Web-Anfragen nicht mitten im Kopieren erwischt wird), bündelt sie mit der aktuellen Add-on-Konfiguration (`options.json`) in einem ZIP und liefert es direkt zum Download - vorher ließ sich an die Datenbankdatei nur über Datei-Zugriff auf den Host herankommen.
+- **Backup wiederherstellen:** nimmt ein ZIP oder eine rohe `.db`-Datei entgegen und ersetzt damit die laufende Datenbank sowie, falls im ZIP enthalten, auch `options.json`. Die hochgeladene Datei wird vorher geprüft (gültiges SQLite, `PRAGMA integrity_check`, erwartete Tabellen vorhanden) und in einer Kopie per Alembic auf den aktuellen Schema-Stand migriert, damit auch ältere Backups funktionieren; erst wenn das gelingt, entsteht automatisch ein Sicherheits-Backup des bisherigen Stands und die Datei wird ausgetauscht. Schlägt ein Schritt fehl, bleibt die laufende Datenbank unangetastet. Die Bestätigungsseite weist darauf hin, dass ein anschließender Add-on-Neustart eine wiederhergestellte `options.json` wieder verwirft (Supervisor schreibt sie bei jedem Start aus dem eigenen Konfigurationsstand neu) und empfiehlt trotzdem einen Neustart, damit Scheduler und Budget-Tracker-Sync den neuen Datenbank-Stand übernehmen.
+- Die letzten 10 manuellen Backups bleiben in `/data/backups` erhalten, ältere werden automatisch entfernt - unabhängig von der bestehenden, unrotierten Sicherheitskopie unmittelbar vor einer Migration (`praemien.db.bak`).
+
 ## 2.47.1
 
 Nachtrag bestehender Prämien für den Budget-Tracker-Sync (2.47.0).

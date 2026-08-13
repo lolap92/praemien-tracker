@@ -73,6 +73,12 @@ DB_PATH = DATA_DIR / ("demo.db" if DEMO_MODUS else "praemien.db")
 DB_BACKUP_PATH = DATA_DIR / ("demo.db.bak" if DEMO_MODUS else "praemien.db.bak")
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 
+# Eigenes Verzeichnis für manuell aus der App angestoßene Backups (siehe
+# backup.py) - getrennt von DB_BACKUP_PATH oben, das nur die automatische
+# Sicherheitskopie unmittelbar vor einer Migration ist (main.py:
+# _sicherheitskopie) und nicht rotiert.
+BACKUP_DIR = DATA_DIR / "backups"
+
 # API-Key bewusst zusätzlich über eine Umgebungsvariable überschreibbar (z.B.
 # für lokale Entwicklung ohne Add-on-Optionen) - options.json gewinnt, wenn
 # beide gesetzt sind, da sie der offizielle Weg im Add-on ist.

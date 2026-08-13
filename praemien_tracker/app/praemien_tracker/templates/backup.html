@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Backup – Prämien-Tracker{% endblock %}
+{% block appbar_title %}Backup{% endblock %}
+{% block content %}
+
+<div class="card">
+  <div class="card-label">Backup herunterladen</div>
+  <p style="color: var(--ink-soft); font-size: 0.88rem;">
+    Legt eine frische Kopie der Datenbank an, bündelt sie mit der aktuellen
+    Add-on-Konfiguration (<code>options.json</code>) in einem ZIP und lädt es
+    direkt herunter – unabhängig vom automatischen Backup, das vor jeder
+    Migration entsteht.
+  </p>
+  <a class="button secondary" href="backup/herunterladen">Backup herunterladen</a>
+</div>
+
+<div class="card">
+  <div class="card-label">Backup wiederherstellen</div>
+  <p style="color: var(--ink-soft); font-size: 0.88rem;">
+    Ersetzt die laufende Datenbank durch eine hochgeladene Datei (ZIP oder
+    rohe <code>.db</code>-Datei). Steckt im ZIP auch <code>options.json</code>,
+    wird die Add-on-Konfiguration ebenfalls übernommen. Vorher wird
+    automatisch ein Sicherheits-Backup des aktuellen Datenbank-Stands angelegt.
+  </p>
+  <form
+    method="post"
+    action="backup/wiederherstellen"
+    enctype="multipart/form-data"
+    onsubmit="return confirm('Aktuelle Datenbank (und, falls im ZIP enthalten, die Add-on-Konfiguration) wirklich durch diese Datei ersetzen? Der bisherige Stand wird vorher automatisch gesichert.');"
+  >
+    <input type="file" name="datei" accept=".zip,.db" required style="display:block; margin-bottom: 0.7rem;">
+    <button class="button secondary" type="submit">Backup einspielen</button>
+  </form>
+</div>
+
+{% endblock %}

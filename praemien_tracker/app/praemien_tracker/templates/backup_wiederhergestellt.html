@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Backup wiederhergestellt – Prämien-Tracker{% endblock %}
+{% block appbar_title %}Backup wiederhergestellt{% endblock %}
+{% block content %}
+
+<div class="card">
+  <p style="font-size: 0.88rem;">
+    Die Datenbank wurde durch das hochgeladene Backup ersetzt. Der vorherige
+    Stand liegt als Sicherheitskopie in <code>/data/backups</code>.
+  </p>
+  {% if konfiguration_wiederhergestellt %}
+  <p style="font-size: 0.88rem; margin-top: 0.7rem;">
+    Die im Backup enthaltene Add-on-Konfiguration (<code>options.json</code>)
+    wurde ebenfalls übernommen und gilt sofort für diese laufende Instanz.
+    <strong>Achtung:</strong> Home Assistant schreibt <code>options.json</code>
+    bei jedem Add-on-Neustart aus dem in der Add-on-Konfiguration
+    hinterlegten Stand neu – ein Neustart würde die wiederhergestellten
+    Einstellungen also wieder verwerfen. Trage sie bei Bedarf zusätzlich
+    manuell in der Add-on-Konfiguration ein, damit sie dauerhaft erhalten
+    bleiben.
+  </p>
+  {% endif %}
+  <p style="font-size: 0.88rem; margin-top: 0.7rem;">
+    Bitte jetzt das Add-on neu starten, damit der Scheduler (KI-Deal-Finder,
+    Kündigungshinweis-Batch) und der Budget-Tracker-Sync den neuen
+    Datenbank-Stand übernehmen.
+  </p>
+  <a class="button secondary" href="overview">Zur Übersicht</a>
+</div>
+
+{% endblock %}

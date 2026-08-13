@@ -39,6 +39,7 @@ SEITEN = [
     ("protokoll", "protokoll"),
     ("statistiken", "statistiken"),
     ("inhaber", "inhaber"),
+    ("backup", "backup"),
 ]
 
 

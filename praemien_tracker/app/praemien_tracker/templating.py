@@ -90,6 +90,7 @@ _TABS = [
     ("protokoll", "protokoll"),
     ("statistiken", "statistiken"),
     ("inhaber", "inhaber"),
+    ("backup", "backup"),
     ("overview", "overview"),
 ]
 
