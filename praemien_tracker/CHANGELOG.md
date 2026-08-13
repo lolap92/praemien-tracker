@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.49.0
+
+Neuer Feld-Filter für die ToDo-Kategorie "Deal pflegen".
+
+- **Filterung nach zu pflegendem Feld:** Die ToDo-Liste im Bereich "Deal pflegen" kann nun gezielt nach den drei pflegbaren Angaben gefiltert werden: **Kontonummer**, **Zugangsdaten sichern** und **Erwartete Auszahlung** (analog zum Quelle-Filter bei den Prämien-ToDo-Kategorien).
+- **Kontext-Anzeige:** Der neue Feld-Filter wird ausschließlich im Tab "Deal pflegen" angezeigt und ist bei den anderen Tabs per CSS ausgeblendet, um die Benutzeroberfläche übersichtlich zu halten.
+
 ## 2.48.0
 
 Datenbank-Backup direkt aus der App: neue Seite „Backup" (im „Mehr"-Menü) zum Herunterladen und Wiederherstellen.

@@ -88,6 +88,36 @@
   {{ quelle_filter(kategorie_slugs["Auf Prämie warten"]) }}
   {{ quelle_filter(kategorie_slugs["Prämienauszahlung prüfen"]) }}
 
+  {% macro feld_filter(tab_slug) %}
+  <form class="filterleiste todo-feld-filter todo-feld-filter-{{ tab_slug }}" method="get" action="todos">
+    <input type="hidden" name="tab" value="{{ tab_slug }}">
+    <details class="multi-filter">
+      <summary>Feld{% if filter_feld %} (1){% endif %}</summary>
+      <div class="multi-filter-panel">
+        <label>
+          <input type="radio" name="feld" value="" {{ "checked" if not filter_feld else "" }} onclick="this.form.submit()">
+          – Alle –
+        </label>
+        <label>
+          <input type="radio" name="feld" value="kontonummer" {{ "checked" if filter_feld == "kontonummer" else "" }} onclick="this.form.submit()">
+          Kontonummer
+        </label>
+        <label>
+          <input type="radio" name="feld" value="zugangsdaten_gespeichert" {{ "checked" if filter_feld == "zugangsdaten_gespeichert" else "" }} onclick="this.form.submit()">
+          Zugangsdaten sichern
+        </label>
+        <label>
+          <input type="radio" name="feld" value="auszahlung_erwartet" {{ "checked" if filter_feld == "auszahlung_erwartet" else "" }} onclick="this.form.submit()">
+          Erwartete Auszahlung
+        </label>
+      </div>
+    </details>
+    <button type="submit" class="secondary">Filtern</button>
+    {% if filter_feld %}<a class="button secondary" href="todos?tab={{ tab_slug }}">Zurücksetzen</a>{% endif %}
+  </form>
+  {% endmacro %}
+  {{ feld_filter(kategorie_slugs["Deal pflegen"]) }}
+
   <div class="todo-panels">
     {% for kategorie in kategorie_reihenfolge %}
       {% if kategorie in gruppen %}
@@ -103,6 +133,8 @@
           <p class="leer">Aktuell nichts offen.</p>
           {% elif filter_quelle %}
           <p class="leer">Nichts für diese Quelle.</p>
+          {% elif filter_feld %}
+          <p class="leer">Nichts für dieses Feld.</p>
           {% endif %}
         {% endif %}
 

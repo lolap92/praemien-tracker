@@ -477,6 +477,72 @@ def test_deal_pflegen_gekuendigter_deal_braucht_keine_zugangsdaten(db):
     assert "todo-tab-leer" in label.get("class", [])
 
 
+def test_deal_pflegen_renders_feld_filter(db):
+    antwort = client.get("/todos")
+    soup = BeautifulSoup(antwort.text, "html.parser")
+
+    form_pflegen = soup.select_one("form.todo-feld-filter-pflegen")
+    assert form_pflegen is not None
+
+    tab_feld_pflegen = form_pflegen.select_one('input[name="tab"]')
+    assert tab_feld_pflegen["value"] == "pflegen"
+
+    options = {opt.get("value") for opt in form_pflegen.select('input[name="feld"]')}
+    assert "" in options
+    assert "kontonummer" in options
+    assert "zugangsdaten_gespeichert" in options
+    assert "auszahlung_erwartet" in options
+
+
+def test_deal_pflegen_filtering_by_feld(db):
+    bank = Bank(name="FilterFeld-Bank")
+    inhaber = Inhaber(name="FilterFeld-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+
+    # Create a deal that needs maintaining of all three fields
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer=None, zugangsdaten_gespeichert=False)
+    deal.praemien.append(Praemie(quelle="bank", betrag=Decimal("100.00"), erhalten=False, auszahlung_erwartet=None))
+    db.add(deal)
+    db.commit()
+
+    # 1. Unfiltered: should show all three chips
+    antwort_all = client.get("/todos")
+    soup_all = BeautifulSoup(antwort_all.text, "html.parser")
+    panel_all = soup_all.select_one("#panel-pflegen")
+    chips_all = {mf.get_text(strip=True).rstrip("+×") for mf in panel_all.select(".miss .mf")}
+    assert "Kontonummer" in chips_all
+    assert "Zugangsdaten sichern" in chips_all
+    assert "Erwartete Auszahlung (Bank, 100.00 €)" in chips_all
+
+    # 2. Filtered by kontonummer
+    antwort_kto = client.get("/todos?feld=kontonummer")
+    soup_kto = BeautifulSoup(antwort_kto.text, "html.parser")
+    panel_kto = soup_kto.select_one("#panel-pflegen")
+    chips_kto = {mf.get_text(strip=True).rstrip("+×") for mf in panel_kto.select(".miss .mf")}
+    assert "Kontonummer" in chips_kto
+    assert "Zugangsdaten sichern" not in chips_kto
+    assert "Erwartete Auszahlung (Bank, 100.00 €)" not in chips_kto
+
+    # 3. Filtered by zugangsdaten_gespeichert
+    antwort_zd = client.get("/todos?feld=zugangsdaten_gespeichert")
+    soup_zd = BeautifulSoup(antwort_zd.text, "html.parser")
+    panel_zd = soup_zd.select_one("#panel-pflegen")
+    chips_zd = {mf.get_text(strip=True).rstrip("+×") for mf in panel_zd.select(".miss .mf")}
+    assert "Kontonummer" not in chips_zd
+    assert "Zugangsdaten sichern" in chips_zd
+    assert "Erwartete Auszahlung (Bank, 100.00 €)" not in chips_zd
+
+    # 4. Filtered by auszahlung_erwartet
+    antwort_ae = client.get("/todos?feld=auszahlung_erwartet")
+    soup_ae = BeautifulSoup(antwort_ae.text, "html.parser")
+    panel_ae = soup_ae.select_one("#panel-pflegen")
+    chips_ae = {mf.get_text(strip=True).rstrip("+×") for mf in panel_ae.select(".miss .mf")}
+    assert "Kontonummer" not in chips_ae
+    assert "Zugangsdaten sichern" not in chips_ae
+    assert "Erwartete Auszahlung (Bank, 100.00 €)" in chips_ae
+
+
 def test_deal_pflegen_abgeschlossener_deal_erscheint_nicht(db):
     bank = Bank(name="Abgeschlossen-Testbank")
     inhaber = Inhaber(name="Abgeschlossen-Inhaber")
