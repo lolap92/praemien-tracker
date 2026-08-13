@@ -249,6 +249,7 @@ def test_overview_tiles_link_to_todos(deal):
     assert 'href="todos?tab=bedingungen"' in html
     assert 'href="todos?tab=praemie"' in html
     assert 'href="todos?tab=praemie_pruefen"' in html
+    assert 'href="deals?status=wartet_auf_kuendigung"' in html
     assert 'href="todos?tab=kuendigen"' in html
     assert 'href="todos?tab=bestaetigung"' in html
     assert 'href="deals?status=abgeschlossen"' in html

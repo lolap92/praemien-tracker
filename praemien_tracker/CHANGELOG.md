@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.48.0
+
+Klick auf "Auf Kündigung warten" auf der Startseite leitet nun direkt auf die Deals-Liste mit entsprechendem Filter weiter.
+
+- **Verlinkung von der Übersicht angepasst:** Wenn ein Nutzer auf die Kachel „Auf Kündigung warten“ in der Pipeline der Übersichtskarte klickt, wird er nun direkt auf `/deals?status=wartet_auf_kuendigung` weitergeleitet.
+- **Konsistenz mit abgeschlossenen Deals:** Dies entspricht dem Verhalten der Kachel „Abgeschlossen“ und stellt sicher, dass die betroffenen Deals mit allen ihren Details direkt gefiltert betrachtet werden können.
+
 ## 2.47.1
 
 Nachtrag bestehender Prämien für den Budget-Tracker-Sync (2.47.0).
