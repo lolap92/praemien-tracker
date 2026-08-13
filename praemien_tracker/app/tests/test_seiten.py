@@ -104,6 +104,16 @@ def test_deal_formular_gehoert_zum_deals_reiter(deal):
     assert aktiver_reiter(antwort.text) == "deals"
 
 
+def test_speichern_button_im_bearbeitungsmodus_vorhanden(deal):
+    """Prüft, dass der Speichern-Button im Bearbeitungsmodus eines Deals in der Appbar vorhanden ist."""
+    antwort = client.get(f"/deals/{deal.id}/edit")
+    assert antwort.status_code == 200
+    html = antwort.text
+    # Der Button soll als Speichern-Button mit der Referenz auf das Formular im Appbar-Aktionen-Block sein
+    assert 'form="deal-form"' in html
+    assert "Speichern" in html
+
+
 def test_links_oeffnen_read_only_detailseite(db, deal):
     """Prüft, dass die relevanten Navigations-Links nun auf die schreibgeschützte Detailseite statt auf edit verweisen."""
     # ToDos

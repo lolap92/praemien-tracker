@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.47.2
+
+- **Zusätzlicher Speichern-Button auf der Deal-Detailseite im Bearbeitungsmodus:** Im Bearbeitungsmodus wird der Speichern-Button nun auch in der oberen Appbar an der Stelle angezeigt, an der sich im Nur-Lese-Modus der Bearbeiten-Button befindet. Dies erleichtert das Speichern von Änderungen, ohne ans Ende der Seite scrollen zu müssen.
+
 ## 2.47.1
 
 Nachtrag bestehender Prämien für den Budget-Tracker-Sync (2.47.0).
