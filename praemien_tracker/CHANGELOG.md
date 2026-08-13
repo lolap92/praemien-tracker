@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.49.1
+
+Eigenes App-Icon statt Browser-Standard-Favicon.
+
+- Neues Icon-Motiv (Medaillon mit Stern und Bändern), passend zum
+  Budget-Tracker als Schwester-Add-on gestaltet: gleiche Kachel-Grundfarbe
+  (Ink-Navy zu Accent-Grün) und gleiche Linienstärke, nur das Motiv
+  unterscheidet die beiden.
+- `icon.png`/`logo.png` im Add-on-Wurzelverzeichnis: das liest der
+  Supervisor direkt aus dem Repository, unabhängig vom Docker-Image, und
+  zeigt es im Store sowie in der Add-on-Übersicht.
+- `favicon.png`/`apple-touch-icon.png` unter `static/img/` verlinkt im
+  `<head>` - bislang fehlte `<link rel="icon">` komplett, der Tab zeigte nur
+  das generische Browser-Symbol.
+
 ## 2.49.0
 
 **Die beim Wiederherstellen eines Backups übernommene Add-on-Konfiguration überstand bisher keinen Neustart.** `wiederherstellen()` (seit 2.48.0) schrieb die im Backup enthaltene `options.json` nur lokal in `/data` - Supervisor überschreibt diese Datei aber bei jedem Add-on-Start unbesehen mit dem Stand aus seinem eigenen Konfigurationsspeicher. Die Bestätigungsseite wies zwar darauf hin, dass man die Werte zusätzlich von Hand in der Add-on-Konfiguration nachtragen müsse - genau das war der eigentliche Mangel.

@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Prämien-Tracker{% endblock %}</title>
 <base href="{{ request.headers.get('X-Ingress-Path', '') }}/">
+<link rel="icon" type="image/png" href="static/img/favicon.png?v={{ asset_v }}">
+<link rel="apple-touch-icon" href="static/img/apple-touch-icon.png?v={{ asset_v }}">
 <link rel="stylesheet" href="static/css/style.css?v={{ asset_v }}">
 </head>
 <body>
