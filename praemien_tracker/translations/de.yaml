@@ -1,4 +1,25 @@
 configuration:
+  demo_modus:
+    name: Demo-Modus
+    description: Aktiviert den Demo-Modus mit frei erfundenen Testdaten zur gefahrlosen Demonstration der App. Alle KI-Hintergrundläufe werden dabei deaktiviert.
+  anthropic_api_key:
+    name: Anthropic API-Key
+    description: API-Schlüssel für Anthropic (Claude), der für die automatische Recherche von Deals, Kündigungswegen und Kunden-werben-Kunden-Programmen benötigt wird.
+  anthropic_model:
+    name: Anthropic Modell
+    description: Das für die Analyse zu verwendende KI-Modell von Anthropic (z. B. "claude-haiku-4-5" oder "claude-3-5-sonnet").
+  mindestpraemie:
+    name: Mindestprämie
+    description: Erforderliche Mindesthöhe einer Prämie in Euro, damit ein gefundener Deal als "vorgeschlagen" einsortiert wird. Niedrigere Prämien werden automatisch abgelehnt.
+  mydealz_gruppe:
+    name: Mydealz Gruppen
+    description: Kommagetrennte Liste der zu durchsuchenden Mydealz-Gruppennamen (z. B. "vertraege-finanzen,konto-kreditkarten").
+  spartanien_url:
+    name: Spartanien URL
+    description: Die Basis-URL des Spartanien-Portals zur automatischen Extraktion aktueller Bank-Prämien.
+  dealdoktor_feed_url:
+    name: Dealdoktor Feed-URLs
+    description: Kommagetrennte Liste der Dealdoktor RSS-Feed-URLs, aus denen neue Prämien-Angebote ausgelesen werden.
   benachrichtigungsgeraete:
     name: Benachrichtigungsgeräte
     description: >-

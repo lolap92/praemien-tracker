@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.48.2
+
+Benennung und ausführliche Beschreibungen für alle Add-on Konfigurationsparameter in Deutsch und Englisch hinzugefügt.
+
+- Alle 11 Konfigurations-Optionen der App (darunter `demo_modus`, `anthropic_api_key`, `anthropic_model`, `mindestpraemie`, `mydealz_gruppe`, `spartanien_url` und `dealdoktor_feed_url`) haben nun übersetzte, benutzerfreundliche Namen und ausführliche Hilfetexte erhalten, die direkt im Home Assistant Konfigurations-Interface angezeigt werden.
+- Anpassung und Erweiterung des Unit-Tests `test_translations_are_valid`, um die Vollständigkeit aller konfigurierten Übersetzungsschlüssel dauerhaft sicherzustellen.
+
 ## 2.48.1
 
 Übernommene Vorschläge bleiben jetzt nachvollziehbar sichtbar, mit
@@ -63,7 +70,7 @@ erledigen" zusammen.
 - Die alte "Zugangsdaten"-Kategorie mit ihrer Einzel-Checkbox entfällt - das
   Feld wird jetzt genauso wie Kontonummer/Auszahlung über "Deal pflegen"
   gepflegt.
-- "Deal pflegen" ist bewusst kein siebter Pipeline-Status: ein Deal kann
+- "Deal pflegen" is bewusst kein siebter Pipeline-Status: ein Deal kann
   gleichzeitig einen der sechs echten Status UND offene Angaben haben. Auf
   der Übersicht bekommt es deshalb eine eigene Kachel neben der
   Pipeline-Kachel, nicht ein zusätzliches Pipeline-Segment.
@@ -75,7 +82,7 @@ erledigen" zusammen.
 
 Deal-Detailseite wird standardmäßig im Read-only Modus geöffnet.
 
-- **Detailseite statt Bearbeiten-Formular beim Navigieren:** Jeder Navigationslink, der bisher direkt zur Bearbeitungsseite (`/deals/{id}/edit`) geführt hat (unter anderem aus der ToDo-Liste, der Vollständigkeit, den Sperrfristen und dem Änderungsprotokoll), öffnet nun standardmäßig die schreibgeschützte Detailseite (`/deals/{id}`).
+- **Detailseite statt Bearbeiten-Formular beim Navigieren:** Jeder Navigationslink, der bisher direkt zur Bearbeitungsseite (`/deals/{id}/edit`) geführt hat (unter anderem aus der ToDo-Liste, der Vollständigkeit, den Sperrfristen und dem Änderungsprotokoll), opens nun standardmäßig die schreibgeschützte Detailseite (`/deals/{id}`).
 - **Sicherheit vor versehentlichen Änderungen:** Damit wird ein versehentliches Ändern oder Löschen von Daten beim bloßen Anschauen von Deals zuverlässig verhindert. Über den dortigen “Bearbeiten”-Button kann die Bearbeitungsseite weiterhin gezielt aufgerufen werden.
 
 ## 2.45.2
@@ -266,7 +273,7 @@ warten" trennt jetzt danach, ob das nächste Prüfdatum schon erreicht ist.
   der "Zu erledigen"-Seite voll integriert (eigener Tab, Sortierung nach
   Prüfdatum, Filterung nach der Quelle der Prämie).
 - Die Zuordnung der ToDo-Zeilen erfolgt je Einzelprämie nach ihrem eigenen
-  Prüfdatum, nicht pauschal nach dem Deal-Status - ein Deal mit mehreren
+  Prüfdatum, nicht pauschal nach dem Deal-Status - ein Deal with mehreren
   offenen Prämien kann dadurch gleichzeitig in beiden Kategorien auftauchen,
   jede Prämie an der fachlich richtigen Stelle. Der Deal-Status selbst bleibt
   eindeutig: er zeigt "Prämienauszahlung prüfen", sobald irgendeine offene
@@ -440,7 +447,7 @@ können.
 - Ein minderjähriger Inhaber ohne eigene Zeile zu einem Fund (weil das
   Angebot laut KI-Extraktion kein Kinderdeal ist, siehe 2.28.0/2.29.0) war
   bisher endgültig außen vor - stellt sich die automatische Einschätzung im
-  Einzelfall als falsch heraus, gab es keinen Weg zurück außer über die neue
+  Einzelfall als falsch heraus, gab es keinen weg zurück außer über die neue
   Inhaber-Seite oder direkten Datenbankzugriff.
 - Der Dialog zeigt jetzt unterhalb der vorgeschlagenen Personen zusätzlich
   alle minderjährigen Inhaber ohne eigene Zeile zu diesem Fund als
@@ -902,7 +909,7 @@ auf mydealz, einmal auf Spartanien), erscheint jetzt eine gemeinsame
 Duplikat-Karte statt mehrerer einzelner Vorschlags-Karten - funktioniert für
 beliebig viele beteiligte Quellen, nicht nur mydealz/Spartanien.
 
-- Jede Fundstelle steht in der Karte mit eigener Prämienhöhe, Sperrfrist und
+- Jede Fundstelle steht in der karte mit eigener Prämienhöhe, Sperrfrist und
   Link zur Auswahl (Radio-Buttons) - die Prämie selbst ist bewusst kein
   Erkennungskriterium, da sie sich je Quelle unterscheiden kann.
 - **"Ausgewählte übernehmen"** übernimmt die gewählte Version und verwirft
@@ -977,7 +984,7 @@ dieselbe Bank).
 
 Außerdem die Tabelle "Dieser Lauf je Quelle" überarbeitet: die
 Abschnittsüberschrift entfällt, die vier Kategorien stehen wieder als
-Zeilen mit mydealz/Spartanien/**Summe** als Spalten - passt jetzt ohne
+Zeilen mit mydealz/Spartanien/**Summe** as Spalten - passt jetzt ohne
 horizontales Scrollen auf den Bildschirm.
 
 ## 2.12.0
@@ -1150,7 +1157,7 @@ Keine Schema-Migration nötig.
   mydealz/spartanien, Erwachsene/Kinderdepot und Vorgeschlagen/Zu prüfen/
   Abgelehnt eingrenzen.
 - **Ein Fund erscheint nur noch einmal**, auch wenn er für mehrere Inhaber
-  infrage kommt - vorher gab es eine Karte je Person. Die Karte zeigt jetzt
+  infrage kommt - vorher gab es eine karte je Person. Die karte zeigt jetzt
   eine Checkbox je Name; ist der Fund für eine Person besser bewertet als
   für eine andere (z. B. echter Neukunde vs. bereits Kundin), zählt beim
   Einsortieren der bessere Fall, die abweichende Person zeigt ihren eigenen
@@ -1249,7 +1256,7 @@ Tabellen) - vorher wird automatisch eine Sicherheitskopie angelegt.
   (neu).
 - **Neue Add-on-Optionen**: `anthropic_api_key`, `anthropic_model`,
   `mindestpraemie`, `mydealz_gruppe`, `spartanien_url` - alle optional, ohne
-  API-Key bleibt der KI-Deal-Finder einfach inaktiv.
+  API-Key bleibt the KI-Deal-Finder einfach inaktiv.
 - Die Suche gilt für alle Inhaber, auch minderjährige.
 - Ändert sich ein Angebot (z. B. eine höhere Prämie), entsteht ein neuer
   Vorschlag statt eines stillen Updates - die Historie bleibt
@@ -1368,7 +1375,7 @@ Keine Datenbank-Migration nötig.
   einem Durchgang einfügen. Fehler werden als lesbare Liste in Deutsch
   gemeldet ("Deal 2: kontoart fehlt") statt als technischer Rohtext.
 - JSON-Anlage ist ein echter Auf-/Zuschalter statt zweier Schaltflächen, die
-  nur wie einer aussahen.
+  nur wie einer aushahen.
 - Import: Randleerzeichen werden entfernt - bisher entstanden über den
   Import Kontoarten wie " Depot", die der Formularweg so nicht erzeugt hat.
 - Import: Die "nicht nötig"-Häkchen aus der Vollständigkeit lassen sich

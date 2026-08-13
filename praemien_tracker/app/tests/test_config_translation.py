@@ -16,8 +16,22 @@ def test_translations_are_valid():
         assert "configuration" in content
         config = content["configuration"]
 
+        all_keys = [
+            "demo_modus",
+            "anthropic_api_key",
+            "anthropic_model",
+            "mindestpraemie",
+            "mydealz_gruppe",
+            "spartanien_url",
+            "dealdoktor_feed_url",
+            "benachrichtigungsgeraete",
+            "benachrichtigungen_aktiv",
+            "taeglicher_lauf_aktiv",
+            "kuendigung_hinweise_batch_aktiv"
+        ]
+
         # Check existing and new keys are present and correctly formatted
-        for key in ["benachrichtigungsgeraete", "benachrichtigungen_aktiv", "taeglicher_lauf_aktiv", "kuendigung_hinweise_batch_aktiv"]:
+        for key in all_keys:
             assert key in config, f"Key {key} not found in {lang}.yaml"
             assert "name" in config[key]
             assert "description" in config[key]
