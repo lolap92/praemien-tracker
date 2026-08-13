@@ -10,7 +10,7 @@
 <body>
 <div class="app">
   {% set tab = nav_tab(request) %}
-  {% set nebenreiter = ('deals', 'sperrfristen', 'protokoll', 'statistiken', 'inhaber', 'backup') %}
+  {% set nebenreiter = ('sperrfristen', 'protokoll', 'statistiken', 'inhaber', 'backup') %}
   <header class="appbar">
     {% if demo_modus %}
     <div class="demo-banner">Demo-Modus · ausschließlich Testdaten, keine echten Daten</div>
@@ -23,7 +23,6 @@
         <details class="nav-more {{ 'on' if tab in nebenreiter else '' }}">
           <summary class="icon-btn">Mehr</summary>
           <div class="nav-more-panel">
-            <a href="deals" class="{{ 'on' if tab == 'deals' else '' }}">Deals</a>
             <a href="sperrfristen" class="{{ 'on' if tab == 'sperrfristen' else '' }}">Sperrfristen</a>
             <a href="protokoll" class="{{ 'on' if tab == 'protokoll' else '' }}">Protokoll</a>
             <a href="statistiken" class="{{ 'on' if tab == 'statistiken' else '' }}">Statistiken</a>
@@ -36,6 +35,7 @@
     <nav class="desktop-nav">
       <a href="overview" class="{{ 'on' if tab == 'overview' else '' }}">Übersicht</a>
       <a href="todos" class="{{ 'on' if tab == 'todos' else '' }}">Zu erledigen</a>
+      <a href="deals" class="{{ 'on' if tab == 'deals' else '' }}">Deals</a>
       <a href="vorschlaege" class="{{ 'on' if tab == 'vorschlaege' else '' }}">Vorschläge</a>
     </nav>
   </header>
@@ -53,6 +53,10 @@
       <a class="tab {{ 'on' if tab == 'todos' else '' }}" href="todos">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12l3 3 5-6"/></svg>
         <span class="lbl">Zu erledigen</span>
+      </a>
+      <a class="tab {{ 'on' if tab == 'deals' else '' }}" href="deals">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        <span class="lbl">Deals</span>
       </a>
       <a class="tab {{ 'on' if tab == 'vorschlaege' else '' }}" href="vorschlaege">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
