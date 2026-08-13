@@ -11,6 +11,13 @@
   <span class="chip status-{{ status }}">{{ status_labels[status] }}</span>
 </div>
 
+{% if entstanden_aus %}
+<div class="notiz">
+  Entstanden aus einem übernommenen Vorschlag vom {{ entstanden_aus.gefunden_am | datum }} ({{ entstanden_aus.quelle | quelle }}).
+  <a href="vorschlaege?status=uebernommen#vorschlag-{{ entstanden_aus.id }}">Vorschlag ansehen →</a>
+</div>
+{% endif %}
+
 <div class="sec-t">Konto</div>
 <div class="card">
   <dl class="detail-liste">

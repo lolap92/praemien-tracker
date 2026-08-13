@@ -735,7 +735,9 @@ def test_reiner_erwachsenen_deal_verschwindet_nach_uebernahme_beider_erwachsener
     nach = client.get("/vorschlaege")
     assert "0 vorgeschlagen" in nach.text
     assert "0 verworfen" in nach.text
-    assert v1.bank_name not in nach.text
+    # Verschwindet aus den offenen Bereichen, taucht aber (gewollt, siehe
+    # Nachvollziehbarkeits-Tests weiter unten) in der "übernommen"-Sektion auf.
+    assert "2 übernommen" in nach.text
 
 
 def test_erwachsenen_deal_fuer_alle_vier_verschwindet_ebenfalls_vollstaendig(db, haushalt_vier):
@@ -766,7 +768,9 @@ def test_erwachsenen_deal_fuer_alle_vier_verschwindet_ebenfalls_vollstaendig(db,
 
     nach = client.get("/vorschlaege")
     assert "0 vorgeschlagen" in nach.text
-    assert v1.bank_name not in nach.text
+    # Verschwindet aus den offenen Bereichen, taucht aber (gewollt) in der
+    # "übernommen"-Sektion auf - je eine Zeile für alle vier Inhaber.
+    assert "4 übernommen" in nach.text
 
 
 def test_uebernehmen_bestaetigen_funktioniert_auch_bei_verworfen(db, inhaber):
@@ -1252,3 +1256,84 @@ def test_zuruecksetzen_leert_den_rohtext_cache(db, inhaber):
     client.post("/vorschlaege/zuruecksetzen", follow_redirects=False)
 
     assert db.query(FinderFund).count() == 0
+
+
+# ---------------------------------------------------------------------------
+# Nachvollziehbarkeit: übernommene Vorschläge bleiben sichtbar und verlinken
+# auf den daraus entstandenen Deal (und umgekehrt).
+# ---------------------------------------------------------------------------
+
+
+def test_uebernehmen_bestaetigen_verknuepft_vorschlag_mit_dem_neuen_deal(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+
+    _uebernehmen_vorschau_und_bestaetigen([vorschlag.id])
+
+    db.refresh(vorschlag)
+    deal = db.query(Deal).one()
+    assert vorschlag.deal_id == deal.id
+
+
+def test_uebernommene_vorschlaege_erscheinen_in_eigener_sektion_mit_deal_link(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+    _uebernehmen_vorschau_und_bestaetigen([vorschlag.id])
+    deal = db.query(Deal).one()
+
+    antwort = client.get("/vorschlaege")
+    soup = BeautifulSoup(antwort.text, "html.parser")
+
+    karte = soup.select_one(f"#vorschlag-{vorschlag.id}")
+    assert karte is not None
+    assert "C24" in karte.get_text()
+    assert "Übernommen für Alice" in karte.get_text()
+    link = karte.select_one(f'a[href="deals/{deal.id}"]')
+    assert link is not None
+
+
+def test_uebernommener_vorschlag_ohne_verknuepften_deal_zeigt_keinen_deal_link(db, inhaber):
+    """Alt-Datensatz oder ein inzwischen gelöschter Deal: die Karte bleibt
+    sichtbar, aber ohne "Deal ansehen"-Link statt eines falschen Links."""
+    vorschlag = _vorschlag(db, inhaber, "uebernommen")
+
+    antwort = client.get("/vorschlaege?status=uebernommen")
+    soup = BeautifulSoup(antwort.text, "html.parser")
+
+    karte = soup.select_one(f"#vorschlag-{vorschlag.id}")
+    assert karte is not None
+    assert "Deal ansehen" not in karte.get_text()
+
+
+def test_deal_loeschen_entfernt_nur_die_verknuepfung_nicht_den_vorschlag(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+    _uebernehmen_vorschau_und_bestaetigen([vorschlag.id])
+    deal = db.query(Deal).one()
+
+    client.post(f"/deals/{deal.id}/delete", follow_redirects=False)
+
+    db.refresh(vorschlag)
+    assert vorschlag.status == "uebernommen"
+    assert vorschlag.deal_id is None
+
+
+def test_deal_detailseite_verlinkt_zurueck_auf_uebernommenen_vorschlag(db, inhaber):
+    vorschlag = _vorschlag(db, inhaber, "vorgeschlagen")
+    _uebernehmen_vorschau_und_bestaetigen([vorschlag.id])
+    deal = db.query(Deal).one()
+
+    antwort = client.get(f"/deals/{deal.id}")
+    assert antwort.status_code == 200
+    assert "übernommenen Vorschlag" in antwort.text
+    assert f'href="vorschlaege?status=uebernommen#vorschlag-{vorschlag.id}"' in antwort.text
+
+
+def test_deal_detailseite_ohne_herkunft_zeigt_keinen_rueckverweis(db, inhaber):
+    """Ein von Hand angelegter Deal ist nie aus einem Vorschlag entstanden -
+    der Hinweis darf dort nicht auftauchen."""
+    from praemien_tracker.helpers import build_deal_from_import
+    from praemien_tracker.schemas import DealImport
+
+    deal = build_deal_from_import(db, DealImport(bank="Handangelegt", kontoart="Depot", inhaber=inhaber.name))
+    db.commit()
+
+    antwort = client.get(f"/deals/{deal.id}")
+    assert "übernommenen Vorschlag" not in antwort.text

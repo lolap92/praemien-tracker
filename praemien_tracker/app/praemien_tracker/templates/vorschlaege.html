@@ -194,6 +194,10 @@
         <input type="checkbox" name="status" value="verworfen" {{ "checked" if "verworfen" in filter_status else "" }}>
         Verworfen
       </label>
+      <label>
+        <input type="checkbox" name="status" value="uebernommen" {{ "checked" if "uebernommen" in filter_status else "" }}>
+        Übernommen
+      </label>
     </div>
   </details>
   <button type="submit" class="secondary">Filtern</button>
@@ -209,9 +213,10 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
   <a class="chip status-zu_pruefen" href="{{ status_href('zu_pruefen') }}">{{ anzahl_zu_pruefen }} zu prüfen</a>
   <a class="chip status-automatisch_abgelehnt" href="{{ status_href('automatisch_abgelehnt') }}">{{ anzahl_abgelehnt }} abgelehnt</a>
   <a class="chip status-verworfen" href="{{ status_href('verworfen') }}">{{ anzahl_verworfen }} verworfen</a>
+  <a class="chip status-uebernommen" href="{{ status_href('uebernommen') }}">{{ anzahl_uebernommen }} übernommen</a>
 </div>
 
-{% if not vorgeschlagen and not zu_pruefen and not automatisch_abgelehnt and not verworfen %}
+{% if not vorgeschlagen and not zu_pruefen and not automatisch_abgelehnt and not verworfen and not uebernommen %}
 <div class="card">
   {% if filter_aktiv %}
   <p class="leer">Keine Vorschläge passen zu den gewählten Filtern.</p>
@@ -559,6 +564,41 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
 </div>
 {% endmacro %}
 
+{% macro uebernommen_karte(v) %}
+{# Anders als vorschlag_karte/verworfen_karte kein Gruppen-Objekt: jede Zeile
+   erzeugt beim Übernehmen genau einen eigenen Deal, es gibt hier also keine
+   "gleicher Fund, andere Person"-Bündelung anzuzeigen. Die id trägt den
+   Anker, über den deal_detail.html von der Deal-Seite aus hierher zurück
+   verlinkt. #}
+<div class="card vorschlag-karte status-uebernommen" id="vorschlag-{{ v.id }}">
+  <div class="vk-kopf">
+    <div class="vk-titel">
+      <span class="bank">{{ v.bank_name }}</span>
+    </div>
+    <div class="vk-geld">
+      <span class="geld d-amt">{{ v.praemie_betrag | eur }}</span>
+    </div>
+  </div>
+
+  <div class="vk-tags">
+    <span class="vorschlag-tag tag-{{ v.quelle }}">{{ v.quelle | quelle }}</span>
+    {% if v.kontoart %}<span class="vorschlag-tag tag-kontoart">{{ v.kontoart }}</span>{% endif %}
+  </div>
+
+  <div class="vk-fakten">
+    <span class="vk-fakt">Gefunden {{ v.gefunden_am | datum }}</span>
+    <span class="vk-fakt">Übernommen für {{ v.inhaber.name }}</span>
+  </div>
+
+  <div class="vorschlag-aktionen">
+    {% if v.deal %}
+    <a class="button secondary" href="deals/{{ v.deal.id }}">Deal ansehen →</a>
+    {% endif %}
+    <a class="button secondary" href="{{ v.quelle_url }}" target="_blank" rel="noopener noreferrer">Angebot öffnen ↗</a>
+  </div>
+</div>
+{% endmacro %}
+
 {% if vorgeschlagen %}
 <div class="todo-gruppe-head">
   <span class="tag tag-vorgeschlagen"></span>
@@ -595,6 +635,15 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
   <summary>{{ verworfen | length }} verworfene anzeigen</summary>
   {% for g in verworfen %}
   {{ verworfen_karte(g) }}
+  {% endfor %}
+</details>
+{% endif %}
+
+{% if uebernommen %}
+<details class="json-import" {{ "open" if "uebernommen" in filter_status else "" }}>
+  <summary>{{ uebernommen | length }} übernommene anzeigen</summary>
+  {% for v in uebernommen %}
+  {{ uebernommen_karte(v) }}
   {% endfor %}
 </details>
 {% endif %}

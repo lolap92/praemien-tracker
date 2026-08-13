@@ -1877,6 +1877,10 @@ table.lauf-tabelle tr:hover {
   color: var(--danger);
   background: rgba(180, 70, 42, 0.1);
 }
+.chip.status-uebernommen {
+  color: var(--st-confirm);
+  background: rgba(61, 90, 138, 0.1);
+}
 
 .tag-vorgeschlagen {
   background: var(--st-done);
@@ -2000,6 +2004,10 @@ table.lauf-tabelle tr:hover {
 }
 
 .vorschlag-karte.status-verworfen {
+  opacity: 0.85;
+}
+.vorschlag-karte.status-uebernommen {
+  border-left-color: var(--st-confirm);
   opacity: 0.85;
 }
 

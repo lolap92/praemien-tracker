@@ -43,10 +43,11 @@ def _int_oder_none(wert: str | None) -> int | None:
 # automatisch abgelehnten.
 STATUS_OFFEN = matching.STATUS_OFFEN
 _STATUS_PRIORITAET = {matching.STATUS_VORGESCHLAGEN: 0, matching.STATUS_ZU_PRUEFEN: 1, matching.STATUS_ABGELEHNT: 2}
-# Zusätzlich zu den drei offenen Status lässt sich auch nach "verworfen"
-# filtern (eigene Sektion, siehe vorschlaege_view) - fachlich kein "offener"
-# Status mehr, aber über dieselbe Status-Filterleiste erreichbar.
-STATUS_FILTERBAR = STATUS_OFFEN + (matching.STATUS_VERWORFEN,)
+# Zusätzlich zu den drei offenen Status lässt sich auch nach "verworfen" und
+# "übernommen" filtern (je eigene Sektion, siehe vorschlaege_view) - fachlich
+# keine "offenen" Status mehr, aber über dieselbe Status-Filterleiste
+# erreichbar.
+STATUS_FILTERBAR = STATUS_OFFEN + (matching.STATUS_VERWORFEN, matching.STATUS_UEBERNOMMEN)
 # "Übernehmen" akzeptiert zusätzlich zu den drei offenen Status auch bereits
 # manuell verworfene Zeilen - bewusstes Überstimmen einer eigenen
 # Fehlentscheidung (z.B. aus Versehen verworfen, obwohl der Deal eigentlich
@@ -280,6 +281,26 @@ def vorschlaege_view(
     verworfene_rows = _nach_quelle_typ_filtern(verworfene_rows, filter_quelle, filter_typ)
     verworfen_gruppen = _gruppieren(verworfene_rows)
 
+    # Übernommene Vorschläge: eigene Sektion, bewusst ohne die Bündelung von
+    # _gruppieren - jede Zeile erzeugt beim Übernehmen genau einen eigenen
+    # Deal (siehe uebernehmen_bestaetigen), es gibt hier also nicht das
+    # "gleicher Fund, andere Person"-Mehrfachbild der offenen/verworfenen
+    # Funde. deal_id verlinkt für die Nachvollziehbarkeit auf den daraus
+    # entstandenen Deal - bei Alt-Datensätzen aus der Zeit vor dieser Spalte
+    # (Migration 0019) oder einem inzwischen gelöschten Deal bleibt sie leer.
+    uebernommene_rows = (
+        db.query(DealVorschlag)
+        .options(*lade_optionen, joinedload(DealVorschlag.deal))
+        .filter(DealVorschlag.status == matching.STATUS_UEBERNOMMEN)
+        .order_by(DealVorschlag.gefunden_am.desc())
+        .all()
+    )
+    uebernommene_rows = _nach_quelle_typ_filtern(uebernommene_rows, filter_quelle, filter_typ)
+    anzahl_uebernommen = len(uebernommene_rows)
+    uebernommen = uebernommene_rows
+    if filter_status and matching.STATUS_UEBERNOMMEN not in filter_status:
+        uebernommen = []
+
     # Bündelung passiert genau einmal, auf den ungefilterten Gruppen - ihr
     # Status ("bester" Status je Bündel, siehe _quellenuebergreifend_gruppieren)
     # muss für Badge-Zähler und Anzeige identisch sein. Vorher wurde bei
@@ -329,10 +350,12 @@ def vorschlaege_view(
             "zu_pruefen": eingeteilt[matching.STATUS_ZU_PRUEFEN],
             "automatisch_abgelehnt": eingeteilt[matching.STATUS_ABGELEHNT],
             "verworfen": verworfen,
+            "uebernommen": uebernommen,
             "anzahl_vorgeschlagen": anzahl_vorgeschlagen,
             "anzahl_zu_pruefen": anzahl_zu_pruefen,
             "anzahl_abgelehnt": anzahl_abgelehnt,
             "anzahl_verworfen": anzahl_verworfen,
+            "anzahl_uebernommen": anzahl_uebernommen,
             "verwerfen_gruende_optionen": matching.VERWERFEN_GRUENDE_LABELS,
             "letzter_lauf": letzter_lauf,
             "filter_quelle": filter_quelle,
@@ -654,7 +677,9 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
         daten.aufgaben = aufgaben
         deal = build_deal_from_import(db, daten, hintergrund_recherche=True)
         helpers.kwk_ergebnis_anwenden(deal, kwk_ergebnis)
+        db.flush()  # deal.id erst nach Flush verfügbar - wird für die Rückverknüpfung unten gebraucht
         vorschlag.status = matching.STATUS_UEBERNOMMEN
+        vorschlag.deal_id = deal.id
     for vorschlag_id in verwerfen_duplikat_ids:
         vorschlag = db.get(DealVorschlag, vorschlag_id)
         if vorschlag is not None and vorschlag.status in STATUS_OFFEN:

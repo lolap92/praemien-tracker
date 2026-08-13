@@ -26,7 +26,7 @@ from ..helpers import (
     spartanien_aufgabe_sicherstellen,
 )
 from ..ingress import redirect
-from ..models import Aufgabe, Bank, Bedingung, Deal, DealUrl, Inhaber, Praemie
+from ..models import Aufgabe, Bank, Bedingung, Deal, DealUrl, DealVorschlag, Inhaber, Praemie
 from ..schemas import DealImport
 from ..templating import templates
 
@@ -301,6 +301,10 @@ def deal_detail_view(request: Request, deal_id: int, db: Session = Depends(get_d
     deal = _deal_query(db).filter(Deal.id == deal_id).one_or_none()
     if deal is None:
         raise HTTPException(status_code=404, detail=f"Deal {deal_id} existiert nicht.")
+    # Rückverweis, falls dieser Deal aus einem übernommenen Vorschlag
+    # entstanden ist (siehe models.DealVorschlag.deal_id) - für die
+    # Nachvollziehbarkeit in die andere Richtung, siehe vorschlaege.html.
+    entstanden_aus = db.query(DealVorschlag).filter(DealVorschlag.deal_id == deal_id).one_or_none()
     return templates.TemplateResponse(
         "deal_detail.html",
         {
@@ -309,6 +313,7 @@ def deal_detail_view(request: Request, deal_id: int, db: Session = Depends(get_d
             "status": derived.status(deal),
             "status_labels": derived.STATUS_LABELS,
             "kennzahlen": derived.kennzahlen(deal.praemien),
+            "entstanden_aus": entstanden_aus,
         },
     )
 
@@ -487,6 +492,12 @@ def deal_stornieren(request: Request, deal_id: int, db: Session = Depends(get_db
 def deal_delete(request: Request, deal_id: int, db: Session = Depends(get_db)):
     deal = db.get(Deal, deal_id)
     if deal:
+        # Ein übernommener Vorschlag verweist ggf. auf diesen Deal (siehe
+        # models.DealVorschlag.deal_id) - die Vorschlags-Zeile selbst bleibt
+        # erhalten (siehe vorschlaege.py: zuruecksetzen), nur die jetzt
+        # verwaiste Verknüpfung wird geleert.
+        for vorschlag in db.query(DealVorschlag).filter(DealVorschlag.deal_id == deal_id).all():
+            vorschlag.deal_id = None
         db.delete(deal)
         db.commit()
     return redirect(request, "deals")

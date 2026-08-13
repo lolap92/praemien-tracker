@@ -214,8 +214,16 @@ class DealVorschlag(Base):
     inhalt_hash: Mapped[str] = mapped_column(String(64), index=True)
     gefunden_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
     status: Mapped[str] = mapped_column(String(20), index=True)
+    # Verweist auf den Deal, der beim Übernehmen aus dieser Zeile entstanden
+    # ist (nur bei status=uebernommen gesetzt, siehe routers/vorschlaege.py:
+    # uebernehmen_bestaetigen) - macht die Übernahme nachvollziehbar. Absichtlich
+    # ohne Kaskaden-Löschung: wird der Deal später gelöscht, bleibt die
+    # Vorschlags-Zeile selbst erhalten (siehe zuruecksetzen), nur die
+    # Verknüpfung wird geleert (routers/deals.py: deal_delete).
+    deal_id: Mapped[int | None] = mapped_column(ForeignKey("deals.id"), nullable=True, index=True)
 
     inhaber: Mapped["Inhaber"] = relationship()
+    deal: Mapped["Deal | None"] = relationship()
     bedingungen: Mapped[list["VorschlagBedingung"]] = relationship(
         back_populates="vorschlag", cascade="all, delete-orphan", order_by="VorschlagBedingung.id"
     )

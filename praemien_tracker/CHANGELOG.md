@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.48.1
+
+Übernommene Vorschläge bleiben jetzt nachvollziehbar sichtbar, mit
+gegenseitiger Verlinkung zum daraus entstandenen Deal.
+
+- Bisher verschwand ein Vorschlag beim Übernehmen spurlos - die Zeile blieb
+  zwar (wegen der Duplikat-Erkennung) in der Datenbank erhalten, wurde aber
+  nirgends mehr angezeigt. Jetzt gibt es auf der Vorschläge-Seite eine eigene,
+  eingeklappte Sektion "Übernommen" (analog zu "verworfen"), mit einem
+  eigenen Status-Filter und Zähler-Chip.
+- Neue Spalte `deal_id` auf den Vorschlägen verknüpft eine übernommene Zeile
+  mit dem daraus entstandenen Deal - die Karte zeigt dafür einen "Deal
+  ansehen →"-Link. Umgekehrt zeigt die Deal-Detailseite jetzt einen Hinweis
+  "Entstanden aus einem übernommenen Vorschlag vom ..." mit Link zurück, falls
+  zutreffend. Wird der Deal später gelöscht, bleibt die Vorschlags-Zeile
+  erhalten, nur die Verknüpfung wird geleert.
+- Migration 0019 verknüpft rückwirkend auch bereits übernommene Alt-Vorschläge
+  mit ihrem Deal, per Best-Effort-Abgleich über Inhaber, Bank und Kontoart
+  (bei Mehrdeutigkeit zusätzlich über den zeitlich nächstgelegenen Deal).
+  Nicht eindeutig zuordenbare Altzeilen bleiben bewusst unverknüpft statt
+  falsch zu verlinken, und werden beim Update im Log aufgeführt.
+
 ## 2.48.0
 
 Datenbank-Backup direkt aus der App: neue Seite „Backup" (im „Mehr"-Menü) zum Herunterladen und Wiederherstellen.
