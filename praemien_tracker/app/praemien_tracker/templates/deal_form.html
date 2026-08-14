@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ "Deal bearbeiten" if deal else "Neuer Deal" }} – Prämien-Tracker{% endblock %}
 {% block appbar_title %}{{ "Deal bearbeiten" if deal else "Neuer Deal" }}{% endblock %}
+{% block appbar_actions %}
+{% if deal %}
+<button type="submit" form="deal-form" class="icon-btn accent">Speichern</button>
+{% endif %}
+{% endblock %}
 {% block content %}
 
 <datalist id="banken-liste">

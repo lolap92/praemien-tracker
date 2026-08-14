@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.49.3
+
+Zusätzlicher Speichern-Button auf der Deal-Detailseite im Bearbeitungsmodus.
+
+- **Speichern-Button auch in der oberen Appbar:** Im Bearbeitungsmodus wird der Speichern-Button nun auch in der oberen Appbar an der Stelle angezeigt, an der sich im Nur-Lese-Modus der Bearbeiten-Button befindet. Dies erleichtert das Speichern von Änderungen, ohne ans Ende der Seite scrollen zu müssen.
+
 ## 2.49.2
 
 Klick auf “Auf Kündigung warten” auf der Startseite leitet nun direkt auf die Deals-Liste mit entsprechendem Filter weiter.
