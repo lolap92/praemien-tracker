@@ -452,8 +452,14 @@ main {
   margin-top: 0.1rem;
 }
 
+.pipe-bar-manuell {
+  background: var(--accent);
+}
 .pipe-bar-pflegen {
   background: var(--ink-faint);
+}
+.pipe-bar-pruefen {
+  background: var(--st-wait);
 }
 .pipe-bar-bedingungen {
   background: var(--st-cond);

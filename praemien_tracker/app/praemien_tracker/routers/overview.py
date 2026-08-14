@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from .. import derived
 from ..database import get_db
 from ..ingress import redirect
-from ..models import Deal
+from ..models import Deal, Aufgabe
 from ..templating import templates
 from .vorschlaege import zaehlen as vorschlaege_zaehlen
 
@@ -30,6 +30,14 @@ def overview(request: Request, db: Session = Depends(get_db)):
         )
         .all()
     )
+    aufgaben = (
+        db.query(Aufgabe)
+        .options(
+            joinedload(Aufgabe.deal).joinedload(Deal.bank),
+            joinedload(Aufgabe.deal).joinedload(Deal.inhaber),
+        )
+        .all()
+    )
 
     gesamt_kennzahlen = derived.kennzahlen([p for d in deals for p in d.praemien])
 
@@ -42,9 +50,10 @@ def overview(request: Request, db: Session = Depends(get_db)):
     # echten Status UND hier auftauchen, deshalb läuft die Zählung getrennt
     # von nach_status statt sie zu ersetzen. Abgeschlossene Deals zählen
     # nicht mehr mit, ihre Daten ändern sich nicht mehr.
-    anzahl_deal_pflegen = sum(
-        1 for d in deals if derived.offene_felder(d) and derived.status(d) != derived.STATUS_ABGESCHLOSSEN
-    )
+    alle_todos = derived.alle_todos(deals, aufgaben)
+    anzahl_manuelle_aufgaben = sum(1 for t in alle_todos if t.kategorie == "Manuelle Aufgaben")
+    anzahl_deal_pflegen = sum(1 for t in alle_todos if t.kategorie == "Deal pflegen")
+    anzahl_zu_pruefen = sum(1 for t in alle_todos if t.kategorie == "Zu prüfen")
 
     vorschlag_zaehler = vorschlaege_zaehlen(db)
 
@@ -57,7 +66,9 @@ def overview(request: Request, db: Session = Depends(get_db)):
             "status_labels": derived.STATUS_LABELS,
             "status_order": derived.STATUS_ORDER,
             "anzahl_deals": len(deals),
+            "anzahl_manuelle_aufgaben": anzahl_manuelle_aufgaben,
             "anzahl_deal_pflegen": anzahl_deal_pflegen,
+            "anzahl_zu_pruefen": anzahl_zu_pruefen,
             "vorschlag_zaehler": vorschlag_zaehler,
         },
     )
