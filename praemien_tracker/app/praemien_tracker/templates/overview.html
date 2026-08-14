@@ -21,35 +21,25 @@
 </div>
 
 <div class="card">
-  <div class="card-label">Aufgaben &amp; Pflege</div>
-  <div class="pipe">
-    <a class="seg" href="todos?tab=manuell">
-      <div class="bar pipe-bar-manuell"></div>
-      <div class="cnt">{{ anzahl_manuelle_aufgaben }}</div>
-      <div class="nm">Manuelle Aufgaben</div>
-    </a>
-    <a class="seg" href="todos?tab=pflegen">
-      <div class="bar pipe-bar-pflegen"></div>
-      <div class="cnt">{{ anzahl_deal_pflegen }}</div>
-      <div class="nm">Deals pflegen</div>
-    </a>
-    <a class="seg" href="todos?tab=pruefen">
-      <div class="bar pipe-bar-pruefen"></div>
-      <div class="cnt">{{ anzahl_zu_pruefen }}</div>
-      <div class="nm">Zu prüfen</div>
-    </a>
-  </div>
-</div>
-
-<div class="card">
   <div class="card-label">Pipeline · {{ anzahl_deals }} Deals</div>
-  <div class="pipe">
+  <div class="pipe pipe-7">
     {% set status_to_tab = {
       'bedingungen': 'bedingungen',
       'praemie_warten': 'praemie',
       'praemie_pruefen': 'praemie_pruefen',
       'kuendigen': 'kuendigen',
       'bestaetigung_warten': 'bestaetigung'
+    } %}
+    {# Gekürzte Labels nur für diese enge 4-Spalten-Kachel - der Rest der App
+       (Chips, Deals-Filter) nutzt weiterhin status_labels mit vollem Text. #}
+    {% set kurzlabel = {
+      'bedingungen': 'Bedingungen',
+      'praemie_warten': 'Prämie warten',
+      'praemie_pruefen': 'Auszahlung prüfen',
+      'wartet_auf_kuendigung': 'Kündigung warten',
+      'kuendigen': 'Kündigen',
+      'bestaetigung_warten': 'Bestätigung',
+      'abgeschlossen': 'Abgeschlossen'
     } %}
     {% for s in status_order %}
     {% if s == 'abgeschlossen' %}
@@ -62,9 +52,30 @@
     {% endif %}
       <div class="bar pipe-bar-{{ s }}"></div>
       <div class="cnt">{{ nach_status[s] | length }}</div>
-      <div class="nm">{{ status_labels[s] }}</div>
+      <div class="nm">{{ kurzlabel[s] }}</div>
     </a>
     {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">Aufgaben &amp; Pflege</div>
+  <div class="pipe">
+    <a class="seg" href="todos?tab=manuell">
+      <div class="bar pipe-bar-manuell"></div>
+      <div class="cnt">{{ anzahl_manuelle_aufgaben }}</div>
+      <div class="nm">Aufgaben</div>
+    </a>
+    <a class="seg" href="todos?tab=pflegen">
+      <div class="bar pipe-bar-pflegen"></div>
+      <div class="cnt">{{ anzahl_deal_pflegen }}</div>
+      <div class="nm">Deals pflegen</div>
+    </a>
+    <a class="seg" href="todos?tab=pruefen">
+      <div class="bar pipe-bar-pruefen"></div>
+      <div class="cnt">{{ anzahl_zu_pruefen }}</div>
+      <div class="nm">Zu prüfen</div>
+    </a>
   </div>
 </div>
 

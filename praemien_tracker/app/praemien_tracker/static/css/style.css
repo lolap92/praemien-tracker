@@ -445,6 +445,23 @@ main {
   text-overflow: ellipsis;
 }
 
+/* Pipeline-Kachel (7 Segmente): feste 4-Spalten statt frei umbrechender
+   90px-Kacheln - sonst passen nur 3 pro Zeile (3 Zeilen zu je 3/3/1). Mit 4
+   Spalten sind es 2 Zeilen (4/3), analog zu .pipe-4 bei Vorschläge mit
+   einzeiligen, abgeschnittenen Labels statt Umbruch auf 2 Zeilen. */
+.pipe.pipe-7 .seg {
+  flex: 1 1 21%;
+  min-width: 0;
+}
+
+.pipe.pipe-7 .seg .cnt {
+  font-size: 0.95rem;
+}
+
+.pipe.pipe-7 .seg .nm {
+  font-size: 0.66rem;
+}
+
 .pipe .seg .nm {
   font-size: 0.72rem;
   color: var(--ink-soft);
@@ -2495,4 +2512,38 @@ dialog.vk-dialog h3 {
   font-size: 0.78rem;
   width: 100%;
   padding-left: 1.4rem;
+}
+
+/* ---------- Übersicht: kompaktere Abstände auf dem Handy ----------
+   Ziel: die vier Kacheln (Prämien gesamt, Aufgaben & Pflege, Pipeline,
+   Vorschläge) passen auf einem Handy-Bildschirm ohne Scrollen übereinander -
+   nur Innenabstände/Schriftgrößen verkleinert, keine Inhalte entfernt. */
+@media (max-width: 600px) {
+  main {
+    padding: 0.75rem 1rem;
+  }
+  .card {
+    padding: 0.8rem 1rem;
+    margin-bottom: 0.6rem;
+  }
+  .hero .total {
+    font-size: 1.7rem;
+  }
+  .hero .progress {
+    margin-top: 0.6rem;
+  }
+  .hero .split {
+    margin-top: 0.7rem;
+    padding-top: 0.6rem;
+  }
+  .card-label,
+  .sec-t {
+    margin-bottom: 0.4rem;
+  }
+  .pipe {
+    gap: 0.3rem;
+  }
+  .pipe .seg .bar {
+    margin-bottom: 0.3rem;
+  }
 }

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.49.9
+
+Übersicht auf dem Handy ohne Scrollen sichtbar: kompaktere Kacheln und kürzere Beschriftungen.
+
+- **Kompaktere Abstände auf dem Handy:** Innenabstände der Kacheln, Zwischenräume und die Prämien-Zahl in der Hero-Kachel sind auf schmalen Bildschirmen (< 600px) kleiner, ohne dass Inhalte wegfallen.
+- **Pipeline-Kachel in 4 statt 3 Spalten:** Die sieben Status passen dadurch in zwei statt drei Zeilen. Die Beschriftungen sind dafür in dieser Kachel gekürzt (z. B. "Auf Prämie warten" → "Prämie warten", "Prämienauszahlung prüfen" → "Auszahlung prüfen") - Status-Chips und der Deals-Filter zeigen weiterhin die vollen Bezeichnungen.
+- **"Aufgaben & Pflege" kompakter:** "Manuelle Aufgaben" heißt in dieser Kachel nun kurz "Aufgaben", passt dadurch einzeilig statt zweizeilig.
+- **Reihenfolge getauscht:** "Pipeline" steht jetzt vor "Aufgaben & Pflege".
+- Damit passen auf gängigen Handygrößen (z. B. iPhone 12-16) alle vier Kacheln der Übersicht inklusive Tableiste ohne Scrollen auf den Bildschirm.
+
 ## 2.49.8
 
 Benennung und ausführliche Beschreibungen für alle Add-on Konfigurationsparameter in Deutsch und Englisch hinzugefügt.
