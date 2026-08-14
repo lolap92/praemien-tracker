@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.51.2
+
+Design-Umschalter jetzt optisch identisch mit dem Budget-Tracker.
+
+- **Icon statt Textbeschriftung (`templates/base.html`, `static/css/style.css`).** Der Umschalter zeigte bisher „Auto"/„Hell"/„Dunkel" als Text. Er nutzt jetzt dieselben drei SVG-Icons (Kontrast-Kreis/Sonne/Mond) wie im Budget-Tracker, in einem gleich großen 36×36-Icon-Quadrat statt der Text-Pille – beide Apps sehen an dieser Stelle jetzt identisch aus. Funktion (Automatisch → Hell → Dunkel, `localStorage`, kein Aufblitzen) unverändert.
+
 ## 2.51.1
 
 Robustere POST-Formulare – Ergebnis eines fachlichen Reviews der großen Module.

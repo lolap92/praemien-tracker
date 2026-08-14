@@ -241,6 +241,23 @@ a {
   color: #fff;
 }
 
+/* Design-Umschalter: reines Icon-Quadrat statt der Text-Pille, exakt wie im
+   Budget-Tracker (gleiche Größe, gleicher Radius, gleiche Icon-Größe) - beide
+   Apps sollen hier identisch aussehen. */
+.theme-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
+  color: var(--ink);
+}
+
+.theme-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
 nav.desktop-nav {
   display: none;
 }
