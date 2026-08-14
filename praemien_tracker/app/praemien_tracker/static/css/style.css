@@ -658,7 +658,8 @@ a.chip:focus-visible {
    zugleich. */
 .neue-aufgabe-card,
 .erledigte-aufgaben-card,
-.filterleiste.todo-quelle-filter {
+.filterleiste.todo-quelle-filter,
+.filterleiste.todo-feld-filter {
   display: none;
 }
 
@@ -669,6 +670,10 @@ body:has(#todotab-manuell:checked) .erledigte-aufgaben-card {
 
 body:has(#todotab-praemie:checked) .todo-quelle-filter-praemie,
 body:has(#todotab-praemie_pruefen:checked) .todo-quelle-filter-praemie_pruefen {
+  display: flex;
+}
+
+body:has(#todotab-pflegen:checked) .todo-feld-filter-pflegen {
   display: flex;
 }
 

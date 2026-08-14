@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.49.6
+
+Neuer Feld-Filter für die ToDo-Kategorie "Deal pflegen".
+
+- **Filterung nach zu pflegendem Feld:** Die ToDo-Liste im Bereich "Deal pflegen" kann nun gezielt nach den drei pflegbaren Angaben gefiltert werden: **Kontonummer**, **Zugangsdaten sichern** und **Erwartete Auszahlung** (analog zum Quelle-Filter bei den Prämien-ToDo-Kategorien).
+- **Kontext-Anzeige:** Der neue Feld-Filter wird ausschließlich im Tab "Deal pflegen" angezeigt und ist bei den anderen Tabs per CSS ausgeblendet, um die Benutzeroberfläche übersichtlich zu halten.
+
 ## 2.49.5
 
 Darstellung der nicht-linearen Aufgaben (Manuelle Aufgaben, Deals pflegen, Zu prüfen) auf der Startseite in einer gemeinsamen Zeile.

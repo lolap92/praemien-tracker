@@ -59,7 +59,7 @@ def _ziel(wert: str, aktuell: bool) -> bool:
     return not aktuell
 
 
-def _todos_redirect(request: Request, tab: str = "", dialog: str = "", quelle: str = ""):
+def _todos_redirect(request: Request, tab: str = "", dialog: str = "", quelle: str = "", feld: str = ""):
     ziel = "todos"
     teile = []
     if tab:
@@ -68,13 +68,22 @@ def _todos_redirect(request: Request, tab: str = "", dialog: str = "", quelle: s
         teile.append(f"dialog={dialog}")
     if quelle:
         teile.append(f"quelle={quelle}")
+    if feld:
+        teile.append(f"feld={feld}")
     if teile:
         ziel += "?" + "&".join(teile)
     return redirect(request, ziel)
 
 
 @router.get("/todos")
-def todos_view(request: Request, tab: str = "", dialog: str = "", quelle: str | None = None, db: Session = Depends(get_db)):
+def todos_view(
+    request: Request,
+    tab: str = "",
+    dialog: str = "",
+    quelle: str | None = None,
+    feld: str | None = None,
+    db: Session = Depends(get_db),
+):
     deals = (
         db.query(Deal)
         .options(
@@ -93,17 +102,40 @@ def todos_view(request: Request, tab: str = "", dialog: str = "", quelle: str | 
 
     alle_ungefiltert = derived.alle_todos(deals, aufgaben)
     norm_quelle = derived.normalisiere_quelle(quelle) if quelle else None
-    if norm_quelle:
-        alle = []
-        for t in alle_ungefiltert:
+
+    valid_felder = {"kontonummer", "zugangsdaten_gespeichert", "auszahlung_erwartet"}
+    norm_feld = feld.strip().lower() if feld and feld.strip().lower() in valid_felder else None
+
+    alle = []
+    for t in alle_ungefiltert:
+        # Quelle filter
+        if norm_quelle:
             if t.kategorie in ("Auf Prämie warten", "Prämienauszahlung prüfen"):
-                if any(p.quelle == norm_quelle for p in t.elemente):
-                    alle.append(t)
+                if not any(p.quelle == norm_quelle for p in t.elemente):
+                    continue
             else:
-                if t.deal and any(p.quelle == norm_quelle for p in t.deal.praemien):
-                    alle.append(t)
-    else:
-        alle = alle_ungefiltert
+                if not (t.deal and any(p.quelle == norm_quelle for p in t.deal.praemien)):
+                    continue
+
+        # Feld filter for "Deal pflegen"
+        if norm_feld and t.kategorie == "Deal pflegen":
+            matching_elements = []
+            for f in t.elemente:
+                if norm_feld == "kontonummer" and f.feld == "kontonummer":
+                    matching_elements.append(f)
+                elif norm_feld == "zugangsdaten_gespeichert" and f.feld == "zugangsdaten_gespeichert":
+                    matching_elements.append(f)
+                elif norm_feld == "auszahlung_erwartet" and (f.feld.endswith("_auszahlung_erwartet") or f.feld.startswith("praemie_")):
+                    matching_elements.append(f)
+
+            if not matching_elements:
+                continue
+
+            bezeichnung = f"{t.deal.bank.name} · {t.deal.kontoart} · {t.deal.inhaber.name}"
+            t.elemente = matching_elements
+            t.text = f"{bezeichnung}: {len(matching_elements)} Angabe(n) offen"
+
+        alle.append(t)
 
     gruppen: dict[str, list[derived.Todo]] = {}
     for t in alle:
@@ -174,6 +206,7 @@ def todos_view(request: Request, tab: str = "", dialog: str = "", quelle: str | 
             "aktiver_tab": aktiver_tab,
             "offener_dialog": offener_dialog,
             "filter_quelle": norm_quelle or "",
+            "filter_feld": norm_feld or "",
             "leere_kategorien": leere_kategorien,
         },
     )
