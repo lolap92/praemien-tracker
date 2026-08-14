@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.50.0
+
+Dunkles Design und selbst ausgelieferte Schriften – GUI-Angleichung an den Budget-Tracker.
+
+- **Dunkles Design nach Systemeinstellung (`static/css/style.css`).** Ein `@media (prefers-color-scheme: dark)`-Block belegt die Farb-Tokens neu; wer Home Assistant dunkel betreibt – die verbreitete Einstellung – bekommt beim Öffnen des Panels keine helle Fläche mehr. Nur die Variablen werden umgesetzt, alle Bausteine ziehen ihre Farben darüber; Status- und Akzentfarben sind für dunklen Grund aufgehellt. Die Hero-Kachel der Übersicht und der ausgewählte „Zu erledigen"-Reiter nutzen jetzt eigene `--hero-*`-Tokens, damit sie in beiden Designs tragen (vorher über `--ink` eingefärbt, was im Dunkeln helle Schrift auf hellem Grund ergeben hätte).
+- **Schriften kommen vom Add-on statt von Google (`static/css/style.css`, `static/fonts/`).** Space Grotesk, Inter und IBM Plex Mono werden jetzt lokal ausgeliefert (WOFF2, Latin-Subset, ~150 KB) statt per `@import` von `fonts.googleapis.com`. Ohne Internet oder mit striktem Netzfilter fiel die Oberfläche vorher auf Systemschriften zurück (anderes Layout); außerdem sah Google die IP jedes Aufrufs aus dem Heimnetz. Dieselbe Umstellung wie im Budget-Tracker.
+
 ## 2.49.10
 
 Übersicht: Segmente mit Zähler 0 werden ausgegraut, damit auf einen Blick klar ist, wo etwas ansteht.
