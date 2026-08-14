@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.49.7
+
+Die Seite „Deals" wurde in die Haupt-Navigationsleiste verschoben.
+
+- **Leichtere Erreichbarkeit:** Die Deals-Übersichtsseite befindet sich nun direkt als vierter Menüpunkt in der Desktop-Navigation sowie in der mobilen Tab-Leiste unten (links von „Vorschläge"), statt wie bisher versteckt im „Mehr"-Menü.
+
 ## 2.49.6
 
 Neuer Feld-Filter für die ToDo-Kategorie "Deal pflegen".
