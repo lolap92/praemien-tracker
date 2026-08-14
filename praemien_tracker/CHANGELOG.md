@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.49.4
+
+Asynchrones Anlegen von Prämien, Bedingungen, Aufgaben und Links auf der Bearbeitungsseite eines Deals ohne Neuladen der Seite.
+
+- **Kein Neuladen beim Hinzufügen von Elementen:** Das Hinzufügen von Prämien, Bedingungen, Aufgaben und Links auf der Bearbeitungsseite eines Deals erfolgt nun asynchron über die Fetch-API.
+- **Erhalten der ungespeicherten Eingaben:** Andere bereits vorgenommene Änderungen an Textfeldern (wie Kommentar, Kündigungshinweise, etc.) werden durch das Anlegen von neuen Unterelementen nicht mehr gelöscht oder zurückgesetzt.
+
 ## 2.49.3
 
 Zusätzlicher Speichern-Button auf der Deal-Detailseite im Bearbeitungsmodus.
