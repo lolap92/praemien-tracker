@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.51.0
+
+Design-Umschalter (Automatisch/Hell/Dunkel), Härtung der Weiterleitung und eine Schema-Untergrenze.
+
+- **Design-Umschalter oben rechts (`base.html`, `static/css/style.css`).** Neben „Mehr" schaltet ein Knopf zwischen Automatisch → Hell → Dunkel um. „Automatisch" folgt weiter der Systemeinstellung; Hell/Dunkel setzen das Design fest und übersteuern das System in beide Richtungen. Die Wahl steckt in `localStorage` und überlebt einen Reload; ein kleines Kopf-Skript wendet sie so früh an, dass die Seite nicht kurz im falschen Design aufblitzt. Das CSS trägt den dunklen Tokensatz dafür zweimal (Systemeinstellung vs. ausdrückliche Wahl).
+- **Weiterleitung gegen protokollrelative Ziele gehärtet (`ingress.py`).** `redirect()` stellt das Ingress-Präfix voran; ein Ziel wie `//host` wäre protokollrelativ aus der App herausgeführt. Alle heutigen Aufrufer übergeben feste interne Pfade – die Prüfung schließt die Tür trotzdem und leitet solche Ziele auf die Übersicht.
+- **Mindestprämie im Schema auf `float(0,)` begrenzt (`config.yaml`).** Eine negative Mindestprämie ergäbe keinen Sinn und würde jeden Fund als „vorgeschlagen" durchlassen. Die kommagetrennten Freitext-Felder (`mydealz_gruppe`, `dealdoktor_feed_url`) bleiben bewusst `str` – ein `url`- oder `list()`-Typ bräche das Komma-Parsen.
+
 ## 2.50.1
 
 Robustere Fehlerbehandlung und ein Seiteneffekt weniger – Angleichung an den Budget-Tracker.

@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Prämien-Tracker{% endblock %}</title>
 <base href="{{ request.headers.get('X-Ingress-Path', '') }}/">
+<script>
+  /* Gespeicherte Design-Wahl so früh wie möglich anwenden, damit die Seite
+     nicht kurz im falschen Design aufblitzt. "auto"/nichts überlässt die
+     Entscheidung der Systemeinstellung (@media in style.css). */
+  (function () {
+    try {
+      var t = localStorage.getItem('pt-theme');
+      if (t === 'light' || t === 'dark') {
+        document.documentElement.setAttribute('data-theme', t);
+      }
+    } catch (e) {}
+  })();
+</script>
 <link rel="icon" type="image/png" href="static/img/favicon.png?v={{ asset_v }}">
 <link rel="apple-touch-icon" href="static/img/apple-touch-icon.png?v={{ asset_v }}">
 <link rel="stylesheet" href="static/css/style.css?v={{ asset_v }}">
@@ -22,6 +35,7 @@
       <h1>{% block appbar_title %}Prämien-Tracker{% endblock %}</h1>
       <div class="actions">
         {% block appbar_actions %}{% endblock %}
+        <button class="icon-btn theme-btn" id="theme-toggle" type="button" aria-label="Design umschalten (Automatisch, Hell, Dunkel)">Auto</button>
         <details class="nav-more {{ 'on' if tab in nebenreiter else '' }}">
           <summary class="icon-btn">Mehr</summary>
           <div class="nav-more-panel">
@@ -67,5 +81,37 @@
     </div>
   </nav>
 </div>
+<script>
+  /* Design-Umschalter: Automatisch -> Hell -> Dunkel -> Automatisch.
+     "Automatisch" folgt der Systemeinstellung (kein data-theme, @media greift),
+     die anderen beiden setzen data-theme fest. Die Wahl steckt in localStorage
+     und wird beim nächsten Laden vom Kopf-Skript wieder angewandt. */
+  (function () {
+    var btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    var reihenfolge = ['auto', 'light', 'dark'];
+    var beschriftung = { auto: 'Auto', light: 'Hell', dark: 'Dunkel' };
+    function aktuell() {
+      try {
+        var t = localStorage.getItem('pt-theme');
+        return (t === 'light' || t === 'dark') ? t : 'auto';
+      } catch (e) { return 'auto'; }
+    }
+    function anwenden(modus) {
+      if (modus === 'auto') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', modus);
+      btn.textContent = beschriftung[modus];
+    }
+    anwenden(aktuell());
+    btn.addEventListener('click', function () {
+      var next = reihenfolge[(reihenfolge.indexOf(aktuell()) + 1) % reihenfolge.length];
+      try {
+        if (next === 'auto') localStorage.removeItem('pt-theme');
+        else localStorage.setItem('pt-theme', next);
+      } catch (e) {}
+      anwenden(next);
+    });
+  })();
+</script>
 </body>
 </html>

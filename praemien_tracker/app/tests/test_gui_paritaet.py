@@ -40,3 +40,33 @@ class TestDarkMode:
         css = _css()
         assert "--hero-bg" in css
         assert "background: var(--hero-bg)" in css
+
+    def test_ausdrueckliche_wahl_uebersteuert_system(self):
+        # Beide Richtungen: erzwungenes Dunkel und System-Dunkel-mit-Ausnahme.
+        css = _css()
+        assert ':root[data-theme="dark"]' in css
+        assert ':root:not([data-theme="light"])' in css
+
+    def test_umschalter_ist_da(self):
+        html = client.get("/overview").text
+        assert 'id="theme-toggle"' in html
+        assert "pt-theme" in html  # localStorage-Schlüssel im Kopf-/Fußskript
+
+
+class TestRedirectHaertung:
+    def test_protokollrelatives_ziel_wird_verworfen(self):
+        from starlette.requests import Request
+
+        from praemien_tracker.ingress import redirect
+
+        req = Request({"type": "http", "headers": []})
+        antwort = redirect(req, "//example.com/pwned")
+        assert antwort.headers["location"] == "/overview"
+
+    def test_internes_ziel_bleibt(self):
+        from starlette.requests import Request
+
+        from praemien_tracker.ingress import redirect
+
+        req = Request({"type": "http", "headers": []})
+        assert redirect(req, "deals").headers["location"] == "/deals"

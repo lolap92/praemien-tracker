@@ -51,13 +51,20 @@
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
 }
 
-/* Dunkles Design nach Systemeinstellung. Viele Nutzer betreiben Home Assistant
-   dunkel - ohne diesen Block bekamen sie beim Öffnen des Panels eine helle
-   Fläche. Nur die Farb-Tokens werden neu belegt; alle Bausteine ziehen ihre
-   Farben darüber. Status- und Akzentfarben sind aufgehellt, damit sie auf
-   dunklem Grund tragen. */
+/* Dunkles Design. Drei Zustände, wie beim Budget-Tracker:
+   - Ohne ausdrückliche Wahl folgt die App der Systemeinstellung
+     (@media prefers-color-scheme). Viele Nutzer betreiben Home Assistant
+     dunkel - ohne diesen Block bekamen sie beim Öffnen des Panels eine helle
+     Fläche.
+   - Der Umschalter oben rechts (base.html) setzt data-theme="light" oder
+     "dark" auf <html> und übersteuert die Systemeinstellung in beide
+     Richtungen; die Wahl steckt in localStorage und überlebt einen Reload.
+   Nur die Farb-Tokens werden neu belegt; alle Bausteine ziehen ihre Farben
+   darüber. Status- und Akzentfarben sind aufgehellt, damit sie auf dunklem
+   Grund tragen. Der dunkle Tokensatz steht bewusst zweimal (System vs.
+   ausdrückliche Wahl) - CSS kann ihn zwischen den Selektoren nicht teilen. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --ink: #e4eaf0;
     --ink-soft: #a6b3bc;
     --ink-faint: #84929b;
@@ -85,6 +92,35 @@
     --hero-ink-soft: rgba(234, 243, 240, 0.6);
     --hero-line: rgba(234, 243, 240, 0.14);
   }
+}
+
+:root[data-theme="dark"] {
+  --ink: #e4eaf0;
+  --ink-soft: #a6b3bc;
+  --ink-faint: #84929b;
+  --board: #0e161b;
+  --surface: #18222a;
+  --surface-2: #212d36;
+  --line: #28343d;
+  --line-strong: #37454f;
+  --accent: #2fa98c;
+  --accent-ink: #7fd9c6;
+  --accent-soft: rgba(47, 169, 140, 0.16);
+
+  --st-cond: #9aaab4;
+  --st-wait: #dba85f;
+  --st-pending-cancel: #a898c4;
+  --st-cancel: #e37b5c;
+  --st-confirm: #88a4d8;
+  --st-done: #35c79b;
+  --received: #35c79b;
+  --open: #dba85f;
+  --danger: #e37b5c;
+
+  --hero-bg: #0c1b17;
+  --hero-ink: #eaf3f0;
+  --hero-ink-soft: rgba(234, 243, 240, 0.6);
+  --hero-line: rgba(234, 243, 240, 0.14);
 }
 
 * {

@@ -1,5 +1,5 @@
 name: "Prämien-Tracker"
-version: "2.50.1"
+version: "2.51.0"
 slug: "praemien_tracker"
 description: "Private Übersicht und Verwaltung von Bank-Prämien-Deals"
 url: "https://github.com/lolap92/praemien-tracker"
@@ -35,7 +35,13 @@ schema:
   demo_modus: "bool"
   anthropic_api_key: "password"
   anthropic_model: "str"
-  mindestpraemie: "float"
+  # Untergrenze 0: eine negative Mindestprämie ergäbe keinen Sinn und würde
+  # jeden Fund als "vorgeschlagen" durchlassen.
+  mindestpraemie: "float(0,)"
+  # mydealz_gruppe und dealdoktor_feed_url sind bewusst "str", keine Liste: es
+  # sind kommagetrennte Freitext-Felder (mehrere Gruppen/Feeds in einem Feld,
+  # siehe config.py). Ein "url"-Typ verlangte genau eine URL, ein list()-Typ
+  # änderte das options.json-Format und bräche das Komma-Parsen.
   mydealz_gruppe: "str"
   spartanien_url: "url"
   dealdoktor_feed_url: "str"

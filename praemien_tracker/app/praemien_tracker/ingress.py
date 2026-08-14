@@ -15,4 +15,11 @@ def redirect(request: Request, path: str, status_code: int = 303) -> RedirectRes
     prefix = request.headers.get("X-Ingress-Path", "")
     if not path.startswith("/"):
         path = "/" + path
+    # Nur echte, app-interne Ziele zulassen. Alle heutigen Aufrufer übergeben
+    # feste interne Pfade, aber die Absicherung kostet nichts: begänne ein Ziel
+    # mit "//host" (oder "/\host"), wäre es protokollrelativ und führte - dem
+    # Präfix vorangestellt - aus der App heraus. Solche Ziele landen auf der
+    # Übersicht statt beim fremden Host.
+    if path.startswith("//") or path.startswith("/\\"):
+        path = "/overview"
     return RedirectResponse(url=f"{prefix}{path}", status_code=status_code)
