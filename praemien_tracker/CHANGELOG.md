@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.49.2
+
+Klick auf “Auf Kündigung warten” auf der Startseite leitet nun direkt auf die Deals-Liste mit entsprechendem Filter weiter.
+
+- **Verlinkung von der Übersicht angepasst:** Wenn ein Nutzer auf die Kachel „Auf Kündigung warten” in der Pipeline der Übersichtskarte klickt, wird er nun direkt auf `/deals?status=wartet_auf_kuendigung` weitergeleitet.
+- **Konsistenz mit abgeschlossenen Deals:** Dies entspricht dem Verhalten der Kachel „Abgeschlossen” und stellt sicher, dass die betroffenen Deals mit allen ihren Details direkt gefiltert betrachtet werden können.
+
 ## 2.49.1
 
 Eigenes App-Icon statt Browser-Standard-Favicon.
@@ -12,7 +19,7 @@ Eigenes App-Icon statt Browser-Standard-Favicon.
   Supervisor direkt aus dem Repository, unabhängig vom Docker-Image, und
   zeigt es im Store sowie in der Add-on-Übersicht.
 - `favicon.png`/`apple-touch-icon.png` unter `static/img/` verlinkt im
-  `<head>` - bislang fehlte `<link rel="icon">` komplett, der Tab zeigte nur
+  `<head>` - bislang fehlte `<link rel=”icon”>` komplett, der Tab zeigte nur
   das generische Browser-Symbol.
 
 ## 2.49.0
@@ -21,7 +28,7 @@ Eigenes App-Icon statt Browser-Standard-Favicon.
 
 - `wiederherstellen()` schreibt die wiederhergestellte Konfiguration jetzt zusätzlich über die Supervisor-API (`POST /addons/self/options`, siehe `_supervisor_optionen_setzen()`) in den dauerhaften Konfigurationsspeicher - über dieselbe `SUPERVISOR_TOKEN`-Umgebungsvariable, die `finder/notify.py` bereits für Push-Benachrichtigungen nutzt.
 - Dafür neu im Manifest: `hassio_api: true` (bisher fehlte es hier; der Budget-Tracker hat es bereits für seine eigene Supervisor-Anbindung).
-- Gelingt der API-Aufruf, übersteht die Konfiguration jeden folgenden Neustart, ohne dass noch etwas von Hand nachgetragen werden muss. Die Bestätigungsseite unterscheidet jetzt zwischen "dauerhaft übernommen" und dem bisherigen Fallback-Hinweis (z.B. bei einem Backup mit inzwischen entfernten Optionen, das der Supervisor ablehnt, oder außerhalb des Add-on-Containers ganz ohne Token).
+- Gelingt der API-Aufruf, übersteht die Konfiguration jeden folgenden Neustart, ohne dass noch etwas von Hand nachgetragen werden muss. Die Bestätigungsseite unterscheidet jetzt zwischen “dauerhaft übernommen” und dem bisherigen Fallback-Hinweis (z.B. bei einem Backup mit inzwischen entfernten Optionen, das der Supervisor ablehnt, oder außerhalb des Add-on-Containers ganz ohne Token).
 
 ## 2.48.1
 
@@ -31,12 +38,12 @@ gegenseitiger Verlinkung zum daraus entstandenen Deal.
 - Bisher verschwand ein Vorschlag beim Übernehmen spurlos - die Zeile blieb
   zwar (wegen der Duplikat-Erkennung) in der Datenbank erhalten, wurde aber
   nirgends mehr angezeigt. Jetzt gibt es auf der Vorschläge-Seite eine eigene,
-  eingeklappte Sektion "Übernommen" (analog zu "verworfen"), mit einem
+  eingeklappte Sektion “Übernommen” (analog zu “verworfen”), mit einem
   eigenen Status-Filter und Zähler-Chip.
 - Neue Spalte `deal_id` auf den Vorschlägen verknüpft eine übernommene Zeile
-  mit dem daraus entstandenen Deal - die Karte zeigt dafür einen "Deal
-  ansehen →"-Link. Umgekehrt zeigt die Deal-Detailseite jetzt einen Hinweis
-  "Entstanden aus einem übernommenen Vorschlag vom ..." mit Link zurück, falls
+  mit dem daraus entstandenen Deal - die Karte zeigt dafür einen “Deal
+  ansehen →”-Link. Umgekehrt zeigt die Deal-Detailseite jetzt einen Hinweis
+  “Entstanden aus einem übernommenen Vorschlag vom ...” mit Link zurück, falls
   zutreffend. Wird der Deal später gelöscht, bleibt die Vorschlags-Zeile
   erhalten, nur die Verknüpfung wird geleert.
 - Migration 0019 verknüpft rückwirkend auch bereits übernommene Alt-Vorschläge
@@ -47,7 +54,7 @@ gegenseitiger Verlinkung zum daraus entstandenen Deal.
 
 ## 2.48.0
 
-Datenbank-Backup direkt aus der App: neue Seite „Backup" (im „Mehr"-Menü) zum Herunterladen und Wiederherstellen.
+Datenbank-Backup direkt aus der App: neue Seite „Backup” (im „Mehr”-Menü) zum Herunterladen und Wiederherstellen.
 
 - **Backup herunterladen:** legt eine frische, konsistente Kopie der Datenbank an (über die SQLite-Backup-API, damit ein laufender Schreibvorgang von Scheduler/Web-Anfragen nicht mitten im Kopieren erwischt wird), bündelt sie mit der aktuellen Add-on-Konfiguration (`options.json`) in einem ZIP und liefert es direkt zum Download - vorher ließ sich an die Datenbankdatei nur über Datei-Zugriff auf den Host herankommen.
 - **Backup wiederherstellen:** nimmt ein ZIP oder eine rohe `.db`-Datei entgegen und ersetzt damit die laufende Datenbank sowie, falls im ZIP enthalten, auch `options.json`. Die hochgeladene Datei wird vorher geprüft (gültiges SQLite, `PRAGMA integrity_check`, erwartete Tabellen vorhanden) und in einer Kopie per Alembic auf den aktuellen Schema-Stand migriert, damit auch ältere Backups funktionieren; erst wenn das gelingt, entsteht automatisch ein Sicherheits-Backup des bisherigen Stands und die Datei wird ausgetauscht. Schlägt ein Schritt fehl, bleibt die laufende Datenbank unangetastet. Die Bestätigungsseite weist darauf hin, dass ein anschließender Add-on-Neustart eine wiederhergestellte `options.json` wieder verwirft (Supervisor schreibt sie bei jedem Start aus dem eigenen Konfigurationsstand neu) und empfiehlt trotzdem einen Neustart, damit Scheduler und Budget-Tracker-Sync den neuen Datenbank-Stand übernehmen.

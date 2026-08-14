@@ -44,6 +44,8 @@
     {% for s in status_order %}
     {% if s == 'abgeschlossen' %}
     <a class="seg" href="deals?status=abgeschlossen">
+    {% elif s == 'wartet_auf_kuendigung' %}
+    <a class="seg" href="deals?status=wartet_auf_kuendigung">
     {% else %}
     {% set tab_slug = status_to_tab.get(s) %}
     <a class="seg" href="todos{% if tab_slug %}?tab={{ tab_slug }}{% endif %}">
