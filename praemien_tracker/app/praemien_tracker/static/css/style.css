@@ -513,6 +513,19 @@ main {
   background: var(--danger);
 }
 
+/* Segmente mit Zähler 0 werden ausgegraut, damit auf der Übersicht auf einen
+   Blick klar ist, wo gerade etwas ansteht und wo nicht - analog zu
+   .todo-tab-leer bei den ToDo-Tabs. Bleibt weiterhin normal anklickbar. Die
+   Balkenfarbe wird dabei via höherer Selektor-Spezifität (4 statt 1 Klasse)
+   ohne !important überschrieben. */
+.pipe .seg.seg-leer {
+  opacity: 0.45;
+}
+
+.pipe .seg.seg-leer .bar {
+  background: var(--ink-faint);
+}
+
 /* ---------- status chip ---------- */
 
 .chip {

@@ -42,16 +42,18 @@
       'abgeschlossen': 'Abgeschlossen'
     } %}
     {% for s in status_order %}
+    {% set anzahl = nach_status[s] | length %}
+    {% set seg_class = "seg seg-leer" if anzahl == 0 else "seg" %}
     {% if s == 'abgeschlossen' %}
-    <a class="seg" href="deals?status=abgeschlossen">
+    <a class="{{ seg_class }}" href="deals?status=abgeschlossen">
     {% elif s == 'wartet_auf_kuendigung' %}
-    <a class="seg" href="deals?status=wartet_auf_kuendigung">
+    <a class="{{ seg_class }}" href="deals?status=wartet_auf_kuendigung">
     {% else %}
     {% set tab_slug = status_to_tab.get(s) %}
-    <a class="seg" href="todos{% if tab_slug %}?tab={{ tab_slug }}{% endif %}">
+    <a class="{{ seg_class }}" href="todos{% if tab_slug %}?tab={{ tab_slug }}{% endif %}">
     {% endif %}
       <div class="bar pipe-bar-{{ s }}"></div>
-      <div class="cnt">{{ nach_status[s] | length }}</div>
+      <div class="cnt">{{ anzahl }}</div>
       <div class="nm">{{ kurzlabel[s] }}</div>
     </a>
     {% endfor %}
@@ -61,17 +63,17 @@
 <div class="card">
   <div class="card-label">Aufgaben &amp; Pflege</div>
   <div class="pipe">
-    <a class="seg" href="todos?tab=manuell">
+    <a class="seg{{ ' seg-leer' if anzahl_manuelle_aufgaben == 0 else '' }}" href="todos?tab=manuell">
       <div class="bar pipe-bar-manuell"></div>
       <div class="cnt">{{ anzahl_manuelle_aufgaben }}</div>
       <div class="nm">Aufgaben</div>
     </a>
-    <a class="seg" href="todos?tab=pflegen">
+    <a class="seg{{ ' seg-leer' if anzahl_deal_pflegen == 0 else '' }}" href="todos?tab=pflegen">
       <div class="bar pipe-bar-pflegen"></div>
       <div class="cnt">{{ anzahl_deal_pflegen }}</div>
       <div class="nm">Deals pflegen</div>
     </a>
-    <a class="seg" href="todos?tab=pruefen">
+    <a class="seg{{ ' seg-leer' if anzahl_zu_pruefen == 0 else '' }}" href="todos?tab=pruefen">
       <div class="bar pipe-bar-pruefen"></div>
       <div class="cnt">{{ anzahl_zu_pruefen }}</div>
       <div class="nm">Zu prüfen</div>
@@ -82,22 +84,22 @@
 <div class="card">
   <div class="card-label">Vorschläge</div>
   <div class="pipe pipe-4">
-    <a class="seg" href="vorschlaege?status=vorgeschlagen">
+    <a class="seg{{ ' seg-leer' if vorschlag_zaehler.vorgeschlagen == 0 else '' }}" href="vorschlaege?status=vorgeschlagen">
       <div class="bar pipe-bar-vorschlag-vorgeschlagen"></div>
       <div class="cnt">{{ vorschlag_zaehler.vorgeschlagen }}</div>
       <div class="nm">Vorgeschlagen</div>
     </a>
-    <a class="seg" href="vorschlaege?status=zu_pruefen">
+    <a class="seg{{ ' seg-leer' if vorschlag_zaehler.zu_pruefen == 0 else '' }}" href="vorschlaege?status=zu_pruefen">
       <div class="bar pipe-bar-vorschlag-zu_pruefen"></div>
       <div class="cnt">{{ vorschlag_zaehler.zu_pruefen }}</div>
       <div class="nm">Zu prüfen</div>
     </a>
-    <a class="seg" href="vorschlaege?status=automatisch_abgelehnt">
+    <a class="seg{{ ' seg-leer' if vorschlag_zaehler.abgelehnt == 0 else '' }}" href="vorschlaege?status=automatisch_abgelehnt">
       <div class="bar pipe-bar-vorschlag-abgelehnt"></div>
       <div class="cnt">{{ vorschlag_zaehler.abgelehnt }}</div>
       <div class="nm">Abgelehnt</div>
     </a>
-    <a class="seg" href="vorschlaege?status=verworfen">
+    <a class="seg{{ ' seg-leer' if vorschlag_zaehler.verworfen == 0 else '' }}" href="vorschlaege?status=verworfen">
       <div class="bar pipe-bar-vorschlag-verworfen"></div>
       <div class="cnt">{{ vorschlag_zaehler.verworfen }}</div>
       <div class="nm">Verworfen</div>

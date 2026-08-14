@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.49.10
+
+Übersicht: Segmente mit Zähler 0 werden ausgegraut, damit auf einen Blick klar ist, wo etwas ansteht.
+
+- **Leere Segmente gedimmt:** In den drei Kacheln "Pipeline", "Aufgaben & Pflege" und "Vorschläge" werden Segmente mit Zähler 0 nun mit reduzierter Deckkraft und grauem Balken angezeigt (analog zu den bereits ausgegrauten leeren Kategorien auf der "Zu erledigen"-Seite). Segmente mit Inhalt bleiben normal farbig hervorgehoben.
+- Weiterhin normal anklickbar, nur optisch zurückgenommen.
+
 ## 2.49.9
 
 Übersicht auf dem Handy ohne Scrollen sichtbar: kompaktere Kacheln und kürzere Beschriftungen.
