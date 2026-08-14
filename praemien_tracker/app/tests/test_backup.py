@@ -115,7 +115,9 @@ def test_zip_erstellen_ohne_options_json_enthaelt_nur_datenbank(db):
 
 
 def test_download_endpunkt_liefert_zip_mit_datenbank(client, db):
-    antwort = client.get("/backup/herunterladen")
+    # POST statt GET: der Download legt ein Backup an (Seiteneffekt), darf also
+    # nicht per Link/Prefetch auslösbar sein.
+    antwort = client.post("/backup/herunterladen")
 
     assert antwort.status_code == 200
     assert antwort.headers["content-type"] == "application/zip"

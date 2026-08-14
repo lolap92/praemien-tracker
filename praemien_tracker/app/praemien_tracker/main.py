@@ -23,8 +23,10 @@ from alembic.config import Config as AlembicConfig
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from apscheduler.schedulers.background import BackgroundScheduler
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import inspect
 
 from . import auszahlungs_sync  # noqa: F401  (registriert die Budget-Tracker-Sync-Events)
@@ -205,14 +207,36 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(title="Prämien-Tracker", lifespan=lifespan)
 
-    @app.exception_handler(HTTPException)
-    async def http_fehler(request: Request, exc: HTTPException):
+    @app.exception_handler(StarletteHTTPException)
+    async def http_fehler(request: Request, exc: StarletteHTTPException):
         """Fehler als normale Seite ausliefern statt als JSON-Rumpf - die App
-        wird ausschließlich im Browser benutzt."""
+        wird ausschließlich im Browser benutzt.
+
+        Bewusst auf die Starlette-HTTPException registriert, nicht nur auf die
+        von FastAPI: eine nicht gefundene Route (z. B. /nichtda) wirft die
+        Starlette-Variante, die sonst als rohes JSON-404 durchrutschte."""
         return templates.TemplateResponse(
             "fehler.html",
             {"request": request, "code": exc.status_code, "detail": exc.detail},
             status_code=exc.status_code,
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validierungs_fehler(request: Request, exc: RequestValidationError):
+        """Auch fehlerhafte Pfad-/Query-Parameter im gewohnten Layout.
+
+        Ein nicht-ganzzahliges /deals/abc löst einen RequestValidationError aus,
+        der am Handler oben vorbeiging und als nacktes JSON mit Status 422 auf
+        dem Bildschirm landete - genau das, was die Fehlerseite verhindern
+        soll. Statt der Pydantic-Struktur ein verständlicher Satz."""
+        return templates.TemplateResponse(
+            "fehler.html",
+            {
+                "request": request,
+                "code": 400,
+                "detail": "Die aufgerufene Adresse enthält einen ungültigen Wert.",
+            },
+            status_code=400,
         )
 
     @app.middleware("http")

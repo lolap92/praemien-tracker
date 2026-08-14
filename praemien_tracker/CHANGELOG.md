@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.50.1
+
+Robustere Fehlerbehandlung und ein Seiteneffekt weniger – Angleichung an den Budget-Tracker.
+
+- **Ungültige Adressen kamen als rohes JSON statt auf der Fehlerseite (`main.py`).** Eine nicht existierende Route (z. B. `/nichtda`) und ein nicht-ganzzahliger Pfadparameter (z. B. `/deals/abc`) lösten einen Starlette-404 bzw. einen Validierungsfehler (422) aus, die am bisherigen Fehler-Handler vorbeiliefen und als Pydantic-/Starlette-JSON auf dem Bildschirm landeten. Der Handler hängt jetzt an der Starlette-`HTTPException` (deckt Routing-404 mit ab), und ein zusätzlicher Handler fängt Validierungsfehler ab – beide zeigen die gewohnte Fehlerseite mit Navigation.
+- **Backup-Download war ein Link, legte aber ein Backup an (`routers/backup.py`, `templates/backup.html`).** `GET /backup/herunterladen` erzeugt über `zip_erstellen()` eine frische Sicherung und rotiert ältere weg – ein Prefetch des Browsers oder ein Neuladen genügte, um die Rotation weiterzudrehen. Der Download läuft jetzt über ein POST-Formular (wie das Wiederherstellen darunter).
+
 ## 2.50.0
 
 Dunkles Design und selbst ausgelieferte Schriften – GUI-Angleichung an den Budget-Tracker.

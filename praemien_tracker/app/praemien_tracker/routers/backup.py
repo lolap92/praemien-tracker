@@ -15,8 +15,12 @@ def backup_seite(request: Request):
     return templates.TemplateResponse("backup.html", {"request": request})
 
 
-@router.get("/backup/herunterladen")
+@router.post("/backup/herunterladen")
 def herunterladen() -> Response:
+    # Bewusst POST, nicht GET: zip_erstellen() legt über erstellen() eine
+    # frische Sicherung in BACKUP_DIR an und rotiert ältere weg. Als GET-Link
+    # hätten schon ein Prefetch des Browsers oder ein Neuladen der Seite die
+    # Rotation weitergedreht.
     dateiname, inhalt = backup.zip_erstellen()
     return Response(
         content=inhalt,

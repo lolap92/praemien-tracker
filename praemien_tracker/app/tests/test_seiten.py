@@ -171,6 +171,23 @@ def test_unbekannter_deal_liefert_eine_fehlerseite():
     assert "999999" in antwort.text
 
 
+def test_unbekannte_route_liefert_html_fehlerseite():
+    # Ein Routing-404 (Starlette-HTTPException) muss auf der Fehlerseite landen,
+    # nicht als rohes JSON.
+    antwort = client.get("/gibt-es-nicht")
+    assert antwort.status_code == 404
+    assert "text/html" in antwort.headers["content-type"]
+
+
+def test_ungueltiger_pfadparameter_liefert_html_fehlerseite():
+    # /deals/abc löst einen RequestValidationError (422) aus - der gehört
+    # ebenfalls auf die Fehlerseite statt als Pydantic-JSON auf den Schirm.
+    antwort = client.get("/deals/abc")
+    assert antwort.status_code == 400
+    assert "text/html" in antwort.headers["content-type"]
+    assert "ungültigen Wert" in antwort.text
+
+
 @pytest.mark.parametrize(
     "abfrage",
     ["?inhaber_id=abc", "?inhaber_id=", "?status=quatsch", "?q=", "?inhaber_id=1&status=bedingungen&q=Test"],
