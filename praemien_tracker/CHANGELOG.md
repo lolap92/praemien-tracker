@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.49.8
+
+Benennung und ausführliche Beschreibungen für alle Add-on Konfigurationsparameter in Deutsch und Englisch hinzugefügt.
+
+- Alle 11 Konfigurations-Optionen der App (darunter `demo_modus`, `anthropic_api_key`, `anthropic_model`, `mindestpraemie`, `mydealz_gruppe`, `spartanien_url` und `dealdoktor_feed_url`) haben nun übersetzte, benutzerfreundliche Namen und ausführliche Hilfetexte erhalten, die direkt im Home Assistant Konfigurations-Interface angezeigt werden.
+- Anpassung und Erweiterung des Unit-Tests `test_translations_are_valid`, um die Vollständigkeit aller konfigurierten Übersetzungsschlüssel dauerhaft sicherzustellen.
+
 ## 2.49.7
 
 Die Seite „Deals" wurde in die Haupt-Navigationsleiste verschoben.
