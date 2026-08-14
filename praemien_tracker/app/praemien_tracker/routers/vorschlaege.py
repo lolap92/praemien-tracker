@@ -38,6 +38,21 @@ def _int_oder_none(wert: str | None) -> int | None:
     dez = parse_decimal(wert)
     return int(dez) if dez is not None else None
 
+
+def _als_ids(werte) -> list[int]:
+    """Ganzzahlige IDs aus versteckten Formularfeldern lesen und nicht-
+    numerische Werte übergehen, statt die Seite mit einem 500 abzubrechen -
+    dieselbe Robustheit, mit der die GET-Filter schon arbeiten (deals._als_int).
+    Die Felder sind zwar von der App selbst erzeugt, ein verstümmelter POST
+    darf trotzdem keinen Serverfehler auslösen."""
+    ergebnis: list[int] = []
+    for wert in werte:
+        try:
+            ergebnis.append(int(str(wert).strip()))
+        except (ValueError, TypeError):
+            continue
+    return ergebnis
+
 # Reihenfolge der Statusgruppen wie im Konzept-Mockup: erst eindeutig
 # vorgeschlagene, dann zu prüfende, ganz unten (eingeklappt) die
 # automatisch abgelehnten.
@@ -514,7 +529,11 @@ def _form_zeilen(form, prefix: str, anzahl_feld: str, felder: tuple[str, ...]) -
     Bool-Feld wird an seinem Namen ohne "_wert"-Suffix erkannt (siehe
     Aufrufer) und ist True, wenn der Schlüssel überhaupt vorhanden ist."""
     zeilen = []
-    for i in range(int(form.get(anzahl_feld, "0") or "0")):
+    try:
+        anzahl = int(form.get(anzahl_feld, "0") or "0")
+    except (ValueError, TypeError):
+        anzahl = 0
+    for i in range(anzahl):
         zeilen.append({feld: form.get(f"{prefix}_{i}_{feld}") for feld in felder})
     return zeilen
 
@@ -558,9 +577,9 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
     Kündigungsweg (helpers.kuendigung_vorschlag) ist reiner Tabellen-Lookup
     und braucht dafür kein Zeitbudget mehr, siehe build_deal_from_import."""
     form = await request.form()
-    vorschlag_ids = [int(v) for v in form.getlist("vorschlag_ids")]
-    verwerfen_duplikat_ids = [int(v) for v in form.getlist("verwerfen_duplikat_ids")]
-    zusaetzliche_inhaber_ids = [int(v) for v in form.getlist("zusaetzliche_inhaber_ids")]
+    vorschlag_ids = _als_ids(form.getlist("vorschlag_ids"))
+    verwerfen_duplikat_ids = _als_ids(form.getlist("verwerfen_duplikat_ids"))
+    zusaetzliche_inhaber_ids = _als_ids(form.getlist("zusaetzliche_inhaber_ids"))
     kwk_schluessel = form.get("kwk_schluessel", "")
     kuendbar_ab = parse_date((form.get("kuendbar_ab") or "").strip() or None)
     kommentar = (form.get("kommentar") or "").strip() or None

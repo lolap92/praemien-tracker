@@ -221,9 +221,14 @@ def create_aufgabe(
     quelle: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    # deal_id kommt aus einem <select> mit gültigen IDs oder leer. Trotzdem
+    # robust: eine nicht-numerische oder unbekannte ID darf keinen 500 auslösen
+    # (nicht-numerisch: int() wirft; unbekannt: Fremdschlüssel-Fehler beim
+    # Commit). Nicht auflösbar -> Aufgabe ohne Deal.
+    ziel_deal = db.get(Deal, int(deal_id)) if deal_id.strip().isdigit() else None
     aufgabe = Aufgabe(
         beschreibung=beschreibung.strip(),
-        deal_id=int(deal_id) if deal_id else None,
+        deal_id=ziel_deal.id if ziel_deal else None,
         faellig_bis=parse_date(faellig_bis),
     )
     db.add(aufgabe)

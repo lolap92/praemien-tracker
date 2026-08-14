@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.51.1
+
+Robustere POST-Formulare – Ergebnis eines fachlichen Reviews der großen Module.
+
+- **Verstümmelte Formulardaten lösten einen Serverfehler aus (`routers/vorschlaege.py`, `routers/todos.py`).** Die versteckten ID-Felder beim Übernehmen von Vorschlägen und das `deal_id`-Feld beim Anlegen einer Aufgabe wurden mit einem ungeprüften `int()` gelesen – ein nicht-numerischer Wert brach die Seite mit einem 500 ab, und eine unbekannte `deal_id` löste beim Speichern einen Fremdschlüssel-Fehler aus. Beide Wege übergehen ungültige Werte jetzt (bzw. hängen die Aufgabe ohne Deal an), dieselbe Robustheit, mit der die GET-Filter der Deals-Liste schon arbeiten.
+
+Das Review der Fachlogik (Status-Pipeline und Kennzahlen in `derived.py`, Storno-Behandlung, Überfälligkeits- und Prüfdaten-Berechnung, das Finder-Matching mit Neukunden-/Sperrfrist-Prüfung und Dedup-Hash in `finder/matching.py`, der Deal-Import in `helpers.py`) ergab keine Korrektheitsfehler – die Logik ist in sich stimmig und durch die bestehende Testsuite abgedeckt. Die obige Härtung ist die einzige gefundene, umsetzungswürdige Inkonsistenz.
+
 ## 2.51.0
 
 Design-Umschalter (Automatisch/Hell/Dunkel), Härtung der Weiterleitung und eine Schema-Untergrenze.
