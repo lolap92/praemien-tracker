@@ -1118,6 +1118,13 @@ dialog.todo-dialog .dialog-zeile {
   flex: 1;
 }
 
+dialog.todo-dialog .dialog-aktionen {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
 /* ---------- filter / search ---------- */
 
 .filterleiste {
@@ -1612,37 +1619,46 @@ button.warn,
 .miss .mf {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.72rem;
+  gap: 0.6rem;
+  font-size: 0.78rem;
   font-weight: 500;
-  padding: 0.35rem 0.6rem;
+  padding: 0.4rem 0.7rem;
   border-radius: 9px;
   background: var(--surface-2);
   border: 1px solid var(--line);
   color: var(--ink-soft);
 }
 
-.miss .mf a,
 .miss .mf button {
-  background: none;
-  border: none;
-  padding: 0;
   font: inherit;
   cursor: pointer;
 }
 
-.miss .mf .plus {
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 0.85rem;
+.miss .mf .x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-faint);
+  font-weight: 600;
+  font-size: 1rem;
   line-height: 1;
 }
 
-.miss .mf .x {
-  color: var(--ink-faint);
-  font-weight: 600;
+.miss .mf .x:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.pflegen-eingeben {
+  margin-top: 0.7rem;
+  padding: 0.6rem 1.2rem;
   font-size: 0.85rem;
-  line-height: 1;
 }
 
 .complete-badge {

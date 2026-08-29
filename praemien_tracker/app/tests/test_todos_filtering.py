@@ -5,6 +5,7 @@ from decimal import Decimal
 from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
 
+from praemien_tracker import derived
 from praemien_tracker.main import app
 from praemien_tracker.models import Aufgabe, Bank, Bedingung, Deal, Inhaber, Praemie
 
@@ -435,9 +436,19 @@ def test_deal_pflegen_zeigt_alle_offenen_felder_als_chips(db):
     assert any("Zugangsdaten sichern" in c for c in chips)
     assert any("Erwartete Auszahlung" in c for c in chips)
 
-    plus_link = panel.select_one('a.plus[href*="kontonummer"]')
-    assert plus_link is not None
-    assert plus_link["href"] == f"deals/{deal.id}/edit#kontonummer"
+    # "Eingeben" öffnet den Pflegen-Dialog des Deals statt zur
+    # Bearbeiten-Seite zu springen, und der Dialog bietet nur die
+    # tatsächlich offenen Felder als Eingabe an.
+    eingeben_btn = panel.select_one(f'button[onclick*="dlg-pflegen-{deal.id}"]')
+    assert eingeben_btn is not None
+
+    dialog = soup.select_one(f"#dlg-pflegen-{deal.id}")
+    assert dialog is not None
+    assert dialog.select_one('form[action$="/felder"]') is not None
+    assert dialog.select_one('input[name="kontonummer"]') is not None
+    assert dialog.select_one('input[name="zugangsdaten_gespeichert"]') is not None
+    auszahlung_feld = next(p for p in deal.praemien)
+    assert dialog.select_one(f'input[name="praemie_{auszahlung_feld.id}_auszahlung_erwartet"]') is not None
 
 
 def test_deal_pflegen_skip_field_entfernt_den_chip_und_bleibt_beim_pflegen_tab(db):
@@ -456,6 +467,82 @@ def test_deal_pflegen_skip_field_entfernt_den_chip_und_bleibt_beim_pflegen_tab(d
     folgeantwort = client.get(antwort.headers["location"])
     assert 'id="todotab-pflegen" checked' in folgeantwort.text
     assert "Kontonummer" not in (BeautifulSoup(folgeantwort.text, "html.parser").select_one("#panel-pflegen").get_text())
+
+
+def test_deal_pflegen_felder_speichert_nur_die_offenen_felder(db):
+    """Der Pflegen-Dialog schickt nur die im Dialog gezeigten Felder ab - im
+    Gegensatz zu deal_update() darf ein fehlendes Feld (bank, inhaber, ...)
+    im Formular hier den restlichen Deal nicht verändern."""
+    bank = Bank(name="Felder-Testbank")
+    inhaber = Inhaber(name="Felder-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer=None, zugangsdaten_gespeichert=False)
+    p = Praemie(quelle="bank", betrag=Decimal("50.00"), erhalten=False, auszahlung_erwartet=None)
+    deal.praemien.append(p)
+    db.add(deal)
+    db.commit()
+    db.refresh(p)
+
+    antwort = client.post(
+        f"/deals/{deal.id}/felder",
+        data={
+            "kontonummer": "DE9999",
+            "zugangsdaten_gespeichert": "on",
+            f"praemie_{p.id}_auszahlung_erwartet": "2026-05",
+        },
+        follow_redirects=False,
+    )
+    assert antwort.status_code == 303
+    assert antwort.headers["location"] == "/todos?tab=pflegen"
+
+    db.refresh(deal)
+    db.refresh(p)
+    assert deal.bank_id == bank.id
+    assert deal.inhaber_id == inhaber.id
+    assert deal.kontoart == "Giro"
+    assert deal.kontonummer == "DE9999"
+    assert deal.zugangsdaten_gespeichert is True
+    assert p.auszahlung_erwartet == "2026-05"
+    assert derived.offene_felder(deal) == []
+
+
+def test_deal_pflegen_felder_leeres_feld_bleibt_offen(db):
+    """Ein leer gelassenes Feld im Dialog löscht keinen vorhandenen Wert und
+    bleibt als offen bestehen, statt fälschlich als erledigt zu gelten."""
+    bank = Bank(name="Leerfeld-Testbank")
+    inhaber = Inhaber(name="Leerfeld-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer=None, zugangsdaten_gespeichert=False)
+    db.add(deal)
+    db.commit()
+
+    antwort = client.post(f"/deals/{deal.id}/felder", data={"kontonummer": ""}, follow_redirects=False)
+    assert antwort.status_code == 303
+
+    db.refresh(deal)
+    assert deal.kontonummer is None
+    assert any(f.feld == "kontonummer" for f in derived.offene_felder(deal))
+
+
+def test_deal_pflegen_felder_ignoriert_bereits_erledigte_felder(db):
+    """Nur Felder, die laut offene_felder() noch offen sind, werden
+    übernommen - ein bereits vergebener Wert darf nicht überschrieben
+    werden, nur weil ein (manipuliertes) Formular ihn erneut mitschickt."""
+    bank = Bank(name="Erledigt-Testbank")
+    inhaber = Inhaber(name="Erledigt-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer="DE0001", zugangsdaten_gespeichert=True)
+    db.add(deal)
+    db.commit()
+
+    antwort = client.post(f"/deals/{deal.id}/felder", data={"kontonummer": "DE9999"}, follow_redirects=False)
+    assert antwort.status_code == 303
+
+    db.refresh(deal)
+    assert deal.kontonummer == "DE0001"
 
 
 def test_deal_pflegen_gekuendigter_deal_braucht_keine_zugangsdaten(db):

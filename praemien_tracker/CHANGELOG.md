@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.52.0
+
+„Deal pflegen" ohne Seitenwechsel: offene Felder werden jetzt direkt in einem Modaldialog eingegeben, und die Bedienelemente sind größer.
+
+- **Neuer Pflegen-Dialog statt Sprung zur Bearbeiten-Seite (`templates/todos.html`, `routers/deals.py`).** Der „+"-Link neben jedem offenen Feld führte bisher auf `deals/{id}/edit#feld` – die komplette Bearbeiten-Seite, obwohl nur ein bis drei Felder fehlten. Ein neuer „Eingeben"-Button öffnet stattdessen einen Modaldialog mit ausschließlich den noch offenen Feldern dieses Deals (Kontonummer, Zugangsdaten gesichert, erwartete Auszahlung je Prämie). Der Dialog speichert über den neuen Endpunkt `POST /deals/{id}/felder`, der bewusst nicht die bestehende `deal_update()`-Route wiederverwendet: die liest die komplette Bearbeiten-Seite per `request.form()` und hätte bei den im schlanken Dialog fehlenden Feldern (Bank, Inhaber, Kontoart, ...) den restlichen Deal überschrieben. Der neue Endpunkt übernimmt nur Felder, die laut `offene_felder()` tatsächlich noch offen sind, und lässt ein leer gelassenes Feld unangetastet offen, statt einen vorhandenen Wert zu löschen.
+- **Größere Buttons (`static/css/style.css`).** Der „×"-Button (Feld als „nicht nötig" abhaken) ist jetzt ein echtes, größeres Tapziel mit Rahmen statt eines kleinen Textzeichens, und der neue „Eingeben"-Button nutzt die normale, gut greifbare Button-Größe der App.
+
 ## 2.51.2
 
 Design-Umschalter jetzt optisch identisch mit dem Budget-Tracker.

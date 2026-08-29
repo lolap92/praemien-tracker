@@ -126,8 +126,10 @@ def test_links_oeffnen_read_only_detailseite(db, deal):
     # "Zu erledigen")
     pflegen_html = client.get("/todos?tab=pflegen").text
     assert f'href="deals/{deal.id}"' in pflegen_html
-    # +-Chip soll weiterhin auf die Bearbeiten-Seite mit Anker springen
-    assert f'href="deals/{deal.id}/edit#' in pflegen_html
+    # "Eingeben" öffnet einen Modaldialog statt auf die Bearbeiten-Seite zu springen
+    assert f'href="deals/{deal.id}/edit#' not in pflegen_html
+    assert f'id="dlg-pflegen-{deal.id}"' in pflegen_html
+    assert f'action="deals/{deal.id}/felder"' in pflegen_html
 
     # Sperrfristen
     sperrfristen_html = client.get("/sperrfristen").text
