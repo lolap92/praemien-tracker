@@ -19,13 +19,16 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 from decimal import Decimal
 
 from sqlalchemy import event, inspect
 from sqlalchemy.orm import Session, attributes
 
+from . import derived
 from .database import SessionLocal
 from .models import Aufgabe, Bank, Bedingung, Deal, DealUrl, Inhaber, Praemie, ProtokollEintrag
+from .templating import templates
 
 GETRACKTE_MODELLE = (Deal, Bank, Inhaber, Praemie, Bedingung, Aufgabe, DealUrl)
 IGNORIERTE_FELDER = {"id", "erstellt_am", "geaendert_am"}
@@ -73,16 +76,76 @@ def _kontext_von(obj) -> tuple[str | None, str | None, str | None]:
     Wird zum Zeitpunkt des Eintrags aufgelöst und denormalisiert
     gespeichert, damit der Kontext auch nach dem Löschen des Deals noch
     im Protokoll lesbar bleibt."""
-    deal = obj if isinstance(obj, Deal) else getattr(obj, "deal", None)
+    deal = _deal_von(obj)
     if deal is not None:
-        bank_name = deal.bank.name if deal.bank else None
-        inhaber_name = deal.inhaber.name if deal.inhaber else None
-        return bank_name, inhaber_name, deal.kontoart
+        bank = _bank_von(deal)
+        inhaber = _inhaber_von(deal)
+        return (bank.name if bank else None), (inhaber.name if inhaber else None), deal.kontoart
     if isinstance(obj, Bank):
         return obj.name, None, None
     if isinstance(obj, Inhaber):
         return None, obj.name, None
     return None, None, None
+
+
+def _deal_von(obj) -> Deal | None:
+    """Der Deal, zu dem dieses Objekt gehört - das Objekt selbst, falls es
+    schon ein Deal ist, sonst über die deal-Beziehung (Praemie, Bedingung,
+    Aufgabe, DealUrl haben alle eine). Bank/Inhaber haben keinen einzelnen
+    zugehörigen Deal - eine Namensänderung dort betrifft potenziell mehrere
+    Deals, für die deshalb bewusst kein Snapshot entsteht."""
+    if isinstance(obj, Deal):
+        return obj
+    return getattr(obj, "deal", None)
+
+
+def _per_id_nachgeladen(deal: Deal, relationship_wert, modell, fremdschluessel_id):
+    """Fallback für deal.bank/deal.inhaber, falls die Beziehung selbst noch
+    nicht geladen ist. Betrifft nur ganz frisch angelegte Deals, deren
+    bank_id/inhaber_id per rohem Fremdschlüssel statt per Objektzuweisung
+    gesetzt wurden: SQLAlchemy liefert lazy-geladene Beziehungen an frisch
+    erzeugten Objekten innerhalb von after_flush zuverlässig als None, ein
+    direkter Session.get() auf denselben Fremdschlüssel funktioniert dort
+    aber (siehe _html_snapshot_von-Testfall). Die App selbst weist beim
+    Anlegen immer das Objekt direkt zu (deal.bank = ...), betrifft also nur
+    diesen Randfall."""
+    if relationship_wert is not None or fremdschluessel_id is None:
+        return relationship_wert
+    sitzung = inspect(deal).session
+    return sitzung.get(modell, fremdschluessel_id) if sitzung is not None else None
+
+
+def _bank_von(deal: Deal) -> Bank | None:
+    return _per_id_nachgeladen(deal, deal.bank, Bank, deal.bank_id)
+
+
+def _inhaber_von(deal: Deal) -> Inhaber | None:
+    return _per_id_nachgeladen(deal, deal.inhaber, Inhaber, deal.inhaber_id)
+
+
+def _html_snapshot_von(obj) -> str | None:
+    """Rendert deal_snapshot.html für den zu diesem Objekt gehörenden Deal -
+    eine eigenständige, von base.html/request unabhängige Momentaufnahme der
+    Dealseite (siehe deal_snapshot.html), damit sie auch nach dem Löschen des
+    Deals noch einsehbar bleibt. Ein Renderfehler darf die eigentliche
+    Änderung nicht verhindern, deshalb wird er nur geloggt."""
+    deal = _deal_von(obj)
+    if deal is None:
+        return None
+    try:
+        return templates.get_template("deal_snapshot.html").render(
+            deal=deal,
+            bank=_bank_von(deal),
+            inhaber=_inhaber_von(deal),
+            status=derived.status(deal),
+            status_labels=derived.STATUS_LABELS,
+            zeitpunkt=datetime.datetime.now(datetime.timezone.utc),
+        )
+    except Exception:
+        logging.getLogger("praemien_tracker").exception(
+            "Konnte Dealseiten-Snapshot für Deal %s nicht rendern.", deal.id
+        )
+        return None
 
 
 def _dirty_feld_aenderungen(obj):
@@ -115,6 +178,7 @@ def _before_flush(session, flush_context, instances):
             continue
         snapshot_json = json.dumps(_voller_snapshot(obj), ensure_ascii=False)
         bank_name, inhaber_name, kontoart = _kontext_von(obj)
+        html_snapshot = _html_snapshot_von(obj)
         for feld, alt, neu in aenderungen:
             eintraege.append(
                 {
@@ -129,6 +193,7 @@ def _before_flush(session, flush_context, instances):
                     "bank_name": bank_name,
                     "inhaber_name": inhaber_name,
                     "kontoart": kontoart,
+                    "html_snapshot": html_snapshot,
                 }
             )
 
@@ -150,6 +215,9 @@ def _before_flush(session, flush_context, instances):
                 "bank_name": bank_name,
                 "inhaber_name": inhaber_name,
                 "kontoart": kontoart,
+                # Der wichtigste Fall für den Snapshot: nach dem Löschen ist
+                # dies die letzte Gelegenheit, den Deal noch zu rendern.
+                "html_snapshot": _html_snapshot_von(obj),
             }
         )
 
@@ -174,6 +242,7 @@ def _after_flush(session, flush_context):
                 "bank_name": bank_name,
                 "inhaber_name": inhaber_name,
                 "kontoart": kontoart,
+                "html_snapshot": _html_snapshot_von(obj),
             }
         )
 

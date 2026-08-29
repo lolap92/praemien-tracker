@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.53.0
+
+Listen im Tab „Zu erledigen" jetzt alphabetisch nach Bank sortiert, und das Protokoll archiviert die Dealseite als HTML statt nur zu verlinken.
+
+- **Alle ToDo-Listen alphabetisch nach Bankname (`routers/todos.py`).** Bisher standen die Einträge in DB-Einfügereihenfolge (bzw. bei "Auf Prämie warten"/"Prämienauszahlung prüfen" nach Prüfdatum). Jetzt ist der Bankname der primäre Sortierschlüssel in jeder Kategorie sowie in "Erledigte Aufgaben" - bei gleicher Bank/gleichem Inhaber bleibt das bisherige Fälligkeitsdatum als Tiebreak wirksam, die Dringlichkeit bei mehreren offenen Prämien derselben Bank geht also nicht verloren. Manuelle Aufgaben ohne Deal landen mangels Bankname am Ende.
+- **Protokoll-Einträge speichern jetzt eine gerenderte Momentaufnahme der Dealseite (`protokoll.py`, neue Spalte `protokoll.html_snapshot`, Migration 0020).** Der "Deal"-Link im Änderungsprotokoll zeigte bisher nur auf `deals/{id}` - die *aktuelle* Seite. Wird der Deal später gelöscht, läuft der Link ins Leere, obwohl der Protokoll-Eintrag selbst bewusst ohne Fremdschlüssel genau dafür bestehen bleibt (siehe models.ProtokollEintrag). Jeder Protokoll-Eintrag mit Deal-Bezug rendert jetzt zusätzlich `deal_snapshot.html` - eine eigenständige, von Login/Navigation unabhängige Archiv-Seite - und speichert sie mit ab. Ein neuer "Archiv"-Link neben der Deal-ID (`GET /protokoll/{id}/archiv`) bleibt dadurch auch nach dem Löschen des Deals abrufbar.
+- **Nebenbei behoben: `bank_name`/`inhaber_name` im Protokoll konnten bei ganz frisch angelegten Deals leer bleiben (`protokoll.py`).** SQLAlchemy löst die `bank`/`inhaber`-Beziehung an einem soeben erst erstellten Objekt innerhalb von `after_flush` nicht zuverlässig lazy auf, wenn nur die rohe `bank_id`/`inhaber_id` gesetzt wurde (statt der Objektzuweisung `deal.bank = ...`, die die App selbst überall verwendet). Ein Fallback über `Session.get()` holt Bank/Inhaber in diesem Randfall jetzt zuverlässig nach - relevant für den neuen HTML-Snapshot, der sonst ohne Bank-/Inhaber-Namen dagestanden hätte.
+
 ## 2.52.2
 
 Das Häkchen vor einer „Deal pflegen"-Zeile ist jetzt funktional: es markiert alle noch offenen Felder dieses Deals auf einen Schlag als „nicht nötig", statt nur dekorativ dazustehen.

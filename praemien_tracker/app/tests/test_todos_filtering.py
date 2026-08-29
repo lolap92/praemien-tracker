@@ -85,6 +85,31 @@ def test_todos_sorting_and_filtering(db):
     assert "Prämie prüfen (Bank, 100.00 €)" in html_bank
 
 
+def test_todos_listen_sortiert_alphabetisch_nach_bankname(db):
+    """Alle Listen im 'Zu erledigen'-Tab sind primär alphabetisch nach
+    Bankname sortiert (nicht mehr nach DB-Einfügereihenfolge). Bei
+    'Prämienauszahlung prüfen' bleibt faellig_bis als Tiebreak innerhalb
+    derselben Bank weiterhin wirksam (siehe test_todos_sorting_and_filtering)."""
+    inhaber = Inhaber(name="Sortier-Inhaber")
+    bank_z = Bank(name="Zentralbank")
+    bank_a = Bank(name="Anfangsbank")
+    db.add_all([inhaber, bank_z, bank_a])
+    db.commit()
+
+    for bank, kontonummer in [(bank_z, "DEZ1"), (bank_a, "DEA1")]:
+        deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer=kontonummer, zugangsdaten_gespeichert=True)
+        deal.bedingungen.append(Bedingung(beschreibung="Bedingung offen", erfuellt=False))
+        db.add(deal)
+    db.commit()
+
+    antwort = client.get("/todos")
+    html = antwort.text
+    idx_a = html.find("Anfangsbank")
+    idx_z = html.find("Zentralbank")
+    assert idx_a != -1 and idx_z != -1
+    assert idx_a < idx_z, "Anfangsbank (A) muss vor Zentralbank (Z) stehen"
+
+
 def test_todos_filtering_by_new_statuses(db):
     # Setup test data
     bank = Bank(name="Test Bank 2")

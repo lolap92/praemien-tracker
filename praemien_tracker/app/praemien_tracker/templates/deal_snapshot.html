@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ bank.name if bank else "–" }} · {{ inhaber.name if inhaber else "–" }} – Archivierte Dealseite</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 1.5rem; background: #f4f5f3; color: #1a1d1a; }
+  .archiv-hinweis { background: #fff3cd; border: 1px solid #e6c766; border-radius: 10px; padding: 0.8rem 1rem; margin-bottom: 1.2rem; font-size: 0.85rem; color: #6b5300; max-width: 640px; }
+  h1 { font-size: 1.3rem; margin: 0 0 0.2rem; }
+  .sec-t { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: #6b6f6b; margin: 1.2rem 0 0.4rem; }
+  .card { background: #fff; border: 1px solid #dfe2df; border-radius: 12px; padding: 0.9rem 1rem; max-width: 640px; }
+  dl { margin: 0; }
+  .zeile { display: flex; gap: 0.6rem; padding: 0.4rem 0; border-bottom: 1px solid #eceeec; flex-wrap: wrap; }
+  .zeile:last-child { border-bottom: none; }
+  .zeile dt { flex: 0 0 12rem; color: #6b6f6b; font-size: 0.85rem; }
+  .zeile dd { margin: 0; flex: 1; font-size: 0.9rem; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; justify-content: space-between; gap: 0.6rem; padding: 0.4rem 0; border-bottom: 1px solid #eceeec; font-size: 0.9rem; }
+  li:last-child { border-bottom: none; }
+  li.leer { color: #6b6f6b; font-style: italic; }
+  .chip { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 8px; font-size: 0.75rem; font-weight: 600; background: #e4e6e3; }
+  .status-abgeschlossen { background: #d7ecd9; color: #1e6b2e; }
+</style>
+</head>
+<body>
+  <div class="archiv-hinweis">
+    Archivierte Momentaufnahme dieser Dealseite vom {{ zeitpunkt.strftime("%d.%m.%Y %H:%M") }} Uhr – erzeugt für das
+    Änderungsprotokoll, damit die Seite auch nach einem späteren Löschen des Deals noch einsehbar bleibt.
+    Kein Live-Stand.
+  </div>
+
+  <h1>{{ bank.name if bank else "–" }} · {{ deal.kontoart }} · {{ inhaber.name if inhaber else "–" }}</h1>
+  <span class="chip {{ 'status-abgeschlossen' if status == 'abgeschlossen' else '' }}">{{ status_labels.get(status, status) }}</span>
+
+  <div class="sec-t">Konto</div>
+  <div class="card">
+    <dl>
+      <div class="zeile"><dt>Bank</dt><dd>{{ bank.name if bank else "–" }}</dd></div>
+      <div class="zeile"><dt>Inhaber</dt><dd>{{ inhaber.name if inhaber else "–" }}</dd></div>
+      <div class="zeile"><dt>Kontoart</dt><dd>{{ deal.kontoart }}</dd></div>
+      <div class="zeile"><dt>Kontonummer</dt><dd>{{ deal.kontonummer or "–" }}</dd></div>
+      <div class="zeile"><dt>Zugangsdaten gesichert</dt><dd>{{ "ja" if deal.zugangsdaten_gespeichert else "nein" }}</dd></div>
+    </dl>
+  </div>
+
+  <div class="sec-t">Kündigung</div>
+  <div class="card">
+    <dl>
+      <div class="zeile"><dt>Kündbar ab</dt><dd>{{ deal.kuendbar_ab | datum if deal.kuendbar_ab else "keine Sperrfrist" }}</dd></div>
+      <div class="zeile"><dt>Gekündigt</dt><dd>{{ "ja" if deal.gekuendigt else "nein" }}{% if deal.gekuendigt_im_monat %} ({{ deal.gekuendigt_im_monat }}){% endif %}</dd></div>
+      <div class="zeile"><dt>Kündigung bestätigt</dt><dd>{{ "ja" if deal.kuendigung_bestaetigt else "nein" }}</dd></div>
+      {% if deal.kuendigung_hinweis %}
+      <div class="zeile"><dt>Anweisungen</dt><dd>{{ deal.kuendigung_hinweis }}</dd></div>
+      {% endif %}
+    </dl>
+  </div>
+
+  <div class="sec-t">Steuer &amp; Notiz</div>
+  <div class="card">
+    <dl>
+      <div class="zeile"><dt>Freibetrag</dt><dd>{{ deal.freibetrag | eur if deal.freibetrag is not none else "–" }}{% if deal.freibetrag_jahr %} ({{ deal.freibetrag_jahr }}){% endif %}</dd></div>
+      <div class="zeile"><dt>Prämien auf Sparkonto</dt><dd>{{ "ja" if deal.praemien_auf_sparkonto == True else ("nein" if deal.praemien_auf_sparkonto == False else "unbekannt") }}</dd></div>
+      {% if deal.kommentar %}<div class="zeile"><dt>Kommentar</dt><dd>{{ deal.kommentar }}</dd></div>{% endif %}
+    </dl>
+  </div>
+
+  <div class="sec-t">Prämien</div>
+  <div class="card">
+    <ul>
+      {% for p in deal.praemien %}
+      <li>
+        <span>{{ p.quelle | quelle }} · {{ p.betrag | eur }}{% if p.zweck %} ({{ p.zweck }}){% endif %}{% if p.auszahlung_erwartet %} · erwartet {{ p.auszahlung_erwartet }}{% endif %}</span>
+        <span class="chip {{ 'status-abgeschlossen' if p.erhalten else '' }}">{{ "erhalten" if p.erhalten else "offen" }}</span>
+      </li>
+      {% else %}
+      <li class="leer">Keine Prämien erfasst.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="sec-t">Bedingungen</div>
+  <div class="card">
+    <ul>
+      {% for b in deal.bedingungen %}
+      <li>
+        <span>{{ b.beschreibung }}{% if b.faellig_bis %} (bis {{ b.faellig_bis | datum }}){% endif %}</span>
+        <span class="chip {{ 'status-abgeschlossen' if b.erfuellt else '' }}">{{ "erfüllt" if b.erfuellt else "offen" }}</span>
+      </li>
+      {% else %}
+      <li class="leer">Keine Bedingungen hinterlegt.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="sec-t">Aufgaben</div>
+  <div class="card">
+    <ul>
+      {% for a in deal.aufgaben %}
+      <li>
+        <span>{{ a.beschreibung }}{% if a.faellig_bis %} (bis {{ a.faellig_bis | datum }}){% endif %}</span>
+        <span class="chip {{ 'status-abgeschlossen' if a.erledigt else '' }}">{{ "erledigt" if a.erledigt else "offen" }}</span>
+      </li>
+      {% else %}
+      <li class="leer">Keine Aufgaben hinterlegt.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="sec-t">Links</div>
+  <div class="card">
+    <ul>
+      {% for u in deal.urls %}
+      <li><span>{{ u.bezeichnung or u.url }}</span><span>{{ u.url }}</span></li>
+      {% else %}
+      <li class="leer">Keine Links hinterlegt.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</body>
+</html>
