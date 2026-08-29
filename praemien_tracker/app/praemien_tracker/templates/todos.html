@@ -232,13 +232,16 @@
           </div>
 
           {% elif kategorie == "Deal pflegen" %}
-          {# Kein einzelner Haken: "Pflegen" öffnet einen Modaldialog mit allen
-             noch offenen Feldern dieses Deals. Dort steht pro Feld sowohl die
-             Eingabe als auch das "×" ("nicht nötig") nebeneinander - beide
-             Aktionen gehören zusammen und leben deshalb an einer Stelle,
-             statt die Übersicht mit eigenen Chips samt Buttons zuzupflastern. #}
+          {# Das Häkchen markiert - anders als bei den anderen Kategorien -
+             nicht einen einzelnen Posten als erledigt, sondern alle noch
+             offenen Felder dieses Deals auf einmal als "nicht nötig" (wie
+             im Pflegen-Dialog bei jedem Feld einzeln auf × zu klicken). Wer
+             stattdessen einzelne Felder befüllen oder gezielt einzeln
+             überspringen will, nutzt "Pflegen" für den Dialog. #}
           <div class="todo-item cat-{{ slug }}">
-            <div class="check"></div>
+            <form action="deals/{{ todo.deal.id }}/skip-alle-felder" method="post" class="todo-check-form">
+              <input type="checkbox" class="todo-checkbox" title="Alle offenen Felder als nicht nötig markieren" onclick="this.form.requestSubmit()">
+            </form>
             <div class="ti-main">
               <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.deal.bank.name }} · {{ todo.deal.kontoart }} · {{ todo.deal.inhaber.name }}</a>
               <div class="miss-vorschau">{{ todo.elemente | map(attribute="label") | join(", ") }}</div>

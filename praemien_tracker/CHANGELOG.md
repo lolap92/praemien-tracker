@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.52.2
+
+Das Häkchen vor einer „Deal pflegen"-Zeile ist jetzt funktional: es markiert alle noch offenen Felder dieses Deals auf einen Schlag als „nicht nötig", statt nur dekorativ dazustehen.
+
+- **Neuer Endpunkt `POST /deals/{id}/skip-alle-felder` (`routers/deals.py`).** Übernimmt alle laut `offene_felder()` aktuell offenen Felder in die Liste der übersprungenen Felder – dasselbe Ergebnis, als hätte man den Pflegen-Dialog geöffnet und bei jedem Feld einzeln auf × geklickt. Bewusst über `offene_felder()` statt einer vom Client mitgeschickten Feldliste ermittelt, damit nur tatsächlich offene Felder übersprungen werden können.
+- **Echtes Häkchen statt dekorativer Fläche (`templates/todos.html`).** Die „Deal pflegen"-Zeile nutzte bisher wie alle anderen ToDo-Kategorien ein leeres `.check`-Kästchen ohne Funktion (anders als bei „Bedingungen" & Co. gab es dort ja keinen einzelnen Posten zum Abhaken). Jetzt sitzt dort dieselbe anklickbare Checkbox wie bei den anderen Kategorien, verknüpft mit dem neuen Endpunkt – ein Klick, und die ganze Zeile verschwindet aus der Liste.
+
 ## 2.52.1
 
 „Nicht nötig" (×) zieht in den Pflegen-Dialog um, und ein Feld-Label wird konsistenter benannt.

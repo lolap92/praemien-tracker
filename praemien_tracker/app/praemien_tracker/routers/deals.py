@@ -702,6 +702,23 @@ async def deal_felder_update(request: Request, deal_id: int, db: Session = Depen
     return redirect(request, "todos?tab=pflegen")
 
 
+@router.post("/deals/{deal_id}/skip-alle-felder")
+def skip_alle_felder(request: Request, deal_id: int, db: Session = Depends(get_db)):
+    """Markiert alle aktuell offenen Felder eines Deals auf einen Schlag als
+    "nicht nötig" - das Häkchen vor der Deal-pflegen-Zeile bewirkt damit
+    dasselbe, als hätte man den Pflegen-Dialog geöffnet und bei jedem Feld
+    einzeln auf × geklickt. Bewusst über offene_felder() statt einer vom
+    Client mitgeschickten Feldliste, damit nur tatsächlich offene Felder
+    übersprungen werden."""
+    deal = db.get(Deal, deal_id)
+    if deal:
+        neu = {f.feld for f in derived.offene_felder(deal)}
+        felder = set(derived.uebersprungene_felder_liste(deal)) | neu
+        derived.uebersprungene_felder_speichern(deal, sorted(felder))
+        db.commit()
+    return redirect(request, "todos?tab=pflegen")
+
+
 @router.post("/deals/{deal_id}/skip-field")
 def skip_field(request: Request, deal_id: int, feld: str = Form(...), db: Session = Depends(get_db)):
     deal = db.get(Deal, deal_id)

@@ -547,6 +547,50 @@ def test_deal_pflegen_felder_ignoriert_bereits_erledigte_felder(db):
     assert deal.kontonummer == "DE0001"
 
 
+def test_deal_pflegen_skip_alle_felder_markiert_alles_offene_und_zeile_verschwindet(db):
+    """Das Häkchen vor der Deal-pflegen-Zeile überspringt alle aktuell
+    offenen Felder auf einmal - dasselbe Ergebnis, als hätte man im
+    Pflegen-Dialog bei jedem Feld einzeln auf × geklickt."""
+    bank = Bank(name="Alles-Skip-Testbank")
+    inhaber = Inhaber(name="Alles-Skip-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer=None, zugangsdaten_gespeichert=False)
+    deal.praemien.append(Praemie(quelle="bank", betrag=Decimal("50.00"), erhalten=False, auszahlung_erwartet=None))
+    db.add(deal)
+    db.commit()
+    assert derived.offene_felder(deal) != []
+
+    antwort = client.post(f"/deals/{deal.id}/skip-alle-felder", follow_redirects=False)
+    assert antwort.status_code == 303
+    assert antwort.headers["location"] == "/todos?tab=pflegen"
+
+    db.refresh(deal)
+    assert derived.offene_felder(deal) == []
+
+    folgeantwort = client.get(antwort.headers["location"])
+    panel = BeautifulSoup(folgeantwort.text, "html.parser").select_one("#panel-pflegen")
+    assert "Alles-Skip-Testbank" not in panel.get_text()
+
+
+def test_deal_pflegen_zeile_hat_funktionierende_checkbox(db):
+    """Anders als bei den übrigen ToDo-Kategorien steckt hinter dem Häkchen
+    hier eine eigene Form/Route statt eines einzelnen Toggle-Postens."""
+    bank = Bank(name="Checkbox-Testbank")
+    inhaber = Inhaber(name="Checkbox-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer=None, zugangsdaten_gespeichert=True)
+    db.add(deal)
+    db.commit()
+
+    antwort = client.get("/todos?tab=pflegen")
+    panel = BeautifulSoup(antwort.text, "html.parser").select_one("#panel-pflegen")
+    form = panel.select_one(f'form[action="deals/{deal.id}/skip-alle-felder"]')
+    assert form is not None
+    assert form.select_one('input.todo-checkbox[type="checkbox"]') is not None
+
+
 def test_deal_pflegen_gekuendigter_deal_braucht_keine_zugangsdaten(db):
     """Isoliert von der Kontonummer, die für sich schon 'offen' wäre."""
     bank = Bank(name="Gekuendigt-Testbank")
