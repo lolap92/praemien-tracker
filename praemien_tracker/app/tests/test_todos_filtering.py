@@ -431,22 +431,24 @@ def test_deal_pflegen_zeigt_alle_offenen_felder_als_chips(db):
 
     panel = soup.select_one("#panel-pflegen")
     assert panel is not None
-    chips = {mf.get_text(strip=True).rstrip("+×") for mf in panel.select(".miss .mf")}
-    assert any("Kontonummer" in c for c in chips)
-    assert any("Zugangsdaten sichern" in c for c in chips)
-    assert any("Erwartete Auszahlung" in c for c in chips)
+    vorschau = panel.select_one(".miss-vorschau").get_text(strip=True)
+    assert "Kontonummer" in vorschau
+    assert "Zugangsdaten gesichert" in vorschau
+    assert "Erwartete Auszahlung" in vorschau
 
-    # "Eingeben" öffnet den Pflegen-Dialog des Deals statt zur
-    # Bearbeiten-Seite zu springen, und der Dialog bietet nur die
-    # tatsächlich offenen Felder als Eingabe an.
-    eingeben_btn = panel.select_one(f'button[onclick*="dlg-pflegen-{deal.id}"]')
-    assert eingeben_btn is not None
+    # "Pflegen" öffnet den Dialog des Deals statt zur Bearbeiten-Seite zu
+    # springen. Dort steht pro offenem Feld die Eingabe und der ×-Button
+    # ("nicht nötig") zusammen - beide Aktionen leben nur noch dort.
+    pflegen_btn = panel.select_one(f'button[onclick*="dlg-pflegen-{deal.id}"]')
+    assert pflegen_btn is not None
 
     dialog = soup.select_one(f"#dlg-pflegen-{deal.id}")
     assert dialog is not None
     assert dialog.select_one('form[action$="/felder"]') is not None
     assert dialog.select_one('input[name="kontonummer"]') is not None
     assert dialog.select_one('input[name="zugangsdaten_gespeichert"]') is not None
+    assert dialog.select_one('button.x[formaction$="/skip-field"][value="kontonummer"]') is not None
+    assert dialog.select_one('button.x[formaction$="/skip-field"][value="zugangsdaten_gespeichert"]') is not None
     auszahlung_feld = next(p for p in deal.praemien)
     assert dialog.select_one(f'input[name="praemie_{auszahlung_feld.id}_auszahlung_erwartet"]') is not None
 
@@ -593,41 +595,37 @@ def test_deal_pflegen_filtering_by_feld(db):
     db.add(deal)
     db.commit()
 
-    # 1. Unfiltered: should show all three chips
+    # 1. Unfiltered: should show all three fields in the preview
     antwort_all = client.get("/todos")
     soup_all = BeautifulSoup(antwort_all.text, "html.parser")
-    panel_all = soup_all.select_one("#panel-pflegen")
-    chips_all = {mf.get_text(strip=True).rstrip("+×") for mf in panel_all.select(".miss .mf")}
-    assert "Kontonummer" in chips_all
-    assert "Zugangsdaten sichern" in chips_all
-    assert "Erwartete Auszahlung (Bank, 100.00 €)" in chips_all
+    vorschau_all = soup_all.select_one("#panel-pflegen .miss-vorschau").get_text(strip=True)
+    assert "Kontonummer" in vorschau_all
+    assert "Zugangsdaten gesichert" in vorschau_all
+    assert "Erwartete Auszahlung (Bank, 100.00 €)" in vorschau_all
 
     # 2. Filtered by kontonummer
     antwort_kto = client.get("/todos?feld=kontonummer")
     soup_kto = BeautifulSoup(antwort_kto.text, "html.parser")
-    panel_kto = soup_kto.select_one("#panel-pflegen")
-    chips_kto = {mf.get_text(strip=True).rstrip("+×") for mf in panel_kto.select(".miss .mf")}
-    assert "Kontonummer" in chips_kto
-    assert "Zugangsdaten sichern" not in chips_kto
-    assert "Erwartete Auszahlung (Bank, 100.00 €)" not in chips_kto
+    vorschau_kto = soup_kto.select_one("#panel-pflegen .miss-vorschau").get_text(strip=True)
+    assert "Kontonummer" in vorschau_kto
+    assert "Zugangsdaten gesichert" not in vorschau_kto
+    assert "Erwartete Auszahlung (Bank, 100.00 €)" not in vorschau_kto
 
     # 3. Filtered by zugangsdaten_gespeichert
     antwort_zd = client.get("/todos?feld=zugangsdaten_gespeichert")
     soup_zd = BeautifulSoup(antwort_zd.text, "html.parser")
-    panel_zd = soup_zd.select_one("#panel-pflegen")
-    chips_zd = {mf.get_text(strip=True).rstrip("+×") for mf in panel_zd.select(".miss .mf")}
-    assert "Kontonummer" not in chips_zd
-    assert "Zugangsdaten sichern" in chips_zd
-    assert "Erwartete Auszahlung (Bank, 100.00 €)" not in chips_zd
+    vorschau_zd = soup_zd.select_one("#panel-pflegen .miss-vorschau").get_text(strip=True)
+    assert "Kontonummer" not in vorschau_zd
+    assert "Zugangsdaten gesichert" in vorschau_zd
+    assert "Erwartete Auszahlung (Bank, 100.00 €)" not in vorschau_zd
 
     # 4. Filtered by auszahlung_erwartet
     antwort_ae = client.get("/todos?feld=auszahlung_erwartet")
     soup_ae = BeautifulSoup(antwort_ae.text, "html.parser")
-    panel_ae = soup_ae.select_one("#panel-pflegen")
-    chips_ae = {mf.get_text(strip=True).rstrip("+×") for mf in panel_ae.select(".miss .mf")}
-    assert "Kontonummer" not in chips_ae
-    assert "Zugangsdaten sichern" not in chips_ae
-    assert "Erwartete Auszahlung (Bank, 100.00 €)" in chips_ae
+    vorschau_ae = soup_ae.select_one("#panel-pflegen .miss-vorschau").get_text(strip=True)
+    assert "Kontonummer" not in vorschau_ae
+    assert "Zugangsdaten gesichert" not in vorschau_ae
+    assert "Erwartete Auszahlung (Bank, 100.00 €)" in vorschau_ae
 
 
 def test_deal_pflegen_abgeschlossener_deal_erscheint_nicht(db):

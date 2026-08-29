@@ -517,7 +517,7 @@ def pruefpunkte(deal: Deal, heute: datetime.date | None = None) -> list[Pruefpun
 # bei Kontonummer, eigene Bedingung bei den Zugangsdaten).
 WUENSCHENSWERTE_FELDER = {
     "kontonummer": "Kontonummer",
-    "zugangsdaten_gespeichert": "Zugangsdaten sichern",
+    "zugangsdaten_gespeichert": "Zugangsdaten gesichert",
 }
 
 

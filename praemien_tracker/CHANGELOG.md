@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.52.1
+
+„Nicht nötig" (×) zieht in den Pflegen-Dialog um, und ein Feld-Label wird konsistenter benannt.
+
+- **× jetzt im Pflegen-Dialog statt als eigene Chips in der Übersicht (`templates/todos.html`).** Eingabe und „nicht nötig" gehören zusammen und lebten bisher an zwei Stellen: die Chips mit × in der Liste, die Eingabefelder erst im Dialog. Jetzt zeigt die Liste nur noch eine schlichte Vorschau der offenen Feldnamen, und der „Pflegen"-Dialog (vormals „Eingeben") bietet pro Feld die Eingabe und den ×-Button direkt nebeneinander. Der × sendet dabei über `formaction` denselben bestehenden `POST /deals/{id}/skip-field`-Endpunkt an, nur eben aus dem Dialog heraus statt aus einer eigenen Chip-Form.
+- **× nochmal größer (`static/css/style.css`).** Das Tapziel ist jetzt 2,1×2,1rem statt 1,7×1,7rem groß.
+- **„Zugangsdaten sichern" → „Zugangsdaten gesichert" (`derived.py`, `templates/todos.html`).** Einheitliche Benennung des Feld-Labels an allen Stellen, an denen es auftaucht (Pflegen-Dialog, Feld-Filter der ToDo-Liste).
+
 ## 2.52.0
 
 „Deal pflegen" ohne Seitenwechsel: offene Felder werden jetzt direkt in einem Modaldialog eingegeben, und die Bedienelemente sind größer.

@@ -104,7 +104,7 @@
         </label>
         <label>
           <input type="radio" name="feld" value="zugangsdaten_gespeichert" {{ "checked" if filter_feld == "zugangsdaten_gespeichert" else "" }} onclick="this.form.submit()">
-          Zugangsdaten sichern
+          Zugangsdaten gesichert
         </label>
         <label>
           <input type="radio" name="feld" value="auszahlung_erwartet" {{ "checked" if filter_feld == "auszahlung_erwartet" else "" }} onclick="this.form.submit()">
@@ -232,48 +232,38 @@
           </div>
 
           {% elif kategorie == "Deal pflegen" %}
-          {# Kein einzelner Haken: jedes offene Feld wird als "nicht nötig"
-             einzeln abgehakt ("×"), oder alle offenen Felder eines Deals
-             zusammen über "Eingeben" in einem Modaldialog befüllt - dafür
-             muss man nicht mehr auf die Deal-Seite wechseln. #}
+          {# Kein einzelner Haken: "Pflegen" öffnet einen Modaldialog mit allen
+             noch offenen Feldern dieses Deals. Dort steht pro Feld sowohl die
+             Eingabe als auch das "×" ("nicht nötig") nebeneinander - beide
+             Aktionen gehören zusammen und leben deshalb an einer Stelle,
+             statt die Übersicht mit eigenen Chips samt Buttons zuzupflastern. #}
           <div class="todo-item cat-{{ slug }}">
             <div class="check"></div>
             <div class="ti-main">
               <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.deal.bank.name }} · {{ todo.deal.kontoart }} · {{ todo.deal.inhaber.name }}</a>
-              <div class="miss">
-                {% for feld in todo.elemente %}
-                <span class="mf">
-                  {{ feld.label }}
-                  <form action="deals/{{ todo.deal.id }}/skip-field" method="post" style="display:inline;">
-                    <input type="hidden" name="feld" value="{{ feld.feld }}">
-                    <button type="submit" class="x" title="Nicht nötig">×</button>
-                  </form>
-                </span>
-                {% endfor %}
-              </div>
-              <button type="button" class="pflegen-eingeben" onclick="document.getElementById('dlg-pflegen-{{ todo.deal.id }}').showModal()">Eingeben</button>
+              <div class="miss-vorschau">{{ todo.elemente | map(attribute="label") | join(", ") }}</div>
+              <button type="button" class="pflegen-eingeben" onclick="document.getElementById('dlg-pflegen-{{ todo.deal.id }}').showModal()">Pflegen</button>
             </div>
           </div>
           <dialog id="dlg-pflegen-{{ todo.deal.id }}" class="todo-dialog">
             <h3>{{ todo.deal.bank.name }} · {{ todo.deal.kontoart }} · {{ todo.deal.inhaber.name }}</h3>
             <form action="deals/{{ todo.deal.id }}/felder" method="post">
               {% for feld in todo.elemente %}
-                {% if feld.feld == "zugangsdaten_gespeichert" %}
-                <div class="checkbox-zeile feld">
-                  <input type="checkbox" id="pflegen-{{ todo.deal.id }}-{{ feld.feld }}" name="{{ feld.feld }}">
+              <div class="pflegen-feld">
+                <div class="pflegen-feld-kopf">
                   <label for="pflegen-{{ todo.deal.id }}-{{ feld.feld }}">{{ feld.label }}</label>
+                  <button type="submit" formaction="deals/{{ todo.deal.id }}/skip-field" formnovalidate name="feld" value="{{ feld.feld }}" class="x" title="Nicht nötig">×</button>
+                </div>
+                {% if feld.feld == "zugangsdaten_gespeichert" %}
+                <div class="checkbox-zeile">
+                  <input type="checkbox" id="pflegen-{{ todo.deal.id }}-{{ feld.feld }}" name="{{ feld.feld }}">
                 </div>
                 {% elif feld.feld == "kontonummer" %}
-                <div class="feld">
-                  <label for="pflegen-{{ todo.deal.id }}-{{ feld.feld }}">{{ feld.label }}</label>
-                  <input type="text" id="pflegen-{{ todo.deal.id }}-{{ feld.feld }}" name="{{ feld.feld }}">
-                </div>
+                <input type="text" id="pflegen-{{ todo.deal.id }}-{{ feld.feld }}" name="{{ feld.feld }}">
                 {% else %}
-                <div class="feld">
-                  <label for="pflegen-{{ todo.deal.id }}-{{ feld.feld }}">{{ feld.label }}</label>
-                  <input type="text" id="pflegen-{{ todo.deal.id }}-{{ feld.feld }}" name="{{ feld.feld }}" placeholder="JJJJ-MM">
-                </div>
+                <input type="text" id="pflegen-{{ todo.deal.id }}-{{ feld.feld }}" name="{{ feld.feld }}" placeholder="JJJJ-MM">
                 {% endif %}
+              </div>
               {% endfor %}
               <div class="dialog-aktionen">
                 <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
