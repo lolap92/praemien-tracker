@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-
-import pytest
-
 from praemien_tracker.finder import notify
 
 
@@ -19,7 +15,7 @@ def test_ohne_token_wird_nur_geloggt_kein_aufruf(monkeypatch):
     aufrufe = []
     monkeypatch.setattr(notify.httpx, "post", lambda *a, **kw: aufrufe.append((a, kw)) or _FakeAntwort())
 
-    notify.benachrichtigen(1, 0)
+    notify.benachrichtigen(1, 0, geraete=["sm_g990b"])
 
     assert aufrufe == []
 
@@ -29,70 +25,60 @@ def test_deaktiviert_loest_keinen_aufruf_aus_selbst_mit_token(monkeypatch):
     aufrufe = []
     monkeypatch.setattr(notify.httpx, "post", lambda *a, **kw: aufrufe.append((a, kw)) or _FakeAntwort())
 
-    notify.benachrichtigen(1, 0, aktiv=False)
+    notify.benachrichtigen(1, 0, aktiv=False, geraete=["sm_g990b"])
 
     assert aufrufe == []
 
 
-def test_aktiv_mit_token_ruft_standarddienst_notify_auf(monkeypatch):
+def test_ohne_zielgeraete_wird_nur_geloggt_kein_aufruf(monkeypatch):
     monkeypatch.setenv("SUPERVISOR_TOKEN", "geheim")
     aufrufe = []
     monkeypatch.setattr(notify.httpx, "post", lambda *a, **kw: aufrufe.append((a, kw)) or _FakeAntwort())
 
-    notify.benachrichtigen(2, 1)
+    notify.benachrichtigen(1, 0, geraete=[])
+
+    assert aufrufe == []
+
+
+def test_aktiv_mit_token_ruft_das_benachrichtigungsskript_auf(monkeypatch):
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "geheim")
+    aufrufe = []
+    monkeypatch.setattr(notify.httpx, "post", lambda *a, **kw: aufrufe.append((a, kw)) or _FakeAntwort())
+
+    notify.benachrichtigen(2, 1, geraete=["sm_g990b", "fp5"])
 
     assert len(aufrufe) == 1
     (url, *_), kwargs = aufrufe[0]
-    assert url == "http://supervisor/core/api/services/notify/notify"
+    assert url == "http://supervisor/core/api/services/script/benachrichtigung_senden"
     assert kwargs["headers"]["Authorization"] == "Bearer geheim"
-    assert "2 neue Vorschläge" in kwargs["json"]["message"]
-    assert "1 zu prüfen" in kwargs["json"]["message"]
+    assert kwargs["json"]["geraete"] == ["sm_g990b", "fp5"]
+    assert kwargs["json"]["titel"] == "Prämien-Tracker"
+    assert kwargs["json"]["quelle"] == "Prämien-Tracker"
+    assert "2 neue Vorschläge" in kwargs["json"]["nachricht"]
+    assert "1 zu prüfen" in kwargs["json"]["nachricht"]
 
 
-def test_konfigurierter_dienst_adressiert_gezielt_ein_geraet(monkeypatch):
+def test_konfigurierte_geraete_werden_in_einem_aufruf_gebuendelt(monkeypatch):
     monkeypatch.setenv("SUPERVISOR_TOKEN", "geheim")
     aufrufe = []
     monkeypatch.setattr(notify.httpx, "post", lambda *a, **kw: aufrufe.append((a, kw)) or _FakeAntwort())
 
-    notify.benachrichtigen(1, 0, geraete=["mobile_app_pixel_8"])
+    notify.benachrichtigen(1, 0, geraete=["sm_g990b", "sm_g990u"])
 
-    (url, *_), _ = aufrufe[0]
-    assert url == "http://supervisor/core/api/services/notify/mobile_app_pixel_8"
-
-
-def test_mehrere_geraete_werden_alle_benachrichtigt(monkeypatch):
-    monkeypatch.setenv("SUPERVISOR_TOKEN", "geheim")
-    aufrufe = []
-    monkeypatch.setattr(notify.httpx, "post", lambda *a, **kw: aufrufe.append((a, kw)) or _FakeAntwort())
-
-    notify.benachrichtigen(1, 0, geraete=["mobile_app_pixel_8", "mobile_app_iphone_anna"])
-
-    urls = [a[0] for a, _ in aufrufe]
-    assert urls == [
-        "http://supervisor/core/api/services/notify/mobile_app_pixel_8",
-        "http://supervisor/core/api/services/notify/mobile_app_iphone_anna",
-    ]
+    assert len(aufrufe) == 1
+    (_, *_), kwargs = aufrufe[0]
+    assert kwargs["json"]["geraete"] == ["sm_g990b", "sm_g990u"]
 
 
-def test_fehlerhaftes_geraet_blockiert_die_anderen_nicht(monkeypatch):
-    """Ein Tippfehler im Dienstnamen eines Geräts soll die Benachrichtigung
-    an die übrigen konfigurierten Geräte nicht verhindern."""
+def test_fehlgeschlagener_skript_aufruf_gibt_false_zurueck(monkeypatch):
     monkeypatch.setenv("SUPERVISOR_TOKEN", "geheim")
 
     class _FehlerAntwort:
         def raise_for_status(self):
             raise RuntimeError("HTTP 404")
 
-    aufrufe = []
+    monkeypatch.setattr(notify.httpx, "post", lambda *a, **kw: _FehlerAntwort())
 
-    def fake_post(url, **kwargs):
-        aufrufe.append(url)
-        if "kaputt" in url:
-            return _FehlerAntwort()
-        return _FakeAntwort()
+    ergebnis = notify.benachrichtigen(1, 0, geraete=["sm_g990b"])
 
-    monkeypatch.setattr(notify.httpx, "post", fake_post)
-
-    notify.benachrichtigen(1, 0, geraete=["mobile_app_kaputt", "mobile_app_pixel_8"])
-
-    assert len(aufrufe) == 2  # beide Geräte wurden versucht, keins übersprungen
+    assert ergebnis is False

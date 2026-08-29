@@ -1,5 +1,5 @@
 name: "Prämien-Tracker"
-version: "2.51.2"
+version: "2.52.0"
 slug: "praemien_tracker"
 description: "Private Übersicht und Verwaltung von Bank-Prämien-Deals"
 url: "https://github.com/lolap92/praemien-tracker"
@@ -28,7 +28,7 @@ options:
   spartanien_url: "https://www.spartanien.de/"
   dealdoktor_feed_url: "https://www.dealdoktor.de/bonus-deals/feed/,https://www.dealdoktor.de/themenwelten/banken-versicherung/feed/"
   benachrichtigungen_aktiv: true
-  benachrichtigungsgeraete: "notify"
+  benachrichtigungsgeraete: "sm_g990b,sm_g990u,fp5"
   taeglicher_lauf_aktiv: true
   kuendigung_hinweise_batch_aktiv: true
 schema:

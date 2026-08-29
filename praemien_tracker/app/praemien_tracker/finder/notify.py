@@ -1,11 +1,19 @@
-"""Push-Benachrichtigung über die Home-Assistant-Core-API.
+"""Push-Benachrichtigung über das zentrale Home-Assistant-Skript
+`script.benachrichtigung_senden`.
 
 Setzt `homeassistant_api: true` im Add-on-Manifest voraus (config.yaml) -
 dann setzt der Supervisor die Umgebungsvariable SUPERVISOR_TOKEN automatisch,
-ein eigener Zugangsdaten-Eintrag ist nicht nötig. Welche Geräte (Dienste)
-erreicht werden, ist über die Add-on-Option "benachrichtigungsgeraete"
-konfigurierbar (mehrere, kommagetrennt); per "benachrichtigungen_aktiv"
+ein eigener Zugangsdaten-Eintrag ist nicht nötig. Welche Geräte das Skript
+anspricht, ist über die Add-on-Option "benachrichtigungsgeraete" konfigurierbar
+(mehrere, kommagetrennt, siehe config.py); per "benachrichtigungen_aktiv"
 lässt sich die Benachrichtigung ganz abschalten.
+
+Das Skript selbst kümmert sich um den gerätespezifischen notify-Versand
+(damit aktionsfähige Buttons zuverlässig funktionieren) und protokolliert den
+vollständigen Text zentral fürs Benachrichtigungen-Dashboard - der
+Prämien-Tracker ruft es deshalb mit genau einem Service-Call für alle
+konfigurierten Geräte auf, statt wie zuvor je Gerät einen eigenen
+notify-Dienst direkt anzusprechen.
 """
 
 from __future__ import annotations
@@ -17,7 +25,7 @@ import httpx
 
 logger = logging.getLogger("praemien_tracker.finder")
 
-SUPERVISOR_NOTIFY_URL_VORLAGE = "http://supervisor/core/api/services/notify/{dienst}"
+SUPERVISOR_SCRIPT_URL = "http://supervisor/core/api/services/script/benachrichtigung_senden"
 
 
 def benachrichtigen(
@@ -29,19 +37,15 @@ def benachrichtigen(
     timeout: float = 10.0,
     nachricht: str | None = None,
 ) -> bool:
-    """Kurznachricht bei neuen vorgeschlagenen oder zu prüfenden Funden, an
-    ein oder mehrere Geräte (Home-Assistant-Notify-Dienste). Gibt zurück, ob
-    mindestens ein Gerät erfolgreich erreicht wurde - für den täglichen Lauf
-    ungenutzt, aber die Grundlage für die manuelle Test-Benachrichtigung in
-    den Vorschlägen ("Funktioniert die Benachrichtigung?").
+    """Kurznachricht bei neuen vorgeschlagenen oder zu prüfenden Funden, über
+    das zentrale Skript `script.benachrichtigung_senden` an die konfigurierten
+    Zielgeräte. Gibt zurück, ob der Skript-Aufruf erfolgreich war.
 
     Rein automatisch abgelehnte Funde lösen bewusst keine Benachrichtigung
     aus (Konzept Abschnitt 6, Schritt 7) - sie bleiben nur im Tab sichtbar.
-    Ohne SUPERVISOR_TOKEN (z.B. lokal außerhalb des Add-ons) oder bei
-    `aktiv=False` wird nur geloggt, kein Fehler. Schlägt der Versand an ein
-    einzelnes Gerät fehl (z.B. Tippfehler im Dienstnamen), werden die
-    übrigen konfigurierten Geräte trotzdem benachrichtigt - ein Fehler wird
-    nur geloggt, nicht weitergeworfen.
+    Ohne SUPERVISOR_TOKEN (z.B. lokal außerhalb des Add-ons), bei
+    `aktiv=False` oder ohne konfigurierte Zielgeräte wird nur geloggt, kein
+    Fehler.
     """
     if not aktiv:
         logger.info(
@@ -62,6 +66,16 @@ def benachrichtigen(
         )
         return False
 
+    ziel_geraete = [g.strip() for g in (geraete or []) if g.strip()]
+    if not ziel_geraete:
+        logger.info(
+            "Keine Zielgeräte konfiguriert - Benachrichtigung übersprungen: "
+            "%d vorgeschlagen, %d zu prüfen.",
+            anzahl_vorgeschlagen,
+            anzahl_zu_pruefen,
+        )
+        return False
+
     if nachricht is None:
         teile = []
         if anzahl_vorgeschlagen:
@@ -70,18 +84,20 @@ def benachrichtigen(
             teile.append(f"{anzahl_zu_pruefen} zu prüfen")
         nachricht = "Prämien-Tracker: " + " · ".join(teile)
 
-    erfolgreich = False
-    for dienst in geraete or ["notify"]:
-        dienst = dienst.strip() or "notify"
-        try:
-            antwort = httpx.post(
-                SUPERVISOR_NOTIFY_URL_VORLAGE.format(dienst=dienst),
-                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-                json={"title": "Prämien-Tracker", "message": nachricht},
-                timeout=timeout,
-            )
-            antwort.raise_for_status()
-            erfolgreich = True
-        except Exception:
-            logger.exception("Benachrichtigung an Dienst 'notify.%s' fehlgeschlagen.", dienst)
-    return erfolgreich
+    try:
+        antwort = httpx.post(
+            SUPERVISOR_SCRIPT_URL,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json={
+                "geraete": ziel_geraete,
+                "titel": "Prämien-Tracker",
+                "nachricht": nachricht,
+                "quelle": "Prämien-Tracker",
+            },
+            timeout=timeout,
+        )
+        antwort.raise_for_status()
+        return True
+    except Exception:
+        logger.exception("Benachrichtigung über script.benachrichtigung_senden fehlgeschlagen.")
+        return False

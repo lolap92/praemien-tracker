@@ -318,9 +318,14 @@ folgende optionale Einstellungen (Add-on-Konfiguration in Home Assistant):
 | `spartanien_url` | Ziel-URL für den Spartanien-Parser. | `https://www.spartanien.de/` |
 | `dealdoktor_feed_url` | RSS-Feed-URL(s) für den DealDoktor-Parser (WordPress-Feeds, je Rubrik/Themenwelt ein eigener Feed) - mehrere URLs durch Komma getrennt eintragen, z. B. um eine weitere Kategorie zu ergänzen. | `https://www.dealdoktor.de/bonus-deals/feed/, https://www.dealdoktor.de/themenwelten/banken-versicherung/feed/` |
 | `benachrichtigungen_aktiv` | Push-Benachrichtigung bei neuen Vorschlägen ein-/ausschalten. | `true` |
-| `benachrichtigungsgeraete` ("Benachrichtigungsgeräte") | Home-Assistant-Notify-Dienst(e) ohne `notify.`-Präfix, z. B. `mobile_app_pixel_8` für ein bestimmtes Smartphone - mehrere Geräte durch Komma getrennt eintragen, z. B. `mobile_app_pixel_8, mobile_app_iphone_anna` (Gerätename siehe HA unter Einstellungen > Geräte & Dienste > das jeweilige Handy > "Dienst" im Entwicklerwerkzeug). `notify` adressiert weiterhin alle Geräte. | `notify` |
+| `benachrichtigungsgeraete` ("Benachrichtigungsgeräte") | Geräte-Kennung(en) aus dem Feld "Zielgeräte" des zentralen Home-Assistant-Skripts `script.benachrichtigung_senden`, über das der tägliche Lauf benachrichtigt - mehrere Geräte durch Komma getrennt eintragen, z. B. `sm_g990b, sm_g990u`. Leer adressiert alle im Skript hinterlegten Geräte. | `sm_g990b, sm_g990u, fp5` |
 | `taeglicher_lauf_aktiv` ("Täglicher Lauf aktiv") | Automatischen KI-Deal-Finder-Lauf um 06:00 Uhr ein-/ausschalten. Bei Deaktivierung bleibt "Jetzt suchen" weiterhin manuell nutzbar. | `true` |
 | `kuendigung_hinweise_batch_aktiv` ("Kündigungshinweis-Batch aktiv") | Nächtlichen Kündigungshinweis-Batch um 02:00 Uhr ein-/ausschalten (trägt fehlende Kündigungswege per KI-Websuche nach, siehe oben) - unabhängig vom KI-Deal-Finder. | `true` |
 
 Bei 1×/Tag und wenigen kurzen Texten liegen die tatsächlichen API-Kosten
 typischerweise im Cent-Bereich pro Monat.
+
+Der tägliche Lauf benachrichtigt über das zentrale Home-Assistant-Skript
+`script.benachrichtigung_senden` (Felder `geraete`, `titel`, `nachricht`,
+`quelle`) - das Skript muss in Home Assistant vorhanden sein, sonst schlägt
+der Aufruf fehl (wird geloggt, bricht den Lauf aber nicht ab).

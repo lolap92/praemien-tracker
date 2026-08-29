@@ -47,15 +47,18 @@ def _mindestpraemie(wert) -> Decimal:
         return Decimal("50")
 
 
+_ALLE_BENACHRICHTIGUNGSGERAETE = ["sm_g990b", "sm_g990u", "fp5"]
+
+
 def _benachrichtigungsgeraete(wert) -> list[str]:
-    """Kommagetrennte Liste von Home-Assistant-Notify-Diensten (ohne
-    "notify."-Präfix) in eine bereinigte Liste übersetzen - erlaubt mehrere
-    Geräte in einem einzigen Textfeld. Leer oder "notify" adressiert weiterhin
-    alle Geräte."""
+    """Kommagetrennte Liste von Geräte-Kennungen des Home-Assistant-Skripts
+    `script.benachrichtigung_senden` (Feld "geraete", z.B. "sm_g990b") in eine
+    bereinigte Liste übersetzen - erlaubt mehrere Geräte in einem einzigen
+    Textfeld. Leer adressiert weiterhin alle im Skript hinterlegten Geräte."""
     if not wert or not str(wert).strip():
-        return ["notify"]
+        return list(_ALLE_BENACHRICHTIGUNGSGERAETE)
     geraete = [g.strip() for g in str(wert).split(",") if g.strip()]
-    return geraete or ["notify"]
+    return geraete or list(_ALLE_BENACHRICHTIGUNGSGERAETE)
 
 
 _OPTIONEN = _lade_optionen()
@@ -125,12 +128,12 @@ def _dealdoktor_feed_urls(wert) -> list[str]:
 # Kategorien) - mehrere URLs kommagetrennt in einem einzigen Textfeld.
 DEALDOKTOR_FEED_URLS: list[str] = _dealdoktor_feed_urls(_OPTIONEN.get("dealdoktor_feed_url"))
 
-# Benachrichtigung bei neuen Vorschlägen (Konzept Abschnitt 6).
-# "benachrichtigungsgeraete" ist eine kommagetrennte Liste von Home-
-# Assistant-Dienstnamen ohne "notify."-Präfix - z.B. "mobile_app_pixel_8",
-# um gezielt ein oder mehrere Smartphones statt aller Geräte zu erreichen
-# (siehe Einstellungen > Personen > Gerät in HA für den genauen Namen).
-# Leer/"notify" adressiert weiterhin alle Geräte (notify.notify).
+# Benachrichtigung bei neuen Vorschlägen (Konzept Abschnitt 6), über das
+# zentrale HA-Skript script.benachrichtigung_senden (siehe finder/notify.py).
+# "benachrichtigungsgeraete" ist eine kommagetrennte Liste von Geräte-
+# Kennungen aus dessen Feld "Zielgeräte" (z.B. "sm_g990b"), um gezielt ein
+# oder mehrere Geräte statt aller zu erreichen. Leer adressiert weiterhin
+# alle im Skript hinterlegten Geräte.
 BENACHRICHTIGUNGEN_AKTIV: bool = bool(_OPTIONEN.get("benachrichtigungen_aktiv", True))
 NOTIFY_GERAETE: list[str] = _benachrichtigungsgeraete(_OPTIONEN.get("benachrichtigungsgeraete"))
 

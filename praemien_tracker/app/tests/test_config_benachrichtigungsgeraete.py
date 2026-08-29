@@ -6,24 +6,24 @@ from praemien_tracker.config import _benachrichtigungsgeraete
 
 
 def test_leer_ergibt_alle_geraete():
-    assert _benachrichtigungsgeraete(None) == ["notify"]
-    assert _benachrichtigungsgeraete("") == ["notify"]
-    assert _benachrichtigungsgeraete("   ") == ["notify"]
+    assert _benachrichtigungsgeraete(None) == ["sm_g990b", "sm_g990u", "fp5"]
+    assert _benachrichtigungsgeraete("") == ["sm_g990b", "sm_g990u", "fp5"]
+    assert _benachrichtigungsgeraete("   ") == ["sm_g990b", "sm_g990u", "fp5"]
 
 
 def test_einzelnes_geraet():
-    assert _benachrichtigungsgeraete("mobile_app_pixel_8") == ["mobile_app_pixel_8"]
+    assert _benachrichtigungsgeraete("sm_g990b") == ["sm_g990b"]
 
 
 def test_mehrere_geraete_kommagetrennt_und_getrimmt():
-    assert _benachrichtigungsgeraete("mobile_app_pixel_8, mobile_app_iphone_anna") == [
-        "mobile_app_pixel_8",
-        "mobile_app_iphone_anna",
+    assert _benachrichtigungsgeraete("sm_g990b, fp5") == [
+        "sm_g990b",
+        "fp5",
     ]
 
 
 def test_leere_eintraege_zwischen_kommas_werden_uebersprungen():
-    assert _benachrichtigungsgeraete("mobile_app_pixel_8,,  ,mobile_app_iphone_anna") == [
-        "mobile_app_pixel_8",
-        "mobile_app_iphone_anna",
+    assert _benachrichtigungsgeraete("sm_g990b,,  ,fp5") == [
+        "sm_g990b",
+        "fp5",
     ]

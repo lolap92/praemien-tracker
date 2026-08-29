@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.52.0
+
+Morgendliche Benachrichtigung läuft jetzt über das zentrale HA-Skript `script.benachrichtigung_senden`.
+
+- **`finder/notify.py` ruft `script.benachrichtigung_senden` statt einzelner `notify.*`-Dienste auf.** Der tägliche 06:00-Lauf sprach jedes konfigurierte Gerät bisher direkt per eigenem `notify.<dienst>`-Aufruf an. Jetzt geht genau ein Service-Call an das neu in Home Assistant angelegte Skript `script.benachrichtigung_senden` (Felder `geraete`, `titel`, `nachricht`, `quelle`), das zentral den gerätespezifischen Versand übernimmt (aktionsfähige Buttons bleiben so nutzbar) und den vollständigen Text fürs Benachrichtigungen-Dashboard protokolliert.
+- **Option `benachrichtigungsgeraete` meint jetzt Geräte-Kennungen des Skripts, keine Notify-Dienstnamen mehr (`config.py`, `config.yaml`, Übersetzungen, `DOCS.md`).** Statt z. B. `mobile_app_pixel_8` trägt man jetzt die Kurz-Kennung aus dem Skript-Feld "Zielgeräte" ein, z. B. `sm_g990b`. Der neue Default `sm_g990b,sm_g990u,fp5` adressiert weiterhin alle drei bekannten Geräte (bisher deckte das der Platzhalter `notify` ab). Bestehende Installationen mit eigenem Wert in dieser Option müssen ihn einmalig auf die neuen Kennungen anpassen, sonst läuft der Skript-Aufruf ins Leere (wird geloggt, bricht den Lauf aber nicht ab).
+
 ## 2.51.2
 
 Design-Umschalter jetzt optisch identisch mit dem Budget-Tracker.

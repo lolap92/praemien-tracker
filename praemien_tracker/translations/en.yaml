@@ -24,12 +24,11 @@ configuration:
     name: Benachrichtigungsgeräte
     description: >-
       Auf welche Geräte sich Push-Benachrichtigungen bei neuen Vorschlägen
-      beziehen: Home-Assistant-Notify-Dienst(e) ohne "notify."-Präfix, z. B.
-      "mobile_app_pixel_8". Mehrere Geräte durch Komma getrennt eintragen,
-      z. B. "mobile_app_pixel_8, mobile_app_iphone_anna". Den genauen
-      Dienstnamen findest du in Home Assistant unter Einstellungen > Geräte
-      & Dienste > das jeweilige Handy > "Dienst" im Entwicklerwerkzeug.
-      "notify" (Standard) adressiert weiterhin alle Geräte.
+      beziehen: Geräte-Kennung(en) aus dem Feld "Zielgeräte" des
+      Home-Assistant-Skripts script.benachrichtigung_senden, z. B.
+      "sm_g990b". Mehrere Geräte durch Komma getrennt eintragen, z. B.
+      "sm_g990b, sm_g990u". Standard adressiert alle im Skript hinterlegten
+      Geräte (sm_g990b, sm_g990u, fp5).
   benachrichtigungen_aktiv:
     name: Benachrichtigungen aktiv
     description: Push-Benachrichtigung bei neuen Vorschlägen ein- oder ausschalten.
