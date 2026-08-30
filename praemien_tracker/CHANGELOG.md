@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.56.0
+
+Der KI-Deal-Finder erkennt reine Geschäftskunden-Angebote und lehnt sie automatisch ab.
+
+- **Neues Extraktionsfeld `nur_geschaeftskunden` (`finder/extraktion.py`).** Die KI beurteilt zusätzlich die Zielgruppe des Angebots: true nur bei einem ausdrücklich reinen Firmenkundenangebot (Geschäftskonto, Businesskonto, Firmendepot oder ein Angebot nur für Gewerbetreibende, Selbstständige und Freiberufler in dieser Eigenschaft). Ein Angebot, das Privatpersonen offensteht, bleibt false - auch dann, wenn Selbstständige es ebenfalls nutzen dürfen. Im Zweifel false, wie schon bei `fuer_kinder`: lieber vorschlagen als stillschweigend ausschließen.
+- **Harte Ablehnung statt „zu prüfen" (`finder/matching.py`).** Ein Geschäftskonto lässt sich privat gar nicht eröffnen - anders als bei einer unklar formulierten Bedingung gibt es hier nichts abzuwägen. Der Fund landet mit dem Grund „Angebot richtet sich nur an Geschäftskunden." unter „Abgelehnt" und bleibt dort nachvollziehbar sichtbar, statt spurlos zu verschwinden. Mehrere Ausschlussgründe (z.B. zusätzlich unter der Mindestprämie) stehen weiterhin nebeneinander auf der Karte.
+- **Das Feld geht bewusst nicht in den Inhalts-Hash ein (`finder/matching.py`).** Erkennt ein späterer Lauf ein bereits vorgeschlagenes Angebot als Firmenkundenangebot, wird die bestehende Karte auf „abgelehnt" nachgezogen (siehe `finder/lauf.py`); mit einem abweichenden Hash entstünde stattdessen eine zweite Karte zum selben Angebot.
+- **Bereits zwischengespeicherte Extraktionen bleiben gültig.** Das Feld ist optional mit Default false, alte Einträge in `finder_funde.extraktion_json` werden dadurch nicht ungültig. Sie werden allerdings auch nicht neu beurteilt, solange der Cache greift - wer die Zielgruppe für bestehende Funde nachziehen will, nutzt „Alle neu analysieren".
+
 ## 2.55.0
 
 Die Startseite zeigt jetzt zuerst, wo tatsächlich etwas zu tun ist - statt vierzehn gleichrangiger Zähler in vier gleich aussehenden Kacheln.

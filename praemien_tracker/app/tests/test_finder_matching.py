@@ -429,3 +429,72 @@ def test_tatsaechlich_geaenderte_bedingungen_bleiben_kein_duplikat(db, alice):
     ergebnis_neu = matching.bewerten(db, fund, ext_neu, alice, MINDESTPRAEMIE)
 
     assert ergebnis_neu.inhalt_hash != ergebnis_alt.inhalt_hash
+
+
+def test_geschaeftskunden_angebot_wird_automatisch_abgelehnt(db, alice):
+    """Ein Geschäftskonto lässt sich privat gar nicht eröffnen - deshalb eine
+    harte Ablehnung und kein "zu prüfen"."""
+    fund = RohFund("mydealz", "https://mydealz.de/business", "t", "x")
+    ext = AngebotExtraktion(
+        bank_name="Firmenbank",
+        kontoart="Geschäftskonto",
+        praemie_betrag=300.0,
+        nur_geschaeftskunden=True,
+        bedingungen=[BedingungExtraktion(beschreibung="Konto online eröffnen", einschaetzung="erfuellt")],
+    )
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
+    assert ergebnis.status == matching.STATUS_ABGELEHNT
+    assert "Geschäftskunden" in ergebnis.ablehnungsgruende
+
+
+def test_geschaeftskunden_flag_fehlt_heisst_privatkunde(db, alice):
+    """Konservativer Default: ohne ausdrückliches Firmenkundenangebot (und in
+    alten Cache-Einträgen, die das Feld noch gar nicht kennen) wird nicht
+    ausgeschlossen - lieber vorschlagen als stillschweigend verwerfen."""
+    fund = RohFund("mydealz", "https://mydealz.de/giro", "t", "x")
+    ext = AngebotExtraktion.model_validate_json(
+        '{"bank_name": "C24", "kontoart": "Girokonto", "praemie_betrag": 125.0, "bedingungen": []}'
+    )
+    assert ext.nur_geschaeftskunden is False
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
+    assert ergebnis.status == matching.STATUS_VORGESCHLAGEN
+
+
+def test_geschaeftskunden_ablehnung_neben_anderen_gruenden(db, alice):
+    """Mehrere harte Ausschlüsse stehen nebeneinander in den Gründen - der
+    Nutzer soll auf der Karte sehen, dass es nicht nur an einem Punkt liegt."""
+    fund = RohFund("mydealz", "https://mydealz.de/business-klein", "t", "x")
+    ext = AngebotExtraktion(
+        bank_name="Firmenbank",
+        kontoart="Geschäftskonto",
+        praemie_betrag=10.0,
+        nur_geschaeftskunden=True,
+        bedingungen=[],
+    )
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
+    assert ergebnis.status == matching.STATUS_ABGELEHNT
+    assert "Mindestprämie" in ergebnis.ablehnungsgruende
+    assert "Geschäftskunden" in ergebnis.ablehnungsgruende
+
+
+def test_geschaeftskunden_flag_aendert_den_inhalts_hash_nicht(db, alice):
+    """Bewusst nicht Teil des Inhalts-Hashs: erkennt ein späterer Lauf ein
+    bereits vorgeschlagenes Angebot als Firmenkundenangebot, soll die
+    bestehende Karte auf "abgelehnt" nachgezogen werden (lauf.py) - mit einem
+    abweichenden Hash entstünde stattdessen eine zweite Karte."""
+    fund = RohFund("mydealz", "https://mydealz.de/x", "t", "x")
+
+    def bauen(geschaeft: bool) -> AngebotExtraktion:
+        return AngebotExtraktion(
+            bank_name="Bank",
+            kontoart="Girokonto",
+            praemie_betrag=125.0,
+            nur_geschaeftskunden=geschaeft,
+            bedingungen=[],
+        )
+
+    privat = matching.bewerten(db, fund, bauen(False), alice, MINDESTPRAEMIE)
+    gewerbe = matching.bewerten(db, fund, bauen(True), alice, MINDESTPRAEMIE)
+    assert privat.inhalt_hash == gewerbe.inhalt_hash
+    assert privat.status == matching.STATUS_VORGESCHLAGEN
+    assert gewerbe.status == matching.STATUS_ABGELEHNT

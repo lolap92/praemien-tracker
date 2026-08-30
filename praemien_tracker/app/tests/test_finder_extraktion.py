@@ -110,3 +110,34 @@ def test_bedingung_gilt_fuer_teilpraemie_default_none_und_uebernommen():
         gilt_fuer="250 € für den Kontowechselservice",
     )
     assert teil.gilt_fuer == "250 € für den Kontowechselservice"
+
+
+def test_geschaeftskunden_feld_default_false_und_uebernommen():
+    """Das Feld muss optional bleiben: bereits zwischengespeicherte
+    Extraktionen (finder_funde.extraktion_json) kennen es noch nicht und
+    dürfen deshalb nicht ungültig werden."""
+    ohne = AngebotExtraktion.model_validate_json(
+        '{"bank_name": "C24", "kontoart": "Girokonto", "praemie_betrag": 125.0, "bedingungen": []}'
+    )
+    assert ohne.nur_geschaeftskunden is False
+
+    client = FakeClient(
+        AngebotExtraktion(
+            bank_name="Firmenbank",
+            kontoart="Geschäftskonto",
+            praemie_betrag=300.0,
+            nur_geschaeftskunden=True,
+            bedingungen=[],
+        )
+    )
+    ergebnis = extrahiere_angebot(client, "Businesskonto fuer Selbststaendige", model="claude-haiku-4-5")
+    assert ergebnis.nur_geschaeftskunden is True
+
+
+def test_extraktions_prompt_fragt_die_zielgruppe_ab():
+    """Ohne die Anweisung im Prompt bliebe das Feld immer beim Default False -
+    das Kriterium wäre dann wirkungslos."""
+    from praemien_tracker.finder.extraktion import EXTRAKTION_PROMPT
+
+    assert "nur_geschaeftskunden" in EXTRAKTION_PROMPT
+    assert "Geschäftskonto" in EXTRAKTION_PROMPT

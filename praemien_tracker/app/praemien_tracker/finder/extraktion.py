@@ -76,6 +76,14 @@ class AngebotExtraktion(BaseModel):
     # nicht für Kinder - Erwachsenen-Angebote werden Kindern dann nicht
     # vorgeschlagen.
     fuer_kinder: bool = False
+    # Ob das Angebot ein reines Geschäftskunden-/Firmenkundenangebot ist
+    # (Geschäftskonto, Firmendepot, Angebot nur für Gewerbetreibende,
+    # Selbstständige oder Freiberufler in dieser Eigenschaft). Führt in
+    # matching.py zur automatischen Ablehnung - solche Konten lassen sich
+    # privat nicht eröffnen. Default False (konservativ): fehlt das Feld in
+    # einem alten Cache-Eintrag oder ist die Zielgruppe unklar, gilt das
+    # Angebot als Privatkundenangebot und wird nicht ausgeschlossen.
+    nur_geschaeftskunden: bool = False
     # Einzelne Teilprämien mit je eigener Voraussetzung (z.B. 50 EUR von
     # Spartanien für die Kontoeröffnung plus 250 EUR von der Bank für den
     # Kontowechselservice). Leer lassen, wenn es nur eine einzige Prämie ohne
@@ -137,6 +145,13 @@ Minderjährige/Kinder offensteht - z.B. ein Kinderdepot, Junior-Depot, \
 Junior-Konto oder Kinder-Tagesgeld, oder wenn der Text explizit sagt, dass \
 Minderjährige teilnehmen können. Im Zweifel false (die meisten \
 Neukunden-Prämien setzen Volljährigkeit voraus).
+- nur_geschaeftskunden: true nur, wenn sich das Angebot ausschließlich an \
+Geschäfts-/Firmenkunden richtet - z.B. ein Geschäftskonto, Businesskonto, \
+Firmendepot oder ein Angebot ausdrücklich nur für Gewerbetreibende, \
+Selbstständige oder Freiberufler in dieser Eigenschaft. Ein Angebot, das \
+Privatpersonen offensteht, ist false - auch dann, wenn Selbstständige es \
+ebenfalls nutzen dürfen. Im Zweifel false (die meisten Neukunden-Prämien \
+richten sich an Privatkunden).
 - bedingungen: ALLE einzelnen Bedingungen, die für die Prämie erfüllt werden \
 müssen (z.B. Mindesteinlage, Kontoeröffnung online, TAN-Verfahren aktivieren, \
 Anzahl Kartenzahlungen, Mindestumsatz, Gehaltseingang, Vertragslaufzeit). \

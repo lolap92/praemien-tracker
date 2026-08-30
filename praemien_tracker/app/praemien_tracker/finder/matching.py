@@ -260,7 +260,17 @@ def bewerten(
     if praemie_betrag < mindestpraemie:
         ablehnung_gruende.append(f"Prämie {praemie_betrag} € liegt unter der Mindestprämie von {mindestpraemie} €.")
 
-    # 2) Neukunden-/Sperrfrist-Check.
+    # 2) Geschäftskunden-Angebote scheiden grundsätzlich aus - ein
+    # Geschäftskonto lässt sich privat gar nicht eröffnen. Deshalb eine harte
+    # Ablehnung und kein "zu prüfen": anders als bei einer unklaren Bedingung
+    # gibt es hier nichts abzuwägen. Die KI setzt das Feld nur bei einem
+    # ausdrücklich reinen Firmenkundenangebot (siehe EXTRAKTION_PROMPT); im
+    # Zweifel bleibt es False, der Fund wird also lieber vorgeschlagen als
+    # stillschweigend ausgeschlossen.
+    if extraktion.nur_geschaeftskunden:
+        ablehnung_gruende.append("Angebot richtet sich nur an Geschäftskunden.")
+
+    # 3) Neukunden-/Sperrfrist-Check.
     bank = _bank_finden(db, extraktion.bank_name)
     sperrfrist_einschaetzung, sperrfrist_grund = _sperrfrist_pruefen(
         db, bank, extraktion.kontoart, inhaber.id, extraktion.sperrfrist_monate
@@ -270,7 +280,7 @@ def bewerten(
     elif sperrfrist_einschaetzung == EINSCHAETZUNG_ZU_PRUEFEN:
         unklar_gruende.append(sperrfrist_grund)
 
-    # 3) Von der KI erkannte Einzel-Bedingungen (können mehrere sein - siehe
+    # 4) Von der KI erkannte Einzel-Bedingungen (können mehrere sein - siehe
     # VorschlagBedingung in models.py).
     bedingungen = [
         BedingungBewertung(
