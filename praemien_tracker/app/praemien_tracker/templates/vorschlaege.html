@@ -299,9 +299,9 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
     {% endif %}
   </div>
 
-  {% if g.status == "automatisch_abgelehnt" and g.ablehnungsgruende %}
-  <div class="vorschlag-begruendung abgelehnt">
-    <b>Automatisch abgelehnt:</b>
+  {% if g.ablehnungsgruende %}
+  <div class="vorschlag-begruendung {{ 'abgelehnt' if g.status == 'automatisch_abgelehnt' else 'warn' }}">
+    <b>{{ "Automatisch abgelehnt:" if g.status == "automatisch_abgelehnt" else "Hinweis:" }}</b>
     <ul>
       {% for grund in g.ablehnungsgruende %}
       <li>{{ grund }}</li>
@@ -448,7 +448,6 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
   </div>
   <p class="dup-unterzeile">Gleiche Bank + Kontoart in {{ d.funde | length }} Fundstellen erkannt - vermutlich derselbe Deal.</p>
 
-  {% if d.status == "automatisch_abgelehnt" %}
   {% set ns = namespace(gruende=[]) %}
   {% for f in d.funde %}
     {% for grund in f.ablehnungsgruende %}
@@ -456,15 +455,14 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
     {% endfor %}
   {% endfor %}
   {% if ns.gruende %}
-  <div class="vorschlag-begruendung abgelehnt">
-    <b>Automatisch abgelehnt:</b>
+  <div class="vorschlag-begruendung {{ 'abgelehnt' if d.status == 'automatisch_abgelehnt' else 'warn' }}">
+    <b>{{ "Automatisch abgelehnt:" if d.status == "automatisch_abgelehnt" else "Hinweis:" }}</b>
     <ul>
       {% for grund in ns.gruende %}
       <li>{{ grund }}</li>
       {% endfor %}
     </ul>
   </div>
-  {% endif %}
   {% endif %}
 
   <div class="dup-quellen">
@@ -482,6 +480,19 @@ vorschlaege?status={{ status_wert }}{% for q in filter_quelle %}&quelle={{ q }}{
           <span>Gefunden {{ f.gefunden_am | datum }}</span>
           <a class="dup-quelle-link" href="{{ f.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
         </div>
+        {% if f.bedingungen %}
+        {% set n_pruefen_f = f.bedingungen | selectattr('einschaetzung', 'equalto', 'zu_pruefen') | list | length %}
+        {% set n_nicht_f = f.bedingungen | selectattr('einschaetzung', 'equalto', 'nicht_erfuellt') | list | length %}
+        <div class="vk-bedingungen dup-quelle-bedingungen">
+          <div class="vk-bed-kopf">
+            <span class="vk-bed-anzahl">{{ f.bedingungen | length }} Bedingung{{ "en" if f.bedingungen | length != 1 else "" }}</span>
+            {% if n_nicht_f %}<span class="vk-bed-status nicht_erfuellt">{{ n_nicht_f }} nicht erfüllbar</span>
+            {% elif n_pruefen_f %}<span class="vk-bed-status zu_pruefen">{{ n_pruefen_f }} zu prüfen</span>
+            {% else %}<span class="vk-bed-status erfuellt">alle erfüllbar</span>{% endif %}
+          </div>
+          {{ bedingungen_liste(f) }}
+        </div>
+        {% endif %}
       </div>
     </label>
     {% endfor %}

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.53.1
+
+Vorschlagskarten zeigen Hinweise jetzt direkt, und Duplikat-Gruppen zeigen Bedingungen je Quelle.
+
+- **Hinweistext ("Bereits Kundin/Kunde bei...") schon auf der Kachel statt erst im Übernehmen-Dialog (`templates/vorschlaege.html`).** Der Sperrfrist-/Neukunden-Hinweis pro Person steckte bisher nur versteckt im "Für wen übernehmen?"-Dialog. Die bereits vorhandene, deduplizierte `g.ablehnungsgruende`-Liste wird jetzt unabhängig vom Status angezeigt (nicht mehr nur bei "automatisch_abgelehnt") - mit eigenem "Hinweis:"-Kasten (dezentes Orange) für alles außer echter automatischer Ablehnung (die bleibt rot wie bisher).
+- **Bedingungen je Quelle in der Duplikat-Ansicht (`templates/vorschlaege.html`).** Wurde derselbe Deal aus mehreren Quellen gefunden (z.B. mydealz + Spartanien), zeigte jede Fundstelle bisher nur Betrag/Sperrfrist/Link - die Bedingungen gab es nur einmal für die ganze Gruppe. Jetzt zeigt jede Fundstelle ihre eigenen Bedingungen inkl. Kurz-Status ("alle erfüllbar"/"N zu prüfen"), damit sich vor der Auswahl vergleichen lässt, welche Quelle die einfacheren Bedingungen hat.
+
 ## 2.53.0
 
 Listen im Tab „Zu erledigen" jetzt alphabetisch nach Bank sortiert, und das Protokoll archiviert die Dealseite als HTML statt nur zu verlinken.
