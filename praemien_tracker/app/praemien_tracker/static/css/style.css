@@ -1095,6 +1095,12 @@ dialog.todo-dialog {
   max-width: 420px;
   width: 90vw;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  /* <dialog> hat einen eigenen UA-Hintergrund (Canvas/CanvasText), der die
+     Theme-Variablen nicht automatisch übernimmt - ohne diese beiden Zeilen
+     blieb der Dialog im dunklen Design hell, während der Rest der Seite
+     bereits dunkel war. */
+  background: var(--surface);
+  color: var(--ink);
 }
 
 dialog.todo-dialog::backdrop {
@@ -2555,7 +2561,14 @@ table.lauf-tabelle tr:hover {
   padding: 0.45rem 0.4rem;
   font-size: 0.8rem;
   text-decoration: none;
-  white-space: nowrap;
+  /* Bewusst kein white-space: nowrap: "Trotzdem übernehmen" ist auf schmalen
+     Handy-Breiten (drei Buttons in einer Reihe) länger als der ihm per
+     flex:1 zugeteilte Platz - beim Abschneiden würde der Text sichtbar über
+     den Button hinauslaufen. Zwei Zeilen sehen etwas ungleich zu den
+     einzeiligen Nachbar-Buttons aus, sind aber immer noch lesbar, statt
+     Text zu verlieren oder abzuschneiden. */
+  white-space: normal;
+  line-height: 1.2;
 }
 
 /* Übernehmen-Dialog: Namen zum Auswählen + je Person ein Hinweis. */
@@ -2566,6 +2579,10 @@ dialog.vk-dialog {
   max-width: 420px;
   width: 90vw;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  /* Siehe dialog.todo-dialog: ohne explizite background/color bleibt <dialog>
+     beim UA-Standard (Canvas/CanvasText) hängen und ignoriert das dunkle Design. */
+  background: var(--surface);
+  color: var(--ink);
 }
 
 dialog.vk-dialog::backdrop {

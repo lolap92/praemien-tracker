@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.53.2
+
+Modaldialoge waren im dunklen Design hell geblieben, und ein Button-Text lief über den Rand hinaus.
+
+- **Alle `<dialog>`-Elemente jetzt auch im dunklen Design dunkel (`static/css/style.css`).** `dialog.vk-dialog` und `dialog.todo-dialog` setzten nie `background`/`color` - `<dialog>` fällt ohne das auf den Browser-Standardhintergrund (`Canvas`/`CanvasText`) zurück, der die Theme-Variablen der Seite ignoriert. Betraf ausnahmslos jeden Dialog der App (Verwerfen, Übernehmen, Duplikat-Verwerfen, Bedingungen, Deal pflegen, Stornieren, Löschen, "Neu analysieren", "Zurücksetzen"), da sie sich alle nur diese zwei Klassen teilen.
+- **"Trotzdem übernehmen" lief auf schmalen Handy-Breiten über den Button hinaus (`static/css/style.css`).** Drei gleich breite Buttons pro Vorschlagskarte mit `white-space: nowrap` - für das längste Label reichte der zugeteilte Platz nicht. Der Text bricht jetzt bei Bedarf in zwei Zeilen um, statt sichtbar über den Button hinauszulaufen.
+
 ## 2.53.1
 
 Vorschlagskarten zeigen Hinweise jetzt direkt, und Duplikat-Gruppen zeigen Bedingungen je Quelle.
