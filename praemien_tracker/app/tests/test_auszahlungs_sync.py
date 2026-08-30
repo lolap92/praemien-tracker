@@ -90,6 +90,31 @@ def test_betragsaenderung_wird_als_upsert_gemeldet(db, deal, aufrufe):
     assert Decimal(aufrufe[0]["betrag"]) == Decimal("150.00")
 
 
+def test_bezeichnung_enthaelt_bank_kontoart_und_namen(db, deal, aufrufe):
+    praemie = Praemie(
+        deal_id=deal.id, quelle="bank", betrag=Decimal("100"), erhalten=False, auszahlung_erwartet="2026-09"
+    )
+    db.add(praemie)
+    db.commit()
+
+    assert aufrufe[0]["bezeichnung"] == "Prämienauszahlung – Testbank · Girokonto · Max"
+
+
+def test_bezeichnung_nutzt_zweck_statt_generischem_text_wenn_vorhanden(db, deal, aufrufe):
+    praemie = Praemie(
+        deal_id=deal.id,
+        quelle="bank",
+        betrag=Decimal("100"),
+        erhalten=False,
+        auszahlung_erwartet="2026-09",
+        zweck="für den Kontowechselservice",
+    )
+    db.add(praemie)
+    db.commit()
+
+    assert aufrufe[0]["bezeichnung"] == "für den Kontowechselservice – Testbank · Girokonto · Max"
+
+
 def test_erhalten_markiert_loest_loeschen_aus(db, deal, aufrufe):
     """Eine bereits erhaltene Auszahlung soll die Forecast-Prognose im
     Budget-Tracker nicht länger belasten."""
@@ -167,3 +192,26 @@ class TestSendeAlleAktuellen:
 
         assert anzahl == 0
         assert aufrufe == []
+
+    def test_aktualisiert_bezeichnung_bereits_bestehender_eintraege(self, db, deal, aufrufe):
+        """Beantwortet 'aktualisiert das auch schon bestehende Forecast-
+        Einträge': ja, sobald sende_alle_aktuellen() erneut läuft (bei jedem
+        Add-on-Start, siehe main.py) - der Budget-Tracker ist über die
+        external_id idempotent, ein erneutes 'upsert' überschreibt die
+        bezeichnung eines schon vorhandenen Eintrags."""
+        praemie = Praemie(
+            deal_id=deal.id, quelle="bank", betrag=Decimal("100"), erhalten=False, auszahlung_erwartet="2026-09"
+        )
+        db.add(praemie)
+        db.commit()
+        aufrufe.clear()
+
+        deal.bank.name = "Neue Bank GmbH"
+        db.commit()
+        aufrufe.clear()
+
+        auszahlungs_sync.sende_alle_aktuellen()
+
+        assert len(aufrufe) == 1
+        assert aufrufe[0]["aktion"] == "upsert"
+        assert aufrufe[0]["bezeichnung"] == "Prämienauszahlung – Neue Bank GmbH · Girokonto · Max"

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.54.0
+
+Forecast-Einträge im Budget-Tracker zeigen jetzt Bank, Kontoart und Inhaber statt nur einer generischen Bezeichnung.
+
+- **Bezeichnung um Bank/Kontoart/Inhaber ergänzt (`auszahlungs_sync.py`).** Bisher hieß ein Forecast-Eintrag ohne eigenen `zweck` schlicht "Prämienauszahlung" - bei mehreren gleichzeitig offenen Prämien im Budget-Tracker nicht auseinanderzuhalten. Heißt jetzt z.B. "Prämienauszahlung – Smartbroker · Depot · Max" (mit `zweck`: "für den Kontowechselservice – Smartbroker · Depot · Max").
+- **Wirkt auch auf bereits bestehende Forecast-Einträge, sobald das Add-on neu startet.** `sende_alle_aktuellen()` meldet bei jedem Start den aktuellen Stand jeder Prämie erneut (siehe `main.py`) - der Budget-Tracker gleicht das über die `external_id` idempotent per "upsert" ab, ein bereits vorhandener Eintrag bekommt dabei die neue Bezeichnung. Ohne einen weiteren Neustart bleibt ein längst gemeldeter, seither unveränderter Eintrag bei der alten Bezeichnung - erst eine Änderung an der jeweiligen Prämie oder der nächste Start löst die Aktualisierung aus.
+- **Nebenbei behoben: ein Absturz beim Anlegen/Ändern/Löschen einer Prämie, sobald `praemie.deal` in der Payload gebraucht wird (`auszahlungs_sync.py`).** Die Payload-Erstellung lief bisher in `after_commit` - zu spät für einen Lazy Load der neu gebrauchten `deal`-Beziehung, die Session ist zu dem Zeitpunkt bereits "committed" und lässt keine weiteren Abfragen mehr zu. Die Payload wird jetzt schon in `before_flush`/`after_flush` fertig gebaut, während die Session noch normal abfragbar ist. Zusätzlich ein Session.get()-Fallback für den Randfall, dass `deal`/`bank`/`inhaber` einer druckfrischen Zeile per rohem Fremdschlüssel statt per Objektzuweisung gesetzt wurden (SQLAlchemy löst das an einem frisch erzeugten Objekt sonst nicht zuverlässig lazy auf, derselbe Fall wie schon in `protokoll.py`).
+
 ## 2.53.2
 
 Modaldialoge waren im dunklen Design hell geblieben, und ein Button-Text lief über den Rand hinaus.
