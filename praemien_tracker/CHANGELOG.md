@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.54.0
+## 2.55.0
 
 Die Startseite zeigt jetzt zuerst, wo tatsächlich etwas zu tun ist - statt vierzehn gleichrangiger Zähler in vier gleich aussehenden Kacheln.
 
@@ -12,6 +12,14 @@ Die Startseite zeigt jetzt zuerst, wo tatsächlich etwas zu tun ist - statt vier
 - **Sämtliche reinen Zählungen ziehen auf die Statistikseite um (`routers/statistiken.py`, `templates/statistiken.html`).** Deals je Status (alle sieben, mit vollem Label statt der gekürzten Kachelbeschriftung und beim Wartezustand mit dem Datum, ab wann gekündigt werden kann), offene Punkte (manuelle Aufgaben, Deals pflegen, zu prüfen) und Vorschläge nach Status stehen jetzt unter „Statistiken" - jede Zeile verlinkt dorthin, wo die zugehörigen Deals stehen. Dazu eine Kopfzeile mit Prämien gesamt/erhalten/offen und der Deal-Anzahl. Die Startseite selbst zeigt keine Zustandszähler mehr, nur noch zwei Textlinks („Alle N Deals", „Alle Zahlen unter Statistiken"). Eine Zahl sagt nicht, ob etwas zu tun ist - genau daran krankte die alte Übersicht; verloren geht durch den Umzug keine einzige.
 - **Ausdrücklicher Leerzustand (`templates/overview.html`).** Steht nichts an, sagt die Seite „Nichts zu tun", statt eine Reihe Nullen zu zeigen.
 - **Aufgeräumt: die Pipeline-Segmente entfallen ersatzlos (`static/css/style.css`).** Mit dem Umbau ist die `.pipe`-Markup-Familie in keinem Template mehr in Gebrauch - die zugehörigen 129 CSS-Zeilen sind entfernt, ebenso die dadurch doppelten Hero-Regeln. Der Test, der jedem Status eine Pipeline-Farbe abverlangte, prüft jetzt nur noch die weiterhin genutzten Chip-Farben; dafür prüft ein neuer Test, dass jede Aktionsfarbe der Startseite im CSS existiert.
+
+## 2.54.0
+
+Forecast-Einträge im Budget-Tracker zeigen jetzt Bank, Kontoart und Inhaber statt nur einer generischen Bezeichnung.
+
+- **Bezeichnung um Bank/Kontoart/Inhaber ergänzt (`auszahlungs_sync.py`).** Bisher hieß ein Forecast-Eintrag ohne eigenen `zweck` schlicht "Prämienauszahlung" - bei mehreren gleichzeitig offenen Prämien im Budget-Tracker nicht auseinanderzuhalten. Heißt jetzt z.B. "Prämienauszahlung – Smartbroker · Depot · Max" (mit `zweck`: "für den Kontowechselservice – Smartbroker · Depot · Max").
+- **Wirkt auch auf bereits bestehende Forecast-Einträge, sobald das Add-on neu startet.** `sende_alle_aktuellen()` meldet bei jedem Start den aktuellen Stand jeder Prämie erneut (siehe `main.py`) - der Budget-Tracker gleicht das über die `external_id` idempotent per "upsert" ab, ein bereits vorhandener Eintrag bekommt dabei die neue Bezeichnung. Ohne einen weiteren Neustart bleibt ein längst gemeldeter, seither unveränderter Eintrag bei der alten Bezeichnung - erst eine Änderung an der jeweiligen Prämie oder der nächste Start löst die Aktualisierung aus.
+- **Nebenbei behoben: ein Absturz beim Anlegen/Ändern/Löschen einer Prämie, sobald `praemie.deal` in der Payload gebraucht wird (`auszahlungs_sync.py`).** Die Payload-Erstellung lief bisher in `after_commit` - zu spät für einen Lazy Load der neu gebrauchten `deal`-Beziehung, die Session ist zu dem Zeitpunkt bereits "committed" und lässt keine weiteren Abfragen mehr zu. Die Payload wird jetzt schon in `before_flush`/`after_flush` fertig gebaut, während die Session noch normal abfragbar ist. Zusätzlich ein Session.get()-Fallback für den Randfall, dass `deal`/`bank`/`inhaber` einer druckfrischen Zeile per rohem Fremdschlüssel statt per Objektzuweisung gesetzt wurden (SQLAlchemy löst das an einem frisch erzeugten Objekt sonst nicht zuverlässig lazy auf, derselbe Fall wie schon in `protokoll.py`).
 
 ## 2.53.2
 

@@ -22,10 +22,10 @@ import os
 
 import httpx
 from sqlalchemy import event, inspect
-from sqlalchemy.orm import Session, attributes
+from sqlalchemy.orm import Session, attributes, joinedload
 
 from .database import SessionLocal
-from .models import Praemie
+from .models import Bank, Deal, Inhaber, Praemie
 
 logger = logging.getLogger("praemien_tracker.sync")
 
@@ -47,16 +47,57 @@ def _ist_geaendert(obj: Praemie) -> bool:
     return False
 
 
+def _deal_von(praemie: Praemie) -> Deal | None:
+    """praemie.deal kann an einer druckfrisch erzeugten Prämie (INSERT gerade
+    erst geflusht) leer bleiben, wenn nur deal_id statt der Objektzuweisung
+    gesetzt wurde - SQLAlchemy löst eine Beziehung an einem frisch erzeugten
+    Objekt innerhalb von after_flush nicht zuverlässig lazy auf (derselbe
+    Fall wie protokoll.py::_bank_von). Ein Session.get() auf denselben
+    Fremdschlüssel funktioniert davon unabhängig. Die App selbst hängt eine
+    neue Prämie immer über deal.praemien.append(...) an (setzt die Beziehung
+    direkt), betrifft also nur diesen Randfall."""
+    if praemie.deal is not None:
+        return praemie.deal
+    sitzung = inspect(praemie).session
+    return sitzung.get(Deal, praemie.deal_id) if sitzung is not None else None
+
+
+def _bank_von(deal: Deal) -> Bank | None:
+    """Derselbe Randfall wie _deal_von, eine Ebene tiefer: deal.bank kann bei
+    einem ebenfalls druckfrischen Deal leer bleiben."""
+    if deal.bank is not None:
+        return deal.bank
+    sitzung = inspect(deal).session
+    return sitzung.get(Bank, deal.bank_id) if sitzung is not None else None
+
+
+def _inhaber_von(deal: Deal) -> Inhaber | None:
+    if deal.inhaber is not None:
+        return deal.inhaber
+    sitzung = inspect(deal).session
+    return sitzung.get(Inhaber, deal.inhaber_id) if sitzung is not None else None
+
+
 def _vorkommen_payload(praemie: Praemie) -> dict | None:
     """None, wenn für diese Prämie aktuell kein Forecast-Eintrag sinnvoll ist
     (schon erhalten oder noch kein erwarteter Monat gepflegt) - der
     Budget-Tracker entfernt in dem Fall einen zuvor angelegten Eintrag."""
     if praemie.erhalten or not praemie.auszahlung_erwartet:
         return None
+    deal = _deal_von(praemie)
+    bank = _bank_von(deal) if deal else None
+    inhaber = _inhaber_von(deal) if deal else None
+    # Bank/Kontoart/Inhaber ergänzt, damit mehrere Forecast-Einträge im
+    # Budget-Tracker (eigenständige Liste, ohne Bezug zu unseren Deals)
+    # auseinanderzuhalten sind - vorher zeigten mehrere Prämien ohne eigenen
+    # "zweck" dort alle identisch nur "Prämienauszahlung".
+    grunddaten = f"{bank.name} · {deal.kontoart} · {inhaber.name}" if deal and bank and inhaber else None
+    zweck_oder_default = praemie.zweck or "Prämienauszahlung"
+    bezeichnung = f"{zweck_oder_default} – {grunddaten}" if grunddaten else zweck_oder_default
     return {
         "external_id": _external_id(praemie.id),
         "aktion": "upsert",
-        "bezeichnung": praemie.zweck or "Prämienauszahlung",
+        "bezeichnung": bezeichnung,
         "betrag": str(praemie.betrag),
         "datum": f"{praemie.auszahlung_erwartet}-15",
     }
@@ -96,7 +137,15 @@ def sende_alle_aktuellen() -> int:
     bei jedem Start erneut - kostet nur ein paar HTTP-Aufrufe und ist über die
     external_id beim Budget-Tracker ohnehin idempotent."""
     with SessionLocal() as db:
-        praemien = db.query(Praemie).all()
+        # Bank/Inhaber gleich mitladen (_vorkommen_payload braucht sie für
+        # die bezeichnung) - die Schleife läuft erst nach dem "with"-Block,
+        # wenn die Session schon geschlossen ist, ein Lazy Load dann würde
+        # mit DetachedInstanceError abbrechen.
+        praemien = (
+            db.query(Praemie)
+            .options(joinedload(Praemie.deal).joinedload(Deal.bank), joinedload(Praemie.deal).joinedload(Deal.inhaber))
+            .all()
+        )
     for praemie in praemien:
         payload = _vorkommen_payload(praemie)
         if payload is not None:
@@ -108,6 +157,12 @@ def sende_alle_aktuellen() -> int:
 
 @event.listens_for(Session, "before_flush")
 def _before_flush(session, flush_context, instances):
+    """Payload wird bewusst schon hier (bzw. in after_flush) fertig gebaut
+    statt erst in after_commit: _vorkommen_payload() liest jetzt auch
+    praemie.deal.bank/.kontoart/.inhaber, und ein lazy load davon schlägt in
+    after_commit fehl ("session is in 'committed' state") - die Transaktion
+    ist zu dem Zeitpunkt bereits abgeschlossen. Vor/während des Flushs ist
+    die Session dagegen ganz normal abfragbar."""
     aktionen = session.info.setdefault("auszahlungs_sync_aktionen", [])
     neu_pending = session.info.setdefault("auszahlungs_sync_neu_pending", [])
 
@@ -117,11 +172,11 @@ def _before_flush(session, flush_context, instances):
 
     for obj in session.dirty:
         if isinstance(obj, Praemie) and _ist_geaendert(obj):
-            aktionen.append(("geaendert", obj))
+            aktionen.append(("geaendert", obj.id, _vorkommen_payload(obj)))
 
     for obj in session.deleted:
         if isinstance(obj, Praemie):
-            aktionen.append(("geloescht", obj.id))
+            aktionen.append(("geloescht", obj.id, None))
 
 
 @event.listens_for(Session, "after_flush")
@@ -129,7 +184,7 @@ def _after_flush(session, flush_context):
     aktionen = session.info.setdefault("auszahlungs_sync_aktionen", [])
     neu_pending = session.info.pop("auszahlungs_sync_neu_pending", [])
     for obj in neu_pending:
-        aktionen.append(("erstellt", obj))
+        aktionen.append(("erstellt", obj.id, _vorkommen_payload(obj)))
 
 
 @event.listens_for(Session, "after_commit")
@@ -137,18 +192,17 @@ def _after_commit(session):
     aktionen = session.info.pop("auszahlungs_sync_aktionen", [])
     session.info.pop("auszahlungs_sync_neu_pending", None)
 
-    for art, obj in aktionen:
+    for art, praemie_id, payload in aktionen:
         if art == "geloescht":
-            _sende_event({"external_id": _external_id(obj), "aktion": "loeschen"})
+            _sende_event({"external_id": _external_id(praemie_id), "aktion": "loeschen"})
             continue
-        payload = _vorkommen_payload(obj)
         if payload is not None:
             _sende_event(payload)
         elif art == "geaendert":
             # Nur bei einer Änderung kann vorher ein Forecast-Eintrag
             # existiert haben, der jetzt zurückgezogen werden muss - eine
             # neu angelegte Prämie ohne erwarteten Monat wurde nie gemeldet.
-            _sende_event({"external_id": _external_id(obj.id), "aktion": "loeschen"})
+            _sende_event({"external_id": _external_id(praemie_id), "aktion": "loeschen"})
 
 
 @event.listens_for(Session, "after_rollback")
