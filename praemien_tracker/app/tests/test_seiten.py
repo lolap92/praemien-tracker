@@ -305,6 +305,32 @@ def test_overview_zeigt_nur_kategorien_mit_offenen_punkten(deal):
     assert "todos?tab=bestaetigung" not in aufgaben
 
 
+def test_statistiken_traegt_die_zaehlungen_der_startseite(deal):
+    """Die Status-, Punkte- und Vorschlagszahlen sind von der Startseite
+    hierher gezogen worden - sie müssen vollständig ankommen, sonst wären sie
+    beim Umbau schlicht verschwunden."""
+    from praemien_tracker import derived
+
+    html = client.get("/statistiken").text
+    for status, label in derived.STATUS_LABELS.items():
+        assert label in html, f"Status-Zeile fehlt: {label}"
+    assert 'href="deals?status=abgeschlossen"' in html
+    assert 'href="deals?status=wartet_auf_kuendigung"' in html
+    for kategorie in ("Manuelle Aufgaben", "Deals pflegen", "Zu prüfen"):
+        assert kategorie in html, f"Kategorie fehlt: {kategorie}"
+    for status in ("vorgeschlagen", "zu_pruefen", "automatisch_abgelehnt", "verworfen"):
+        assert f'href="vorschlaege?status={status}"' in html
+
+
+def test_uebersicht_zaehlt_keine_zustaende_mehr(deal):
+    """Gegenprobe: Zustände ohne Handlungsbedarf stehen nicht mehr auf der
+    Startseite. Der Weg dorthin bleibt als Textlink erhalten."""
+    html = client.get("/overview").text
+    assert "deals?status=abgeschlossen" not in html
+    assert "deals?status=wartet_auf_kuendigung" not in html
+    assert 'href="statistiken"' in html
+
+
 def test_overview_stellt_ueberfaelliges_nach_oben(db):
     """Überfälliges steht vor allem anderen und wird ausdrücklich benannt -
     vorher war einer Zahl nicht anzusehen, ob eine Frist schon verstrichen

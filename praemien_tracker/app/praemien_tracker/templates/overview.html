@@ -7,10 +7,10 @@
    aussehende Zähler-Kacheln nebeneinander:
    1. "Jetzt dran" - nur das, wo der Nutzer selbst handeln muss.
    2. Geld - Ergebnis, keine Aufgabe, deshalb schmal.
-   3. "Nebenbei" und "Läuft" - gedämpft, damit sie nicht um Aufmerksamkeit
-      konkurrieren.
-   Was gar keine Aufgabe mehr ist (abgelehnte/verworfene Vorschläge,
-   abgeschlossene Deals), steht nur noch als Zeile ganz unten. #}
+   3. "Nebenbei" - nützlich, aber ohne Frist, deshalb gedämpft.
+   Reine Zählungen (Deals je Status, offene Punkte, Vorschläge nach Status)
+   stehen nicht mehr hier, sondern unter "Statistiken": eine Zahl sagt nicht,
+   ob etwas zu tun ist - genau das war das Problem der alten Seite. #}
 
 {% if aktionen %}
 <div class="card jetzt{{ ' jetzt-warn' if ueberfaellig_gesamt else '' }}">
@@ -85,22 +85,9 @@
 </a>
 {% endif %}
 
-<div class="card ruhig">
-  <div class="card-label">Läuft – nichts zu tun</div>
-  <div class="ruhig-liste">
-    {% for z in laeuft %}
-    <a class="ruhig-zeile{{ ' ruhig-null' if z.anzahl == 0 else '' }}" href="{{ z.url }}">
-      <span class="ruhig-num">{{ z.anzahl }}</span>
-      <span class="ruhig-label">{{ z.label }}</span>
-      {% if z.zusatz %}<span class="ruhig-zusatz">{{ z.zusatz }}</span>{% endif %}
-    </a>
-    {% endfor %}
-  </div>
-  <div class="ruhig-fuss">
-    <a href="deals">Alle {{ anzahl_deals }} Deals</a>
-    <a href="vorschlaege?status=automatisch_abgelehnt">Abgelehnte Vorschläge ({{ vorschlag_zaehler.abgelehnt }})</a>
-    <a href="vorschlaege?status=verworfen">Verworfen ({{ vorschlag_zaehler.verworfen }})</a>
-  </div>
+<div class="uebersicht-fuss">
+  <a href="deals">Alle {{ anzahl_deals }} Deals</a>
+  <a href="statistiken">Alle Zahlen unter Statistiken</a>
 </div>
 
 {% endblock %}

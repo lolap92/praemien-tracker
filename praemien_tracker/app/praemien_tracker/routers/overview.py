@@ -108,10 +108,6 @@ def overview(request: Request, db: Session = Depends(get_db)):
 
     gesamt_kennzahlen = derived.kennzahlen([p for d in deals for p in d.praemien])
 
-    nach_status: dict[str, list[Deal]] = {s: [] for s in derived.STATUS_ORDER}
-    for d in deals:
-        nach_status[derived.status(d, heute)].append(d)
-
     alle_todos = derived.alle_todos(deals, aufgaben, heute)
     nach_kategorie: dict[str, list[derived.Todo]] = {}
     for t in alle_todos:
@@ -200,37 +196,6 @@ def overview(request: Request, db: Session = Depends(get_db)):
     pflege_todos = nach_kategorie.get("Deal pflegen", [])
     pflege_beispiele, pflege_weitere = _beispiele(pflege_todos)
 
-    # --- Läuft: Zustände, in denen der Nutzer nichts tun kann ---
-    wartende_ruhig = [t for t in wartende if not t.ueberfaellig]
-    warte_deals = nach_status[derived.STATUS_WARTET_AUF_KUENDIGUNG]
-    kuendbar_daten = [d.kuendbar_ab for d in warte_deals if d.kuendbar_ab]
-    laeuft = [
-        {
-            "anzahl": len(wartende_ruhig),
-            "label": "Auf Prämie warten",
-            "url": "todos?tab=praemie",
-            "zusatz": "",
-        },
-        {
-            "anzahl": len(warte_deals),
-            "label": "Auf Kündigung warten",
-            "url": "deals?status=wartet_auf_kuendigung",
-            "zusatz": f"ab {min(kuendbar_daten).strftime('%d.%m.%Y')}" if kuendbar_daten else "",
-        },
-        {
-            "anzahl": len(nach_kategorie.get("Bestätigung warten", [])),
-            "label": "Bestätigung der Bank",
-            "url": "todos?tab=bestaetigung",
-            "zusatz": "",
-        },
-        {
-            "anzahl": len(nach_status[derived.STATUS_ABGESCHLOSSEN]),
-            "label": "Abgeschlossen",
-            "url": "deals?status=abgeschlossen",
-            "zusatz": "",
-        },
-    ]
-
     return templates.TemplateResponse(
         "overview.html",
         {
@@ -243,7 +208,5 @@ def overview(request: Request, db: Session = Depends(get_db)):
             "anzahl_deal_pflegen": len(pflege_todos),
             "pflege_beispiele": pflege_beispiele,
             "pflege_weitere": pflege_weitere,
-            "laeuft": laeuft,
-            "vorschlag_zaehler": vorschlag_zaehler,
         },
     )

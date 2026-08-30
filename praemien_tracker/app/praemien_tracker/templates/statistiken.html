@@ -3,6 +3,69 @@
 {% block appbar_title %}Statistiken{% endblock %}
 {% block content %}
 
+{# Hier stehen die Zählungen, die früher die Startseite füllten. Dort waren
+   sie im Weg (eine Zahl sagt nicht, ob etwas zu tun ist, siehe
+   routers/overview.py); hier sind sie am richtigen Platz - wer Zahlen sucht,
+   sucht sie unter "Statistiken". #}
+
+<div class="card">
+  <div class="card-label">Prämien · {{ anzahl_deals }} Deals</div>
+  <div class="kennzahl-reihe">
+    <div class="kennzahl">
+      <div class="k">Gesamt</div>
+      <div class="v">{{ kennzahlen.gesamt | eur }}</div>
+    </div>
+    <div class="kennzahl">
+      <div class="k">Erhalten</div>
+      <div class="v" style="color: var(--received);">{{ kennzahlen.erhalten | eur }}</div>
+    </div>
+    <div class="kennzahl">
+      <div class="k">Offen</div>
+      <div class="v" style="color: var(--open);">{{ kennzahlen.offen | eur }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">Deals je Status</div>
+  <div class="zahl-liste">
+    {% for z in pipeline %}
+    <a class="zahl-zeile{{ ' zahl-null' if z.anzahl == 0 else '' }}" href="{{ z.url }}">
+      <span class="chip status-{{ z.status }}">{{ z.label }}</span>
+      {% if z.zusatz %}<span class="zahl-zusatz">{{ z.zusatz }}</span>{% endif %}
+      <span class="zahl-num">{{ z.anzahl }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">Offene Punkte</div>
+  {# Bewusst getrennt von den Status oben: ein Deal kann gleichzeitig in einem
+     der sieben Status stehen UND hier auftauchen (siehe derived.deal_todos),
+     die Zahlen sind also nicht überschneidungsfrei. #}
+  <div class="zahl-liste">
+    {% for z in querliegend %}
+    <a class="zahl-zeile{{ ' zahl-null' if z.anzahl == 0 else '' }}" href="{{ z.url }}">
+      <span class="zahl-label">{{ z.label }}</span>
+      <span class="zahl-num">{{ z.anzahl }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">Vorschläge</div>
+  <div class="zahl-liste">
+    {% for z in vorschlaege %}
+    <a class="zahl-zeile{{ ' zahl-null' if z.anzahl == 0 else '' }}" href="{{ z.url }}">
+      <span class="chip status-{{ z.chip }}">{{ z.label }}</span>
+      <span class="zahl-num">{{ z.anzahl }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
 <div class="card" style="padding: 1.1rem 0.6rem;">
   <div class="card-label" style="padding: 0 0.5rem;">Pro Inhaber</div>
   <div class="tabelle-wrapper">

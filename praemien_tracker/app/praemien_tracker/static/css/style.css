@@ -2820,65 +2820,88 @@ dialog.vk-dialog h3 {
   text-overflow: ellipsis;
 }
 
-/* Zustände ohne Handlungsbedarf: sichtbar, aber bewusst klein und ohne
-   Farbe - sie sollen nicht mit den Aufgaben oben um Aufmerksamkeit
-   konkurrieren. */
-.ruhig {
-  background: transparent;
-  border-style: dashed;
+/* Fußzeile der Startseite: die Wege zu allem, was keine Aufgabe ist.
+   Bewusst nur Text - Zahlen stehen unter "Statistiken". */
+.uebersicht-fuss {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+  padding: 0 0.2rem;
+  font-size: 0.78rem;
 }
 
-.ruhig-liste {
+.uebersicht-fuss a {
+  color: var(--ink-faint);
+  text-decoration: none;
+}
+
+.uebersicht-fuss a:hover,
+.uebersicht-fuss a:focus-visible {
+  color: var(--accent);
+}
+
+/* ---------- Zahlenlisten (Statistiken) ----------
+   Die Zählungen, die früher die Startseite füllten. Als Liste statt als
+   Kachelreihe: so ist Platz für das volle Status-Label und für den Zusatz,
+   der die Zahl überhaupt erst brauchbar macht (z.B. ab wann gekündigt
+   werden kann). Jede Zeile führt dorthin, wo die Deals dazu stehen. */
+
+.zahl-liste {
   display: flex;
   flex-direction: column;
 }
 
-.ruhig-zeile {
+.zahl-zeile {
   display: flex;
-  align-items: baseline;
-  gap: 0.7rem;
-  padding: 0.42rem 0;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0;
   text-decoration: none;
-  color: var(--ink-soft);
-  font-size: 0.85rem;
+  color: inherit;
+  border-top: 1px solid var(--line);
 }
 
-.ruhig-num {
+.zahl-zeile:first-child {
+  border-top: none;
+}
+
+.zahl-label {
+  font-size: 0.88rem;
+}
+
+.zahl-zusatz {
   font-family: var(--font-mono);
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--ink);
-  min-width: 1.4rem;
-  text-align: right;
-}
-
-.ruhig-label {
-  flex: 1 1 auto;
-}
-
-.ruhig-zusatz {
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   color: var(--ink-faint);
-  font-family: var(--font-mono);
 }
 
-.ruhig-null {
+.zahl-num {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.zahl-zeile.zahl-null {
   opacity: 0.45;
 }
 
-.ruhig-fuss {
+/* Kennzahlen-Reihe (Prämien gesamt/erhalten/offen auf der Statistikseite). */
+.kennzahl-reihe {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem 1rem;
-  margin-top: 0.7rem;
-  padding-top: 0.7rem;
-  border-top: 1px solid var(--line);
-  font-size: 0.74rem;
+  gap: 0.8rem 1.6rem;
 }
 
-.ruhig-fuss a {
-  color: var(--ink-faint);
-  text-decoration: none;
+.kennzahl .k {
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+.kennzahl .v {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 600;
 }
 
 @media (min-width: 720px) {
