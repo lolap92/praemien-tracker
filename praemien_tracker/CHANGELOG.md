@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.54.0
+
+Die Startseite zeigt jetzt zuerst, wo tatsächlich etwas zu tun ist - statt vierzehn gleichrangiger Zähler in vier gleich aussehenden Kacheln.
+
+- **„Jetzt dran" als Aufgabenliste ganz oben (`routers/overview.py`, `templates/overview.html`).** Die bisherigen Kacheln (Pipeline, Aufgaben & Pflege, Vorschläge) zeigten 14 Zahlen in einheitlicher Größe und Farbigkeit. Ob hinter einer Zahl eigene Arbeit steckte oder nur ein Wartezustand, war nicht zu erkennen, und jede Zahl musste erst angetippt werden. Jetzt steht oben eine Liste der Dinge, bei denen der Nutzer selbst handeln muss - je Zeile Klartext-Titel, ein betroffener Deal namentlich und ein Link direkt in den passenden ToDo-Reiter. Kategorien ohne offene Punkte erscheinen gar nicht mehr.
+- **Überfälliges wird als solches benannt und steht vorn (`routers/overview.py`).** Verstrichene Fristen waren einer Zahl bisher nicht anzusehen. Zeilen mit überfälligen Posten werden nach oben sortiert, bekommen eine gefüllte rote Zahl und einen „überfällig"-Chip; die Karte selbst zeigt nur dann einen roten Rand, wenn wirklich etwas überfällig ist.
+- **Neue Zeile „Prämie nicht gekommen" (`routers/overview.py`).** Eine überfällige Prämie, deren nächster Prüftermin noch in der Zukunft liegt, blieb in der Kategorie „Auf Prämie warten" - und damit in einem Bereich, den man beim Überfliegen überspringt. Genau diese Fälle werden jetzt herausgezogen und ganz oben als Aufgabe („bei der Bank nachhaken") gezeigt; der Rest von „Auf Prämie warten" bleibt unten bei den ruhigen Zuständen.
+- **Geld-Kachel flach und unterhalb der Aufgaben (`templates/overview.html`, `static/css/style.css`).** Die Summe ist das Ergebnis der Arbeit, keine Aufgabe. Als höchstes Element ganz oben zog sie den Blick auf sich, bevor überhaupt zu sehen war, ob etwas ansteht. Sie steht jetzt einzeilig unter „Jetzt dran".
+- **Stammdatenpflege und Wartezustände gedämpft (`templates/overview.html`).** „Deals pflegen" ist häufig die größte Zahl der Seite, aber nie dringend - es bekommt eine eigene ruhige Zeile mit dem Zusatz „wenn du Zeit hast". Zustände ohne Handlungsbedarf (auf Prämie warten, auf Kündigung warten inkl. Startdatum, Bestätigung der Bank, abgeschlossen) stehen klein und farblos darunter; abgelehnte und verworfene Vorschläge nur noch als Fußzeile.
+- **Ausdrücklicher Leerzustand (`templates/overview.html`).** Steht nichts an, sagt die Seite „Nichts zu tun", statt eine Reihe Nullen zu zeigen.
+- **Aufgeräumt: die Pipeline-Segmente entfallen ersatzlos (`static/css/style.css`).** Mit dem Umbau ist die `.pipe`-Markup-Familie in keinem Template mehr in Gebrauch - die zugehörigen 129 CSS-Zeilen sind entfernt, ebenso die dadurch doppelten Hero-Regeln. Der Test, der jedem Status eine Pipeline-Farbe abverlangte, prüft jetzt nur noch die weiterhin genutzten Chip-Farben; dafür prüft ein neuer Test, dass jede Aktionsfarbe der Startseite im CSS existiert.
+
 ## 2.53.2
 
 Modaldialoge waren im dunklen Design hell geblieben, und ein Button-Text lief über den Rand hinaus.

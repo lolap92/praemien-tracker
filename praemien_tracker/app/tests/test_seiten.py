@@ -231,10 +231,11 @@ def test_alle_todo_kategorien_rendern(db):
         assert f"panel-{slug}" in antwort.text, f"Kategorie {kategorie} wird nicht gerendert"
 
 
-def test_uebersicht_zeigt_eigene_deal_pflegen_kachel_neben_der_pipeline(db):
-    """"Deal pflegen" ist kein siebter Pipeline-Status (ein Deal kann
-    gleichzeitig einen echten Status UND offene Angaben haben), taucht also
-    als eigene Kachel auf - nicht als zusätzliches Pipeline-Segment."""
+def test_uebersicht_zeigt_deal_pflegen_ausserhalb_von_jetzt_dran(db):
+    """Fehlende Stammdaten sind eine Aufgabe ohne Frist. Sie stehen deshalb in
+    der ruhigen "Nebenbei"-Zeile und nicht in "Jetzt dran" - sonst stellt die
+    Pflege (meist die größte Zahl der Seite) alles Dringende in den
+    Schatten."""
     eintrag = Deal(
         kontoart="Depot",
         kontonummer=None,
@@ -244,14 +245,12 @@ def test_uebersicht_zeigt_eigene_deal_pflegen_kachel_neben_der_pipeline(db):
     db.add(eintrag)
     db.commit()
 
-    antwort = client.get("/overview")
-    assert antwort.status_code == 200
-    assert 'href="todos?tab=pflegen"' in antwort.text
-    assert "Deals pflegen" in antwort.text
-    assert 'href="todos?tab=manuell"' in antwort.text
-    assert "Aufgaben" in antwort.text
-    assert 'href="todos?tab=pruefen"' in antwort.text
-    assert "Zu prüfen" in antwort.text
+    html = client.get("/overview").text
+    assert 'href="todos?tab=pflegen"' in html
+    assert "Deals pflegen" in html
+
+    jetzt_dran = html.split('class="akt-liste"')[1].split("</div>")[0] if 'class="akt-liste"' in html else ""
+    assert "pflegen" not in jetzt_dran
 
 
 def test_jede_todo_kategorie_hat_einen_css_reiter():
@@ -265,25 +264,103 @@ def test_jede_todo_kategorie_hat_einen_css_reiter():
         assert f"#todotab-{slug}:checked ~ .todo-panels #panel-{slug}" in css, f"CSS fehlt für {slug}"
 
 
-def test_jeder_status_hat_eine_pipeline_farbe():
+def test_jeder_status_hat_eine_chip_farbe():
     """Derselbe Fehler wie A1: die CSS-Klasse hieß anders als der Status."""
     from praemien_tracker import derived
     from praemien_tracker.templating import STATIC_DIR
 
     css = (STATIC_DIR / "css" / "style.css").read_text(encoding="utf-8")
     for s in derived.STATUS_ORDER:
-        assert f".pipe-bar-{s} {{" in css, f"Pipeline-Farbe fehlt für {s}"
         assert f".chip.status-{s} {{" in css, f"Chip-Farbe fehlt für {s}"
 
 
-def test_overview_tiles_link_to_todos(deal):
+def test_jede_aktionsfarbe_der_uebersicht_existiert_im_css():
+    """Die Aufgabenzeilen der Startseite färben sich über .akt-<farbe>. Ein
+    Tippfehler dort bliebe sonst unbemerkt: die Zeile wäre einfach grau."""
+    from praemien_tracker.routers.overview import AKTION_KATEGORIEN
+    from praemien_tracker.templating import STATIC_DIR
+
+    css = (STATIC_DIR / "css" / "style.css").read_text(encoding="utf-8")
+    for _, _, _, farbe in AKTION_KATEGORIEN:
+        assert f".akt-{farbe} .akt-num {{" in css, f"Farbe fehlt für .akt-{farbe}"
+
+
+def test_overview_verlinkt_offene_aufgaben_in_die_todo_liste(deal):
+    """Jede Aufgabenzeile führt genau dorthin, wo die Sache erledigt wird."""
     antwort = client.get("/overview")
     assert antwort.status_code == 200
     html = antwort.text
     assert 'href="todos?tab=bedingungen"' in html
-    assert 'href="todos?tab=praemie"' in html
-    assert 'href="todos?tab=praemie_pruefen"' in html
-    assert 'href="deals?status=wartet_auf_kuendigung"' in html
-    assert 'href="todos?tab=kuendigen"' in html
-    assert 'href="todos?tab=bestaetigung"' in html
-    assert 'href="deals?status=abgeschlossen"' in html
+    assert 'href="todos?tab=pruefen"' in html
+    assert 'href="todos?tab=pflegen"' in html
+
+
+def test_overview_zeigt_nur_kategorien_mit_offenen_punkten(deal):
+    """Kern des Umbaus: Zähler, hinter denen nichts steckt, verschwinden. Die
+    Fixture hat weder ein kündbares noch ein bestätigungsreifes Konto - beide
+    Zeilen dürfen deshalb gar nicht erst auftauchen."""
+    html = client.get("/overview").text
+    aufgaben = html.split('class="akt-liste"')[1].split("</div>\n</div>")[0]
+    assert "todos?tab=kuendigen" not in aufgaben
+    assert "todos?tab=bestaetigung" not in aufgaben
+
+
+def test_overview_stellt_ueberfaelliges_nach_oben(db):
+    """Überfälliges steht vor allem anderen und wird ausdrücklich benannt -
+    vorher war einer Zahl nicht anzusehen, ob eine Frist schon verstrichen
+    war."""
+    import datetime
+
+    max_ = Inhaber(name="Max")
+    kuendbar = Deal(
+        kontoart="Girokonto",
+        kontonummer="DE1",
+        zugangsdaten_gespeichert=True,
+        bank=Bank(name="Kuendbar-Bank"),
+        inhaber=max_,
+    )
+    kuendbar.praemien.append(Praemie(quelle="bank", betrag=Decimal("100"), erhalten=True))
+
+    ueberfaellig = Deal(
+        kontoart="Girokonto",
+        kontonummer="DE2",
+        zugangsdaten_gespeichert=True,
+        bank=Bank(name="Frist-Bank"),
+        inhaber=max_,
+    )
+    ueberfaellig.praemien.append(Praemie(quelle="bank", betrag=Decimal("100"), erhalten=True))
+    ueberfaellig.bedingungen.append(
+        Bedingung(
+            beschreibung="Gehaltseingang",
+            erfuellt=False,
+            faellig_bis=datetime.date.today() - datetime.timedelta(days=3),
+        )
+    )
+    db.add_all([kuendbar, ueberfaellig])
+    db.commit()
+
+    html = client.get("/overview").text
+    assert "überfällig" in html
+    assert html.index('href="todos?tab=bedingungen"') < html.index('href="todos?tab=kuendigen"')
+
+
+def test_overview_ohne_offene_punkte_sagt_das_ausdruecklich(db):
+    """Ohne Aufgaben soll die Seite das sagen, statt eine Reihe Nullen zu
+    zeigen."""
+    fertig = Deal(
+        kontoart="Girokonto",
+        kontonummer="DE3",
+        gekuendigt=True,
+        gekuendigt_im_monat="2025-03",
+        kuendigung_bestaetigt=True,
+        zugangsdaten_gespeichert=True,
+        bank=Bank(name="Fertig-Bank"),
+        inhaber=Inhaber(name="Max"),
+    )
+    fertig.praemien.append(Praemie(quelle="bank", betrag=Decimal("100"), erhalten=True))
+    db.add(fertig)
+    db.commit()
+
+    html = client.get("/overview").text
+    assert "Nichts zu tun" in html
+    assert 'class="akt-liste"' not in html

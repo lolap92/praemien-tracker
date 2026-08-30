@@ -36,6 +36,10 @@
   --received: #1b9e77;
   --open: #b9822f;
   --danger: #b4462a;
+  /* Schrift auf gefüllter --danger-Fläche (überfällig-Zahl und -Chip). Im
+     dunklen Design ist --danger deutlich heller, dort trägt Weiß nicht mehr -
+     deshalb ein eigenes Token statt eines festen #fff. */
+  --danger-ink: #ffffff;
 
   /* Die dunkle Hero-Kachel (Übersicht). Als eigene Tokens, weil --ink im
      dunklen Design hell wird und die Kachel sonst helle Schrift auf hellem
@@ -86,6 +90,7 @@
     --received: #35c79b;
     --open: #dba85f;
     --danger: #e37b5c;
+    --danger-ink: #2a1109;
 
     --hero-bg: #0c1b17;
     --hero-ink: #eaf3f0;
@@ -116,6 +121,7 @@
   --received: #35c79b;
   --open: #dba85f;
   --danger: #e37b5c;
+  --danger-ink: #2a1109;
 
   --hero-bg: #0c1b17;
   --hero-ink: #eaf3f0;
@@ -422,7 +428,10 @@ main {
   margin: 0 0 0.6rem;
 }
 
-/* ---------- hero stat card ---------- */
+/* ---------- Geld-Kachel (nur Übersicht) ----------
+   Bewusst flach und einzeilig: die Summe ist das Ergebnis der Arbeit, keine
+   Aufgabe. Als hohe Kachel ganz oben (so war es vorher) zog sie den Blick auf
+   sich, bevor überhaupt zu sehen war, ob etwas zu tun ist. */
 
 .hero {
   background: var(--hero-bg);
@@ -432,27 +441,35 @@ main {
 
 .hero .card-label {
   color: var(--hero-ink-soft);
+  margin-bottom: 0.3rem;
+}
+
+.hero-zeile {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .hero .total {
   font-family: var(--font-mono);
-  font-size: 2.2rem;
+  font-size: 1.7rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1;
 }
 
 .hero .total .cur {
-  font-size: 1.2rem;
+  font-size: 1rem;
   color: var(--hero-ink-soft);
   margin-left: 0.25rem;
 }
 
 .hero .progress {
-  height: 7px;
+  height: 5px;
   border-radius: 4px;
   background: var(--hero-line);
-  margin-top: 1rem;
+  margin-top: 0.8rem;
   overflow: hidden;
 }
 
@@ -461,180 +478,40 @@ main {
   background: var(--received);
 }
 
-.hero .split {
+.hero-split {
   display: flex;
-  gap: 0;
-  margin-top: 1.1rem;
-  border-top: 1px solid var(--hero-line);
-  padding-top: 0.9rem;
+  gap: 1.1rem;
+  text-align: right;
 }
 
-.hero .split .col {
-  flex: 1;
-}
-
-.hero .split .col + .col {
-  border-left: 1px solid var(--hero-line);
-  padding-left: 0.9rem;
-}
-
-.hero .split .k {
-  font-size: 0.72rem;
+.hero-split .k {
+  font-size: 0.68rem;
   color: var(--hero-ink-soft);
-  margin-bottom: 0.25rem;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  justify-content: flex-end;
+  gap: 0.35rem;
 }
 
-.hero .split .k::before {
+.hero-split .k::before {
   content: "";
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
 }
 
-.hero .split .col.recv .k::before {
+.hero-split .col.recv .k::before {
   background: var(--received);
 }
 
-.hero .split .col.open .k::before {
+.hero-split .col.open .k::before {
   background: var(--open);
 }
 
-.hero .split .v {
+.hero-split .v {
   font-family: var(--font-mono);
-  font-size: 1.2rem;
+  font-size: 0.98rem;
   font-weight: 600;
-}
-
-/* ---------- pipeline segmented ---------- */
-
-.pipe {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-.pipe .seg {
-  flex: 1 1 90px;
-  text-align: center;
-  text-decoration: none;
-  color: inherit;
-  display: block;
-}
-
-.pipe .seg .bar {
-  height: 6px;
-  border-radius: 3px;
-  margin-bottom: 0.5rem;
-}
-
-.pipe .seg .cnt {
-  font-family: var(--font-mono);
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.pipe.pipe-4 {
-  flex-wrap: nowrap;
-}
-
-.pipe.pipe-4 .seg {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.pipe.pipe-4 .seg .cnt {
-  font-size: 0.95rem;
-}
-
-.pipe.pipe-4 .seg .nm {
-  font-size: 0.62rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Pipeline-Kachel (7 Segmente): feste 4-Spalten statt frei umbrechender
-   90px-Kacheln - sonst passen nur 3 pro Zeile (3 Zeilen zu je 3/3/1). Mit 4
-   Spalten sind es 2 Zeilen (4/3), analog zu .pipe-4 bei Vorschläge mit
-   einzeiligen, abgeschnittenen Labels statt Umbruch auf 2 Zeilen. */
-.pipe.pipe-7 .seg {
-  flex: 1 1 21%;
-  min-width: 0;
-}
-
-.pipe.pipe-7 .seg .cnt {
-  font-size: 0.95rem;
-}
-
-.pipe.pipe-7 .seg .nm {
-  font-size: 0.66rem;
-}
-
-.pipe .seg .nm {
-  font-size: 0.72rem;
-  color: var(--ink-soft);
-  line-height: 1.2;
-  margin-top: 0.1rem;
-}
-
-.pipe-bar-manuell {
-  background: var(--accent);
-}
-.pipe-bar-pflegen {
-  background: var(--ink-faint);
-}
-.pipe-bar-pruefen {
-  background: var(--st-wait);
-}
-.pipe-bar-bedingungen {
-  background: var(--st-cond);
-}
-.pipe-bar-praemie_warten {
-  background: var(--st-wait);
-}
-.pipe-bar-praemie_pruefen {
-  background: var(--st-wait);
-}
-.pipe-bar-wartet_auf_kuendigung {
-  background: var(--st-pending-cancel);
-}
-.pipe-bar-kuendigen {
-  background: var(--st-cancel);
-}
-.pipe-bar-bestaetigung_warten {
-  background: var(--st-confirm);
-}
-.pipe-bar-abgeschlossen {
-  background: var(--st-done);
-}
-
-.pipe-bar-vorschlag-vorgeschlagen {
-  background: var(--st-done);
-}
-.pipe-bar-vorschlag-zu_pruefen {
-  background: var(--st-wait);
-}
-.pipe-bar-vorschlag-abgelehnt {
-  background: var(--ink-faint);
-}
-.pipe-bar-vorschlag-verworfen {
-  background: var(--danger);
-}
-
-/* Segmente mit Zähler 0 werden ausgegraut, damit auf der Übersicht auf einen
-   Blick klar ist, wo gerade etwas ansteht und wo nicht - analog zu
-   .todo-tab-leer bei den ToDo-Tabs. Bleibt weiterhin normal anklickbar. Die
-   Balkenfarbe wird dabei via höherer Selektor-Spezifität (4 statt 1 Klasse)
-   ohne !important überschrieben. */
-.pipe .seg.seg-leer {
-  opacity: 0.45;
-}
-
-.pipe .seg.seg-leer .bar {
-  background: var(--ink-faint);
 }
 
 /* ---------- status chip ---------- */
@@ -2677,9 +2554,9 @@ dialog.vk-dialog h3 {
 }
 
 /* ---------- Übersicht: kompaktere Abstände auf dem Handy ----------
-   Ziel: die vier Kacheln (Prämien gesamt, Aufgaben & Pflege, Pipeline,
-   Vorschläge) passen auf einem Handy-Bildschirm ohne Scrollen übereinander -
-   nur Innenabstände/Schriftgrößen verkleinert, keine Inhalte entfernt. */
+   Ziel: die Aufgabenliste "Jetzt dran" und die Geld-Kachel sind auf einem
+   Handy-Bildschirm ohne Scrollen zu sehen - nur Innenabstände und
+   Schriftgrößen verkleinert, keine Inhalte entfernt. */
 @media (max-width: 600px) {
   main {
     padding: 0.75rem 1rem;
@@ -2688,24 +2565,329 @@ dialog.vk-dialog h3 {
     padding: 0.8rem 1rem;
     margin-bottom: 0.6rem;
   }
-  .hero .total {
-    font-size: 1.7rem;
-  }
   .hero .progress {
     margin-top: 0.6rem;
-  }
-  .hero .split {
-    margin-top: 0.7rem;
-    padding-top: 0.6rem;
   }
   .card-label,
   .sec-t {
     margin-bottom: 0.4rem;
   }
-  .pipe {
-    gap: 0.3rem;
+  .akt {
+    padding: 0.62rem 0;
   }
-  .pipe .seg .bar {
-    margin-bottom: 0.3rem;
+}
+
+/* ---------- Startseite: Aufgaben zuerst ----------
+   Die Übersicht zeigte früher vier gleich große Kachelreihen mit insgesamt
+   14 Zählern - alle in derselben Schriftgröße, alle gleich bunt. Ob dahinter
+   Arbeit steckte oder nur ein Zustand, war nicht zu sehen. Jetzt gibt es
+   genau eine betonte Fläche ("Jetzt dran") und darunter absteigend
+   gedämpfte Bereiche. Die Farben bleiben die Status-Tokens von oben, damit
+   die Startseite dieselbe Sprache spricht wie Deals-Liste und ToDo-Reiter. */
+
+.jetzt {
+  padding-bottom: 0.4rem;
+}
+
+.jetzt-kopf {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.jetzt-kopf .card-label {
+  margin-bottom: 0.55rem;
+}
+
+.jetzt-summe {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.jetzt-summe-n {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.jetzt-summe-warn {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--danger);
+}
+
+/* Die Karte bekommt nur dann einen roten Rand, wenn wirklich etwas
+   überfällig ist - sonst wäre das Signal immer an und damit wertlos. */
+.jetzt-warn {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(180, 70, 42, 0.08);
+}
+
+.akt-liste {
+  display: flex;
+  flex-direction: column;
+}
+
+.akt {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem 0;
+  text-decoration: none;
+  color: inherit;
+  border-top: 1px solid var(--line);
+}
+
+.akt:first-child {
+  border-top: none;
+}
+
+/* Zahl in einem farbigen Feld: Farbe = Thema, Fläche = Dringlichkeit.
+   Normale Aufgaben bekommen die Themenfarbe nur getönt, überfällige als
+   volle Fläche (siehe .akt-dringend) - so hebt sich Dringendes auch dann ab,
+   wenn zwei Zeilen dieselbe Statusfarbe tragen. Die erste Deklaration ist
+   der Rückfall für Browser ohne color-mix(); die zweite überschreibt sie
+   dort, wo es unterstützt wird. Feste Mindestbreite, damit alle Titel auf
+   einer Kante stehen. */
+.akt-num {
+  flex: 0 0 auto;
+  min-width: 2.4rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 12px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.akt-cond .akt-num {
+  color: var(--st-cond);
+  background: color-mix(in srgb, var(--st-cond) 16%, transparent);
+}
+.akt-wait .akt-num {
+  color: var(--st-wait);
+  background: color-mix(in srgb, var(--st-wait) 16%, transparent);
+}
+.akt-cancel .akt-num {
+  color: var(--st-cancel);
+  background: color-mix(in srgb, var(--st-cancel) 16%, transparent);
+}
+.akt-accent .akt-num {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.akt-done .akt-num {
+  color: var(--st-done);
+  background: color-mix(in srgb, var(--st-done) 16%, transparent);
+}
+
+/* Überfällig: volle Fläche statt Tönung - das ist das einzige Signal auf der
+   Seite, das rot und gefüllt zugleich ist. */
+.akt-dringend .akt-num,
+.akt-danger .akt-num {
+  color: var(--danger-ink);
+  background: var(--danger);
+}
+
+.akt-mitte {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.akt-titel {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.akt-chip {
+  display: inline-block;
+  margin-left: 0.45rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--danger);
+  color: var(--danger-ink);
+  font-family: var(--font-body);
+  font-size: 0.63rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  vertical-align: 0.08em;
+}
+
+.akt-detail {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.akt-pfeil {
+  flex: 0 0 auto;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--ink-faint);
+}
+
+/* Leerer Zustand: die Startseite soll auch dann eine Aussage machen, wenn
+   nichts ansteht - vorher blieben nur Nullen stehen. */
+.jetzt-frei {
+  padding-bottom: 1.1rem;
+}
+
+.frei-zeile {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.frei-haken {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  color: var(--st-done);
+}
+
+.frei-t {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.frei-s {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+/* Stammdaten-Pflege: eine Aufgabe, aber keine mit Frist. Eigene, ruhigere
+   Karte statt einer Zeile in "Jetzt dran" - sonst dominiert sie dort mit
+   der größten Zahl, obwohl sie nie dringend ist. */
+.nebenbei {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-decoration: none;
+  color: inherit;
+  background: var(--surface-2);
+  padding: 0.8rem 1.1rem;
+}
+
+.neben-num {
+  flex: 0 0 auto;
+  min-width: 2.4rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.neben-mitte {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.neben-t {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.neben-tag {
+  font-family: var(--font-body);
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: var(--ink-faint);
+  margin-left: 0.35rem;
+}
+
+.neben-s {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Zustände ohne Handlungsbedarf: sichtbar, aber bewusst klein und ohne
+   Farbe - sie sollen nicht mit den Aufgaben oben um Aufmerksamkeit
+   konkurrieren. */
+.ruhig {
+  background: transparent;
+  border-style: dashed;
+}
+
+.ruhig-liste {
+  display: flex;
+  flex-direction: column;
+}
+
+.ruhig-zeile {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  padding: 0.42rem 0;
+  text-decoration: none;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.ruhig-num {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 1.4rem;
+  text-align: right;
+}
+
+.ruhig-label {
+  flex: 1 1 auto;
+}
+
+.ruhig-zusatz {
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+}
+
+.ruhig-null {
+  opacity: 0.45;
+}
+
+.ruhig-fuss {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.74rem;
+}
+
+.ruhig-fuss a {
+  color: var(--ink-faint);
+  text-decoration: none;
+}
+
+@media (min-width: 720px) {
+  .akt-detail,
+  .neben-s {
+    font-size: 0.8rem;
+  }
+
+  .hero .total {
+    font-size: 2rem;
   }
 }

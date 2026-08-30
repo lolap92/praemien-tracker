@@ -3,107 +3,103 @@
 {% block appbar_title %}Übersicht{% endblock %}
 {% block content %}
 
-<div class="card hero">
-  <div class="card-label">Prämien gesamt</div>
-  <div class="total">{{ kennzahlen.gesamt | eur_ganz }}<span class="cur">€</span></div>
-  {% set anteil = (kennzahlen.erhalten / kennzahlen.gesamt * 100) if kennzahlen.gesamt else 0 %}
-  <div class="progress"><div class="fill" style="width: {{ anteil }}%"></div></div>
-  <div class="split">
-    <div class="col recv">
-      <div class="k">Schon erhalten</div>
-      <div class="v">{{ kennzahlen.erhalten | eur }}</div>
-    </div>
-    <div class="col open">
-      <div class="k">Noch offen</div>
-      <div class="v">{{ kennzahlen.offen | eur }}</div>
+{# Aufbau der Startseite in drei Stufen, statt wie früher vier gleich
+   aussehende Zähler-Kacheln nebeneinander:
+   1. "Jetzt dran" - nur das, wo der Nutzer selbst handeln muss.
+   2. Geld - Ergebnis, keine Aufgabe, deshalb schmal.
+   3. "Nebenbei" und "Läuft" - gedämpft, damit sie nicht um Aufmerksamkeit
+      konkurrieren.
+   Was gar keine Aufgabe mehr ist (abgelehnte/verworfene Vorschläge,
+   abgeschlossene Deals), steht nur noch als Zeile ganz unten. #}
+
+{% if aktionen %}
+<div class="card jetzt{{ ' jetzt-warn' if ueberfaellig_gesamt else '' }}">
+  <div class="jetzt-kopf">
+    <div class="card-label">Jetzt dran</div>
+    <div class="jetzt-summe">
+      <span class="jetzt-summe-n">{{ aufgaben_gesamt }}</span>
+      {% if ueberfaellig_gesamt %}<span class="jetzt-summe-warn">{{ ueberfaellig_gesamt }} überfällig</span>{% endif %}
     </div>
   </div>
-</div>
 
-<div class="card">
-  <div class="card-label">Pipeline · {{ anzahl_deals }} Deals</div>
-  <div class="pipe pipe-7">
-    {% set status_to_tab = {
-      'bedingungen': 'bedingungen',
-      'praemie_warten': 'praemie',
-      'praemie_pruefen': 'praemie_pruefen',
-      'kuendigen': 'kuendigen',
-      'bestaetigung_warten': 'bestaetigung'
-    } %}
-    {# Gekürzte Labels nur für diese enge 4-Spalten-Kachel - der Rest der App
-       (Chips, Deals-Filter) nutzt weiterhin status_labels mit vollem Text. #}
-    {% set kurzlabel = {
-      'bedingungen': 'Bedingungen',
-      'praemie_warten': 'Prämie warten',
-      'praemie_pruefen': 'Auszahlung prüfen',
-      'wartet_auf_kuendigung': 'Kündigung warten',
-      'kuendigen': 'Kündigen',
-      'bestaetigung_warten': 'Bestätigung',
-      'abgeschlossen': 'Abgeschlossen'
-    } %}
-    {% for s in status_order %}
-    {% set anzahl = nach_status[s] | length %}
-    {% set seg_class = "seg seg-leer" if anzahl == 0 else "seg" %}
-    {% if s == 'abgeschlossen' %}
-    <a class="{{ seg_class }}" href="deals?status=abgeschlossen">
-    {% elif s == 'wartet_auf_kuendigung' %}
-    <a class="{{ seg_class }}" href="deals?status=wartet_auf_kuendigung">
-    {% else %}
-    {% set tab_slug = status_to_tab.get(s) %}
-    <a class="{{ seg_class }}" href="todos{% if tab_slug %}?tab={{ tab_slug }}{% endif %}">
-    {% endif %}
-      <div class="bar pipe-bar-{{ s }}"></div>
-      <div class="cnt">{{ anzahl }}</div>
-      <div class="nm">{{ kurzlabel[s] }}</div>
+  <div class="akt-liste">
+    {% for a in aktionen %}
+    <a class="akt akt-{{ a.farbe }}{{ ' akt-dringend' if a.ueberfaellig else '' }}" href="{{ a.url }}">
+      <span class="akt-num">{{ a.anzahl }}</span>
+      <span class="akt-mitte">
+        <span class="akt-titel">
+          {{ a.titel }}{% if a.ueberfaellig %}<span class="akt-chip">{% if a.ueberfaellig == a.anzahl %}überfällig{% else %}{{ a.ueberfaellig }}× überfällig{% endif %}</span>{% endif %}
+        </span>
+        <span class="akt-detail">
+          {%- if a.hinweis %}{{ a.hinweis }} · {% endif -%}
+          {{ a.beispiele | join(" · ") }}{% if a.weitere %} · +{{ a.weitere }} weitere{% endif %}
+        </span>
+      </span>
+      <span class="akt-pfeil" aria-hidden="true">›</span>
     </a>
     {% endfor %}
   </div>
 </div>
-
-<div class="card">
-  <div class="card-label">Aufgaben &amp; Pflege</div>
-  <div class="pipe">
-    <a class="seg{{ ' seg-leer' if anzahl_manuelle_aufgaben == 0 else '' }}" href="todos?tab=manuell">
-      <div class="bar pipe-bar-manuell"></div>
-      <div class="cnt">{{ anzahl_manuelle_aufgaben }}</div>
-      <div class="nm">Aufgaben</div>
-    </a>
-    <a class="seg{{ ' seg-leer' if anzahl_deal_pflegen == 0 else '' }}" href="todos?tab=pflegen">
-      <div class="bar pipe-bar-pflegen"></div>
-      <div class="cnt">{{ anzahl_deal_pflegen }}</div>
-      <div class="nm">Deals pflegen</div>
-    </a>
-    <a class="seg{{ ' seg-leer' if anzahl_zu_pruefen == 0 else '' }}" href="todos?tab=pruefen">
-      <div class="bar pipe-bar-pruefen"></div>
-      <div class="cnt">{{ anzahl_zu_pruefen }}</div>
-      <div class="nm">Zu prüfen</div>
-    </a>
+{% else %}
+<div class="card jetzt jetzt-frei">
+  <div class="card-label">Jetzt dran</div>
+  <div class="frei-zeile">
+    <svg class="frei-haken" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16 9.6"/></svg>
+    <div>
+      <div class="frei-t">Nichts zu tun</div>
+      <div class="frei-s">Alle Deals laufen ohne dein Zutun weiter.</div>
+    </div>
   </div>
 </div>
+{% endif %}
 
-<div class="card">
-  <div class="card-label">Vorschläge</div>
-  <div class="pipe pipe-4">
-    <a class="seg{{ ' seg-leer' if vorschlag_zaehler.vorgeschlagen == 0 else '' }}" href="vorschlaege?status=vorgeschlagen">
-      <div class="bar pipe-bar-vorschlag-vorgeschlagen"></div>
-      <div class="cnt">{{ vorschlag_zaehler.vorgeschlagen }}</div>
-      <div class="nm">Vorgeschlagen</div>
+<div class="card hero">
+  <div class="hero-zeile">
+    <div>
+      <div class="card-label">Prämien gesamt</div>
+      <div class="total">{{ kennzahlen.gesamt | eur_ganz }}<span class="cur">€</span></div>
+    </div>
+    <div class="hero-split">
+      <div class="col recv">
+        <div class="k">Erhalten</div>
+        <div class="v">{{ kennzahlen.erhalten | eur_ganz }} €</div>
+      </div>
+      <div class="col open">
+        <div class="k">Offen</div>
+        <div class="v">{{ kennzahlen.offen | eur_ganz }} €</div>
+      </div>
+    </div>
+  </div>
+  {% set anteil = (kennzahlen.erhalten / kennzahlen.gesamt * 100) if kennzahlen.gesamt else 0 %}
+  <div class="progress"><div class="fill" style="width: {{ anteil }}%"></div></div>
+</div>
+
+{% if anzahl_deal_pflegen %}
+<a class="card nebenbei" href="todos?tab=pflegen">
+  <span class="neben-num">{{ anzahl_deal_pflegen }}</span>
+  <span class="neben-mitte">
+    <span class="neben-t">Deals pflegen <span class="neben-tag">wenn du Zeit hast</span></span>
+    <span class="neben-s">{{ pflege_beispiele | join(" · ") }}{% if pflege_weitere %} · +{{ pflege_weitere }} weitere{% endif %}</span>
+  </span>
+  <span class="akt-pfeil" aria-hidden="true">›</span>
+</a>
+{% endif %}
+
+<div class="card ruhig">
+  <div class="card-label">Läuft – nichts zu tun</div>
+  <div class="ruhig-liste">
+    {% for z in laeuft %}
+    <a class="ruhig-zeile{{ ' ruhig-null' if z.anzahl == 0 else '' }}" href="{{ z.url }}">
+      <span class="ruhig-num">{{ z.anzahl }}</span>
+      <span class="ruhig-label">{{ z.label }}</span>
+      {% if z.zusatz %}<span class="ruhig-zusatz">{{ z.zusatz }}</span>{% endif %}
     </a>
-    <a class="seg{{ ' seg-leer' if vorschlag_zaehler.zu_pruefen == 0 else '' }}" href="vorschlaege?status=zu_pruefen">
-      <div class="bar pipe-bar-vorschlag-zu_pruefen"></div>
-      <div class="cnt">{{ vorschlag_zaehler.zu_pruefen }}</div>
-      <div class="nm">Zu prüfen</div>
-    </a>
-    <a class="seg{{ ' seg-leer' if vorschlag_zaehler.abgelehnt == 0 else '' }}" href="vorschlaege?status=automatisch_abgelehnt">
-      <div class="bar pipe-bar-vorschlag-abgelehnt"></div>
-      <div class="cnt">{{ vorschlag_zaehler.abgelehnt }}</div>
-      <div class="nm">Abgelehnt</div>
-    </a>
-    <a class="seg{{ ' seg-leer' if vorschlag_zaehler.verworfen == 0 else '' }}" href="vorschlaege?status=verworfen">
-      <div class="bar pipe-bar-vorschlag-verworfen"></div>
-      <div class="cnt">{{ vorschlag_zaehler.verworfen }}</div>
-      <div class="nm">Verworfen</div>
-    </a>
+    {% endfor %}
+  </div>
+  <div class="ruhig-fuss">
+    <a href="deals">Alle {{ anzahl_deals }} Deals</a>
+    <a href="vorschlaege?status=automatisch_abgelehnt">Abgelehnte Vorschläge ({{ vorschlag_zaehler.abgelehnt }})</a>
+    <a href="vorschlaege?status=verworfen">Verworfen ({{ vorschlag_zaehler.verworfen }})</a>
   </div>
 </div>
 
