@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.56.1
+
+**Eigenes Icon in der Home-Assistant-Seitenleiste.** Prämien-Tracker und Budget-Tracker waren dort beide auf `mdi:cash-multiple` eingestellt und dadurch nicht auf einen Blick unterscheidbar. Die Seitenleiste zeigt für Add-ons ausschließlich benannte Material-Design-Icons (`panel_icon` in `config.yaml`), kein eigenes Bild – deshalb jetzt `mdi:medal-outline` (Medaille), das dem eigenen App-Icon (Medaille mit Stern) sehr nahekommt und sich klar vom Sparschwein des Budget-Trackers unterscheidet.
+
 ## 2.56.0
 
 Der KI-Deal-Finder erkennt reine Geschäftskunden-Angebote und lehnt sie automatisch ab.
