@@ -419,3 +419,7 @@ class ProtokollEintrag(Base):
     bank_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     inhaber_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     kontoart: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Vollständig gerenderte Momentaufnahme der Dealseite (deal_snapshot.html)
+    # zum Zeitpunkt dieses Eintrags - anders als der Link auf deals/{id}
+    # bleibt das auch dann lesbar, wenn der Deal später gelöscht wird.
+    html_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)

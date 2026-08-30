@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.53.0
+
+Listen im Tab „Zu erledigen" jetzt alphabetisch nach Bank sortiert, und das Protokoll archiviert die Dealseite als HTML statt nur zu verlinken.
+
+- **Alle ToDo-Listen alphabetisch nach Bankname (`routers/todos.py`).** Bisher standen die Einträge in DB-Einfügereihenfolge (bzw. bei "Auf Prämie warten"/"Prämienauszahlung prüfen" nach Prüfdatum). Jetzt ist der Bankname der primäre Sortierschlüssel in jeder Kategorie sowie in "Erledigte Aufgaben" - bei gleicher Bank/gleichem Inhaber bleibt das bisherige Fälligkeitsdatum als Tiebreak wirksam, die Dringlichkeit bei mehreren offenen Prämien derselben Bank geht also nicht verloren. Manuelle Aufgaben ohne Deal landen mangels Bankname am Ende.
+- **Protokoll-Einträge speichern jetzt eine gerenderte Momentaufnahme der Dealseite (`protokoll.py`, neue Spalte `protokoll.html_snapshot`, Migration 0020).** Der "Deal"-Link im Änderungsprotokoll zeigte bisher nur auf `deals/{id}` - die *aktuelle* Seite. Wird der Deal später gelöscht, läuft der Link ins Leere, obwohl der Protokoll-Eintrag selbst bewusst ohne Fremdschlüssel genau dafür bestehen bleibt (siehe models.ProtokollEintrag). Jeder Protokoll-Eintrag mit Deal-Bezug rendert jetzt zusätzlich `deal_snapshot.html` - eine eigenständige, von Login/Navigation unabhängige Archiv-Seite - und speichert sie mit ab. Ein neuer "Archiv"-Link neben der Deal-ID (`GET /protokoll/{id}/archiv`) bleibt dadurch auch nach dem Löschen des Deals abrufbar.
+- **Nebenbei behoben: `bank_name`/`inhaber_name` im Protokoll konnten bei ganz frisch angelegten Deals leer bleiben (`protokoll.py`).** SQLAlchemy löst die `bank`/`inhaber`-Beziehung an einem soeben erst erstellten Objekt innerhalb von `after_flush` nicht zuverlässig lazy auf, wenn nur die rohe `bank_id`/`inhaber_id` gesetzt wurde (statt der Objektzuweisung `deal.bank = ...`, die die App selbst überall verwendet). Ein Fallback über `Session.get()` holt Bank/Inhaber in diesem Randfall jetzt zuverlässig nach - relevant für den neuen HTML-Snapshot, der sonst ohne Bank-/Inhaber-Namen dagestanden hätte.
+
+## 2.52.3
+
+Das Häkchen vor einer „Deal pflegen"-Zeile ist jetzt funktional: es markiert alle noch offenen Felder dieses Deals auf einen Schlag als „nicht nötig", statt nur dekorativ dazustehen.
+
+- **Neuer Endpunkt `POST /deals/{id}/skip-alle-felder` (`routers/deals.py`).** Übernimmt alle laut `offene_felder()` aktuell offenen Felder in die Liste der übersprungenen Felder – dasselbe Ergebnis, als hätte man den Pflegen-Dialog geöffnet und bei jedem Feld einzeln auf × geklickt. Bewusst über `offene_felder()` statt einer vom Client mitgeschickten Feldliste ermittelt, damit nur tatsächlich offene Felder übersprungen werden können.
+- **Echtes Häkchen statt dekorativer Fläche (`templates/todos.html`).** Die „Deal pflegen"-Zeile nutzte bisher wie alle anderen ToDo-Kategorien ein leeres `.check`-Kästchen ohne Funktion (anders als bei „Bedingungen" & Co. gab es dort ja keinen einzelnen Posten zum Abhaken). Jetzt sitzt dort dieselbe anklickbare Checkbox wie bei den anderen Kategorien, verknüpft mit dem neuen Endpunkt – ein Klick, und die ganze Zeile verschwindet aus der Liste.
+
+## 2.52.2
+
+„Nicht nötig" (×) zieht in den Pflegen-Dialog um, und ein Feld-Label wird konsistenter benannt.
+
+- **× jetzt im Pflegen-Dialog statt als eigene Chips in der Übersicht (`templates/todos.html`).** Eingabe und „nicht nötig" gehören zusammen und lebten bisher an zwei Stellen: die Chips mit × in der Liste, die Eingabefelder erst im Dialog. Jetzt zeigt die Liste nur noch eine schlichte Vorschau der offenen Feldnamen, und der „Pflegen"-Dialog (vormals „Eingeben") bietet pro Feld die Eingabe und den ×-Button direkt nebeneinander. Der × sendet dabei über `formaction` denselben bestehenden `POST /deals/{id}/skip-field`-Endpunkt an, nur eben aus dem Dialog heraus statt aus einer eigenen Chip-Form.
+- **× nochmal größer (`static/css/style.css`).** Das Tapziel ist jetzt 2,1×2,1rem statt 1,7×1,7rem groß.
+- **„Zugangsdaten sichern" → „Zugangsdaten gesichert" (`derived.py`, `templates/todos.html`).** Einheitliche Benennung des Feld-Labels an allen Stellen, an denen es auftaucht (Pflegen-Dialog, Feld-Filter der ToDo-Liste).
+
+## 2.52.1
+
+„Deal pflegen" ohne Seitenwechsel: offene Felder werden jetzt direkt in einem Modaldialog eingegeben, und die Bedienelemente sind größer.
+
+- **Neuer Pflegen-Dialog statt Sprung zur Bearbeiten-Seite (`templates/todos.html`, `routers/deals.py`).** Der „+"-Link neben jedem offenen Feld führte bisher auf `deals/{id}/edit#feld` – die komplette Bearbeiten-Seite, obwohl nur ein bis drei Felder fehlten. Ein neuer „Eingeben"-Button öffnet stattdessen einen Modaldialog mit ausschließlich den noch offenen Feldern dieses Deals (Kontonummer, Zugangsdaten gesichert, erwartete Auszahlung je Prämie). Der Dialog speichert über den neuen Endpunkt `POST /deals/{id}/felder`, der bewusst nicht die bestehende `deal_update()`-Route wiederverwendet: die liest die komplette Bearbeiten-Seite per `request.form()` und hätte bei den im schlanken Dialog fehlenden Feldern (Bank, Inhaber, Kontoart, ...) den restlichen Deal überschrieben. Der neue Endpunkt übernimmt nur Felder, die laut `offene_felder()` tatsächlich noch offen sind, und lässt ein leer gelassenes Feld unangetastet offen, statt einen vorhandenen Wert zu löschen.
+- **Größere Buttons (`static/css/style.css`).** Der „×"-Button (Feld als „nicht nötig" abhaken) ist jetzt ein echtes, größeres Tapziel mit Rahmen statt eines kleinen Textzeichens, und der neue „Eingeben"-Button nutzt die normale, gut greifbare Button-Größe der App.
+
 ## 2.52.0
 
 Morgendliche Benachrichtigung läuft jetzt über das zentrale HA-Skript `script.benachrichtigung_senden`.

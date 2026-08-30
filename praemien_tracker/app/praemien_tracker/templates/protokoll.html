@@ -10,7 +10,10 @@
     Kontoart, Vorher-/Nachher-Wert, Zeitstempel und zusätzlich immer dem
     kompletten JSON der jeweiligen Zeile zu diesem Zeitpunkt. Bei neu
     angelegten oder gelöschten Deals ist darin auch das komplette JSON von
-    Prämien/Bedingungen/Aufgaben/Links enthalten. Neueste zuerst.
+    Prämien/Bedingungen/Aufgaben/Links enthalten. Der "Archiv"-Link neben der
+    Deal-ID zeigt eine gerenderte Momentaufnahme der Dealseite von diesem
+    Zeitpunkt - anders als der Link auf die Deal-ID selbst bleibt er auch
+    nach dem Löschen des Deals einsehbar. Neueste zuerst.
     {% if seiten > 1 %}Seite {{ seite }} von {{ seiten }} ({{ gesamt }} Einträge).{% endif %}
   </p>
 </div>
@@ -33,7 +36,10 @@
           <td>{{ e.tabelle }}</td>
           <td class="geld">{{ e.objekt_id }}</td>
           <td class="geld">
-            {% if e.deal_id %}<a href="deals/{{ e.deal_id }}">#{{ e.deal_id }}</a>{% else %}–{% endif %}
+            {% if e.deal_id %}
+            <a href="deals/{{ e.deal_id }}">#{{ e.deal_id }}</a>
+            {% if e.html_snapshot %}<br><a href="protokoll/{{ e.id }}/archiv" target="_blank" rel="noopener" title="Archivierte Momentaufnahme dieser Dealseite - bleibt auch nach dem Löschen des Deals abrufbar">Archiv</a>{% endif %}
+            {% else %}–{% endif %}
           </td>
           <td>{{ e.inhaber_name or "–" }}</td>
           <td>{{ e.bank_name or "–" }}</td>

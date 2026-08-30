@@ -666,6 +666,59 @@ def url_delete(request: Request, deal_id: int, url_id: int, db: Session = Depend
 # --- Deal pflegen: Felder abhaken / wieder aufnehmen ---
 
 
+@router.post("/deals/{deal_id}/felder")
+async def deal_felder_update(request: Request, deal_id: int, db: Session = Depends(get_db)):
+    """Speichert nur die im Pflegen-Dialog gezeigten, noch offenen Felder.
+
+    Bewusst kein Aufruf von deal_update(): der liest die komplette
+    Bearbeiten-Seite über request.form() und würde bei fehlenden Feldern
+    (bank, inhaber, kontoart, ...) - die der schlanke Pflegen-Dialog gar
+    nicht mitschickt - den Deal kaputt speichern. Nur Felder, die laut
+    offene_felder() tatsächlich noch offen sind, werden übernommen; ein
+    leer gelassenes Feld bleibt offen statt einen vorhandenen Wert zu
+    löschen.
+    """
+    deal = _hole_deal(db, deal_id)
+    form = await request.form()
+    offen = {f.feld for f in derived.offene_felder(deal)}
+
+    if "kontonummer" in offen:
+        wert = (form.get("kontonummer") or "").strip()
+        if wert:
+            deal.kontonummer = wert
+
+    if "zugangsdaten_gespeichert" in offen and form.get("zugangsdaten_gespeichert") == "on":
+        deal.zugangsdaten_gespeichert = True
+
+    for p in deal.praemien:
+        feldname = f"praemie_{p.id}_auszahlung_erwartet"
+        if feldname not in offen:
+            continue
+        wert = monat_aus_formular(form.get(feldname) or "")
+        if wert:
+            p.auszahlung_erwartet = wert
+
+    db.commit()
+    return redirect(request, "todos?tab=pflegen")
+
+
+@router.post("/deals/{deal_id}/skip-alle-felder")
+def skip_alle_felder(request: Request, deal_id: int, db: Session = Depends(get_db)):
+    """Markiert alle aktuell offenen Felder eines Deals auf einen Schlag als
+    "nicht nötig" - das Häkchen vor der Deal-pflegen-Zeile bewirkt damit
+    dasselbe, als hätte man den Pflegen-Dialog geöffnet und bei jedem Feld
+    einzeln auf × geklickt. Bewusst über offene_felder() statt einer vom
+    Client mitgeschickten Feldliste, damit nur tatsächlich offene Felder
+    übersprungen werden."""
+    deal = db.get(Deal, deal_id)
+    if deal:
+        neu = {f.feld for f in derived.offene_felder(deal)}
+        felder = set(derived.uebersprungene_felder_liste(deal)) | neu
+        derived.uebersprungene_felder_speichern(deal, sorted(felder))
+        db.commit()
+    return redirect(request, "todos?tab=pflegen")
+
+
 @router.post("/deals/{deal_id}/skip-field")
 def skip_field(request: Request, deal_id: int, feld: str = Form(...), db: Session = Depends(get_db)):
     deal = db.get(Deal, deal_id)

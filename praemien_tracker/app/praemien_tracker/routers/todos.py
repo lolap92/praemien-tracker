@@ -156,13 +156,22 @@ def todos_view(
     for kategorie in KATEGORIE_REIHENFOLGE:
         gruppen.setdefault(kategorie, [])
 
-    # Sort "Auf Prämie warten" and "Prämienauszahlung prüfen" by faellig_bis ascending
-    if "Auf Prämie warten" in gruppen:
-        # Since faellig_bis is set to praemie_naechste_pruefung, which returns a date, we can sort by it.
-        # Fallback to datetime.date.max if None (though praemie_naechste_pruefung always returns a date)
-        gruppen["Auf Prämie warten"].sort(key=lambda x: x.faellig_bis or datetime.date.max)
-    if "Prämienauszahlung prüfen" in gruppen:
-        gruppen["Prämienauszahlung prüfen"].sort(key=lambda x: x.faellig_bis or datetime.date.max)
+    # Alle Listen alphabetisch nach Bankname (dann Inhaber) sortiert, statt in
+    # DB-Reihenfolge - so steht bei mehreren offenen Punkten quer durch die
+    # Kategorien immer dieselbe Bank an derselben Stelle. Manuelle Aufgaben
+    # ohne Deal haben keinen Banknamen und landen deshalb ans Ende. Bei
+    # gleicher Bank/gleichem Inhaber bleibt faellig_bis als Tiebreak
+    # entscheidend - dort ist die Dringlichkeit weiterhin wichtig (siehe
+    # praemie_naechste_pruefung).
+    for kategorie_liste in gruppen.values():
+        kategorie_liste.sort(
+            key=lambda t: (
+                1 if t.deal is None else 0,
+                t.deal.bank.name.lower() if t.deal else "",
+                t.deal.inhaber.name.lower() if t.deal else "",
+                t.faellig_bis or datetime.date.max,
+            )
+        )
 
     # Sichtbare Kategorien: jede, die (ggf. leer) in gruppen steht - siehe die
     # setdefault-Aufrufe oben. Dieselbe Regel steht in todos.html noch einmal
@@ -181,8 +190,11 @@ def todos_view(
         aktiver_tab = KATEGORIE_SLUGS[default_kategorie]
     offener_dialog = dialog if DIALOG_PARAM.match(dialog or "") else ""
 
-    offene_aufgaben = [a for a in aufgaben if not a.erledigt]
-    erledigte_aufgaben = [a for a in aufgaben if a.erledigt]
+    def _aufgabe_sortierschluessel(a: Aufgabe):
+        return (1 if a.deal is None else 0, a.deal.bank.name.lower() if a.deal else "", a.deal.inhaber.name.lower() if a.deal else "")
+
+    offene_aufgaben = sorted((a for a in aufgaben if not a.erledigt), key=_aufgabe_sortierschluessel)
+    erledigte_aufgaben = sorted((a for a in aufgaben if a.erledigt), key=_aufgabe_sortierschluessel)
 
     # Kategorien, deren Kachel zwar (jetzt immer) sichtbar ist, aber komplett
     # leer bleibt, unabhängig vom Quelle-Filter - dort gibt es also wirklich

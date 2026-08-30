@@ -5,6 +5,7 @@ from decimal import Decimal
 from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
 
+from praemien_tracker import derived
 from praemien_tracker.main import app
 from praemien_tracker.models import Aufgabe, Bank, Bedingung, Deal, Inhaber, Praemie
 
@@ -82,6 +83,31 @@ def test_todos_sorting_and_filtering(db):
     html_bank = antwort_bank.text
     assert "Prämie prüfen (Spartanien, 50.00 €)" not in html_bank
     assert "Prämie prüfen (Bank, 100.00 €)" in html_bank
+
+
+def test_todos_listen_sortiert_alphabetisch_nach_bankname(db):
+    """Alle Listen im 'Zu erledigen'-Tab sind primär alphabetisch nach
+    Bankname sortiert (nicht mehr nach DB-Einfügereihenfolge). Bei
+    'Prämienauszahlung prüfen' bleibt faellig_bis als Tiebreak innerhalb
+    derselben Bank weiterhin wirksam (siehe test_todos_sorting_and_filtering)."""
+    inhaber = Inhaber(name="Sortier-Inhaber")
+    bank_z = Bank(name="Zentralbank")
+    bank_a = Bank(name="Anfangsbank")
+    db.add_all([inhaber, bank_z, bank_a])
+    db.commit()
+
+    for bank, kontonummer in [(bank_z, "DEZ1"), (bank_a, "DEA1")]:
+        deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer=kontonummer, zugangsdaten_gespeichert=True)
+        deal.bedingungen.append(Bedingung(beschreibung="Bedingung offen", erfuellt=False))
+        db.add(deal)
+    db.commit()
+
+    antwort = client.get("/todos")
+    html = antwort.text
+    idx_a = html.find("Anfangsbank")
+    idx_z = html.find("Zentralbank")
+    assert idx_a != -1 and idx_z != -1
+    assert idx_a < idx_z, "Anfangsbank (A) muss vor Zentralbank (Z) stehen"
 
 
 def test_todos_filtering_by_new_statuses(db):
@@ -430,14 +456,26 @@ def test_deal_pflegen_zeigt_alle_offenen_felder_als_chips(db):
 
     panel = soup.select_one("#panel-pflegen")
     assert panel is not None
-    chips = {mf.get_text(strip=True).rstrip("+×") for mf in panel.select(".miss .mf")}
-    assert any("Kontonummer" in c for c in chips)
-    assert any("Zugangsdaten sichern" in c for c in chips)
-    assert any("Erwartete Auszahlung" in c for c in chips)
+    vorschau = panel.select_one(".miss-vorschau").get_text(strip=True)
+    assert "Kontonummer" in vorschau
+    assert "Zugangsdaten gesichert" in vorschau
+    assert "Erwartete Auszahlung" in vorschau
 
-    plus_link = panel.select_one('a.plus[href*="kontonummer"]')
-    assert plus_link is not None
-    assert plus_link["href"] == f"deals/{deal.id}/edit#kontonummer"
+    # "Pflegen" öffnet den Dialog des Deals statt zur Bearbeiten-Seite zu
+    # springen. Dort steht pro offenem Feld die Eingabe und der ×-Button
+    # ("nicht nötig") zusammen - beide Aktionen leben nur noch dort.
+    pflegen_btn = panel.select_one(f'button[onclick*="dlg-pflegen-{deal.id}"]')
+    assert pflegen_btn is not None
+
+    dialog = soup.select_one(f"#dlg-pflegen-{deal.id}")
+    assert dialog is not None
+    assert dialog.select_one('form[action$="/felder"]') is not None
+    assert dialog.select_one('input[name="kontonummer"]') is not None
+    assert dialog.select_one('input[name="zugangsdaten_gespeichert"]') is not None
+    assert dialog.select_one('button.x[formaction$="/skip-field"][value="kontonummer"]') is not None
+    assert dialog.select_one('button.x[formaction$="/skip-field"][value="zugangsdaten_gespeichert"]') is not None
+    auszahlung_feld = next(p for p in deal.praemien)
+    assert dialog.select_one(f'input[name="praemie_{auszahlung_feld.id}_auszahlung_erwartet"]') is not None
 
 
 def test_deal_pflegen_skip_field_entfernt_den_chip_und_bleibt_beim_pflegen_tab(db):
@@ -456,6 +494,126 @@ def test_deal_pflegen_skip_field_entfernt_den_chip_und_bleibt_beim_pflegen_tab(d
     folgeantwort = client.get(antwort.headers["location"])
     assert 'id="todotab-pflegen" checked' in folgeantwort.text
     assert "Kontonummer" not in (BeautifulSoup(folgeantwort.text, "html.parser").select_one("#panel-pflegen").get_text())
+
+
+def test_deal_pflegen_felder_speichert_nur_die_offenen_felder(db):
+    """Der Pflegen-Dialog schickt nur die im Dialog gezeigten Felder ab - im
+    Gegensatz zu deal_update() darf ein fehlendes Feld (bank, inhaber, ...)
+    im Formular hier den restlichen Deal nicht verändern."""
+    bank = Bank(name="Felder-Testbank")
+    inhaber = Inhaber(name="Felder-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer=None, zugangsdaten_gespeichert=False)
+    p = Praemie(quelle="bank", betrag=Decimal("50.00"), erhalten=False, auszahlung_erwartet=None)
+    deal.praemien.append(p)
+    db.add(deal)
+    db.commit()
+    db.refresh(p)
+
+    antwort = client.post(
+        f"/deals/{deal.id}/felder",
+        data={
+            "kontonummer": "DE9999",
+            "zugangsdaten_gespeichert": "on",
+            f"praemie_{p.id}_auszahlung_erwartet": "2026-05",
+        },
+        follow_redirects=False,
+    )
+    assert antwort.status_code == 303
+    assert antwort.headers["location"] == "/todos?tab=pflegen"
+
+    db.refresh(deal)
+    db.refresh(p)
+    assert deal.bank_id == bank.id
+    assert deal.inhaber_id == inhaber.id
+    assert deal.kontoart == "Giro"
+    assert deal.kontonummer == "DE9999"
+    assert deal.zugangsdaten_gespeichert is True
+    assert p.auszahlung_erwartet == "2026-05"
+    assert derived.offene_felder(deal) == []
+
+
+def test_deal_pflegen_felder_leeres_feld_bleibt_offen(db):
+    """Ein leer gelassenes Feld im Dialog löscht keinen vorhandenen Wert und
+    bleibt als offen bestehen, statt fälschlich als erledigt zu gelten."""
+    bank = Bank(name="Leerfeld-Testbank")
+    inhaber = Inhaber(name="Leerfeld-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer=None, zugangsdaten_gespeichert=False)
+    db.add(deal)
+    db.commit()
+
+    antwort = client.post(f"/deals/{deal.id}/felder", data={"kontonummer": ""}, follow_redirects=False)
+    assert antwort.status_code == 303
+
+    db.refresh(deal)
+    assert deal.kontonummer is None
+    assert any(f.feld == "kontonummer" for f in derived.offene_felder(deal))
+
+
+def test_deal_pflegen_felder_ignoriert_bereits_erledigte_felder(db):
+    """Nur Felder, die laut offene_felder() noch offen sind, werden
+    übernommen - ein bereits vergebener Wert darf nicht überschrieben
+    werden, nur weil ein (manipuliertes) Formular ihn erneut mitschickt."""
+    bank = Bank(name="Erledigt-Testbank")
+    inhaber = Inhaber(name="Erledigt-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer="DE0001", zugangsdaten_gespeichert=True)
+    db.add(deal)
+    db.commit()
+
+    antwort = client.post(f"/deals/{deal.id}/felder", data={"kontonummer": "DE9999"}, follow_redirects=False)
+    assert antwort.status_code == 303
+
+    db.refresh(deal)
+    assert deal.kontonummer == "DE0001"
+
+
+def test_deal_pflegen_skip_alle_felder_markiert_alles_offene_und_zeile_verschwindet(db):
+    """Das Häkchen vor der Deal-pflegen-Zeile überspringt alle aktuell
+    offenen Felder auf einmal - dasselbe Ergebnis, als hätte man im
+    Pflegen-Dialog bei jedem Feld einzeln auf × geklickt."""
+    bank = Bank(name="Alles-Skip-Testbank")
+    inhaber = Inhaber(name="Alles-Skip-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer=None, zugangsdaten_gespeichert=False)
+    deal.praemien.append(Praemie(quelle="bank", betrag=Decimal("50.00"), erhalten=False, auszahlung_erwartet=None))
+    db.add(deal)
+    db.commit()
+    assert derived.offene_felder(deal) != []
+
+    antwort = client.post(f"/deals/{deal.id}/skip-alle-felder", follow_redirects=False)
+    assert antwort.status_code == 303
+    assert antwort.headers["location"] == "/todos?tab=pflegen"
+
+    db.refresh(deal)
+    assert derived.offene_felder(deal) == []
+
+    folgeantwort = client.get(antwort.headers["location"])
+    panel = BeautifulSoup(folgeantwort.text, "html.parser").select_one("#panel-pflegen")
+    assert "Alles-Skip-Testbank" not in panel.get_text()
+
+
+def test_deal_pflegen_zeile_hat_funktionierende_checkbox(db):
+    """Anders als bei den übrigen ToDo-Kategorien steckt hinter dem Häkchen
+    hier eine eigene Form/Route statt eines einzelnen Toggle-Postens."""
+    bank = Bank(name="Checkbox-Testbank")
+    inhaber = Inhaber(name="Checkbox-Inhaber")
+    db.add_all([bank, inhaber])
+    db.commit()
+    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer=None, zugangsdaten_gespeichert=True)
+    db.add(deal)
+    db.commit()
+
+    antwort = client.get("/todos?tab=pflegen")
+    panel = BeautifulSoup(antwort.text, "html.parser").select_one("#panel-pflegen")
+    form = panel.select_one(f'form[action="deals/{deal.id}/skip-alle-felder"]')
+    assert form is not None
+    assert form.select_one('input.todo-checkbox[type="checkbox"]') is not None
 
 
 def test_deal_pflegen_gekuendigter_deal_braucht_keine_zugangsdaten(db):
@@ -506,41 +664,37 @@ def test_deal_pflegen_filtering_by_feld(db):
     db.add(deal)
     db.commit()
 
-    # 1. Unfiltered: should show all three chips
+    # 1. Unfiltered: should show all three fields in the preview
     antwort_all = client.get("/todos")
     soup_all = BeautifulSoup(antwort_all.text, "html.parser")
-    panel_all = soup_all.select_one("#panel-pflegen")
-    chips_all = {mf.get_text(strip=True).rstrip("+×") for mf in panel_all.select(".miss .mf")}
-    assert "Kontonummer" in chips_all
-    assert "Zugangsdaten sichern" in chips_all
-    assert "Erwartete Auszahlung (Bank, 100.00 €)" in chips_all
+    vorschau_all = soup_all.select_one("#panel-pflegen .miss-vorschau").get_text(strip=True)
+    assert "Kontonummer" in vorschau_all
+    assert "Zugangsdaten gesichert" in vorschau_all
+    assert "Erwartete Auszahlung (Bank, 100.00 €)" in vorschau_all
 
     # 2. Filtered by kontonummer
     antwort_kto = client.get("/todos?feld=kontonummer")
     soup_kto = BeautifulSoup(antwort_kto.text, "html.parser")
-    panel_kto = soup_kto.select_one("#panel-pflegen")
-    chips_kto = {mf.get_text(strip=True).rstrip("+×") for mf in panel_kto.select(".miss .mf")}
-    assert "Kontonummer" in chips_kto
-    assert "Zugangsdaten sichern" not in chips_kto
-    assert "Erwartete Auszahlung (Bank, 100.00 €)" not in chips_kto
+    vorschau_kto = soup_kto.select_one("#panel-pflegen .miss-vorschau").get_text(strip=True)
+    assert "Kontonummer" in vorschau_kto
+    assert "Zugangsdaten gesichert" not in vorschau_kto
+    assert "Erwartete Auszahlung (Bank, 100.00 €)" not in vorschau_kto
 
     # 3. Filtered by zugangsdaten_gespeichert
     antwort_zd = client.get("/todos?feld=zugangsdaten_gespeichert")
     soup_zd = BeautifulSoup(antwort_zd.text, "html.parser")
-    panel_zd = soup_zd.select_one("#panel-pflegen")
-    chips_zd = {mf.get_text(strip=True).rstrip("+×") for mf in panel_zd.select(".miss .mf")}
-    assert "Kontonummer" not in chips_zd
-    assert "Zugangsdaten sichern" in chips_zd
-    assert "Erwartete Auszahlung (Bank, 100.00 €)" not in chips_zd
+    vorschau_zd = soup_zd.select_one("#panel-pflegen .miss-vorschau").get_text(strip=True)
+    assert "Kontonummer" not in vorschau_zd
+    assert "Zugangsdaten gesichert" in vorschau_zd
+    assert "Erwartete Auszahlung (Bank, 100.00 €)" not in vorschau_zd
 
     # 4. Filtered by auszahlung_erwartet
     antwort_ae = client.get("/todos?feld=auszahlung_erwartet")
     soup_ae = BeautifulSoup(antwort_ae.text, "html.parser")
-    panel_ae = soup_ae.select_one("#panel-pflegen")
-    chips_ae = {mf.get_text(strip=True).rstrip("+×") for mf in panel_ae.select(".miss .mf")}
-    assert "Kontonummer" not in chips_ae
-    assert "Zugangsdaten sichern" not in chips_ae
-    assert "Erwartete Auszahlung (Bank, 100.00 €)" in chips_ae
+    vorschau_ae = soup_ae.select_one("#panel-pflegen .miss-vorschau").get_text(strip=True)
+    assert "Kontonummer" not in vorschau_ae
+    assert "Zugangsdaten gesichert" not in vorschau_ae
+    assert "Erwartete Auszahlung (Bank, 100.00 €)" in vorschau_ae
 
 
 def test_deal_pflegen_abgeschlossener_deal_erscheint_nicht(db):
