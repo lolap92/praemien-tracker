@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.57.0
+
+**An den Budget-Tracker werden nur noch Bank-Prämien gemeldet; bereits übermittelte Spartanien-Einträge räumt das Add-on dort selbst wieder ab.**
+
+- **Quellen-Filter beim Melden (`auszahlungs_sync.py`).** `_vorkommen_payload()` liefert für jede Prämie mit `quelle != "bank"` jetzt `None`. Bisher wanderte jede Prämie mit erwartetem Auszahlungsmonat als Forecast-Eintrag in den Topf „Sonderausgaben" – auch die von Spartanien. Das Portal zahlt aber auf einem anderen Weg aus und nicht auf das Konto, das der Budget-Tracker führt: Dessen Prognose sagte damit Geldeingänge vorher, die auf diesem Konto nie ankommen, und wies den künftigen Kontostand entsprechend zu hoch aus. Für Bank-Prämien ändert sich nichts, ebenso wenig an den übrigen Bedingungen (bereits erhalten oder kein erwarteter Monat → kein Eintrag).
+- **Aufräumen ohne Handarbeit.** Ein `None`-Payload löst schon immer ein `loeschen`-Ereignis aus. Weil `sende_alle_aktuellen()` bei jedem Add-on-Start den Stand *jeder* Prämie meldet (siehe `main.py`), verschwinden die vor dieser Version übermittelten Spartanien-Einträge im Budget-Tracker beim ersten Start dieser Version von selbst – niemand muss sie dort einzeln suchen und löschen.
+- **Ein bereits real verbuchter Eintrag bleibt erhalten.** Hat der Budget-Tracker ein Vorkommen schon mit einer echten Buchung oder Topf-Umbuchung verknüpft, löscht er es auf ein `loeschen` hin nicht, sondern kappt nur die Herkunft (`praemien_sync.py: _loeschen`, „entkoppelt"). Das ist dort die bestehende Regel für alles, was bereits Fakt ist – ein tatsächlich geflossener Betrag darf nicht rückwirkend aus der Historie verschwinden, nur weil die Quelle ihn nicht mehr meldet.
+- **Randfall Quellenwechsel.** Wird eine Prämie nachträglich von „bank" auf „spartanien" umgestellt, zieht die Änderung den zuvor angelegten Forecast-Eintrag ebenfalls zurück.
+
 ## 2.56.1
 
 **Eigenes Icon in der Home-Assistant-Seitenleiste.** Prämien-Tracker und Budget-Tracker waren dort beide auf `mdi:cash-multiple` eingestellt und dadurch nicht auf einen Blick unterscheidbar. Die Seitenleiste zeigt für Add-ons ausschließlich benannte Material-Design-Icons (`panel_icon` in `config.yaml`), kein eigenes Bild – deshalb jetzt `mdi:medal-outline` (Medaille), das dem eigenen App-Icon (Medaille mit Stern) sehr nahekommt und sich klar vom Sparschwein des Budget-Trackers unterscheidet.

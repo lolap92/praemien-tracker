@@ -2,6 +2,9 @@
 der Budget-Tracker (separates Add-on) daraus automatisch einen Forecast-
 Eintrag im Topf "Sonderausgaben" anlegt, aktualisiert oder entfernt.
 
+Gemeldet werden ausschließlich Prämien der Quelle "bank" - nur sie erreichen
+das Konto, das der Budget-Tracker führt (siehe _vorkommen_payload).
+
 Eigene, schlanke Session-Event-Listener statt Anhängen an protokoll.py: dort
 geht es um die lückenlose Änderungshistorie aller Modelle, hier nur um
 Praemie und mit eigener Entscheidungslogik (erhalten/auszahlung_erwartet
@@ -25,6 +28,7 @@ from sqlalchemy import event, inspect
 from sqlalchemy.orm import Session, attributes, joinedload
 
 from .database import SessionLocal
+from .derived import QUELLE_BANK
 from .models import Bank, Deal, Inhaber, Praemie
 
 logger = logging.getLogger("praemien_tracker.sync")
@@ -80,8 +84,17 @@ def _inhaber_von(deal: Deal) -> Inhaber | None:
 
 def _vorkommen_payload(praemie: Praemie) -> dict | None:
     """None, wenn für diese Prämie aktuell kein Forecast-Eintrag sinnvoll ist
-    (schon erhalten oder noch kein erwarteter Monat gepflegt) - der
-    Budget-Tracker entfernt in dem Fall einen zuvor angelegten Eintrag."""
+    (fremde Quelle, schon erhalten oder noch kein erwarteter Monat gepflegt) -
+    der Budget-Tracker entfernt in dem Fall einen zuvor angelegten Eintrag."""
+    if praemie.quelle != QUELLE_BANK:
+        # Nur Bank-Prämien landen auf dem im Budget-Tracker geführten Konto.
+        # Eine Spartanien-Prämie zahlt das Portal auf einem anderen Weg aus;
+        # als Forecast-Eintrag im Topf "Sonderausgaben" hat sie dort einen
+        # Geldeingang vorhergesagt, der auf diesem Konto nie ankommt, und die
+        # Prognose entsprechend zu hoch ausgewiesen. Das None führt über
+        # _after_commit/sende_alle_aktuellen zu einem "loeschen"-Event, womit
+        # bereits übermittelte Spartanien-Einträge von selbst verschwinden.
+        return None
     if praemie.erhalten or not praemie.auszahlung_erwartet:
         return None
     deal = _deal_von(praemie)
