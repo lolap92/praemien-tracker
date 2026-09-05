@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.57.0
+
+Manuelle Aufgaben lassen sich monatlich wiederholen, und der Reiter trennt jetzt, was jetzt ansteht und was erst später.
+
+- **Neue Wiederholungsart „monatlich" (`models.Aufgabe`, Migration 0021, `routers/todos.py`).** Beim Anlegen einer Aufgabe steht neben Deal und Frist jetzt „Wiederholung: Einmalig / Monatlich". Eine monatliche Aufgabe verschiebt beim Abhaken nicht ihr eigenes Datum, sondern legt eine neue Zeile für den Folgemonat an - die abgehakte bleibt als Fakt bestehen und steht wie bisher unter „Erledigte Aufgaben". Das Datum bleibt dabei auf demselben Tag im Monat („immer zum Ersten" bleibt der Erste), auch wenn spät abgehakt wird; ist die Aufgabe lange liegen geblieben, werden so viele Monate addiert, bis der Folgetermin in der Zukunft liegt - sonst wäre er im selben Moment wieder überfällig. Ohne eigene Frist ist der heutige Tag der Anker, denn ohne Datum gäbe es keinen nächsten Termin.
+- **Der Rückweg räumt mit auf (`routers/todos.py`, neue Spalte `aufgaben.vorgaenger_id`).** Wird eine erledigte Aufgabe wieder geöffnet, war das Abhaken ein Versehen - dann verschwindet auch der dabei erzeugte Folgetermin, sofern er noch offen ist. Ist er selbst schon abgehakt, gehört er zur Historie und bleibt stehen. Dasselbe beim Löschen: ein noch offener Folgetermin würde sonst als verwaiste Zeile weiterleben.
+- **Zeitraum-Filter im Reiter „Manuelle Aufgaben" (`routers/todos.py`, `templates/todos.html`).** Drei Einstellungen: „Aktuell fällig" (Voreinstellung), „Später fällig", „Alle". Voreinstellung ist bewusst „aktuell": eine Aufgabe, die erst in drei Wochen ansteht, ist nichts, was heute zu erledigen wäre - mit monatlichen Aufgaben würde die Liste sonst dauerhaft Termine zeigen, die noch gar nicht dran sind. Ohne Frist oder überfällig zählt als „aktuell".
+- **Spätere Aufgaben zählen nicht zu „Jetzt dran" (`derived.Todo.zukuenftig`, `routers/overview.py`).** Dieselbe Regel, die für zukünftige Kündigungstermine schon galt (`derived.deal_todos`): was noch nicht fällig ist, steht nicht unter den Aufgaben für heute. Unter „Statistiken" bekommen sie dafür eine eigene Zeile „Aufgaben mit späterem Termin", damit die Zahl nirgends verloren geht und die Startseite denselben Stand zeigt wie die Statistik.
+- **Nebenbei behoben: Löschen eines Deals mit einer monatlichen Aufgabe (`models.Aufgabe`).** Vorgänger und Nachfolger hängen am selben Deal und wären beim Löschen in beliebiger Reihenfolge entfernt worden - der Fremdschlüssel des Nachfolgers auf seinen Vorgänger hätte das abgelehnt (SQLite-Fehler statt Seite). Eine ausdrückliche, sonst ungenutzte Gegenbeziehung macht die Abhängigkeit für SQLAlchemy sichtbar, sodass zuerst der Verweis gelöst und dann gelöscht wird.
+
 ## 2.56.0
 
 Der KI-Deal-Finder erkennt reine Geschäftskunden-Angebote und lehnt sie automatisch ab.

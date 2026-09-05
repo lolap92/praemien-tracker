@@ -197,6 +197,52 @@ class Todo:
     # Abhaken anbieten kann. Bei Kündigen/Bestätigung/Zugangsdaten leer,
     # weil dort direkt am Deal abgehakt wird.
     elemente: list = field(default_factory=list)
+    # Fällig, aber erst später: eine manuelle Aufgabe mit einem Datum in der
+    # Zukunft. Sie steht weiterhin in der Liste (und lässt sich über den
+    # Zeitraum-Filter im Reiter gezielt anzeigen), zählt aber nicht zu dem,
+    # was heute zu tun ist - dieselbe Regel wie bei zukünftigen
+    # Kündigungsterminen, die in deal_todos gar nicht erst erscheinen.
+    # Steht bewusst hinter elemente: die übrigen Todos werden positionsweise
+    # erzeugt (siehe deal_todos), ein Feld davor verschöbe deren Argumente.
+    zukuenftig: bool = False
+
+
+# --- Wiederkehrende manuelle Aufgaben ---
+
+WIEDERHOLUNG_EINMALIG = "einmalig"
+WIEDERHOLUNG_MONATLICH = "monatlich"
+WIEDERHOLUNG_LABELS = {
+    WIEDERHOLUNG_EINMALIG: "Einmalig",
+    WIEDERHOLUNG_MONATLICH: "Monatlich",
+}
+WIEDERHOLUNGEN = tuple(WIEDERHOLUNG_LABELS)
+
+
+def normalisiere_wiederholung(wert: str | None) -> str:
+    """Unbekannte Werte gelten als einmalig - eine Aufgabe, deren
+    Wiederholungsart nicht lesbar ist, soll sich nicht endlos selbst
+    fortschreiben."""
+    normalisiert = (wert or "").strip().lower()
+    return normalisiert if normalisiert in WIEDERHOLUNG_LABELS else WIEDERHOLUNG_EINMALIG
+
+
+def naechster_monatstermin(
+    faellig_bis: datetime.date | None, heute: datetime.date | None = None
+) -> datetime.date:
+    """Der nächste Termin einer monatlichen Aufgabe.
+
+    Gezählt wird vom bisherigen Fälligkeitsdatum aus, nicht von heute: so
+    bleibt der Tag im Monat erhalten ("immer zum Ersten"), auch wenn die
+    Aufgabe verspätet abgehakt wird. Liegt der so errechnete Termin immer
+    noch nicht in der Zukunft (Aufgabe lange liegen geblieben), werden
+    weitere Monate addiert - sonst wäre der Nachfolger im selben Moment
+    wieder überfällig. Ohne bisheriges Datum ist heute der Anker.
+    """
+    heute = heute or datetime.date.today()
+    termin = monat_plus(faellig_bis or heute, 1)
+    while termin <= heute:
+        termin = monat_plus(termin, 1)
+    return termin
 
 
 QUELLE_SPARTANIEN = "spartanien"
@@ -308,8 +354,19 @@ def alle_todos(
         if a.erledigt:
             continue
         ueberfaellig = bool(a.faellig_bis and a.faellig_bis < heute)
+        zukuenftig = bool(a.faellig_bis and a.faellig_bis > heute)
         prefix = f"{a.deal.bank.name} · {a.deal.kontoart} · {a.deal.inhaber.name}: " if a.deal else ""
-        todos.append(Todo("Manuelle Aufgaben", f"{prefix}{a.beschreibung}", a.deal, a.faellig_bis, ueberfaellig, [a]))
+        todos.append(
+            Todo(
+                "Manuelle Aufgaben",
+                f"{prefix}{a.beschreibung}",
+                a.deal,
+                a.faellig_bis,
+                ueberfaellig,
+                [a],
+                zukuenftig=zukuenftig,
+            )
+        )
     return todos
 
 

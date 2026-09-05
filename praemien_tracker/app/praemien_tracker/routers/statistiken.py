@@ -109,14 +109,24 @@ def statistiken(request: Request, db: Session = Depends(get_db)):
         )
 
     alle_todos = derived.alle_todos(deals, aufgaben, heute)
+    # Zukünftige manuelle Aufgaben zählen hier nicht mit, damit dieselbe Zahl
+    # herauskommt wie in "Jetzt dran" auf der Startseite - sie bekommen
+    # darunter eine eigene Zeile.
     querliegend = [
         {
             "label": label,
-            "anzahl": sum(1 for t in alle_todos if t.kategorie == kategorie),
+            "anzahl": sum(1 for t in alle_todos if t.kategorie == kategorie and not t.zukuenftig),
             "url": url,
         }
         for kategorie, label, url in QUERLIEGENDE_KATEGORIEN
     ]
+    querliegend.append(
+        {
+            "label": "Aufgaben mit späterem Termin",
+            "anzahl": sum(1 for t in alle_todos if t.kategorie == "Manuelle Aufgaben" and t.zukuenftig),
+            "url": "todos?tab=manuell&faellig=zukuenftig",
+        }
+    )
 
     zaehler = vorschlaege_zaehlen(db)
     vorschlaege = [

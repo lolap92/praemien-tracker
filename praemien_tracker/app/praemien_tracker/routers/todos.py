@@ -41,6 +41,26 @@ KATEGORIE_REIHENFOLGE = [
     "Zu prüfen",
 ]
 
+# Zeitraum-Filter im Reiter "Manuelle Aufgaben". Voreinstellung ist
+# "aktuell": eine Aufgabe, die erst in drei Wochen ansteht, ist nichts, was
+# heute zu erledigen wäre - sie würde die Liste (und mit monatlichen Aufgaben
+# erst recht) mit Dingen füllen, die noch gar nicht dran sind. Über den Filter
+# bleiben die späteren Termine jederzeit einsehbar.
+FAELLIG_AKTUELL = "aktuell"
+FAELLIG_ZUKUENFTIG = "zukuenftig"
+FAELLIG_ALLE = "alle"
+FAELLIG_LABELS = {
+    FAELLIG_AKTUELL: "Aktuell fällig",
+    FAELLIG_ZUKUENFTIG: "Später fällig",
+    FAELLIG_ALLE: "Alle",
+}
+FAELLIG_WERTE = tuple(FAELLIG_LABELS)
+
+
+def _normalisiere_faellig(wert: str | None) -> str:
+    return wert if wert in FAELLIG_LABELS else FAELLIG_AKTUELL
+
+
 # Format "<kategorie-slug>-<deal-id>", z.B. "bedingungen-6" - wird für die
 # id des <dialog>-Elements verwendet und daher vor der Wiederverwendung im
 # <script>-Block validiert.
@@ -59,7 +79,9 @@ def _ziel(wert: str, aktuell: bool) -> bool:
     return not aktuell
 
 
-def _todos_redirect(request: Request, tab: str = "", dialog: str = "", quelle: str = "", feld: str = ""):
+def _todos_redirect(
+    request: Request, tab: str = "", dialog: str = "", quelle: str = "", feld: str = "", faellig: str = ""
+):
     ziel = "todos"
     teile = []
     if tab:
@@ -70,6 +92,10 @@ def _todos_redirect(request: Request, tab: str = "", dialog: str = "", quelle: s
         teile.append(f"quelle={quelle}")
     if feld:
         teile.append(f"feld={feld}")
+    # Nur mitschleifen, wenn vom Standard abweichend - sonst stünde nach jedem
+    # Abhaken "?faellig=aktuell" in der Adresszeile, ohne etwas zu ändern.
+    if faellig and faellig != FAELLIG_AKTUELL:
+        teile.append(f"faellig={faellig}")
     if teile:
         ziel += "?" + "&".join(teile)
     return redirect(request, ziel)
@@ -82,6 +108,7 @@ def todos_view(
     dialog: str = "",
     quelle: str | None = None,
     feld: str | None = None,
+    faellig: str | None = None,
     db: Session = Depends(get_db),
 ):
     deals = (
@@ -106,6 +133,8 @@ def todos_view(
     valid_felder = {"kontonummer", "zugangsdaten_gespeichert", "auszahlung_erwartet"}
     norm_feld = feld.strip().lower() if feld and feld.strip().lower() in valid_felder else None
 
+    norm_faellig = _normalisiere_faellig(faellig.strip().lower() if faellig else None)
+
     alle = []
     for t in alle_ungefiltert:
         # Quelle filter
@@ -116,6 +145,15 @@ def todos_view(
             else:
                 if not (t.deal and any(p.quelle == norm_quelle for p in t.deal.praemien)):
                     continue
+
+        # Zeitraum-Filter, nur für manuelle Aufgaben: alles andere hat kein
+        # frei gewähltes Fälligkeitsdatum, das sich sinnvoll in "jetzt" und
+        # "später" trennen ließe (siehe Todo.zukuenftig).
+        if t.kategorie == "Manuelle Aufgaben":
+            if norm_faellig == FAELLIG_AKTUELL and t.zukuenftig:
+                continue
+            if norm_faellig == FAELLIG_ZUKUENFTIG and not t.zukuenftig:
+                continue
 
         # Feld filter for "Deal pflegen"
         if norm_feld and t.kategorie == "Deal pflegen":
@@ -219,6 +257,10 @@ def todos_view(
             "offener_dialog": offener_dialog,
             "filter_quelle": norm_quelle or "",
             "filter_feld": norm_feld or "",
+            "filter_faellig": norm_faellig,
+            "faellig_labels": FAELLIG_LABELS,
+            "wiederholung_labels": derived.WIEDERHOLUNG_LABELS,
+            "wiederholung_monatlich": derived.WIEDERHOLUNG_MONATLICH,
             "leere_kategorien": leere_kategorien,
         },
     )
@@ -230,6 +272,7 @@ def create_aufgabe(
     beschreibung: str = Form(...),
     deal_id: str = Form(""),
     faellig_bis: str = Form(""),
+    wiederholung: str = Form(""),
     quelle: str = Form(""),
     db: Session = Depends(get_db),
 ):
@@ -238,31 +281,102 @@ def create_aufgabe(
     # (nicht-numerisch: int() wirft; unbekannt: Fremdschlüssel-Fehler beim
     # Commit). Nicht auflösbar -> Aufgabe ohne Deal.
     ziel_deal = db.get(Deal, int(deal_id)) if deal_id.strip().isdigit() else None
+    art = derived.normalisiere_wiederholung(wiederholung)
+    termin = parse_date(faellig_bis)
+    # Eine monatliche Aufgabe braucht einen Anker, an dem die Kette hängt -
+    # ohne Datum gäbe es keinen nächsten Termin. Ohne Angabe ist das der
+    # heutige Tag: die Aufgabe steht damit sofort an und wiederholt sich von
+    # da an taggenau.
+    if art == derived.WIEDERHOLUNG_MONATLICH and termin is None:
+        termin = datetime.date.today()
     aufgabe = Aufgabe(
         beschreibung=beschreibung.strip(),
         deal_id=ziel_deal.id if ziel_deal else None,
-        faellig_bis=parse_date(faellig_bis),
+        faellig_bis=termin,
+        wiederholung=art,
     )
     db.add(aufgabe)
     db.commit()
     return _todos_redirect(request, tab=KATEGORIE_SLUGS["Manuelle Aufgaben"], quelle=quelle)
 
 
+def _nachfolger_anlegen(db: Session, aufgabe: Aufgabe) -> None:
+    """Beim Abhaken einer monatlichen Aufgabe den Termin des nächsten Monats
+    anlegen. Bewusst eine neue Zeile statt eines verschobenen Datums: die
+    erledigte Aufgabe bleibt als Fakt bestehen und taucht wie jede andere
+    unter "Erledigte Aufgaben" auf.
+
+    Hängt an derselben Aufgabe schon ein Nachfolger (z.B. weil sie schon
+    einmal abgehakt und wieder geöffnet wurde), entsteht kein zweiter."""
+    if derived.normalisiere_wiederholung(aufgabe.wiederholung) != derived.WIEDERHOLUNG_MONATLICH:
+        return
+    if db.query(Aufgabe.id).filter(Aufgabe.vorgaenger_id == aufgabe.id).first() is not None:
+        return
+    db.add(
+        Aufgabe(
+            beschreibung=aufgabe.beschreibung,
+            deal_id=aufgabe.deal_id,
+            faellig_bis=derived.naechster_monatstermin(aufgabe.faellig_bis),
+            wiederholung=derived.WIEDERHOLUNG_MONATLICH,
+            vorgaenger_id=aufgabe.id,
+        )
+    )
+
+
+def _nachfolger_zuruecknehmen(db: Session, aufgabe: Aufgabe) -> None:
+    """Wird eine erledigte Aufgabe wieder geöffnet, war das Abhaken ein
+    Versehen - dann muss auch der dabei erzeugte Nachfolger wieder weg, sonst
+    stünde dieselbe Aufgabe zweimal offen in der Liste.
+
+    Nur noch offene Nachfolger werden entfernt: ist der Folgetermin
+    inzwischen selbst abgehakt (und hat womöglich schon einen eigenen
+    Nachfolger), gehört er zur Historie und bleibt stehen."""
+    for nachfolger in db.query(Aufgabe).filter(
+        Aufgabe.vorgaenger_id == aufgabe.id, Aufgabe.erledigt.is_(False)
+    ):
+        db.delete(nachfolger)
+
+
 @router.post("/todos/aufgaben/{aufgabe_id}/toggle")
 def toggle_aufgabe(
-    request: Request, aufgabe_id: int, tab: str = Form(""), quelle: str = Form(""), wert: str = Form(""), db: Session = Depends(get_db)
+    request: Request,
+    aufgabe_id: int,
+    tab: str = Form(""),
+    quelle: str = Form(""),
+    faellig: str = Form(""),
+    wert: str = Form(""),
+    db: Session = Depends(get_db),
 ):
     aufgabe = db.get(Aufgabe, aufgabe_id)
     if aufgabe:
+        vorher = aufgabe.erledigt
         aufgabe.erledigt = _ziel(wert, aufgabe.erledigt)
+        if aufgabe.erledigt and not vorher:
+            _nachfolger_anlegen(db, aufgabe)
+        elif vorher and not aufgabe.erledigt:
+            _nachfolger_zuruecknehmen(db, aufgabe)
         db.commit()
-    return _todos_redirect(request, tab, quelle=quelle)
+    return _todos_redirect(request, tab, quelle=quelle, faellig=faellig)
 
 
 @router.post("/todos/aufgaben/{aufgabe_id}/delete")
 def delete_aufgabe(request: Request, aufgabe_id: int, quelle: str = Form(""), db: Session = Depends(get_db)):
     aufgabe = db.get(Aufgabe, aufgabe_id)
     if aufgabe:
+        # Ein noch offener Nachfolger würde sonst als verwaiste Zeile
+        # weiterleben - wer die Aufgabe löscht, will die Reihe beenden.
+        # Bereits erledigte Nachfolger bleiben als Historie bestehen; ihr
+        # Verweis auf die gelöschte Zeile wird dabei geleert.
+        for nachfolger in db.query(Aufgabe).filter(Aufgabe.vorgaenger_id == aufgabe.id):
+            if nachfolger.erledigt:
+                nachfolger.vorgaenger_id = None
+            else:
+                db.delete(nachfolger)
+        # Erst die Nachfolger wegschreiben, dann die Aufgabe selbst: ohne
+        # ORM-Beziehung kennt SQLAlchemy die Abhängigkeit nicht und würde
+        # beide Löschungen in einem Rutsch schicken - der Fremdschlüssel auf
+        # die noch verwiesene Zeile schlüge dann fehl.
+        db.flush()
         db.delete(aufgabe)
         db.commit()
     return _todos_redirect(request, quelle=quelle)

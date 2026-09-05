@@ -47,7 +47,16 @@
             <label for="faellig_bis">Frist (optional)</label>
             <input type="date" id="faellig_bis" name="faellig_bis">
           </div>
+          <div class="feld">
+            <label for="wiederholung">Wiederholung</label>
+            <select id="wiederholung" name="wiederholung">
+              {% for wert, label in wiederholung_labels.items() %}
+              <option value="{{ wert }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
         </div>
+        <p class="feld-hinweis">Eine monatliche Aufgabe legt beim Abhaken den Termin des Folgemonats an. Ohne Frist zählt ab heute.</p>
         <button type="submit">Aufgabe anlegen</button>
       </form>
     </div>
@@ -118,6 +127,27 @@
   {% endmacro %}
   {{ feld_filter(kategorie_slugs["Deal pflegen"]) }}
 
+  {# Zeitraum-Filter, nur im Reiter "Manuelle Aufgaben" sichtbar (CSS, analog
+     zu den Filtern oben). Voreinstellung "Aktuell fällig": was erst nächsten
+     Monat ansteht, gehört nicht in die Liste dessen, was jetzt zu tun ist. #}
+  {% set manuell_slug = kategorie_slugs["Manuelle Aufgaben"] %}
+  <form class="filterleiste todo-faellig-filter todo-faellig-filter-{{ manuell_slug }}" method="get" action="todos">
+    <input type="hidden" name="tab" value="{{ manuell_slug }}">
+    <details class="multi-filter">
+      <summary>Zeitraum{% if filter_faellig != "aktuell" %} (1){% endif %}</summary>
+      <div class="multi-filter-panel">
+        {% for wert, label in faellig_labels.items() %}
+        <label>
+          <input type="radio" name="faellig" value="{{ wert }}" {{ "checked" if filter_faellig == wert else "" }} onclick="this.form.submit()">
+          {{ label }}
+        </label>
+        {% endfor %}
+      </div>
+    </details>
+    <button type="submit" class="secondary">Filtern</button>
+    {% if filter_faellig != "aktuell" %}<a class="button secondary" href="todos?tab={{ manuell_slug }}">Zurücksetzen</a>{% endif %}
+  </form>
+
   <div class="todo-panels">
     {% for kategorie in kategorie_reihenfolge %}
       {% if kategorie in gruppen %}
@@ -135,6 +165,10 @@
           <p class="leer">Nichts für diese Quelle.</p>
           {% elif filter_feld %}
           <p class="leer">Nichts für dieses Feld.</p>
+          {% elif kategorie == "Manuelle Aufgaben" and filter_faellig == "aktuell" %}
+          <p class="leer">Nichts, was jetzt ansteht – über den Zeitraum-Filter sind auch spätere Termine zu sehen.</p>
+          {% elif kategorie == "Manuelle Aufgaben" %}
+          <p class="leer">Nichts in diesem Zeitraum.</p>
           {% endif %}
         {% endif %}
 
@@ -291,12 +325,15 @@
           </div>
 
           {% elif kategorie == "Manuelle Aufgaben" %}
+          {% set aufgabe = todo.elemente[0] %}
           <div class="todo-item cat-{{ slug }}">
-            <form action="todos/aufgaben/{{ todo.elemente[0].id }}/toggle" method="post" class="todo-check-form">
+            <form action="todos/aufgaben/{{ aufgabe.id }}/toggle" method="post" class="todo-check-form">
               <input type="hidden" name="tab" value="{{ slug }}">
               <input type="hidden" name="quelle" value="{{ filter_quelle }}">
+              <input type="hidden" name="faellig" value="{{ filter_faellig }}">
               <input type="hidden" name="wert" value="on">
-              <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
+              <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()"
+                     {% if aufgabe.wiederholung == wiederholung_monatlich %}title="Abhaken legt den Termin des nächsten Monats an"{% endif %}>
             </form>
             <div class="ti-main">
               {% if todo.deal %}
@@ -304,9 +341,14 @@
               {% else %}
               <div class="t">{{ todo.text }}</div>
               {% endif %}
-              {% if todo.faellig_bis %}
-              <div class="frist {{ 'ueberfaellig' if todo.ueberfaellig else '' }}">Fällig bis {{ todo.faellig_bis | datum }}</div>
-              {% endif %}
+              <div class="ti-meta">
+                {% if aufgabe.wiederholung == wiederholung_monatlich %}
+                <span class="wdh-marke">monatlich</span>
+                {% endif %}
+                {% if todo.faellig_bis %}
+                <span class="frist {{ 'ueberfaellig' if todo.ueberfaellig else '' }}">Fällig bis {{ todo.faellig_bis | datum }}</span>
+                {% endif %}
+              </div>
             </div>
           </div>
           {% endif %}
@@ -334,8 +376,11 @@
     {% for a in erledigte_aufgaben %}
     <li>
       <span style="flex:1; text-decoration: line-through; color: var(--ink-faint);">{{ a.beschreibung }}</span>
+      {% if a.wiederholung == wiederholung_monatlich %}<span class="wdh-marke">monatlich</span>{% endif %}
       <form class="inline" action="todos/aufgaben/{{ a.id }}/toggle" method="post">
         <input type="hidden" name="wert" value="off">
+        {# Beim Wiederöffnen verschwindet der beim Abhaken angelegte Folgetermin
+           wieder, sofern er noch offen ist (routers/todos.py). #}
         <button type="submit" class="secondary">Wieder öffnen</button>
       </form>
       <form class="inline" action="todos/aufgaben/{{ a.id }}/delete" method="post">

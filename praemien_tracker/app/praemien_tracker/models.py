@@ -157,8 +157,37 @@ class Aufgabe(Base):
     beschreibung: Mapped[str] = mapped_column(String(255))
     erledigt: Mapped[bool] = mapped_column(Boolean, default=False)
     faellig_bis: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+    # "einmalig" oder "monatlich" (derived.WIEDERHOLUNGEN). Eine monatliche
+    # Aufgabe wird beim Abhaken nicht einfach erledigt: sie legt zugleich ihren
+    # Nachfolger für den nächsten Monat an (routers/todos.py). Bewusst eine
+    # Kette einzelner Zeilen statt einer Serien-Tabelle mit abgeleiteten
+    # Terminen - so bleibt jede Erledigung ein eigener Fakt und taucht wie
+    # bisher unter "Erledigte Aufgaben" auf.
+    wiederholung: Mapped[str] = mapped_column(
+        String(20), default="einmalig", server_default="einmalig", nullable=False
+    )
+    # Die Aufgabe, aus deren Abhaken diese hier hervorgegangen ist. Nur für
+    # den Rückweg gedacht: wird eine erledigte Aufgabe wieder geöffnet, muss
+    # der eben erzeugte Nachfolger wieder verschwinden - ohne diesen Verweis
+    # ließe er sich nur über Beschreibung und Datum raten.
+    vorgaenger_id: Mapped[int | None] = mapped_column(
+        ForeignKey("aufgaben.id"), nullable=True, index=True
+    )
 
     deal: Mapped["Deal | None"] = relationship(back_populates="aufgaben")
+    # Die Gegenrichtung wird im Code nirgends gelesen - sie steht hier, damit
+    # SQLAlchemy die Abhängigkeit überhaupt kennt und beim Löschen zuerst den
+    # Verweis des Nachfolgers löst und dann die Zeile entfernt. Ohne sie
+    # scheitert das Löschen eines Deals mit einer monatlichen Aufgabe am
+    # Fremdschlüssel: Vorgänger und Nachfolger hängen beide am selben Deal
+    # und würden in einem Rutsch in beliebiger Reihenfolge gelöscht.
+    # Ausdrücklich ohne delete-orphan: welcher Nachfolger beim Löschen einer
+    # einzelnen Aufgabe verschwindet und welcher als Historie bleibt,
+    # entscheidet routers/todos.py.
+    nachfolger: Mapped[list["Aufgabe"]] = relationship(back_populates="vorgaenger")
+    vorgaenger: Mapped["Aufgabe | None"] = relationship(
+        back_populates="nachfolger", remote_side="Aufgabe.id"
+    )
 
 
 class DealUrl(Base):

@@ -111,6 +111,13 @@ def overview(request: Request, db: Session = Depends(get_db)):
     alle_todos = derived.alle_todos(deals, aufgaben, heute)
     nach_kategorie: dict[str, list[derived.Todo]] = {}
     for t in alle_todos:
+        # Eine manuelle Aufgabe mit einem Datum in der Zukunft ist noch nichts
+        # zu tun (Todo.zukuenftig) - sie stünde sonst unter "Jetzt dran",
+        # obwohl sie erst nächsten Monat ansteht. Zu sehen ist sie weiterhin
+        # im Reiter "Zu erledigen" über den Zeitraum-Filter und, als Zahl,
+        # unter Statistiken.
+        if t.zukuenftig:
+            continue
         nach_kategorie.setdefault(t.kategorie, []).append(t)
 
     # --- Jetzt dran: was der Nutzer heute anfassen muss ---
