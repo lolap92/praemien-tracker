@@ -903,6 +903,25 @@ body:has(#todotab-manuell:checked) .todo-faellig-filter-manuell {
   font-weight: 600;
 }
 
+/* Stift am rechten Rand einer manuellen Aufgabe: öffnet den
+   Bearbeiten-Dialog. Kompakter als die Text-Pille .icon-btn sonst, damit die
+   Zeile nicht zweizeilig wird - das Tapziel bleibt mit 34px ausreichend. */
+.aufgabe-bearbeiten {
+  flex: 0 0 auto;
+  padding: 0.4rem;
+  color: var(--ink-faint);
+}
+
+.aufgabe-bearbeiten svg {
+  width: 17px;
+  height: 17px;
+}
+
+.aufgabe-bearbeiten:hover,
+.aufgabe-bearbeiten:focus-visible {
+  color: var(--accent);
+}
+
 /* Zweite Zeile unter einer manuellen Aufgabe: Wiederholungs-Kennzeichen und
    Frist nebeneinander statt untereinander - bei einer monatlichen Aufgabe
    stehen sonst zwei kurze Zeilen übereinander, die zusammengehören. */
@@ -1048,6 +1067,15 @@ dialog.todo-dialog .dialog-aktionen {
   justify-content: flex-end;
   gap: 0.6rem;
   margin-top: 0.4rem;
+}
+
+/* "Löschen" steht abgesetzt unter den regulären Aktionen: ein eigenes
+   Formular (verschachtelte <form> sind ungültig) und bewusst nicht neben
+   "Speichern", damit es nicht versehentlich getroffen wird. */
+dialog.todo-dialog .dialog-loeschen {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
 }
 
 /* ---------- filter / search ---------- */

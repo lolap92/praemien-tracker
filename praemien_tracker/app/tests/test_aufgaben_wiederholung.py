@@ -288,3 +288,216 @@ def test_deal_loeschen_raeumt_eine_aufgabenkette_mit_ab(db):
     assert antwort.status_code == 303
     db.expire_all()
     assert _aufgaben(db) == []
+
+
+# --- Bearbeiten ---
+
+
+def test_bearbeiten_aendert_text_frist_und_wiederholung(db):
+    db.add(Aufgabe(beschreibung="Alter Text", faellig_bis=HEUTE))
+    db.commit()
+    aufgabe_id = _aufgaben(db)[0].id
+
+    antwort = client.post(
+        f"/todos/aufgaben/{aufgabe_id}/bearbeiten",
+        data={
+            "beschreibung": "Neuer Text",
+            "faellig_bis": "2026-12-01",
+            "wiederholung": "monatlich",
+            "tab": "manuell",
+        },
+        follow_redirects=False,
+    )
+    assert antwort.status_code == 303
+    db.expire_all()
+
+    (aufgabe,) = _aufgaben(db)
+    assert aufgabe.beschreibung == "Neuer Text"
+    assert aufgabe.faellig_bis == datetime.date(2026, 12, 1)
+    assert aufgabe.wiederholung == derived.WIEDERHOLUNG_MONATLICH
+
+
+def test_bearbeiten_kann_den_deal_setzen_und_wieder_loesen(db):
+    from praemien_tracker.models import Bank, Deal, Inhaber
+
+    deal = Deal(kontoart="Girokonto", bank=Bank(name="Zuordnungsbank"), inhaber=Inhaber(name="Max"))
+    db.add(deal)
+    db.add(Aufgabe(beschreibung="Allgemein"))
+    db.commit()
+    deal_id = deal.id
+    aufgabe_id = _aufgaben(db)[0].id
+
+    client.post(
+        f"/todos/aufgaben/{aufgabe_id}/bearbeiten",
+        data={"beschreibung": "Allgemein", "deal_id": str(deal_id)},
+        follow_redirects=False,
+    )
+    db.expire_all()
+    assert _aufgaben(db)[0].deal_id == deal_id
+
+    client.post(
+        f"/todos/aufgaben/{aufgabe_id}/bearbeiten",
+        data={"beschreibung": "Allgemein", "deal_id": ""},
+        follow_redirects=False,
+    )
+    db.expire_all()
+    assert _aufgaben(db)[0].deal_id is None
+
+
+def test_bearbeiten_auf_monatlich_ohne_frist_ankert_auf_heute(db):
+    """Dieselbe Regel wie beim Anlegen - ohne Datum gäbe es keinen nächsten
+    Termin."""
+    db.add(Aufgabe(beschreibung="Ohne Frist"))
+    db.commit()
+    aufgabe_id = _aufgaben(db)[0].id
+
+    client.post(
+        f"/todos/aufgaben/{aufgabe_id}/bearbeiten",
+        data={"beschreibung": "Ohne Frist", "wiederholung": "monatlich"},
+        follow_redirects=False,
+    )
+    db.expire_all()
+    assert _aufgaben(db)[0].faellig_bis == HEUTE
+
+
+def test_bearbeiten_kann_die_frist_wieder_entfernen(db):
+    db.add(Aufgabe(beschreibung="Mit Frist", faellig_bis=HEUTE))
+    db.commit()
+    aufgabe_id = _aufgaben(db)[0].id
+
+    client.post(
+        f"/todos/aufgaben/{aufgabe_id}/bearbeiten",
+        data={"beschreibung": "Mit Frist", "faellig_bis": "", "wiederholung": "einmalig"},
+        follow_redirects=False,
+    )
+    db.expire_all()
+    assert _aufgaben(db)[0].faellig_bis is None
+
+
+def test_bearbeiten_mit_leerer_beschreibung_laesst_den_text_stehen(db):
+    """Eine Aufgabe ohne Text wäre in der Liste nicht wiederzuerkennen."""
+    db.add(Aufgabe(beschreibung="Bleibt stehen"))
+    db.commit()
+    aufgabe_id = _aufgaben(db)[0].id
+
+    client.post(
+        f"/todos/aufgaben/{aufgabe_id}/bearbeiten",
+        data={"beschreibung": "   "},
+        follow_redirects=False,
+    )
+    db.expire_all()
+    assert _aufgaben(db)[0].beschreibung == "Bleibt stehen"
+
+
+def test_bearbeiten_laesst_einen_bestehenden_folgetermin_unveraendert(db):
+    """Der Folgetermin ist aus dem damaligen Stand hervorgegangen und wird
+    nicht rückwirkend umgeschrieben."""
+    db.add(Aufgabe(beschreibung="Monatlich", faellig_bis=HEUTE, wiederholung=derived.WIEDERHOLUNG_MONATLICH))
+    db.commit()
+    original_id = _aufgaben(db)[0].id
+    client.post(f"/todos/aufgaben/{original_id}/toggle", data={"wert": "on"}, follow_redirects=False)
+    db.expire_all()
+    nachfolger = _aufgaben(db)[1]
+    nachfolger_text, nachfolger_datum = nachfolger.beschreibung, nachfolger.faellig_bis
+
+    client.post(
+        f"/todos/aufgaben/{original_id}/bearbeiten",
+        data={"beschreibung": "Umbenannt", "faellig_bis": "2027-01-01", "wiederholung": "monatlich"},
+        follow_redirects=False,
+    )
+    db.expire_all()
+
+    unveraendert = _aufgaben(db)[1]
+    assert unveraendert.beschreibung == nachfolger_text
+    assert unveraendert.faellig_bis == nachfolger_datum
+
+
+def test_bearbeiten_einer_unbekannten_aufgabe_ist_kein_fehler(db):
+    antwort = client.post(
+        "/todos/aufgaben/9999/bearbeiten", data={"beschreibung": "Egal"}, follow_redirects=False
+    )
+    assert antwort.status_code == 303
+
+
+def test_offene_aufgabe_laesst_sich_loeschen(db):
+    """Bisher gab es den Löschen-Knopf nur bei erledigten Aufgaben - eine
+    vertippte offene Aufgabe musste erst abgehakt werden."""
+    db.add(Aufgabe(beschreibung="Versehen"))
+    db.commit()
+    aufgabe_id = _aufgaben(db)[0].id
+
+    client.post(f"/todos/aufgaben/{aufgabe_id}/delete", data={"tab": "manuell"}, follow_redirects=False)
+    db.expire_all()
+    assert _aufgaben(db) == []
+
+
+def test_bearbeiten_dialog_steht_im_reiter(db):
+    db.add(Aufgabe(beschreibung="Bearbeitbar"))
+    db.commit()
+    aufgabe_id = _aufgaben(db)[0].id
+
+    html = client.get("/todos?tab=manuell").text
+    assert f'id="dlg-aufgabe-{aufgabe_id}"' in html
+    assert f'action="todos/aufgaben/{aufgabe_id}/bearbeiten"' in html
+
+
+def test_speichern_mit_zukunftsdatum_schaltet_den_filter_auf_alle(db):
+    """Sonst wäre die Aufgabe nach dem Speichern schlicht verschwunden - sie
+    fällt aus der Voreinstellung "aktuell fällig" heraus."""
+    db.add(Aufgabe(beschreibung="Wandert in die Zukunft", faellig_bis=HEUTE))
+    db.commit()
+    aufgabe_id = _aufgaben(db)[0].id
+
+    antwort = client.post(
+        f"/todos/aufgaben/{aufgabe_id}/bearbeiten",
+        data={
+            "beschreibung": "Wandert in die Zukunft",
+            "faellig_bis": (HEUTE + datetime.timedelta(days=40)).isoformat(),
+            "tab": "manuell",
+        },
+        follow_redirects=False,
+    )
+    assert "faellig=alle" in antwort.headers["location"]
+
+
+def test_speichern_ohne_zukunftsdatum_laesst_den_filter_in_ruhe(db):
+    db.add(Aufgabe(beschreibung="Bleibt aktuell", faellig_bis=HEUTE))
+    db.commit()
+    aufgabe_id = _aufgaben(db)[0].id
+
+    antwort = client.post(
+        f"/todos/aufgaben/{aufgabe_id}/bearbeiten",
+        data={"beschreibung": "Bleibt aktuell", "faellig_bis": HEUTE.isoformat(), "tab": "manuell"},
+        follow_redirects=False,
+    )
+    assert "faellig=" not in antwort.headers["location"]
+
+
+def test_bewusst_gesetzter_filter_bleibt_beim_speichern_erhalten(db):
+    db.add(Aufgabe(beschreibung="Spätere Aufgabe", faellig_bis=HEUTE + datetime.timedelta(days=40)))
+    db.commit()
+    aufgabe_id = _aufgaben(db)[0].id
+
+    antwort = client.post(
+        f"/todos/aufgaben/{aufgabe_id}/bearbeiten",
+        data={
+            "beschreibung": "Spätere Aufgabe",
+            "faellig_bis": (HEUTE + datetime.timedelta(days=40)).isoformat(),
+            "tab": "manuell",
+            "faellig": "zukuenftig",
+        },
+        follow_redirects=False,
+    )
+    assert "faellig=zukuenftig" in antwort.headers["location"]
+
+
+def test_neue_aufgabe_mit_spaeterer_frist_bleibt_sichtbar(db):
+    antwort = client.post(
+        "/todos/aufgaben",
+        data={
+            "beschreibung": "Erst im nächsten Monat",
+            "faellig_bis": (HEUTE + datetime.timedelta(days=40)).isoformat(),
+        },
+        follow_redirects=False,
+    )
+    assert "faellig=alle" in antwort.headers["location"]

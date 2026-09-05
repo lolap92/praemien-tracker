@@ -350,7 +350,60 @@
                 {% endif %}
               </div>
             </div>
+            <button type="button" class="icon-btn aufgabe-bearbeiten" title="Aufgabe bearbeiten"
+                    onclick="document.getElementById('dlg-aufgabe-{{ aufgabe.id }}').showModal()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+            </button>
           </div>
+          <dialog id="dlg-aufgabe-{{ aufgabe.id }}" class="todo-dialog">
+            <h3>Aufgabe bearbeiten</h3>
+            <form action="todos/aufgaben/{{ aufgabe.id }}/bearbeiten" method="post">
+              <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="quelle" value="{{ filter_quelle }}">
+              <input type="hidden" name="faellig" value="{{ filter_faellig }}">
+              <div class="feld">
+                <label for="bearb-{{ aufgabe.id }}-beschreibung">Beschreibung</label>
+                <input type="text" id="bearb-{{ aufgabe.id }}-beschreibung" name="beschreibung"
+                       value="{{ aufgabe.beschreibung }}" required>
+              </div>
+              <div class="feld">
+                <label for="bearb-{{ aufgabe.id }}-deal">Deal (optional)</label>
+                <select id="bearb-{{ aufgabe.id }}-deal" name="deal_id">
+                  <option value="" {{ "selected" if not aufgabe.deal_id else "" }}>– allgemein –</option>
+                  {% for d in deals %}
+                  <option value="{{ d.id }}" {{ "selected" if aufgabe.deal_id == d.id else "" }}>{{ d.bank.name }} · {{ d.kontoart }} · {{ d.inhaber.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="feld">
+                <label for="bearb-{{ aufgabe.id }}-frist">Frist (optional)</label>
+                <input type="date" id="bearb-{{ aufgabe.id }}-frist" name="faellig_bis"
+                       value="{{ aufgabe.faellig_bis.isoformat() if aufgabe.faellig_bis else '' }}">
+              </div>
+              <div class="feld">
+                <label for="bearb-{{ aufgabe.id }}-wiederholung">Wiederholung</label>
+                <select id="bearb-{{ aufgabe.id }}-wiederholung" name="wiederholung">
+                  {% for wert, label in wiederholung_labels.items() %}
+                  <option value="{{ wert }}" {{ "selected" if aufgabe.wiederholung == wert else "" }}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <p class="feld-hinweis">Ein bereits angelegter Folgetermin bleibt unverändert – die nächste Wiederholung rechnet mit den neuen Angaben.</p>
+              <div class="dialog-aktionen">
+                <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
+                <button type="submit">Speichern</button>
+              </div>
+            </form>
+            {# Eigenes Formular, nicht im Formular oben: ein verschachteltes
+               <form> ist ungültiges HTML, und "Löschen" darf die
+               Pflichtfeld-Prüfung der Beschreibung nicht auslösen. #}
+            <form action="todos/aufgaben/{{ aufgabe.id }}/delete" method="post" class="dialog-loeschen">
+              <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="quelle" value="{{ filter_quelle }}">
+              <input type="hidden" name="faellig" value="{{ filter_faellig }}">
+              <button type="submit" class="danger">Aufgabe löschen</button>
+            </form>
+          </dialog>
           {% endif %}
 
         {% endfor %}

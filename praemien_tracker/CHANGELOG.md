@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.59.0
+
+Manuelle Aufgaben lassen sich jetzt bearbeiten - bisher blieb bei einem Tippfehler oder einer falschen Frist nur Löschen und neu anlegen.
+
+- **Bearbeiten-Dialog je Aufgabe (`routers/todos.py`, `templates/todos.html`).** Ein Stift am rechten Rand jeder manuellen Aufgabe öffnet einen Dialog mit Beschreibung, Deal, Frist und Wiederholung - dieselben vier Felder wie beim Anlegen, vorbelegt mit dem aktuellen Stand. Die Aufgabe lässt sich damit auch nachträglich auf „monatlich" umstellen, was bisher nur beim Anlegen ging.
+- **Löschen jetzt auch für offene Aufgaben (`templates/todos.html`).** Der Löschen-Knopf gab es bislang nur unter „Erledigte Aufgaben" - eine versehentlich angelegte offene Aufgabe musste erst abgehakt werden, um sie loszuwerden. Er steht jetzt zusätzlich im Bearbeiten-Dialog, abgesetzt unter „Abbrechen/Speichern", damit er nicht versehentlich getroffen wird. Der Endpunkt dahinter ist der bestehende.
+- **Ein bereits angelegter Folgetermin bleibt unverändert (`routers/todos.py`).** Wird eine schon abgehakte monatliche Aufgabe nachträglich geändert, ist ihr Nachfolger aus dem damaligen Stand hervorgegangen und würde sonst rückwirkend umgeschrieben. Geändert wird ausschließlich die bearbeitete Zeile; die nächste Wiederholung rechnet ohnehin mit den neuen Angaben. Der Dialog sagt das auch dazu.
+- **Nach dem Speichern bleibt die Aufgabe sichtbar (`routers/todos.py`).** Bekommt eine Aufgabe ein Datum in der Zukunft, fällt sie aus der Voreinstellung „aktuell fällig" heraus - sie wäre nach dem Speichern schlicht verschwunden, als hätte man sie gelöscht. In diesem Fall schaltet die Liste auf „Alle" um, sodass die eben bearbeitete Aufgabe sichtbar bleibt. Ein bewusst gesetzter Filter bleibt unangetastet. Dasselbe gilt jetzt beim Anlegen einer Aufgabe mit späterer Frist.
+- **Leere Beschreibung ändert nichts (`routers/todos.py`).** Das Formular verlangt sie ohnehin; kommt sie dennoch leer an, bleibt der bisherige Text stehen, statt eine Aufgabe ohne Text zu hinterlassen.
+
 ## 2.58.0
 
 Manuelle Aufgaben lassen sich monatlich wiederholen, und der Reiter trennt jetzt, was jetzt ansteht und was erst später.

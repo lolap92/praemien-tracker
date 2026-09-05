@@ -282,13 +282,7 @@ def create_aufgabe(
     # Commit). Nicht auflösbar -> Aufgabe ohne Deal.
     ziel_deal = db.get(Deal, int(deal_id)) if deal_id.strip().isdigit() else None
     art = derived.normalisiere_wiederholung(wiederholung)
-    termin = parse_date(faellig_bis)
-    # Eine monatliche Aufgabe braucht einen Anker, an dem die Kette hängt -
-    # ohne Datum gäbe es keinen nächsten Termin. Ohne Angabe ist das der
-    # heutige Tag: die Aufgabe steht damit sofort an und wiederholt sich von
-    # da an taggenau.
-    if art == derived.WIEDERHOLUNG_MONATLICH and termin is None:
-        termin = datetime.date.today()
+    termin = _termin_mit_anker(art, parse_date(faellig_bis))
     aufgabe = Aufgabe(
         beschreibung=beschreibung.strip(),
         deal_id=ziel_deal.id if ziel_deal else None,
@@ -297,7 +291,76 @@ def create_aufgabe(
     )
     db.add(aufgabe)
     db.commit()
-    return _todos_redirect(request, tab=KATEGORIE_SLUGS["Manuelle Aufgaben"], quelle=quelle)
+    return _todos_redirect(
+        request,
+        tab=KATEGORIE_SLUGS["Manuelle Aufgaben"],
+        quelle=quelle,
+        faellig=_sichtbarer_filter(termin, FAELLIG_AKTUELL),
+    )
+
+
+def _sichtbarer_filter(termin: datetime.date | None, aktueller_filter: str) -> str:
+    """Nach dem Speichern den Filter so wählen, dass die Aufgabe auch zu sehen
+    ist.
+
+    Bekommt eine Aufgabe ein Datum in der Zukunft, fällt sie aus der
+    Voreinstellung "aktuell fällig" heraus - sie wäre nach dem Speichern
+    schlicht verschwunden, als wäre sie gelöscht worden. In dem Fall wird auf
+    "alle" umgeschaltet: die Liste zeigt dann weiterhin alles und die eben
+    bearbeitete Aufgabe steht sichtbar darin. Ein bereits bewusst gesetzter
+    Filter bleibt unangetastet."""
+    if aktueller_filter != FAELLIG_AKTUELL:
+        return aktueller_filter
+    if termin and termin > datetime.date.today():
+        return FAELLIG_ALLE
+    return aktueller_filter
+
+
+def _termin_mit_anker(art: str, termin: datetime.date | None) -> datetime.date | None:
+    """Eine monatliche Aufgabe braucht einen Anker, an dem die Kette hängt -
+    ohne Datum gäbe es keinen nächsten Termin. Ohne Angabe ist das der
+    heutige Tag: die Aufgabe steht damit sofort an und wiederholt sich von da
+    an taggenau. Für einmalige Aufgaben bleibt ein leeres Datum leer."""
+    if art == derived.WIEDERHOLUNG_MONATLICH and termin is None:
+        return datetime.date.today()
+    return termin
+
+
+@router.post("/todos/aufgaben/{aufgabe_id}/bearbeiten")
+def edit_aufgabe(
+    request: Request,
+    aufgabe_id: int,
+    beschreibung: str = Form(...),
+    deal_id: str = Form(""),
+    faellig_bis: str = Form(""),
+    wiederholung: str = Form(""),
+    tab: str = Form(""),
+    quelle: str = Form(""),
+    faellig: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """Beschreibung, Deal, Frist und Wiederholungsart einer Aufgabe ändern.
+
+    Ändert ausschließlich diese eine Zeile: ein bereits angelegter
+    Folgetermin bleibt, wie er ist. Er ist aus dem damaligen Stand
+    hervorgegangen und würde sonst rückwirkend umgeschrieben - die nächste
+    Wiederholung rechnet ohnehin mit den neuen Angaben.
+    """
+    aufgabe = db.get(Aufgabe, aufgabe_id)
+    if aufgabe:
+        # Leere Beschreibung wäre eine Aufgabe ohne Text: das Formular
+        # verlangt sie ohnehin (required), hier bleibt der bisherige Text
+        # stehen, statt ihn zu löschen.
+        neuer_text = beschreibung.strip()
+        if neuer_text:
+            aufgabe.beschreibung = neuer_text
+        ziel_deal = db.get(Deal, int(deal_id)) if deal_id.strip().isdigit() else None
+        aufgabe.deal_id = ziel_deal.id if ziel_deal else None
+        aufgabe.wiederholung = derived.normalisiere_wiederholung(wiederholung)
+        aufgabe.faellig_bis = _termin_mit_anker(aufgabe.wiederholung, parse_date(faellig_bis))
+        db.commit()
+        faellig = _sichtbarer_filter(aufgabe.faellig_bis, _normalisiere_faellig(faellig))
+    return _todos_redirect(request, tab, quelle=quelle, faellig=faellig)
 
 
 def _nachfolger_anlegen(db: Session, aufgabe: Aufgabe) -> None:
@@ -360,7 +423,14 @@ def toggle_aufgabe(
 
 
 @router.post("/todos/aufgaben/{aufgabe_id}/delete")
-def delete_aufgabe(request: Request, aufgabe_id: int, quelle: str = Form(""), db: Session = Depends(get_db)):
+def delete_aufgabe(
+    request: Request,
+    aufgabe_id: int,
+    tab: str = Form(""),
+    quelle: str = Form(""),
+    faellig: str = Form(""),
+    db: Session = Depends(get_db),
+):
     aufgabe = db.get(Aufgabe, aufgabe_id)
     if aufgabe:
         # Ein noch offener Nachfolger würde sonst als verwaiste Zeile
@@ -379,7 +449,7 @@ def delete_aufgabe(request: Request, aufgabe_id: int, quelle: str = Form(""), db
         db.flush()
         db.delete(aufgabe)
         db.commit()
-    return _todos_redirect(request, quelle=quelle)
+    return _todos_redirect(request, tab, quelle=quelle, faellig=faellig)
 
 
 @router.post("/todos/bedingungen/{bedingung_id}/toggle")
