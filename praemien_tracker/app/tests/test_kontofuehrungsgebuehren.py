@@ -65,14 +65,22 @@ def test_gebuehr_kann_uebersprungen_werden(db, kuendbarer_deal):
     assert "kontofuehrungsgebuehren" not in offen
 
 
-def test_gebuehr_wird_auch_bei_gekuendigtem_deal_verlangt(db, kuendbarer_deal):
-    """Anders als die Zugangsdaten: die Gebühr läuft bis zur bestätigten
-    Schließung weiter und bleibt bis zuletzt die Gegenrechnung zur Prämie."""
+def test_gekuendigter_deal_braucht_keine_gebuehr_mehr(db, kuendbarer_deal):
+    """Wie bei den Zugangsdaten: ab der Kündigung ist die Gebühr
+    gegenstandslos - das Konto läuft aus, der Betrag ändert an keiner
+    Entscheidung mehr etwas."""
     kuendbarer_deal.gekuendigt = True
     kuendbarer_deal.gekuendigt_im_monat = "2026-08"
     db.commit()
     offen = {f.feld for f in derived.offene_felder(kuendbarer_deal)}
-    assert "kontofuehrungsgebuehren" in offen
+    assert "kontofuehrungsgebuehren" not in offen
+
+
+def test_stornierter_deal_braucht_keine_gebuehr_mehr(db, kuendbarer_deal):
+    kuendbarer_deal.storniert = True
+    db.commit()
+    offen = {f.feld for f in derived.offene_felder(kuendbarer_deal)}
+    assert "kontofuehrungsgebuehren" not in offen
 
 
 def test_offene_gebuehr_erzeugt_deal_pflegen_zeile(db, kuendbarer_deal):

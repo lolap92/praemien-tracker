@@ -609,11 +609,16 @@ def offene_felder(deal: Deal) -> list[OffenesFeld]:
     if "kontonummer" not in uebersprungen and deal.kontonummer is None:
         offen.append(OffenesFeld("kontonummer", WUENSCHENSWERTE_FELDER["kontonummer"]))
 
-    # Für jeden Deal zu erfassen, auch für gekündigte: die Gebühr läuft bis
-    # zur bestätigten Schließung weiter und ist damit bis zuletzt die
-    # Gegenrechnung zur Prämie. Geprüft wird auf None, nicht auf "falsy" - 0
-    # ist eine erfasste Angabe ("kostenlos") und keine Lücke.
-    if "kontofuehrungsgebuehren" not in uebersprungen and deal.kontofuehrungsgebuehren is None:
+    # Wie bei den Zugangsdaten: sobald gekündigt oder storniert ist, ist die
+    # Gebühr gegenstandslos - das Konto läuft aus, und der Betrag ändert an
+    # keiner Entscheidung mehr etwas. Geprüft wird auf None, nicht auf
+    # "falsy" - 0 ist eine erfasste Angabe ("kostenlos") und keine Lücke.
+    if (
+        "kontofuehrungsgebuehren" not in uebersprungen
+        and deal.kontofuehrungsgebuehren is None
+        and not deal.gekuendigt
+        and not deal.storniert
+    ):
         offen.append(
             OffenesFeld("kontofuehrungsgebuehren", WUENSCHENSWERTE_FELDER["kontofuehrungsgebuehren"])
         )

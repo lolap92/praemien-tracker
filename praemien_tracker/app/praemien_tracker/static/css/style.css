@@ -264,10 +264,6 @@ a {
   height: 18px;
 }
 
-nav.desktop-nav {
-  display: none;
-}
-
 /* "Mehr"-Menü: dieselbe Details/Summary-Mechanik wie die Filter auf der
    Deals-Seite (.multi-filter) - kein JS nötig. */
 
@@ -316,7 +312,11 @@ nav.desktop-nav {
   font-weight: 600;
 }
 
-/* Tabbar: fixe Fußzeile für Mobilgeräte (Standardfall bei Ingress) */
+/* Tabbar: fixe Fußzeile, auf jeder Bildschirmbreite. Früher gab es ab 720px
+   stattdessen eine Pill-Navigation oben in der Appbar - zwei Bedienkonzepte
+   für dieselben vier Reiter, je nach Gerät an einer anderen Stelle. Die
+   Tabbar bleibt jetzt überall, damit Handy, Tablet und Rechner gleich
+   bedient werden; der Inhalt bleibt dabei auf Handy-Breite zentriert. */
 
 .tabbar {
   position: fixed;
@@ -362,31 +362,6 @@ nav.desktop-nav {
   color: var(--accent);
 }
 
-@media (min-width: 720px) {
-  nav.desktop-nav {
-    display: flex;
-    gap: 0.25rem;
-    margin-top: 0.7rem;
-  }
-  nav.desktop-nav a {
-    padding: 0.5rem 0.9rem;
-    border-radius: 10px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--ink-soft);
-    text-decoration: none;
-  }
-  nav.desktop-nav a.on {
-    background: var(--accent-soft);
-    color: var(--accent-ink);
-  }
-  .tabbar {
-    display: none;
-  }
-  .app {
-    padding-bottom: 1.5rem;
-  }
-}
 
 main {
   padding: 1.1rem;

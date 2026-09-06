@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.61.0
+
+Auf Tablet und Rechner steht die Navigation jetzt genauso unten wie am Handy, und gekündigte Deals verlangen keine Kontoführungsgebühr mehr.
+
+- **Die vier Hauptreiter stehen auf jeder Bildschirmbreite unten (`templates/base.html`, `static/css/style.css`).** Ab 720px Breite gab es bisher stattdessen eine Pill-Navigation oben in der Kopfzeile, während die Tabbar ausgeblendet wurde - dieselben vier Ziele an zwei verschiedenen Stellen, je nach Gerät. Die obere Leiste entfällt ersatzlos, die Tabbar bleibt überall; ihr Inhalt bleibt wie bisher auf Handy-Breite zentriert. Der Platz für die fixe Fußzeile bleibt damit auf jeder Breite frei (die Sonderregel, die ihn ab 720px wieder wegnahm, ist ebenfalls weg).
+- **Gekündigte und stornierte Deals verlangen keine Kontoführungsgebühr mehr (`derived.offene_felder`).** Bisher wurde die Angabe auch dort noch angemahnt. Ab der Kündigung ist sie gegenstandslos: das Konto läuft aus, und der Betrag ändert an keiner Entscheidung mehr etwas - dieselbe Regel, die schon für die Zugangsdaten gilt. Bereits erfasste Beträge bleiben selbstverständlich stehen und werden weiterhin angezeigt.
+
 ## 2.60.0
 
 Neues Feld Kontoführungsgebühren: für jeden Deal zu erfassen, und im Kündigen-Reiter rot hervorgehoben, sobald laufend Kosten anfallen.

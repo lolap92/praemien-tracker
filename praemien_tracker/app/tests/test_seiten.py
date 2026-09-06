@@ -13,10 +13,10 @@ mit Ingress-Präfix, denn im Add-on läuft die App ausschließlich dahinter.
 
 from __future__ import annotations
 
-import re
 from decimal import Decimal
 
 import pytest
+from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
 
 from praemien_tracker.main import app
@@ -68,13 +68,15 @@ def deal(db):
 
 
 def aktiver_reiter(html: str) -> str | None:
-    """Findet den aktiven Reiter, egal ob er in der Desktop-Nav, der mobilen
-    Tabbar oder im "Mehr"-Menü steht. Die Tabbar-Variante trägt zusätzlich
-    die Klasse "tab" (class="tab on") und würde die einfache Suche nach
-    class="on" doppelt treffen - deshalb zählt hier nur das exakte class="on"
-    der Desktop-Nav- bzw. Mehr-Menü-Links."""
-    treffer = re.search(r'<a href="([a-z/]+)" class="on"', html)
-    return treffer.group(1) if treffer else None
+    """Findet den aktiven Reiter - entweder in der Tabbar unten (die vier
+    Hauptreiter, auf jeder Bildschirmbreite) oder im "Mehr"-Menü.
+
+    Früher gab es zusätzlich eine Pill-Navigation oben, die nur ab 720px
+    sichtbar war; seit sie entfallen ist, tragen die Hauptreiter ihre
+    Markierung ausschließlich in der Tabbar (class="tab on"). Deshalb hier
+    ein CSS-Selektor statt der früheren Suche nach dem exakten class="on"."""
+    treffer = BeautifulSoup(html, "html.parser").select_one("nav.tabbar a.on, .nav-more-panel a.on")
+    return treffer.get("href") if treffer else None
 
 
 @pytest.mark.parametrize("pfad, reiter", SEITEN)
@@ -262,6 +264,33 @@ def test_jede_todo_kategorie_hat_einen_css_reiter():
     css = (STATIC_DIR / "css" / "style.css").read_text(encoding="utf-8")
     for slug in KATEGORIE_SLUGS.values():
         assert f"#todotab-{slug}:checked ~ .todo-panels #panel-{slug}" in css, f"CSS fehlt für {slug}"
+
+
+def test_navigation_steht_nur_in_der_tabbar(db):
+    """Die vier Hauptreiter gibt es genau einmal, unten in der Tabbar - auf
+    jeder Bildschirmbreite. Die frühere zweite Leiste oben (nur ab 720px
+    sichtbar) ist entfallen: dieselben vier Ziele an zwei verschiedenen
+    Stellen, je nach Gerät."""
+    html = client.get("/overview").text
+    soup = BeautifulSoup(html, "html.parser")
+
+    assert soup.select_one("nav.desktop-nav") is None
+    tabbar = soup.select_one("nav.tabbar")
+    assert tabbar is not None
+    ziele = [a.get("href") for a in tabbar.select("a.tab")]
+    assert ziele == ["overview", "todos", "deals", "vorschlaege"]
+
+
+def test_tabbar_wird_nicht_mehr_ab_720px_ausgeblendet():
+    """Die Regel, die die Tabbar auf breiten Bildschirmen versteckte, ist
+    weg - sonst hätte man dort gar keine Navigation mehr."""
+    from praemien_tracker.templating import STATIC_DIR
+
+    css = (STATIC_DIR / "css" / "style.css").read_text(encoding="utf-8")
+    assert "desktop-nav" not in css
+    assert ".tabbar {\n  display: none;" not in css
+    # Der Platz für die fixe Fußzeile muss auf jeder Breite freibleiben.
+    assert "padding-bottom: 4.5rem;" in css
 
 
 def test_jeder_status_hat_eine_chip_farbe():
