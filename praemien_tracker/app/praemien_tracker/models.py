@@ -63,6 +63,13 @@ class Deal(Base):
     pruefung_geprueft: Mapped[str | None] = mapped_column(Text, nullable=True)
     praemien_auf_sparkonto: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     kontonummer: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Monatliche Kontoführungsgebühr in Euro. NULL heißt "noch nicht erfasst"
+    # und wird als Lücke angemahnt (derived.offene_felder); 0 ist eine
+    # vollwertige Angabe ("kostenlos"). Beim Prämien-Hopping ist das die
+    # laufende Gegenrechnung zur Prämie: ein gebührenpflichtiges Konto, das
+    # nach Ablauf der Sperrfrist offen bleibt, frisst die Prämie langsam auf -
+    # deshalb hebt der Kündigen-Reiter einen Betrag über 0 hervor.
+    kontofuehrungsgebuehren: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     zugangsdaten_gespeichert: Mapped[bool] = mapped_column(Boolean, default=False)
     kommentar: Mapped[str | None] = mapped_column(Text, nullable=True)
     kuendigung_hinweis: Mapped[str | None] = mapped_column(Text, nullable=True)

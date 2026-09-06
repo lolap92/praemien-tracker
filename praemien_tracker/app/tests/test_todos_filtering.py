@@ -200,7 +200,14 @@ def test_default_tab_ist_erste_kategorie_mit_inhalt_nicht_manuelle_aufgaben(db):
     inhaber = Inhaber(name="Default-Tab-Inhaber")
     db.add_all([bank, inhaber])
     db.commit()
-    deal = Deal(bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro", kontonummer="DE1", zugangsdaten_gespeichert=True)
+    deal = Deal(
+        bank_id=bank.id,
+        inhaber_id=inhaber.id,
+        kontoart="Giro",
+        kontonummer="DE1",
+        kontofuehrungsgebuehren=Decimal("0"),
+        zugangsdaten_gespeichert=True,
+    )
     deal.bedingungen.append(Bedingung(beschreibung="offen", erfuellt=False))
     db.add(deal)
     db.commit()
@@ -515,6 +522,7 @@ def test_deal_pflegen_felder_speichert_nur_die_offenen_felder(db):
         f"/deals/{deal.id}/felder",
         data={
             "kontonummer": "DE9999",
+            "kontofuehrungsgebuehren": "0",
             "zugangsdaten_gespeichert": "on",
             f"praemie_{p.id}_auszahlung_erwartet": "2026-05",
         },
@@ -529,6 +537,8 @@ def test_deal_pflegen_felder_speichert_nur_die_offenen_felder(db):
     assert deal.inhaber_id == inhaber.id
     assert deal.kontoart == "Giro"
     assert deal.kontonummer == "DE9999"
+    # 0 ist eine erfasste Angabe ("kostenlos"), kein leer gelassenes Feld
+    assert deal.kontofuehrungsgebuehren == Decimal("0")
     assert deal.zugangsdaten_gespeichert is True
     assert p.auszahlung_erwartet == "2026-05"
     assert derived.offene_felder(deal) == []
@@ -624,7 +634,8 @@ def test_deal_pflegen_gekuendigter_deal_braucht_keine_zugangsdaten(db):
     db.commit()
     deal = Deal(
         bank_id=bank.id, inhaber_id=inhaber.id, kontoart="Giro",
-        kontonummer="DE1", zugangsdaten_gespeichert=False, gekuendigt=True,
+        kontonummer="DE1", kontofuehrungsgebuehren=Decimal("0"),
+        zugangsdaten_gespeichert=False, gekuendigt=True,
     )
     db.add(deal)
     db.commit()

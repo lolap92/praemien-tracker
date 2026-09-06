@@ -574,6 +574,7 @@ def pruefpunkte(deal: Deal, heute: datetime.date | None = None) -> list[Pruefpun
 # bei Kontonummer, eigene Bedingung bei den Zugangsdaten).
 WUENSCHENSWERTE_FELDER = {
     "kontonummer": "Kontonummer",
+    "kontofuehrungsgebuehren": "Kontoführungsgebühren (mtl.)",
     "zugangsdaten_gespeichert": "Zugangsdaten gesichert",
 }
 
@@ -608,6 +609,15 @@ def offene_felder(deal: Deal) -> list[OffenesFeld]:
     if "kontonummer" not in uebersprungen and deal.kontonummer is None:
         offen.append(OffenesFeld("kontonummer", WUENSCHENSWERTE_FELDER["kontonummer"]))
 
+    # Für jeden Deal zu erfassen, auch für gekündigte: die Gebühr läuft bis
+    # zur bestätigten Schließung weiter und ist damit bis zuletzt die
+    # Gegenrechnung zur Prämie. Geprüft wird auf None, nicht auf "falsy" - 0
+    # ist eine erfasste Angabe ("kostenlos") und keine Lücke.
+    if "kontofuehrungsgebuehren" not in uebersprungen and deal.kontofuehrungsgebuehren is None:
+        offen.append(
+            OffenesFeld("kontofuehrungsgebuehren", WUENSCHENSWERTE_FELDER["kontofuehrungsgebuehren"])
+        )
+
     # Für ein gekündigtes oder storniertes Konto sind die Zugangsdaten
     # gegenstandslos - anders als bei Kontonummer/Auszahlung ist ein leerer
     # Wert dort keine Lücke mehr, sondern erwartet.
@@ -629,6 +639,13 @@ def offene_felder(deal: Deal) -> list[OffenesFeld]:
             )
 
     return offen
+
+
+def kostet_gebuehren(deal: Deal) -> bool:
+    """Ob für dieses Konto laufend Gebühren anfallen. Nicht erfasst (None)
+    zählt bewusst nicht als "kostet" - eine Vermutung ist kein Fakt, und die
+    fehlende Angabe wird ohnehin unter "Deal pflegen" angemahnt."""
+    return deal.kontofuehrungsgebuehren is not None and deal.kontofuehrungsgebuehren > 0
 
 
 def ist_vollstaendig(deal: Deal) -> bool:

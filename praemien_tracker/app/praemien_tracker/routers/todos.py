@@ -130,7 +130,7 @@ def todos_view(
     alle_ungefiltert = derived.alle_todos(deals, aufgaben)
     norm_quelle = derived.normalisiere_quelle(quelle) if quelle else None
 
-    valid_felder = {"kontonummer", "zugangsdaten_gespeichert", "auszahlung_erwartet"}
+    valid_felder = {"kontonummer", "kontofuehrungsgebuehren", "zugangsdaten_gespeichert", "auszahlung_erwartet"}
     norm_feld = feld.strip().lower() if feld and feld.strip().lower() in valid_felder else None
 
     norm_faellig = _normalisiere_faellig(faellig.strip().lower() if faellig else None)
@@ -160,6 +160,8 @@ def todos_view(
             matching_elements = []
             for f in t.elemente:
                 if norm_feld == "kontonummer" and f.feld == "kontonummer":
+                    matching_elements.append(f)
+                elif norm_feld == "kontofuehrungsgebuehren" and f.feld == "kontofuehrungsgebuehren":
                     matching_elements.append(f)
                 elif norm_feld == "zugangsdaten_gespeichert" and f.feld == "zugangsdaten_gespeichert":
                     matching_elements.append(f)

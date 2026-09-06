@@ -392,6 +392,7 @@ async def deal_update(request: Request, deal_id: int, db: Session = Depends(get_
     deal.inhaber = get_or_create_inhaber(db, form.get("inhaber", ""))
     deal.kontoart = (form.get("kontoart") or "").strip()
     deal.kontonummer = (form.get("kontonummer") or "").strip() or None
+    deal.kontofuehrungsgebuehren = parse_decimal(form.get("kontofuehrungsgebuehren") or "")
     deal.kuendbar_ab = parse_date(form.get("kuendbar_ab") or "")
     deal.gekuendigt = form.get("gekuendigt") == "on"
     deal.gekuendigt_im_monat = monat_aus_formular(form.get("gekuendigt_im_monat") or "")
@@ -686,6 +687,14 @@ async def deal_felder_update(request: Request, deal_id: int, db: Session = Depen
         wert = (form.get("kontonummer") or "").strip()
         if wert:
             deal.kontonummer = wert
+
+    if "kontofuehrungsgebuehren" in offen:
+        # Ausdrücklich gegen None geprüft statt gegen "leer": eine 0 ist hier
+        # die häufigste und wichtigste Antwort ("kostenloses Konto") und darf
+        # nicht wie ein leer gelassenes Feld behandelt werden.
+        betrag = parse_decimal(form.get("kontofuehrungsgebuehren") or "")
+        if betrag is not None:
+            deal.kontofuehrungsgebuehren = betrag
 
     if "zugangsdaten_gespeichert" in offen and form.get("zugangsdaten_gespeichert") == "on":
         deal.zugangsdaten_gespeichert = True

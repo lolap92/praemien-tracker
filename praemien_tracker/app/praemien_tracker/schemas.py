@@ -86,6 +86,8 @@ class DealImport(BaseModel):
     kuendigung_hinweis: Optional[str] = None
     kuendigung_hinweis_url: Optional[str] = None
     kommentar: Optional[str] = None
+    # Monatliche Kontoführungsgebühr; None = nicht erfasst, 0 = kostenlos.
+    kontofuehrungsgebuehren: Optional[Decimal] = None
     freibetrag: Optional[Decimal] = None
     # Ohne Angabe fällt ein gesetzter Freibetrag beim Import auf das laufende
     # Jahr (siehe helpers.freibetrag_jahr_bestimmen) - sonst wäre er in der

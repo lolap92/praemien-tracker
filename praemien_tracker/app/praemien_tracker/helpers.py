@@ -262,6 +262,7 @@ def build_deal_from_import(db: Session, daten: DealImport, *, hintergrund_recher
         kuendigung_bestaetigt=daten.kuendigung_bestaetigt,
         kuendigung_hinweis=_leer_zu_none(daten.kuendigung_hinweis),
         kuendigung_hinweis_url=_leer_zu_none(daten.kuendigung_hinweis_url),
+        kontofuehrungsgebuehren=daten.kontofuehrungsgebuehren,
         freibetrag=daten.freibetrag,
         freibetrag_jahr=freibetrag_jahr_bestimmen(daten.freibetrag_jahr, daten.freibetrag),
         praemien_auf_sparkonto=daten.praemien_auf_sparkonto,

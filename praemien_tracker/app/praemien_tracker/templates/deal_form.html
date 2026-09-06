@@ -65,6 +65,16 @@
       <input type="text" id="kontonummer" name="kontonummer" value="{{ deal.kontonummer or '' }}">
     </div>
   </div>
+  <div class="reihe">
+    <div class="feld">
+      <label for="kontofuehrungsgebuehren">
+        Kontoführungsgebühren (€ mtl.) <span class="auto">0 = kostenlos</span>
+        {{ "⚠ offen" if 'kontofuehrungsgebuehren' in offene_felder else "" }}
+      </label>
+      <input type="text" id="kontofuehrungsgebuehren" name="kontofuehrungsgebuehren" inputmode="decimal"
+             value="{{ deal.kontofuehrungsgebuehren if deal.kontofuehrungsgebuehren is not none else '' }}">
+    </div>
+  </div>
   <div class="checkbox-zeile feld">
     <input type="checkbox" id="zugangsdaten_gespeichert" name="zugangsdaten_gespeichert" {{ "checked" if deal.zugangsdaten_gespeichert else "" }}>
     <label for="zugangsdaten_gespeichert">Zugangsdaten im Passwortmanager gesichert {{ "⚠ offen" if 'zugangsdaten_gespeichert' in offene_felder else "" }}</label>

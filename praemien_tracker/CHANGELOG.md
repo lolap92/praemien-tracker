@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.60.0
+
+Neues Feld Kontoführungsgebühren: für jeden Deal zu erfassen, und im Kündigen-Reiter rot hervorgehoben, sobald laufend Kosten anfallen.
+
+- **Neue Spalte `deals.kontofuehrungsgebuehren` (Migration 0022, `models.py`).** Die monatliche Gebühr in Euro. Bewusst NULL-fähig **ohne** Default: NULL heißt „noch nicht erfasst" und wird als Lücke angemahnt, 0 heißt „kostenlos" und ist eine vollwertige Angabe. Ein Default von 0 würde beides vermischen - bestehende Deals sähen nach dem Update aus, als wären sie längst geprüft worden.
+- **Pflichtangabe für jeden Deal (`derived.offene_felder`).** Fehlt die Gebühr, erscheint der Deal unter „Deal pflegen", genau wie bei fehlender Kontonummer; im Pflegen-Dialog gibt es dafür ein Eingabefeld mit dem Platzhalter „0 = kostenlos" und wie bei den anderen Feldern ein × für „nicht nötig". Anders als die Zugangsdaten wird die Angabe auch bei einem bereits gekündigten Deal verlangt: die Gebühr läuft bis zur bestätigten Schließung weiter und bleibt bis zuletzt die Gegenrechnung zur Prämie.
+- **Rote Hervorhebung im Kündigen-Reiter (`templates/todos.html`, `derived.kostet_gebuehren`).** Liegt die Gebühr über 0, steht an der Kündigen-Zeile ein rot gefülltes „kostet 4,90 € mtl." - das ist dort das eigentliche Argument: jeder Monat, den das Konto noch offen steht, frisst die Prämie weiter auf. Eine **nicht erfasste** Gebühr wird bewusst nicht rot angezeigt: eine Vermutung ist kein Fakt, und die Lücke mahnt ohnehin schon „Deal pflegen" an.
+- **Überall mitgeführt.** Das Feld steht auf der Bearbeiten-Seite (neben der Kontonummer), auf der Deal-Detailseite und im Protokoll-Archiv-Schnappschuss, lässt sich im Feld-Filter des Reiters „Zu erledigen" gezielt auswählen, wird in den Excel-Export aufgenommen und ist Teil von `DealImport` - ohne das ginge es beim Einspielen eines Backups verloren.
+
 ## 2.59.0
 
 Manuelle Aufgaben lassen sich jetzt bearbeiten - bisher blieb bei einem Tippfehler oder einer falschen Frist nur Löschen und neu anlegen.

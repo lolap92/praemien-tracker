@@ -112,6 +112,10 @@
           Kontonummer
         </label>
         <label>
+          <input type="radio" name="feld" value="kontofuehrungsgebuehren" {{ "checked" if filter_feld == "kontofuehrungsgebuehren" else "" }} onclick="this.form.submit()">
+          Kontoführungsgebühren
+        </label>
+        <label>
           <input type="radio" name="feld" value="zugangsdaten_gespeichert" {{ "checked" if filter_feld == "zugangsdaten_gespeichert" else "" }} onclick="this.form.submit()">
           Zugangsdaten gesichert
         </label>
@@ -248,7 +252,17 @@
             </form>
             <div class="ti-main">
               <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.text }}</a>
-              {% if todo.faellig_bis %}<div class="frist">Kündbar seit {{ todo.faellig_bis | datum }}</div>{% endif %}
+              <div class="ti-meta">
+                {# Laufende Gebühren sind hier das eigentliche Argument: jeder
+                   Monat, den das Konto noch offen steht, kostet Geld und
+                   frisst die Prämie auf. Nicht erfasst heißt nicht
+                   "kostenlos" - dann steht hier nichts, und die fehlende
+                   Angabe wird unter "Deal pflegen" angemahnt. #}
+                {% if todo.deal.kontofuehrungsgebuehren is not none and todo.deal.kontofuehrungsgebuehren > 0 %}
+                <span class="gebuehr-warnung">kostet {{ todo.deal.kontofuehrungsgebuehren | eur }} mtl.</span>
+                {% endif %}
+                {% if todo.faellig_bis %}<span class="frist">Kündbar seit {{ todo.faellig_bis | datum }}</span>{% endif %}
+              </div>
             </div>
           </div>
 
@@ -297,6 +311,12 @@
                 </div>
                 {% elif feld.feld == "kontonummer" %}
                 <input type="text" id="pflegen-{{ todo.deal.id }}-{{ feld.feld }}" name="{{ feld.feld }}">
+                {% elif feld.feld == "kontofuehrungsgebuehren" %}
+                {# 0 eintragen heißt "kostenlos" und ist eine vollwertige
+                   Antwort - deshalb ein eigener Platzhalter statt eines
+                   leeren Felds, das wie "weiß ich nicht" aussieht. #}
+                <input type="text" id="pflegen-{{ todo.deal.id }}-{{ feld.feld }}" name="{{ feld.feld }}"
+                       inputmode="decimal" placeholder="0 = kostenlos">
                 {% else %}
                 <input type="text" id="pflegen-{{ todo.deal.id }}-{{ feld.feld }}" name="{{ feld.feld }}" placeholder="JJJJ-MM">
                 {% endif %}

@@ -29,6 +29,10 @@ def mache_deal(
     praemien: list[tuple[str, str, bool]] | None = None,
     bedingungen: list[tuple[str, bool]] | None = None,
     kontonummer: str | None = "DE123",
+    # Wie kontonummer: der Standard-Deal dieser Helferfunktion ist ein
+    # vollständig gepflegter. 0 heißt "kostenlos" und ist eine erfasste
+    # Angabe, None wäre eine Lücke (siehe derived.offene_felder).
+    kontofuehrungsgebuehren: Decimal | None = Decimal("0"),
     freibetrag: Decimal | None = Decimal("100"),
 ) -> Deal:
     deal = Deal(
@@ -39,6 +43,7 @@ def mache_deal(
         kuendigung_bestaetigt=kuendigung_bestaetigt,
         zugangsdaten_gespeichert=zugangsdaten_gespeichert,
         kontonummer=kontonummer,
+        kontofuehrungsgebuehren=kontofuehrungsgebuehren,
         freibetrag=freibetrag,
         bank=Bank(name="Testbank"),
         inhaber=Inhaber(name="Max"),
@@ -203,7 +208,7 @@ def test_quelle_label_uebersetzt_bekannte_werte():
 
 
 def test_offene_felder_meldet_fehlende_angaben():
-    deal = mache_deal(kontonummer=None, zugangsdaten_gespeichert=False)
+    deal = mache_deal(kontonummer=None, kontofuehrungsgebuehren=None, zugangsdaten_gespeichert=False)
     assert {f.feld for f in derived.offene_felder(deal)} == set(derived.WUENSCHENSWERTE_FELDER)
 
 

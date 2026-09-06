@@ -937,6 +937,21 @@ body:has(#todotab-manuell:checked) .todo-faellig-filter-manuell {
   margin-top: 0;
 }
 
+/* Laufende Kontoführungsgebühr - rot, weil sie die eigentliche Dringlichkeit
+   des Kündigen-Reiters ist: jeder Monat, den das Konto noch offen steht,
+   kostet Geld und frisst die Prämie auf. Bewusst gefüllt statt nur farbig,
+   damit sie sich von der schlichten Frist-Zeile daneben abhebt. */
+.gebuehr-warnung {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--danger-ink);
+  background: var(--danger);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  white-space: nowrap;
+}
+
 /* "monatlich" an einer wiederkehrenden Aufgabe: das Abhaken hat dort eine
    Folge (es legt den nächsten Termin an), das soll vorher zu sehen sein. */
 .wdh-marke {

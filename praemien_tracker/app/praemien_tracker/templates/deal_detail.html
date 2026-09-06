@@ -51,6 +51,7 @@
 <div class="sec-t">Steuer &amp; Notiz</div>
 <div class="card">
   <dl class="detail-liste">
+    <div class="detail-zeile"><dt>Kontoführungsgebühren</dt><dd>{% if deal.kontofuehrungsgebuehren is none %}–{% elif deal.kontofuehrungsgebuehren > 0 %}<span class="gebuehr-warnung">{{ deal.kontofuehrungsgebuehren | eur }} mtl.</span>{% else %}kostenlos{% endif %}</dd></div>
     <div class="detail-zeile"><dt>Freibetrag</dt><dd>{{ deal.freibetrag | eur if deal.freibetrag is not none else "–" }}{% if deal.freibetrag_jahr %} ({{ deal.freibetrag_jahr }}){% endif %}</dd></div>
     <div class="detail-zeile"><dt>Prämien auf Sparkonto</dt><dd>{{ "ja" if deal.praemien_auf_sparkonto == True else ("nein" if deal.praemien_auf_sparkonto == False else "unbekannt") }}</dd></div>
     {% if deal.kommentar %}<div class="detail-zeile"><dt>Kommentar</dt><dd>{{ deal.kommentar }}</dd></div>{% endif %}
