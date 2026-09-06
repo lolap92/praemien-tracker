@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.61.1
+
+Die Deals-Tabelle scrollt nicht mehr seitwärts - alle Spalten stehen gleichzeitig im Bild.
+
+- **Zellen brechen um, statt die Tabelle über den Rand zu schieben (`static/css/style.css`, `templates/deals_list.html`).** Die geteilte Tabellen-Basis setzt in jeder Zelle `white-space: nowrap`. Bei langen Bank- und Kontonamen („BW-Bank (Baden-Württembergische Bank)", „Kreditkarte (Mastercard Gold)") wurde die Tabelle dadurch breiter als ihre Karte, und der Wrapper schob sie in einen waagerechten Scrollbalken - ausgerechnet die Bank, die Spalte, nach der man sucht, stand dann links halb abgeschnitten. In der Deals-Tabelle darf jetzt umbrochen werden; Beträge und das Kündigungsdatum bleiben über eine eigene Spaltenklasse einzeilig, weil umbrochene Zahlen schwerer zu lesen sind. Nachgemessen im Browser: von 860px (dort schaltet die Ansicht auf Karten um) bis 1600px entsteht kein Scrollbalken mehr.
+- **Der Status-Chip darf in der Tabelle umbrechen (`static/css/style.css`).** Er trägt sonst überall `nowrap` und hätte als längstes Label („Prämienauszahlung prüfen") allein die Spaltenbreite vorgegeben. Innerhalb des Chips wird nur an Leerzeichen getrennt, nicht mitten im Wort.
+- **Bewusst nur die Deals-Tabelle.** Protokoll und Statistiken teilen sich zwar die Basisklasse, haben aber andere Spalten und andere Inhalte - sie bleiben unverändert.
+
 ## 2.61.0
 
 Auf Tablet und Rechner steht die Navigation jetzt genauso unten wie am Handy, und gekündigte Deals verlangen keine Kontoführungsgebühr mehr.

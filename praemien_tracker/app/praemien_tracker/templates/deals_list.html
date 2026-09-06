@@ -80,7 +80,7 @@
           <td>{{ zeile.deal.inhaber.name }}</td>
           <td class="geld">{{ zeile.kennzahlen.gesamt | eur }}</td>
           <td class="geld">{{ zeile.kennzahlen.offen | eur }}</td>
-          <td>{{ zeile.deal.kuendbar_ab | datum if zeile.deal.kuendbar_ab else "–" }}</td>
+          <td class="datum">{{ zeile.deal.kuendbar_ab | datum if zeile.deal.kuendbar_ab else "–" }}</td>
           <td><span class="chip status-{{ zeile.status }}">{{ status_labels[zeile.status] }}</span></td>
         </tr>
         {% endfor %}

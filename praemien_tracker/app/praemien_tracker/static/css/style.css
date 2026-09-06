@@ -1661,6 +1661,49 @@ table.pc-tabelle tr:hover {
   display: none;
 }
 
+/* Deals-Tabelle: alles auf einen Blick, nichts zum Seitwärtsscrollen.
+   Die geteilte .pc-tabelle setzt in jeder Zelle white-space: nowrap - bei
+   langen Bank- und Kontonamen ("BW-Bank (Baden-Württembergische Bank)",
+   "Kreditkarte (Mastercard Gold)") wurde die Tabelle dadurch breiter als
+   ihre Karte, und der Wrapper schob sie in einen waagerechten Scrollbalken.
+   Ausgerechnet die Bank - die Spalte, nach der man sucht - stand dann links
+   halb abgeschnitten. Hier darf deshalb umbrochen werden; nur die kurzen,
+   ziffernlastigen Spalten bleiben einzeilig, weil ein umbrochener Betrag
+   schwerer zu lesen ist als ein etwas schmalerer.
+   Bewusst nur für diese Tabelle: Protokoll und Statistiken teilen sich
+   zwar die Basisklasse, haben aber ganz andere Spalten. */
+.deals-tabelle .tabelle-wrapper {
+  overflow-x: visible;
+}
+
+.deals-tabelle table.pc-tabelle th,
+.deals-tabelle table.pc-tabelle td {
+  white-space: normal;
+  /* "anywhere" und nicht "break-word": nur "anywhere" erlaubt dem Browser,
+     eine Spalte schmaler zu rechnen als ihr längstes Wort. Mit "break-word"
+     geben Wörter wie "Württembergische" und "Mustermann-Beispiel" eine
+     Mindestbreite vor, mit der die Tabelle direkt oberhalb der
+     Karten-Umschaltung (860px) wieder über den Rand läuft - gemessen, nicht
+     vermutet. Preis dafür: bei sehr schmaler Spalte kann ein Wort mitten
+     drin umbrechen. Kein Scrollbalken ist das wichtigere Ziel. */
+  overflow-wrap: anywhere;
+}
+
+.deals-tabelle table.pc-tabelle td.geld,
+.deals-tabelle table.pc-tabelle td.datum {
+  white-space: nowrap;
+}
+
+/* Der Status-Chip trägt selbst nowrap (er steht sonst überall einzeilig) -
+   in der Tabelle darf auch er umbrechen, sonst gibt das längste Label
+   ("Prämienauszahlung prüfen") allein die Spaltenbreite vor. Aber nur an
+   Leerzeichen: das "anywhere" der Zelle würde ihn mitten im Wort trennen
+   ("Prämienauszahlu / ng prüfen"). */
+.deals-tabelle .chip {
+  white-space: normal;
+  overflow-wrap: normal;
+}
+
 @media (min-width: 860px) {
   .deals-tabelle {
     display: block;

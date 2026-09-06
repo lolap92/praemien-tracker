@@ -419,3 +419,26 @@ def test_overview_ohne_offene_punkte_sagt_das_ausdruecklich(db):
     html = client.get("/overview").text
     assert "Nichts zu tun" in html
     assert 'class="akt-liste"' not in html
+
+
+def test_deals_tabelle_bricht_um_statt_zu_scrollen(db):
+    """Lange Bank- und Kontonamen sollen umbrechen, nicht die Tabelle über
+    den Rand schieben: der Wrapper der Deals-Tabelle scrollt bewusst nicht
+    mehr waagerecht, und die geerbte nowrap-Regel ist dort aufgehoben.
+
+    Geprüft wird das CSS, weil sich Textumbruch ohne echtes Layout nicht aus
+    dem HTML ablesen lässt - die Breiten selbst sind im Browser gemessen."""
+    from praemien_tracker.templating import STATIC_DIR
+
+    css = (STATIC_DIR / "css" / "style.css").read_text(encoding="utf-8")
+    assert ".deals-tabelle .tabelle-wrapper {\n  overflow-x: visible;\n}" in css
+    assert "white-space: normal;" in css
+    assert "overflow-wrap: anywhere;" in css
+
+
+def test_deals_tabelle_haelt_betraege_und_datum_einzeilig(deal):
+    """Zahlen sind umbrochen schwerer zu lesen - Geld- und Datumsspalte
+    tragen deshalb eine eigene Klasse, an der das nowrap hängt."""
+    html = client.get("/deals").text
+    assert 'class="geld"' in html
+    assert 'class="datum"' in html
