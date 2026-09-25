@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.62.0
+
+Abgebrochene (stornierte) Deals heißen jetzt auch so: ihr Status lautet „Abgebrochen" statt „Abgeschlossen".
+
+- **Neuer Endstatus „Abgebrochen" (`derived.status`).** Bisher landete ein über „Deal abbrechen (stornieren)" beendeter Deal im selben Status wie ein regulär gekündigter mit bestätigter Kündigung. In der Liste, auf der Detailseite und in den Statistiken war damit nicht mehr zu erkennen, ob ein Deal sauber durchgelaufen ist oder nie zustande kam. Beide Zustände bleiben terminal und werden weiterhin vor allem anderen geprüft - es ändert sich nur, welcher der beiden angezeigt wird.
+- **Eigener Filter, eigene Statistik-Zeile, eigener Chip.** „Abgebrochen" steht als zusätzliche Auswahl im Status-Filter der Deals-Liste, als eigene Zeile in der Pipeline der Statistiken (Link auf `deals?status=abgebrochen`) und bekommt einen grauen Chip, damit er sich vom grünen „Abgeschlossen" abhebt - auch im Protokoll-Archiv-Schnappschuss.
+- **Die Fortschrittsleiste bleibt gleich lang.** „Abgebrochen" ist kein weiterer Schritt nach „Abgeschlossen", sondern ein anderes Ende derselben Pipeline; ein abgebrochener Deal füllt die Leiste deshalb genauso komplett, statt allen Deals einen zusätzlichen Punkt anzuhängen.
+- **Verhalten sonst unverändert.** Wie bisher mahnt „Deal pflegen" bei abgebrochenen Deals nichts mehr an, der Stornieren-Knopf wird ausgeblendet und der Deal erscheint nicht in den Sperrfristen.
+
 ## 2.61.1
 
 Die Deals-Tabelle scrollt nicht mehr seitwärts - alle Spalten stehen gleichzeitig im Bild.

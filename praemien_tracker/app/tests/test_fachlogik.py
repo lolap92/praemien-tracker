@@ -94,8 +94,13 @@ def test_abgeschlossener_deal_erzeugt_kein_bedingungs_todo():
 # --- B6: storniert ist von gekündigt getrennt ----------------------------
 
 
-def test_stornierter_deal_ist_abgeschlossen():
-    assert derived.status(mache_deal(storniert=True)) == derived.STATUS_ABGESCHLOSSEN
+def test_stornierter_deal_ist_abgebrochen():
+    assert derived.status(mache_deal(storniert=True)) == derived.STATUS_ABGEBROCHEN
+
+
+def test_abgebrochener_deal_erzeugt_kein_pflegen_todo():
+    deal = mache_deal(storniert=True)
+    assert not [t for t in derived.deal_todos(deal, HEUTE) if t.kategorie == "Deal pflegen"]
 
 
 def test_stornierter_deal_erzeugt_keine_pruefpunkte():

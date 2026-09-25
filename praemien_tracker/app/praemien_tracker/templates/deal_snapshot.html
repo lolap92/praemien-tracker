@@ -21,6 +21,7 @@
   li.leer { color: #6b6f6b; font-style: italic; }
   .chip { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 8px; font-size: 0.75rem; font-weight: 600; background: #e4e6e3; }
   .status-abgeschlossen { background: #d7ecd9; color: #1e6b2e; }
+  .status-abgebrochen { background: #e4e4e4; color: #555; }
 </style>
 </head>
 <body>
@@ -31,7 +32,7 @@
   </div>
 
   <h1>{{ bank.name if bank else "–" }} · {{ deal.kontoart }} · {{ inhaber.name if inhaber else "–" }}</h1>
-  <span class="chip {{ 'status-abgeschlossen' if status == 'abgeschlossen' else '' }}">{{ status_labels.get(status, status) }}</span>
+  <span class="chip {{ 'status-' ~ status if status in ('abgeschlossen', 'abgebrochen') else '' }}">{{ status_labels.get(status, status) }}</span>
 
   <div class="sec-t">Konto</div>
   <div class="card">

@@ -37,6 +37,7 @@ STATUS_ZIELE = {
     derived.STATUS_KUENDIGEN: "todos?tab=kuendigen",
     derived.STATUS_BESTAETIGUNG_WARTEN: "todos?tab=bestaetigung",
     derived.STATUS_ABGESCHLOSSEN: "deals?status=abgeschlossen",
+    derived.STATUS_ABGEBROCHEN: "deals?status=abgebrochen",
 }
 
 

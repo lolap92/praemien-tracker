@@ -344,6 +344,7 @@ def test_statistiken_traegt_die_zaehlungen_der_startseite(deal):
     for status, label in derived.STATUS_LABELS.items():
         assert label in html, f"Status-Zeile fehlt: {label}"
     assert 'href="deals?status=abgeschlossen"' in html
+    assert 'href="deals?status=abgebrochen"' in html
     assert 'href="deals?status=wartet_auf_kuendigung"' in html
     for kategorie in ("Manuelle Aufgaben", "Deals pflegen", "Zu prüfen"):
         assert kategorie in html, f"Kategorie fehlt: {kategorie}"

@@ -22,6 +22,7 @@ STATUS_WARTET_AUF_KUENDIGUNG = "wartet_auf_kuendigung"
 STATUS_KUENDIGEN = "kuendigen"
 STATUS_BESTAETIGUNG_WARTEN = "bestaetigung_warten"
 STATUS_ABGESCHLOSSEN = "abgeschlossen"
+STATUS_ABGEBROCHEN = "abgebrochen"
 
 STATUS_ORDER = [
     STATUS_BEDINGUNGEN,
@@ -31,6 +32,7 @@ STATUS_ORDER = [
     STATUS_KUENDIGEN,
     STATUS_BESTAETIGUNG_WARTEN,
     STATUS_ABGESCHLOSSEN,
+    STATUS_ABGEBROCHEN,
 ]
 
 STATUS_LABELS = {
@@ -41,9 +43,22 @@ STATUS_LABELS = {
     STATUS_KUENDIGEN: "Kündigen",
     STATUS_BESTAETIGUNG_WARTEN: "Bestätigung warten",
     STATUS_ABGESCHLOSSEN: "Abgeschlossen",
+    STATUS_ABGEBROCHEN: "Abgebrochen",
 }
 
 STATUS_INDEX = {s: i for i, s in enumerate(STATUS_ORDER)}
+
+# Beide Endzustände: danach passiert an einem Deal nichts mehr.
+STATUS_TERMINAL = (STATUS_ABGESCHLOSSEN, STATUS_ABGEBROCHEN)
+
+# Stufen der Fortschrittsanzeige in der Deals-Liste. "Abgebrochen" ist keine
+# weitere Stufe hinter "Abgeschlossen", sondern ein anderes Ende derselben -
+# ein abgebrochener Deal füllt die Leiste deshalb genauso komplett.
+PIPELINE_STUFEN = len(STATUS_ORDER) - 1
+
+
+def pipeline_index(s: str) -> int:
+    return min(STATUS_INDEX[s], PIPELINE_STUFEN - 1)
 
 
 def bedingungen_erfuellt(deal: Deal) -> bool:
@@ -73,7 +88,8 @@ def status(deal: Deal, heute: datetime.date | None = None) -> str:
     kuendbar_ab noch in der Zukunft liegt).
 
     Zwei Zustände sind *terminal* und werden vor allem anderen geprüft: ein
-    stornierter Deal und ein gekündigter mit bestätigter Kündigung. Sonst
+    stornierter Deal ('Abgebrochen') und ein gekündigter mit bestätigter
+    Kündigung ('Abgeschlossen'). Sonst
     galt ein längst abgeschlossener Deal wegen einer nie abgehakten Bedingung
     weiter als 'in Bearbeitung' - er stand gleichzeitig in der ToDo-Liste und
     in den Sperrfristen. Offene Bedingungen verschwinden dadurch nicht,
@@ -81,7 +97,7 @@ def status(deal: Deal, heute: datetime.date | None = None) -> str:
     """
     heute = heute or datetime.date.today()
     if deal.storniert:
-        return STATUS_ABGESCHLOSSEN
+        return STATUS_ABGEBROCHEN
     if deal.gekuendigt and deal.kuendigung_bestaetigt:
         return STATUS_ABGESCHLOSSEN
     if not bedingungen_erfuellt(deal):
@@ -330,7 +346,7 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
     # bei "Zu prüfen" würde ein einwertiger status() das nicht abbilden
     # können. Bei einem abgeschlossenen Deal ändert sich an den Daten nichts
     # mehr, deshalb wird dort nicht mehr gemahnt.
-    if s != STATUS_ABGESCHLOSSEN:
+    if s not in STATUS_TERMINAL:
         offen = offene_felder(deal)
         if offen:
             text = f"{bezeichnung}: {len(offen)} Angabe(n) offen"

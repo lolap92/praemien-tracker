@@ -550,6 +550,10 @@ a.chip:focus-visible {
   color: var(--st-done);
   background: rgba(27, 158, 119, 0.13);
 }
+.chip.status-abgebrochen {
+  color: var(--ink-soft);
+  background: rgba(120, 120, 120, 0.14);
+}
 
 /* ---------- todo tabs (reines CSS, kein JS) ---------- */
 

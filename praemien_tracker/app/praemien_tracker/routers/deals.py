@@ -109,7 +109,7 @@ def deals_list(
         {
             "deal": d,
             "status": derived.status(d),
-            "status_index": derived.STATUS_INDEX[derived.status(d)],
+            "status_index": derived.pipeline_index(derived.status(d)),
             "kennzahlen": derived.kennzahlen(d.praemien),
         }
         for d in deals
@@ -123,6 +123,7 @@ def deals_list(
             "inhaber_liste": db.query(Inhaber).order_by(Inhaber.name).all(),
             "status_labels": derived.STATUS_LABELS,
             "status_order": derived.STATUS_ORDER,
+            "pipeline_stufen": derived.PIPELINE_STUFEN,
             "filter_inhaber_id": inhaber_ids,
             "filter_status": status_werte,
             "filter_q": q or "",
