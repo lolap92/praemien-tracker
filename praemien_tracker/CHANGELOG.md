@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.62.1
+
+Im Reiter „Bedingungen" führt jetzt jeder Eintrag zur Deal-Seite - auch wenn mehrere Bedingungen offen sind.
+
+- **Ein Aufbau für eine und für mehrere offene Bedingungen (`templates/todos.html`).** Bisher war der Text nur bei genau einer offenen Bedingung ein Link zum Deal; bei mehreren öffnete er stattdessen den Abhak-Dialog, und es gab von dort keinen Weg zur Deal-Seite. Jetzt ist der Titel immer der Deal (Bank · Kontoart · Inhaber) und immer ein Link, darunter stehen die offenen Bedingungen selbst - bei mehreren alle mit Namen statt nur „3 Bedingungen offen".
+- **Abhaken bei mehreren über einen eigenen Knopf.** Wie „Pflegen" im Reiter „Deal pflegen" öffnet „Abhaken" den bekannten Dialog. Bei genau einer Bedingung bleibt das Häkchen links wie bisher.
+- **Anzahl statt leerem Kästchen (`static/css/style.css`).** Bei mehreren Bedingungen stand links bisher ein leeres Kästchen, das wie ein Häkchen aussah, aber nicht reagierte. Dort steht jetzt die Anzahl der offenen Bedingungen. Alle auf einmal per Häkchen abzuhaken ist bewusst nicht vorgesehen - zu leicht passiert das versehentlich.
+
 ## 2.62.0
 
 Abgebrochene (stornierte) Deals heißen jetzt auch so: ihr Status lautet „Abgebrochen" statt „Abgeschlossen".
