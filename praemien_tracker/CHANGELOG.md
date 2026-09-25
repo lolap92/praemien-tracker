@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.63.0
+
+Die Filter der Deals-Liste sind jetzt Chips, die beim Antippen sofort filtern - kein Aufklappen, kein Wegklicken, kein „Filtern"-Knopf mehr.
+
+- **Chips statt Dropdowns (`templates/deals_list.html`, `static/css/style.css`).** Bisher öffneten „Inhaber" und „Status" je ein Auswahlmenü, das nach dem Ankreuzen offen blieb und die Liste verdeckte; erst nach dem Wegklicken und einem Tipp auf „Filtern" wurde gefiltert. Jetzt stehen Inhaber und Status als zwei Zeilen antippbarer Chips über der Liste, jeder Tipp lädt die gefilterte Liste sofort. Die Bank-Suche startet mit Enter, das × im Suchfeld leert sie wieder.
+- **Trefferzahl an jedem Chip (`routers/deals.py`).** Die Zahl zeigt, wie viele Deals man mit diesem Chip bekommt - gezählt mit allen anderen gesetzten Filtern, nur ohne den eigenen. Status ohne Deals werden ausgeblendet, solange sie nicht selbst ausgewählt sind; so bleibt die Zeile kurz.
+- **Gewählte Chips stehen vorne.** Am Handy sind die Chip-Zeilen seitlich wischbar statt mehrzeilig, damit die Liste nicht unter den Bildschirmrand rutscht. Ausgewählte Chips sind grün mit Häkchen und rücken an den Anfang ihrer Zeile - ein aktiver Filter liegt so nie unsichtbar außerhalb des Bildschirms. Ab Tablet-Breite brechen die Chips stattdessen um.
+- **Zurücksetzen und Trefferzahl in einer Zeile.** Ist ein Filter aktiv, steht unter der Suche „2 Deals · Filter zurücksetzen" statt eines eigenen Knopfs.
+- **Bewusst nur die Deals-Liste.** Die Filter im Reiter „Zu erledigen" (Quelle, Feld, Zeitraum) bleiben Auswahlmenüs; dort wird ohnehin schon beim Antippen gefiltert.
+
 ## 2.62.1
 
 Im Reiter „Bedingungen" führt jetzt jeder Eintrag zur Deal-Seite - auch wenn mehrere Bedingungen offen sind.
