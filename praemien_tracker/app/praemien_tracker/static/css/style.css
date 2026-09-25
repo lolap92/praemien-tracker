@@ -1193,6 +1193,104 @@ dialog.todo-dialog .dialog-loeschen {
   transform: rotate(45deg);
 }
 
+/* ---------- Chip-Filter (Deals-Liste) ---------- */
+
+.chip-filter {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+/* Eine Zeile je Filtergruppe, auf dem Handy seitlich wischbar statt
+   mehrzeilig - die Liste rutscht so nicht unter den Bildschirmrand. */
+.chip-reihe {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -1rem;
+  padding: 0 1rem;
+}
+.chip-reihe::-webkit-scrollbar {
+  display: none;
+}
+@media (min-width: 720px) {
+  .chip-reihe {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.45rem 0.8rem;
+  border-radius: 20px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+.filter-chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.filter-chip .num {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+}
+.filter-chip.an {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.filter-chip.an .num {
+  color: rgba(255, 255, 255, 0.8);
+}
+.filter-chip.an::before {
+  content: "✓";
+  font-size: 0.75rem;
+}
+.filter-chip:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.chip-suche {
+  display: flex;
+  gap: 0.5rem;
+}
+.chip-suche input[type="search"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.9rem;
+  border-radius: 20px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+.chip-suche .button {
+  margin: 0;
+}
+
+.chip-treffer {
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+}
+.chip-treffer a {
+  color: var(--accent);
+}
+
 /* ---------- deal cards ---------- */
 
 .deal-liste {

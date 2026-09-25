@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import json
+from collections import Counter
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
@@ -97,13 +98,22 @@ def deals_list(
 
     deals = _deal_query(db).join(Bank).order_by(Bank.name, Deal.kontoart).all()
 
-    if inhaber_ids:
-        deals = [d for d in deals if d.inhaber_id in inhaber_ids]
-    if status_werte:
-        deals = [d for d in deals if derived.status(d) in status_werte]
-    if q:
-        q_lower = q.strip().lower()
-        deals = [d for d in deals if q_lower in d.bank.name.lower()]
+    status_je_deal = {d.id: derived.status(d) for d in deals}
+    q_lower = (q or "").strip().lower()
+
+    def passt(d: Deal, inhaber: bool = True, stat: bool = True) -> bool:
+        return (
+            (not inhaber or not inhaber_ids or d.inhaber_id in inhaber_ids)
+            and (not stat or not status_werte or status_je_deal[d.id] in status_werte)
+            and (not q_lower or q_lower in d.bank.name.lower())
+        )
+
+    # Trefferzahl je Filter-Chip. Gezählt wird jeweils ohne den eigenen
+    # Filter, aber mit allen anderen - die Zahl am Chip sagt also, wie viele
+    # Deals dazukämen, wenn man ihn zusätzlich antippt.
+    anzahl_status = Counter(status_je_deal[d.id] for d in deals if passt(d, stat=False))
+    anzahl_inhaber = Counter(d.inhaber_id for d in deals if passt(d, inhaber=False))
+    deals = [d for d in deals if passt(d)]
 
     zeilen = [
         {
@@ -128,6 +138,8 @@ def deals_list(
             "filter_status": status_werte,
             "filter_q": q or "",
             "filter_aktiv": bool(inhaber_ids or status_werte or q),
+            "anzahl_status": anzahl_status,
+            "anzahl_inhaber": anzahl_inhaber,
         },
     )
 

@@ -6,33 +6,37 @@
 {% endblock %}
 {% block content %}
 
-<form class="filterleiste" method="get" action="deals">
-  <details class="multi-filter">
-    <summary>Inhaber{% if filter_inhaber_id %} ({{ filter_inhaber_id | length }}){% endif %}</summary>
-    <div class="multi-filter-panel">
-      {% for inh in inhaber_liste %}
-      <label>
-        <input type="checkbox" name="inhaber_id" value="{{ inh.id }}" {{ "checked" if inh.id in filter_inhaber_id else "" }}>
-        {{ inh.name }}
-      </label>
-      {% endfor %}
-    </div>
-  </details>
-  <details class="multi-filter">
-    <summary>Status{% if filter_status %} ({{ filter_status | length }}){% endif %}</summary>
-    <div class="multi-filter-panel">
-      {% for s in status_order %}
-      <label>
-        <input type="checkbox" name="status" value="{{ s }}" {{ "checked" if s in filter_status else "" }}>
-        {{ status_labels[s] }}
-      </label>
-      {% endfor %}
-    </div>
-  </details>
-  <input type="search" name="q" placeholder="Bank suchen…" value="{{ filter_q }}">
-  <button type="submit" class="secondary">Filtern</button>
-  {% if filter_aktiv %}<a class="button secondary" href="deals">Zurücksetzen</a>{% endif %}
-  <a class="button secondary" href="deals/export.xlsx">Export</a>
+{# Filter als Chips statt Dropdowns: jeder Tipp filtert sofort (kein
+   Aufklappen, kein Wegklicken, kein "Filtern"-Knopf). Status ohne Treffer
+   werden ausgeblendet, solange sie nicht selbst ausgewählt sind. #}
+<form class="chip-filter" method="get" action="deals">
+  <div class="chip-reihe" aria-label="Inhaber">
+    {# Ausgewählte zuerst: die Zeile ist auf dem Handy seitlich wischbar,
+       ein aktiver Filter darf dort nicht außerhalb des Bildschirms liegen. #}
+    {% for inh in (inhaber_liste | selectattr("id", "in", filter_inhaber_id) | list) + (inhaber_liste | rejectattr("id", "in", filter_inhaber_id) | list) %}
+    <label class="filter-chip {{ 'an' if inh.id in filter_inhaber_id else '' }}">
+      <input type="checkbox" name="inhaber_id" value="{{ inh.id }}" {{ "checked" if inh.id in filter_inhaber_id else "" }} onchange="this.form.submit()">
+      {{ inh.name }} <span class="num">{{ anzahl_inhaber.get(inh.id, 0) }}</span>
+    </label>
+    {% endfor %}
+  </div>
+  <div class="chip-reihe" aria-label="Status">
+    {% for s in (status_order | select("in", filter_status) | list) + (status_order | reject("in", filter_status) | list) %}
+    {% if anzahl_status.get(s, 0) or s in filter_status %}
+    <label class="filter-chip status-{{ s }} {{ 'an' if s in filter_status else '' }}">
+      <input type="checkbox" name="status" value="{{ s }}" {{ "checked" if s in filter_status else "" }} onchange="this.form.submit()">
+      {{ status_labels[s] }} <span class="num">{{ anzahl_status.get(s, 0) }}</span>
+    </label>
+    {% endif %}
+    {% endfor %}
+  </div>
+  <div class="chip-suche">
+    <input type="search" name="q" placeholder="Bank suchen…" value="{{ filter_q }}" enterkeyhint="search" onsearch="this.form.submit()">
+    <a class="button secondary" href="deals/export.xlsx">Export</a>
+  </div>
+  {% if filter_aktiv %}
+  <div class="chip-treffer">{{ zeilen | length }} Deal{{ "s" if zeilen | length != 1 else "" }} · <a href="deals">Filter zurücksetzen</a></div>
+  {% endif %}
 </form>
 
 {% if zeilen %}
