@@ -1562,6 +1562,27 @@ button.warn,
   margin-top: 0.2rem;
 }
 
+.bedingungs-vorschau {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-top: 0.2rem;
+}
+
+/* Platzhalter für das Häkchen, wenn mehrere Bedingungen offen sind: statt
+   eines leeren, scheinbar klickbaren Kästchens steht dort die Anzahl. */
+.check-anzahl {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--st-cond);
+  background: rgba(107, 122, 133, 0.14);
+}
+
 .pflegen-eingeben {
   margin-top: 0.7rem;
   padding: 0.6rem 1.2rem;

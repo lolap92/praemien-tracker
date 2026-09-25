@@ -178,13 +178,35 @@
 
         {% for todo in gruppen[kategorie] %}
 
-          {% if kategorie == "Bedingungen" and todo.elemente | length > 1 %}
+          {% if kategorie == "Bedingungen" %}
+          {# Ein Aufbau für eine wie für mehrere offene Bedingungen: der Titel
+             führt immer zur Deal-Seite, darunter stehen die Bedingungen
+             selbst. Bei genau einer wird direkt links abgehakt, bei mehreren
+             öffnet "Abhaken" den Dialog - dasselbe Muster wie "Deal pflegen". #}
+          {% set mehrere = todo.elemente | length > 1 %}
           <div class="todo-item cat-{{ slug }}">
-            <div class="check"></div>
+            {% if mehrere %}
+            <div class="check-anzahl" title="{{ todo.elemente | length }} offene Bedingungen">{{ todo.elemente | length }}</div>
+            {% else %}
+            <form action="todos/bedingungen/{{ todo.elemente[0].id }}/toggle" method="post" class="todo-check-form">
+              <input type="hidden" name="tab" value="{{ slug }}">
+              <input type="hidden" name="quelle" value="{{ filter_quelle }}">
+              <input type="hidden" name="wert" value="on">
+              <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
+            </form>
+            {% endif %}
             <div class="ti-main">
-              <button type="button" class="t todo-link" onclick="document.getElementById('dlg-bedingungen-{{ todo.deal.id }}').showModal()">{{ todo.text }}</button>
+              <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.deal.bank.name }} · {{ todo.deal.kontoart }} · {{ todo.deal.inhaber.name }}</a>
+              <div class="bedingungs-vorschau">{{ todo.elemente | map(attribute="beschreibung") | join(" · ") }}</div>
+              {% if todo.faellig_bis %}
+              <div class="frist {{ 'ueberfaellig' if todo.ueberfaellig else '' }}">Fällig bis {{ todo.faellig_bis | datum }}</div>
+              {% endif %}
+              {% if mehrere %}
+              <button type="button" class="pflegen-eingeben" onclick="document.getElementById('dlg-bedingungen-{{ todo.deal.id }}').showModal()">Abhaken</button>
+              {% endif %}
             </div>
           </div>
+          {% if mehrere %}
           <dialog id="dlg-bedingungen-{{ todo.deal.id }}" class="todo-dialog">
             <h3>{{ todo.deal.bank.name }} · {{ todo.deal.kontoart }} · {{ todo.deal.inhaber.name }}</h3>
             <ul class="unterliste">
@@ -203,22 +225,7 @@
             </ul>
             <button type="button" class="secondary" onclick="this.closest('dialog').close()">Schließen</button>
           </dialog>
-
-          {% elif kategorie == "Bedingungen" %}
-          <div class="todo-item cat-{{ slug }}">
-            <form action="todos/bedingungen/{{ todo.elemente[0].id }}/toggle" method="post" class="todo-check-form">
-              <input type="hidden" name="tab" value="{{ slug }}">
-              <input type="hidden" name="quelle" value="{{ filter_quelle }}">
-              <input type="hidden" name="wert" value="on">
-              <input type="checkbox" class="todo-checkbox" onclick="this.form.requestSubmit()">
-            </form>
-            <div class="ti-main">
-              <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.text }}</a>
-              {% if todo.faellig_bis %}
-              <div class="frist {{ 'ueberfaellig' if todo.ueberfaellig else '' }}">Fällig bis {{ todo.faellig_bis | datum }}</div>
-              {% endif %}
-            </div>
-          </div>
+          {% endif %}
 
           {% elif kategorie == "Auf Prämie warten" or kategorie == "Prämienauszahlung prüfen" %}
           {% set p = todo.elemente[0] %}
