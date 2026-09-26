@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.64.0
+
+Alle Filter der App funktionieren jetzt wie die in der Deals-Liste: antippbare Chips, die sofort filtern.
+
+- **„Zu erledigen": Quelle, Feld und Zeitraum als Chips (`templates/todos.html`).** Die drei Filter waren bisher Auswahlmenüs zum Aufklappen, mit „Filtern"- und „Zurücksetzen"-Knopf daneben. Jetzt steht jede Option als Chip unter den Reitern, der gewählte ist grün mit Häkchen. Weil hier immer genau eine Option gilt, gibt es jeweils einen Chip „Alle Quellen" bzw. „Alle Felder" - er ersetzt den Zurücksetzen-Knopf. Diese Zeilen brechen um, statt seitlich zu scrollen: mit nur einer Auswahl soll sie nie außerhalb des Bildschirms liegen. Welcher Filter in welchem Reiter erscheint, bleibt unverändert.
+- **Vorschläge: Quelle, Typ und Status als Chips (`templates/vorschlaege.html`).** Auch hier entfallen die drei Auswahlmenüs samt „Filtern"-Knopf. Die Status-Chips tragen die Anzahl der Vorschläge und ersetzen damit die bisherige Zählerzeile („2 vorgeschlagen · 1 zu prüfen …") - bisher standen Zähler und Status-Filter doppelt übereinander. Anders als in der Deals-Liste bleiben dort auch Status mit 0 stehen, weil die Zeile zugleich die Übersicht der Seite ist. Ein Tipp auf einen Status-Chip ergänzt die Auswahl jetzt, statt wie der frühere Zähler-Link alle anderen Status-Filter zu ersetzen.
+- **Ein gemeinsamer Baustein (`templates/_filter_chips.html`).** Deals, Zu erledigen und Vorschläge verwenden dasselbe Chip-Makro, damit alle Filter gleich aussehen und sich gleich verhalten. Die nicht mehr genutzten Stile der alten Auswahlmenüs und der Zählerzeile sind aus `static/css/style.css` entfernt.
+
 ## 2.63.0
 
 Die Filter der Deals-Liste sind jetzt Chips, die beim Antippen sofort filtern - kein Aufklappen, kein Wegklicken, kein „Filtern"-Knopf mehr.

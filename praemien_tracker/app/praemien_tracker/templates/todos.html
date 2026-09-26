@@ -2,6 +2,7 @@
 {% block title %}Zu erledigen – Prämien-Tracker{% endblock %}
 {% block appbar_title %}Zu erledigen{% endblock %}
 {% block content %}
+{% from "_filter_chips.html" import chip %}
 
 <div class="todo-tabs">
   {% for kategorie in kategorie_reihenfolge %}
@@ -67,66 +68,32 @@
      aktiver_tab-Feld: ein Tab-Wechsel ist rein clientseitig (CSS-Radio, keine
      Navigation) - aktiver_tab spiegelt deshalb nur den Stand beim letzten
      Seitenaufruf wider, nicht zwangsläufig den gerade sichtbaren Tab. Mit
-     einem festen tab_slug pro Formular landet "Filtern" immer auf dem Tab,
-     zu dem das sichtbare Formular gehört (Sichtbarkeit weiterhin über
-     body:has(#todotab-{{ tab_slug }}:checked) .todo-quelle-filter-{{ tab_slug }}
+     einem festen tab_slug pro Formular landet ein Tipp auf einen Chip immer
+     auf dem Tab, zu dem das sichtbare Formular gehört (Sichtbarkeit weiterhin
+     über body:has(#todotab-{{ tab_slug }}:checked) .todo-quelle-filter-{{ tab_slug }}
      in style.css - pro Tab höchstens ein Formular sichtbar). #}
-  <form class="filterleiste todo-quelle-filter todo-quelle-filter-{{ tab_slug }}" method="get" action="todos">
+  <form class="chip-filter todo-quelle-filter todo-quelle-filter-{{ tab_slug }}" method="get" action="todos">
     <input type="hidden" name="tab" value="{{ tab_slug }}">
-    <details class="multi-filter">
-      <summary>Quelle{% if filter_quelle %} (1){% endif %}</summary>
-      <div class="multi-filter-panel">
-        <label>
-          <input type="radio" name="quelle" value="" {{ "checked" if not filter_quelle else "" }} onclick="this.form.submit()">
-          – Alle –
-        </label>
-        <label>
-          <input type="radio" name="quelle" value="spartanien" {{ "checked" if filter_quelle == "spartanien" else "" }} onclick="this.form.submit()">
-          Spartanien
-        </label>
-        <label>
-          <input type="radio" name="quelle" value="bank" {{ "checked" if filter_quelle == "bank" else "" }} onclick="this.form.submit()">
-          Bank
-        </label>
-      </div>
-    </details>
-    <button type="submit" class="secondary">Filtern</button>
-    {% if filter_quelle %}<a class="button secondary" href="todos?tab={{ tab_slug }}">Zurücksetzen</a>{% endif %}
+    <div class="chip-reihe umbrechen" aria-label="Quelle">
+      {{ chip("quelle", "", "Alle Quellen", not filter_quelle, typ="radio") }}
+      {{ chip("quelle", "spartanien", "Spartanien", filter_quelle == "spartanien", typ="radio") }}
+      {{ chip("quelle", "bank", "Bank", filter_quelle == "bank", typ="radio") }}
+    </div>
   </form>
   {% endmacro %}
   {{ quelle_filter(kategorie_slugs["Auf Prämie warten"]) }}
   {{ quelle_filter(kategorie_slugs["Prämienauszahlung prüfen"]) }}
 
   {% macro feld_filter(tab_slug) %}
-  <form class="filterleiste todo-feld-filter todo-feld-filter-{{ tab_slug }}" method="get" action="todos">
+  <form class="chip-filter todo-feld-filter todo-feld-filter-{{ tab_slug }}" method="get" action="todos">
     <input type="hidden" name="tab" value="{{ tab_slug }}">
-    <details class="multi-filter">
-      <summary>Feld{% if filter_feld %} (1){% endif %}</summary>
-      <div class="multi-filter-panel">
-        <label>
-          <input type="radio" name="feld" value="" {{ "checked" if not filter_feld else "" }} onclick="this.form.submit()">
-          – Alle –
-        </label>
-        <label>
-          <input type="radio" name="feld" value="kontonummer" {{ "checked" if filter_feld == "kontonummer" else "" }} onclick="this.form.submit()">
-          Kontonummer
-        </label>
-        <label>
-          <input type="radio" name="feld" value="kontofuehrungsgebuehren" {{ "checked" if filter_feld == "kontofuehrungsgebuehren" else "" }} onclick="this.form.submit()">
-          Kontoführungsgebühren
-        </label>
-        <label>
-          <input type="radio" name="feld" value="zugangsdaten_gespeichert" {{ "checked" if filter_feld == "zugangsdaten_gespeichert" else "" }} onclick="this.form.submit()">
-          Zugangsdaten gesichert
-        </label>
-        <label>
-          <input type="radio" name="feld" value="auszahlung_erwartet" {{ "checked" if filter_feld == "auszahlung_erwartet" else "" }} onclick="this.form.submit()">
-          Erwartete Auszahlung
-        </label>
-      </div>
-    </details>
-    <button type="submit" class="secondary">Filtern</button>
-    {% if filter_feld %}<a class="button secondary" href="todos?tab={{ tab_slug }}">Zurücksetzen</a>{% endif %}
+    <div class="chip-reihe umbrechen" aria-label="Feld">
+      {{ chip("feld", "", "Alle Felder", not filter_feld, typ="radio") }}
+      {{ chip("feld", "kontonummer", "Kontonummer", filter_feld == "kontonummer", typ="radio") }}
+      {{ chip("feld", "kontofuehrungsgebuehren", "Kontoführungsgebühren", filter_feld == "kontofuehrungsgebuehren", typ="radio") }}
+      {{ chip("feld", "zugangsdaten_gespeichert", "Zugangsdaten gesichert", filter_feld == "zugangsdaten_gespeichert", typ="radio") }}
+      {{ chip("feld", "auszahlung_erwartet", "Erwartete Auszahlung", filter_feld == "auszahlung_erwartet", typ="radio") }}
+    </div>
   </form>
   {% endmacro %}
   {{ feld_filter(kategorie_slugs["Deal pflegen"]) }}
@@ -135,21 +102,13 @@
      zu den Filtern oben). Voreinstellung "Aktuell fällig": was erst nächsten
      Monat ansteht, gehört nicht in die Liste dessen, was jetzt zu tun ist. #}
   {% set manuell_slug = kategorie_slugs["Manuelle Aufgaben"] %}
-  <form class="filterleiste todo-faellig-filter todo-faellig-filter-{{ manuell_slug }}" method="get" action="todos">
+  <form class="chip-filter todo-faellig-filter todo-faellig-filter-{{ manuell_slug }}" method="get" action="todos">
     <input type="hidden" name="tab" value="{{ manuell_slug }}">
-    <details class="multi-filter">
-      <summary>Zeitraum{% if filter_faellig != "aktuell" %} (1){% endif %}</summary>
-      <div class="multi-filter-panel">
-        {% for wert, label in faellig_labels.items() %}
-        <label>
-          <input type="radio" name="faellig" value="{{ wert }}" {{ "checked" if filter_faellig == wert else "" }} onclick="this.form.submit()">
-          {{ label }}
-        </label>
-        {% endfor %}
-      </div>
-    </details>
-    <button type="submit" class="secondary">Filtern</button>
-    {% if filter_faellig != "aktuell" %}<a class="button secondary" href="todos?tab={{ manuell_slug }}">Zurücksetzen</a>{% endif %}
+    <div class="chip-reihe umbrechen" aria-label="Zeitraum">
+      {% for wert, label in faellig_labels.items() %}
+      {{ chip("faellig", wert, label, filter_faellig == wert, typ="radio") }}
+      {% endfor %}
+    </div>
   </form>
 
   <div class="todo-panels">

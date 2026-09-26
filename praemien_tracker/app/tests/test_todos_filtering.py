@@ -239,8 +239,8 @@ def test_quelle_filter_traegt_css_klasse_fuer_praemien_tabs(db):
     gibt zwei Formulare - je eins pro Prämien-Tab, siehe
     test_filtern_bleibt_auf_dem_jeweiligen_praemien_tab für den Grund."""
     antwort = client.get("/todos")
-    assert 'class="filterleiste todo-quelle-filter todo-quelle-filter-praemie"' in antwort.text
-    assert 'class="filterleiste todo-quelle-filter todo-quelle-filter-praemie_pruefen"' in antwort.text
+    assert 'class="chip-filter todo-quelle-filter todo-quelle-filter-praemie"' in antwort.text
+    assert 'class="chip-filter todo-quelle-filter todo-quelle-filter-praemie_pruefen"' in antwort.text
 
 
 def test_quelle_filter_steht_hinter_den_kacheln_vor_den_todos(db):
@@ -250,7 +250,7 @@ def test_quelle_filter_steht_hinter_den_kacheln_vor_den_todos(db):
     antwort = client.get("/todos")
     html = antwort.text
     idx_kacheln = html.index('class="todo-tabs-nav"')
-    idx_filter = html.index('class="filterleiste todo-quelle-filter todo-quelle-filter-praemie"')
+    idx_filter = html.index('class="chip-filter todo-quelle-filter todo-quelle-filter-praemie"')
     idx_panels = html.index('class="todo-panels"')
     assert idx_kacheln < idx_filter < idx_panels
 
@@ -379,7 +379,7 @@ def test_filtern_leert_nur_die_betroffene_praemien_kachel_nicht_beide(db):
 
 
 # ---------------------------------------------------------------------------
-# Bug 2: "Filtern" sprang immer auf "Manuelle Aufgaben", weil das versteckte
+# Bug 2: Das Filtern sprang immer auf "Manuelle Aufgaben", weil das versteckte
 # tab-Feld den beim SEITENAUFRUF aktiven Tab enthielt - ein Tab-Wechsel ist
 # aber rein clientseitig (CSS-Radio ohne Navigation), sodass dieser Wert beim
 # Absenden meist nicht mehr dem gerade sichtbaren Tab entsprach. Fix: zwei

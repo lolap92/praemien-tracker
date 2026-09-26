@@ -264,8 +264,7 @@ a {
   height: 18px;
 }
 
-/* "Mehr"-Menü: dieselbe Details/Summary-Mechanik wie die Filter auf der
-   Deals-Seite (.multi-filter) - kein JS nötig. */
+/* "Mehr"-Menü: ein aufklappbares Details/Summary-Menü - kein JS nötig. */
 
 .nav-more {
   position: relative;
@@ -641,23 +640,23 @@ a.chip:focus-visible {
    .todo-tabs - :has() funktioniert unabhängig von der Position im Markup und
    wird hier für alle drei Blöcke einheitlich verwendet, dieselbe reine-CSS-
    Technik wie die Tabs selbst, kein JS nötig.
-   .filterleiste.todo-quelle-filter (zwei Klassen) statt nur
+   .chip-filter.todo-quelle-filter (zwei Klassen) statt nur
    .todo-quelle-filter, damit die Regel unabhängig von der Reihenfolge im
-   Stylesheet die geteilte .filterleiste-Basis (auch von deals_list.html und
+   Stylesheet die geteilte .chip-filter-Basis (auch von deals_list.html und
    vorschlaege.html genutzt) sicher übersticht.
 
    Der Quelle-Filter existiert als ZWEI Formulare, je eins pro Prämien-Tab
    mit fest eingetragenem tab_slug (siehe todos.html, quelle_filter-Makro) -
-   nötig, damit "Filtern" immer auf dem gerade sichtbaren Tab bleibt statt auf
+   nötig, damit ein Tipp auf einen Chip immer auf dem gerade sichtbaren Tab bleibt statt auf
    den beim Seitenaufruf aktiven zurückzuspringen (ein Tab-Wechsel ist rein
    clientseitig, ohne Navigation). Jedes Formular blendet deshalb gezielt nur
    für seinen eigenen Tab ein (.todo-quelle-filter-<slug>), nicht für beide
    zugleich. */
 .neue-aufgabe-card,
 .erledigte-aufgaben-card,
-.filterleiste.todo-quelle-filter,
-.filterleiste.todo-feld-filter,
-.filterleiste.todo-faellig-filter {
+.chip-filter.todo-quelle-filter,
+.chip-filter.todo-feld-filter,
+.chip-filter.todo-faellig-filter {
   display: none;
 }
 
@@ -1074,126 +1073,7 @@ dialog.todo-dialog .dialog-loeschen {
 
 /* ---------- filter / search ---------- */
 
-.filterleiste {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  align-items: center;
-}
-
-.filterleiste select,
-.filterleiste input[type="search"] {
-  padding: 0.5rem 0.7rem;
-  border-radius: 20px;
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  color: var(--ink-soft);
-  font-size: 0.85rem;
-}
-
-.multi-filter {
-  position: relative;
-}
-
-.multi-filter > summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 0.5rem 0.9rem;
-  border-radius: 20px;
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  color: var(--ink-soft);
-  font-size: 0.85rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.multi-filter > summary::-webkit-details-marker {
-  display: none;
-}
-
-.multi-filter > summary::after {
-  content: "▾";
-  font-size: 0.65rem;
-  color: var(--ink-faint);
-}
-
-.multi-filter[open] > summary {
-  border-color: var(--accent);
-  color: var(--ink);
-}
-
-.multi-filter-panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 20;
-  background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: 14px;
-  padding: 0.5rem;
-  min-width: 180px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-}
-
-.multi-filter-panel label {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  font-size: 0.85rem;
-  color: var(--ink);
-  margin: 0;
-  cursor: pointer;
-  padding: 0.4rem 0.5rem;
-  border-radius: 8px;
-  white-space: nowrap;
-}
-
-.multi-filter-panel label:hover {
-  background: var(--surface-2);
-}
-
-.multi-filter-panel input[type="checkbox"] {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-  border: 1.5px solid var(--line-strong);
-  background: var(--surface);
-  margin: 0;
-  flex-shrink: 0;
-  cursor: pointer;
-  position: relative;
-  transition: background 0.12s, border-color 0.12s;
-}
-
-.multi-filter-panel input[type="checkbox"]:hover {
-  border-color: var(--ink-faint);
-}
-
-.multi-filter-panel input[type="checkbox"]:checked {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.multi-filter-panel input[type="checkbox"]:checked::after {
-  content: "";
-  position: absolute;
-  left: 5px;
-  top: 1px;
-  width: 5px;
-  height: 9px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
-/* ---------- Chip-Filter (Deals-Liste) ---------- */
+/* ---------- Chip-Filter (Deals, Zu erledigen, Vorschläge) ---------- */
 
 .chip-filter {
   margin-bottom: 1rem;
@@ -1214,6 +1094,12 @@ dialog.todo-dialog .dialog-loeschen {
 }
 .chip-reihe::-webkit-scrollbar {
   display: none;
+}
+/* Kurze Zeilen (wenige Optionen, Einfachauswahl) brechen lieber um, als
+   eine Auswahl seitlich aus dem Bild zu schieben. */
+.chip-reihe.umbrechen {
+  flex-wrap: wrap;
+  overflow: visible;
 }
 @media (min-width: 720px) {
   .chip-reihe {
@@ -1962,16 +1848,6 @@ table.pc-tabelle tr:hover {
 
 /* ---------- Vorschläge (KI-Deal-Finder) ---------- */
 
-.vorschlag-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  font-size: 0.8rem;
-  color: var(--ink-soft);
-  margin-bottom: 1rem;
-}
-
 /* Statuszeile ist die aufklappbare Zusammenfassung: eingeklappt zeigt sie nur
    "Letzter Lauf ...", die Zahlen/Fehler erscheinen erst per Klick auf genau
    diese Zeile (kein separater "Details"-Link nötig - der ganze <summary>
@@ -2064,8 +1940,7 @@ table.lauf-tabelle tr:hover {
 /* "Alle neu analysieren"/"Zurücksetzen" stecken standardmäßig eingeklappt in
    diesem Dropdown, damit im Alltag nur "Jetzt suchen" ins Auge fällt - beide
    sind seltener gebraucht und lösen bei Fehlklick teuren Neu-Abgleich bzw.
-   unwiderrufliches Löschen aus. Styling bewusst identisch zu .multi-filter
-   (gleiches Dropdown-Muster, schon an anderer Stelle auf der Seite etabliert). */
+   unwiderrufliches Löschen aus. */
 .lauf-weitere-aktionen {
   position: relative;
 }

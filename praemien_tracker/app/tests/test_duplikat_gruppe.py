@@ -11,6 +11,8 @@ import pytest
 from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
 
+from chip_hilfen import chip_anzahl
+
 from praemien_tracker.main import app
 from praemien_tracker.models import Deal, DealVorschlag, Inhaber
 
@@ -107,7 +109,7 @@ def test_zwei_quellen_gleiche_bank_werden_gebuendelt(db, inhaber):
     assert "Alle verwerfen" in antwort.text
     # Wie bei der bestehenden Mehrpersonen-Bündelung zählt der Chip die
     # gebündelte Karte nur einmal, nicht jede Quelle einzeln.
-    assert "1 vorgeschlagen" in antwort.text
+    assert chip_anzahl(antwort.text, "status", "vorgeschlagen") == 1
 
 
 def test_drei_quellen_werden_gebuendelt(db, inhaber):
@@ -130,7 +132,7 @@ def test_unterschiedliche_bank_wird_nicht_gebuendelt(db, inhaber):
 
     antwort = client.get("/vorschlaege")
     assert 'class="card dup-gruppe' not in antwort.text
-    assert "2 vorgeschlagen" in antwort.text
+    assert chip_anzahl(antwort.text, "status", "vorgeschlagen") == 2
 
 
 def test_unterschiedliche_kontoart_wird_nicht_gebuendelt(db, inhaber):
@@ -176,8 +178,8 @@ def test_bester_status_bestimmt_die_sektion(db, inhaber):
                ablehnungsgruende="Bereits Kundin.")
 
     antwort = client.get("/vorschlaege")
-    assert "1 vorgeschlagen" in antwort.text
-    assert "0 abgelehnt" in antwort.text
+    assert chip_anzahl(antwort.text, "status", "vorgeschlagen") == 1
+    assert chip_anzahl(antwort.text, "status", "automatisch_abgelehnt") == 0
 
 
 def test_status_filter_zeigt_keine_karte_wenn_badge_dafuer_0_zeigt(db, inhaber):
@@ -192,11 +194,11 @@ def test_status_filter_zeigt_keine_karte_wenn_badge_dafuer_0_zeigt(db, inhaber):
     _vorschlag(db, inhaber, "zu_pruefen", quelle_url="https://www.mydealz.de/2", inhalt_hash="h2", bank_name="ING")
 
     antwort = client.get("/vorschlaege")
-    assert "1 vorgeschlagen" in antwort.text
-    assert "0 zu prüfen" in antwort.text
+    assert chip_anzahl(antwort.text, "status", "vorgeschlagen") == 1
+    assert chip_anzahl(antwort.text, "status", "zu_pruefen") == 0
 
     gefiltert = client.get("/vorschlaege?status=zu_pruefen")
-    assert "0 zu prüfen" in gefiltert.text
+    assert chip_anzahl(gefiltert.text, "status", "zu_pruefen") == 0
     # 'dup-gruppe' steckt auch im eingebetteten <script> (JS-Selektor) -
     # gezielt auf die Karte selbst prüfen, nicht bloß die Klasse irgendwo im HTML.
     assert 'class="card dup-gruppe' not in gefiltert.text

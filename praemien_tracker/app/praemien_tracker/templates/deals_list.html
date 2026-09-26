@@ -5,6 +5,7 @@
 <a class="icon-btn accent" href="deals/new">+ Neuer Deal</a>
 {% endblock %}
 {% block content %}
+{% from "_filter_chips.html" import chip %}
 
 {# Filter als Chips statt Dropdowns: jeder Tipp filtert sofort (kein
    Aufklappen, kein Wegklicken, kein "Filtern"-Knopf). Status ohne Treffer
@@ -14,19 +15,13 @@
     {# Ausgewählte zuerst: die Zeile ist auf dem Handy seitlich wischbar,
        ein aktiver Filter darf dort nicht außerhalb des Bildschirms liegen. #}
     {% for inh in (inhaber_liste | selectattr("id", "in", filter_inhaber_id) | list) + (inhaber_liste | rejectattr("id", "in", filter_inhaber_id) | list) %}
-    <label class="filter-chip {{ 'an' if inh.id in filter_inhaber_id else '' }}">
-      <input type="checkbox" name="inhaber_id" value="{{ inh.id }}" {{ "checked" if inh.id in filter_inhaber_id else "" }} onchange="this.form.submit()">
-      {{ inh.name }} <span class="num">{{ anzahl_inhaber.get(inh.id, 0) }}</span>
-    </label>
+    {{ chip("inhaber_id", inh.id, inh.name, inh.id in filter_inhaber_id, anzahl_inhaber.get(inh.id, 0)) }}
     {% endfor %}
   </div>
   <div class="chip-reihe" aria-label="Status">
     {% for s in (status_order | select("in", filter_status) | list) + (status_order | reject("in", filter_status) | list) %}
     {% if anzahl_status.get(s, 0) or s in filter_status %}
-    <label class="filter-chip status-{{ s }} {{ 'an' if s in filter_status else '' }}">
-      <input type="checkbox" name="status" value="{{ s }}" {{ "checked" if s in filter_status else "" }} onchange="this.form.submit()">
-      {{ status_labels[s] }} <span class="num">{{ anzahl_status.get(s, 0) }}</span>
-    </label>
+    {{ chip("status", s, status_labels[s], s in filter_status, anzahl_status.get(s, 0)) }}
     {% endif %}
     {% endfor %}
   </div>

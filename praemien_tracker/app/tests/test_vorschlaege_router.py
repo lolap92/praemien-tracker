@@ -11,6 +11,8 @@ import pytest
 from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
 
+from chip_hilfen import chip_anzahl
+
 from praemien_tracker import helpers
 from praemien_tracker.main import app
 from praemien_tracker.models import Deal, DealVorschlag, FinderLauf, Inhaber, VorschlagBedingung, VorschlagPraemie
@@ -70,9 +72,9 @@ def test_vorschlaege_seite_gruppiert_nach_status(db, inhaber):
 
     antwort = client.get("/vorschlaege")
     assert antwort.status_code == 200
-    assert "1 vorgeschlagen" in antwort.text
-    assert "1 zu prüfen" in antwort.text
-    assert "1 abgelehnt" in antwort.text
+    assert chip_anzahl(antwort.text, "status", "vorgeschlagen") == 1
+    assert chip_anzahl(antwort.text, "status", "zu_pruefen") == 1
+    assert chip_anzahl(antwort.text, "status", "automatisch_abgelehnt") == 1
 
 
 def test_automatisch_abgelehnte_karte_zeigt_begruendung(db, inhaber):
@@ -251,7 +253,7 @@ def test_gleicher_fund_fuer_mehrere_inhaber_erscheint_nur_einmal(db, zwei_inhabe
 
     antwort = client.get("/vorschlaege")
     assert antwort.status_code == 200
-    assert "1 vorgeschlagen" in antwort.text
+    assert chip_anzahl(antwort.text, "status", "vorgeschlagen") == 1
     assert "Alice" in antwort.text
     assert "Max" in antwort.text
 
@@ -265,8 +267,8 @@ def test_gruppen_status_ist_der_beste_einzelstatus(db, zwei_inhaber):
     _vorschlag(db, max_, "automatisch_abgelehnt", inhalt_hash="gleich", ablehnungsgruende="Bereits Kundin.")
 
     antwort = client.get("/vorschlaege")
-    assert "1 vorgeschlagen" in antwort.text
-    assert "0 abgelehnt" in antwort.text
+    assert chip_anzahl(antwort.text, "status", "vorgeschlagen") == 1
+    assert chip_anzahl(antwort.text, "status", "automatisch_abgelehnt") == 0
     assert "Bereits Kundin." in antwort.text
 
 
@@ -718,7 +720,7 @@ def test_reiner_erwachsenen_deal_verschwindet_nach_uebernahme_beider_erwachsener
     # Fachlogik für einen reinen Erwachsenen-Deal herstellt.
 
     vor = client.get("/vorschlaege")
-    assert "1 vorgeschlagen" in vor.text
+    assert chip_anzahl(vor.text, "status", "vorgeschlagen") == 1
 
     antwort = _uebernehmen_vorschau_und_bestaetigen([v1.id, v2.id])
     assert antwort.status_code == 303
@@ -733,11 +735,11 @@ def test_reiner_erwachsenen_deal_verschwindet_nach_uebernahme_beider_erwachsener
     assert db.query(DealVorschlag).filter(DealVorschlag.inhaber_id.in_([kind_1.id, kind_2.id])).count() == 0
 
     nach = client.get("/vorschlaege")
-    assert "0 vorgeschlagen" in nach.text
-    assert "0 verworfen" in nach.text
+    assert chip_anzahl(nach.text, "status", "vorgeschlagen") == 0
+    assert chip_anzahl(nach.text, "status", "verworfen") == 0
     # Verschwindet aus den offenen Bereichen, taucht aber (gewollt, siehe
     # Nachvollziehbarkeits-Tests weiter unten) in der "übernommen"-Sektion auf.
-    assert "2 übernommen" in nach.text
+    assert chip_anzahl(nach.text, "status", "uebernommen") == 2
 
 
 def test_erwachsenen_deal_fuer_alle_vier_verschwindet_ebenfalls_vollstaendig(db, haushalt_vier):
@@ -767,10 +769,10 @@ def test_erwachsenen_deal_fuer_alle_vier_verschwindet_ebenfalls_vollstaendig(db,
     assert db.query(Deal).count() == 4
 
     nach = client.get("/vorschlaege")
-    assert "0 vorgeschlagen" in nach.text
+    assert chip_anzahl(nach.text, "status", "vorgeschlagen") == 0
     # Verschwindet aus den offenen Bereichen, taucht aber (gewollt) in der
     # "übernommen"-Sektion auf - je eine Zeile für alle vier Inhaber.
-    assert "4 übernommen" in nach.text
+    assert chip_anzahl(nach.text, "status", "uebernommen") == 4
 
 
 def test_uebernehmen_bestaetigen_funktioniert_auch_bei_verworfen(db, inhaber):
@@ -889,7 +891,7 @@ def test_verworfener_vorschlag_taucht_nicht_mehr_bei_offenen_auf(db, inhaber):
     )
 
     antwort = client.get("/vorschlaege")
-    assert "0 vorgeschlagen" in antwort.text
+    assert chip_anzahl(antwort.text, "status", "vorgeschlagen") == 0
 
 
 def test_verworfener_vorschlag_zeigt_begruendung_in_eigener_sektion(db, inhaber):
@@ -957,7 +959,7 @@ def test_filter_nach_quelle(db, inhaber):
 
     antwort = client.get("/vorschlaege", params={"quelle": "spartanien"})
     assert antwort.status_code == 200
-    assert "1 vorgeschlagen" in antwort.text
+    assert chip_anzahl(antwort.text, "status", "vorgeschlagen") == 1
 
 
 def test_filter_nach_quelle_dealdoktor(db, inhaber):
@@ -969,7 +971,7 @@ def test_filter_nach_quelle_dealdoktor(db, inhaber):
 
     antwort = client.get("/vorschlaege", params={"quelle": "dealdoktor"})
     assert antwort.status_code == 200
-    assert "1 vorgeschlagen" in antwort.text
+    assert chip_anzahl(antwort.text, "status", "vorgeschlagen") == 1
     assert "https://www.dealdoktor.de/1" in antwort.text
     assert "https://www.mydealz.de/1" not in antwort.text
 
@@ -985,7 +987,7 @@ def test_filter_nach_typ_kind_zeigt_nur_minderjaehrige(db, zwei_inhaber):
 
     antwort = client.get("/vorschlaege", params={"typ": "kind"})
     assert antwort.status_code == 200
-    assert "1 vorgeschlagen" in antwort.text
+    assert chip_anzahl(antwort.text, "status", "vorgeschlagen") == 1
     assert "Max" in antwort.text
     assert "Bank1" not in antwort.text
 
@@ -1001,22 +1003,25 @@ def test_filter_nach_status(db, inhaber):
     # Die Chips zeigen weiterhin die Gesamtzahl je Status - unabhängig vom
     # aktiven Status-Filter, sonst würden sie sich beim Anklicken auf 0
     # zurücksetzen.
-    assert "1 vorgeschlagen" in antwort.text
-    assert "1 zu prüfen" in antwort.text
+    assert chip_anzahl(antwort.text, "status", "vorgeschlagen") == 1
+    assert chip_anzahl(antwort.text, "status", "zu_pruefen") == 1
     # Nur "Zu prüfen" wird tatsächlich als Karten-Sektion angezeigt.
     assert "ZuPruefenBank" in antwort.text
     assert "VorgeschlagenBank" not in antwort.text
 
 
-def test_status_chips_sind_links_die_direkt_filtern(db, inhaber):
-    """Klick auf einen Status-Chip soll direkt auf den jeweiligen Status
-    filtern - die Chips sind deshalb Links auf vorschlaege?status=..."""
+def test_status_chips_filtern_direkt(db, inhaber):
+    """Ein Tipp auf einen Status-Chip filtert sofort: die Chips sind
+    Checkboxen im Filterformular, die es beim Ändern selbst abschicken - auch
+    Status ohne Treffer bleiben als Chip sichtbar."""
     _vorschlag(db, inhaber, "vorgeschlagen")
     antwort = client.get("/vorschlaege")
-    assert 'href="vorschlaege?status=vorgeschlagen"' in antwort.text
-    assert 'href="vorschlaege?status=zu_pruefen"' in antwort.text
-    assert 'href="vorschlaege?status=automatisch_abgelehnt"' in antwort.text
-    assert 'href="vorschlaege?status=verworfen"' in antwort.text
+    soup = BeautifulSoup(antwort.text, "html.parser")
+    for status in ("vorgeschlagen", "zu_pruefen", "automatisch_abgelehnt", "verworfen", "uebernommen"):
+        chip = soup.select_one(f'form.chip-filter input[name="status"][value="{status}"]')
+        assert chip is not None, status
+        assert chip["onchange"] == "this.form.submit()"
+    assert chip_anzahl(antwort.text, "status", "zu_pruefen") == 0
 
 
 def test_verworfen_ist_ueber_status_chip_und_filter_erreichbar(db, inhaber):
@@ -1032,7 +1037,7 @@ def test_verworfen_ist_ueber_status_chip_und_filter_erreichbar(db, inhaber):
 
     # Vierter Zähler ist immer sichtbar, auch ohne aktiven Filter.
     antwort = client.get("/vorschlaege")
-    assert "1 verworfen" in antwort.text
+    assert chip_anzahl(antwort.text, "status", "verworfen") == 1
 
     # Gezielt gefiltert zeigt nur die Verworfen-Sektion (aufgeklappt) - die
     # anderen (leeren) Sektionen erscheinen nicht.

@@ -1,0 +1,10 @@
+{# Ein Filter-Chip, geteilt von allen Filtern der App (Deals, Zu erledigen,
+   Vorschläge). Jeder Tipp schickt das Formular sofort ab - kein Aufklappen,
+   kein "Filtern"-Knopf. typ="radio" für Einfachauswahl (dann mit einem
+   "Alle"-Chip), sonst Mehrfachauswahl. #}
+{% macro chip(name, wert, label, an, anzahl=none, typ="checkbox") -%}
+<label class="filter-chip {{ 'an' if an else '' }}">
+  <input type="{{ typ }}" name="{{ name }}" value="{{ wert }}" {{ "checked" if an else "" }} onchange="this.form.submit()">
+  {{ label }}{% if anzahl is not none %} <span class="num">{{ anzahl }}</span>{% endif %}
+</label>
+{%- endmacro %}
