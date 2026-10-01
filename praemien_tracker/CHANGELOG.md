@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.64.1
+
+Push-Benachrichtigungen kommen wieder auf dem Handy an, auch wenn bei „Benachrichtigungsgeräte" der Name des Notify-Dienstes eingetragen ist.
+
+- **„mobile_app_sm_g990b" wird als „sm_g990b" verstanden (`config.py`).** Das Skript `script.benachrichtigung_senden` vergleicht die Zielgeräte nur mit der nackten Geräte-Kennung. Stand in der Add-on-Option stattdessen der Dienstname mit Präfix `mobile_app_` (oder `notify.mobile_app_`), griff keine der Geräte-Bedingungen: Das Skript lief fehlerfrei durch, schrieb die Nachricht aber nur ins Logbuch und schickte nichts ans Handy - ohne jede Fehlermeldung. Genau so sind die Meldungen der letzten Tage („2 zu prüfen") verloren gegangen. Beide Präfixe werden jetzt abgeschnitten, Groß-/Kleinschreibung spielt keine Rolle mehr.
+
 ## 2.64.0
 
 Alle Filter der App funktionieren jetzt wie die in der Deals-Liste: antippbare Chips, die sofort filtern.

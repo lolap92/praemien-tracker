@@ -57,8 +57,22 @@ def _benachrichtigungsgeraete(wert) -> list[str]:
     Textfeld. Leer adressiert weiterhin alle im Skript hinterlegten Geräte."""
     if not wert or not str(wert).strip():
         return list(_ALLE_BENACHRICHTIGUNGSGERAETE)
-    geraete = [g.strip() for g in str(wert).split(",") if g.strip()]
+    geraete = [_geraete_kennung(g) for g in str(wert).split(",") if _geraete_kennung(g)]
     return geraete or list(_ALLE_BENACHRICHTIGUNGSGERAETE)
+
+
+def _geraete_kennung(eintrag: str) -> str:
+    """Akzeptiert neben der Kennung ("sm_g990b") auch den Namen des
+    Notify-Dienstes ("mobile_app_sm_g990b", "notify.mobile_app_sm_g990b"),
+    wie er in Home Assistant überall sonst auftaucht. Das Skript vergleicht
+    nur mit der nackten Kennung - mit Präfix griff keine seiner
+    Geräte-Bedingungen, und die Nachricht landete still nur im Logbuch statt
+    auf dem Handy."""
+    kennung = eintrag.strip().lower()
+    for praefix in ("notify.", "mobile_app_"):
+        if kennung.startswith(praefix):
+            kennung = kennung[len(praefix):]
+    return kennung
 
 
 _OPTIONEN = _lade_optionen()

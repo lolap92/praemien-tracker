@@ -27,3 +27,10 @@ def test_leere_eintraege_zwischen_kommas_werden_uebersprungen():
         "sm_g990b",
         "fp5",
     ]
+
+
+def test_notify_dienstname_wird_auf_die_kennung_gekuerzt():
+    """Mit "mobile_app_"-Präfix griff im Skript keine Geräte-Bedingung - die
+    Nachricht kam nie auf dem Handy an."""
+    assert _benachrichtigungsgeraete("mobile_app_sm_g990b") == ["sm_g990b"]
+    assert _benachrichtigungsgeraete("notify.mobile_app_sm_g990b, FP5") == ["sm_g990b", "fp5"]
