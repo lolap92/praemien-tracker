@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.66.1
+
+Ein Angebot, das einen Einkommens-Eingang verlangt (Gehalt, Lohn, Rente, BAföG), landet nicht mehr unter „Vorgeschlagen", sondern unter „Zu prüfen".
+
+- **Anlass:** Die Berliner Sparkasse stand mit „alle erfüllbar" unter „Vorgeschlagen", obwohl eine Bedingung „in drei Monaten jeweils ein Einkommenseingang (Gehalt, Rente, BAföG oder ähnlich)" lautet. Die KI stuft jede Bedingung selbst ein, und ihre Anweisung erlaubte, einen „sonstigen regelmäßigen Geldeingang" als erfüllt zu werten - das „oder ähnlich" hat sie genau so gelesen.
+- **Schärfere Anweisung an die KI (`finder/extraktion.py`).** Ein Eingang von Gehalt, Lohn, Rente, BAföG oder sonstigem Einkommen ist nie „erfüllt", auch nicht mit Zusätzen wie „oder ähnlich": eindeutig nur Einkommen ist weiterhin eine Ablehnung, alles Unklare „zu prüfen". Als erfüllt zählt nur ein ausdrücklich beliebiger Geldeingang („Überweisung von einem eigenen Konto genügt"). Wirkt bei neu analysierten Angeboten bzw. nach „Alle neu analysieren".
+- **Feste Prüfung zusätzlich zur KI (`finder/matching.py`).** Nennt eine Bedingung Gehalt, Lohn, Einkommen, Rente oder BAföG und hat die KI sie als erfüllt eingestuft, wird sie auf „zu prüfen" gesetzt - bewusst keine automatische Ablehnung, denn ob ein beliebiger Geldeingang genügt, entscheidest du selbst. Verneinungen wie „kein Gehaltseingang nötig" bleiben unberührt, ebenso „lohnt sich". Diese Prüfung läuft auch für bereits analysierte Angebote aus dem Zwischenspeicher, also ohne neue KI-Kosten: Die Sparkasse wechselt beim nächsten Lauf auf „Zu prüfen".
+- **Kein Duplikat beim Nachziehen (`finder/lauf.py`).** Ein Vorschlag wird über einen Inhalts-Hash wiedererkannt, in den die Einschätzungen der Bedingungen eingehen. Der Hash bleibt deshalb bei der Einschätzung der KI - so wechselt die bestehende Karte ihren Status, statt dass eine zweite daneben entsteht. Die Einschätzung je Bedingung wird dabei mit nachgezogen, damit die Karte nicht weiter „alle erfüllbar" anzeigt.
+
 ## 2.66.0
 
 Neu: ein Kündigungs-Assistent, der aus einem Deal eine fertige Kündigung macht - als E-Mail oder als Brief zum Ausdrucken - und vorher nur nach den Angaben fragt, die dafür noch fehlen.
