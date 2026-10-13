@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.69.1
+
+Von dir verworfene oder übernommene Vorschläge tauchen auch nach einer erneuten Analyse nie wieder als neue Karte auf.
+
+- **Lücke aus 2.68.0 geschlossen (`finder/lauf.py`).** Seit 2.68.0 werden alte zwischengespeicherte Funde mit Prämie 0 € einmalig neu analysiert, damit Sachprämien wie „Gratisaktie bis 100 €" erkannt werden. Bestehende Karten werden dabei über einen Inhalts-Hash wiedererkannt, in den auch die Einschätzungen der Bedingungen eingehen. Lieferte die Neuanalyse andere Bedingungen, passte der Hash nicht mehr - und für einen bereits verworfenen Fund wäre eine neue Karte unter „Zu prüfen" entstanden. Jetzt prüft der Lauf vor jeder neuen Karte, ob dieselbe Person den Fund schon verworfen oder übernommen hat, und legt dann nichts an. Automatisch abgelehnte Karten werden wie vorgesehen weiterhin nachgezogen.
+
 ## 2.69.0
 
 Der Kündigungs-Assistent füllt jetzt auch das eigene Kündigungsformular einer Bank aus, wenn sie eines verlangt.
