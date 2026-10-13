@@ -232,7 +232,22 @@ Auf der Deal-Seite (und im Reiter **Zu erledigen → Kündigen**) führt
    fest und setzt den Deal zugleich auf gekündigt (Kündigungsmonat aus dem
    Versanddatum, ein schon eingetragener Monat bleibt).
 
-An die KI gehen nur Bank, Kontoart und der Kündigungshinweis. Sie liefert
+**Formular der Bank:** Verlangt eine Bank ihr eigenes Kündigungsformular,
+führt **"Formular laden"** (Schritt 3) zu einer eigenen Seite. Dort lässt
+sich das PDF direkt über den recherchierten Link laden oder selbst
+hochladen; es gilt danach für alle Deals derselben Bank+Kontoart. Die App
+erkennt die Formularfelder, ordnet ihnen die gepflegten Angaben zu - per KI,
+sonst über Stichwörter wie "Vorname", "IBAN" oder "PLZ" - und fragt nach
+dem, was fehlt (z. B. eine Kundennummer). Jedes Feld lässt sich vor dem
+Herunterladen noch ändern. Das ausgefüllte PDF bleibt bearbeitbar und
+landet unter "Gespeicherte Schreiben"; unterschreiben musst du es weiterhin
+selbst. Gescannte PDFs ohne Felder, reine XFA-Formulare (nur Adobe Reader)
+und verschlüsselte PDFs lassen sich nicht ausfüllen - dann gibt es das leere
+Formular zum Herunterladen und eine Ausfüllhilfe mit allen Werten zum
+Abschreiben.
+
+An die KI gehen nur Bank, Kontoart und der Kündigungshinweis, beim Formular
+nur die Feldnamen und der Text des leeren Formulars. Sie liefert
 eine Vorlage mit Platzhaltern wie `{name}` oder `{iban}`; die echten Werte
 setzt erst die App ein. Im Demo-Modus wird nichts recherchiert.
 

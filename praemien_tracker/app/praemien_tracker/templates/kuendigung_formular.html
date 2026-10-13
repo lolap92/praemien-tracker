@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Formular {{ deal.bank.name }} · {{ deal.inhaber.name }} – Prämien-Tracker{% endblock %}
+{% block appbar_title %}Formular der Bank{% endblock %}
+{% block appbar_actions %}
+<a class="icon-btn" href="deals/{{ deal.id }}/kuendigung">Zurück</a>
+{% endblock %}
+{% block content %}
+
+<div class="form-status">
+  <div class="card-label">{{ deal.bank.name }} · {{ deal.kontoart }} · {{ deal.inhaber.name }}</div>
+</div>
+
+{% if meldung %}<div class="notiz">{{ meldung }}</div>{% endif %}
+
+{% if formular %}
+<div class="card">
+  <dl class="detail-liste">
+    <div class="detail-zeile"><dt>Formular</dt><dd>{{ formular.quelle }} · <a href="deals/{{ deal.id }}/kuendigung/formular/original">leer herunterladen</a></dd></div>
+    {% if feldwerte %}
+    <div class="detail-zeile">
+      <dt>Zuordnung</dt>
+      <dd>
+        {{ feldwerte | selectattr("wert") | list | length }} von {{ feldwerte | length }} Feldern vorausgefüllt
+        <span class="chip chip-ki-recherchiert">{{ "per KI, bitte prüfen" if formular.zuordnung_ki else "per Stichwörter, bitte prüfen" }}</span>
+      </dd>
+    </div>
+    {% endif %}
+  </dl>
+  {% if feldwerte and ki_verfuegbar %}
+  <form method="post" action="deals/{{ deal.id }}/kuendigung/formular/zuordnen" class="ka-recherche"
+        onsubmit="var b=this.querySelector('button'); b.disabled=true; b.textContent='Ordne zu …';">
+    <button type="submit" class="secondary">Zuordnung neu per KI ermitteln</button>
+  </form>
+  <p class="feld-hinweis">An die KI gehen nur die Feldnamen und der Text des leeren Formulars - keine persönlichen Daten.</p>
+  {% endif %}
+</div>
+
+{% if formular.hinweis %}
+{# ---------- nicht ausfüllbar: Ausfüllhilfe ---------- #}
+<div class="hinweis">{{ formular.hinweis }} Das leere Formular lässt sich oben herunterladen; die Werte zum Abschreiben stehen hier.</div>
+<div class="sec-t">Ausfüllhilfe</div>
+<div class="card">
+  {% if hilfe %}
+  <dl class="detail-liste">
+    {% for label, wert in hilfe %}
+    <div class="detail-zeile"><dt>{{ label }}</dt><dd>{{ wert }}</dd></div>
+    {% endfor %}
+  </dl>
+  {% else %}
+  <p class="leer">Noch keine Angaben gepflegt - siehe Kündigungs-Assistent, Schritt 2.</p>
+  {% endif %}
+</div>
+{% else %}
+{# ---------- ausfüllbar: Felder ---------- #}
+{% if fehlend %}
+<div class="hinweis">
+  Für einige Felder fehlt noch ein Wert:
+  <ul>{% for label in fehlend %}<li>{{ label }}</li>{% endfor %}</ul>
+  Name, Anschrift und IBAN lassen sich im Assistenten (Schritt 2) pflegen, bankspezifische Angaben direkt hier.
+</div>
+{% endif %}
+<form method="post" action="deals/{{ deal.id }}/kuendigung/formular/angaben">
+  {% if zusatzfelder %}
+  <div class="card">
+    <div class="card-label">Angaben, die dieses Formular zusätzlich verlangt</div>
+    {% for z in zusatzfelder %}
+    <div class="feld">
+      <label for="zusatz_{{ z.schluessel }}">{{ z.label }} {{ "⚠ offen" if not z.wert else "" }}</label>
+      <input type="text" id="zusatz_{{ z.schluessel }}" name="zusatz_{{ z.schluessel }}" value="{{ z.wert }}">
+      {% if z.hinweis %}<p class="feld-hinweis">{{ z.hinweis }}</p>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-label">Formularfelder</div>
+    {% for fw in feldwerte %}
+    <div class="feld">
+      <label for="feld_{{ loop.index }}">
+        {{ fw.feld.label }}
+        {% if fw.fehlt %}⚠ offen{% endif %}
+        {% if fw.eigen %}<span class="auto">von Hand</span>{% endif %}
+      </label>
+      {% if fw.feld.typ == "text" %}
+      <input type="text" id="feld_{{ loop.index }}" name="feld_{{ fw.feld.name }}" value="{{ fw.wert }}"
+             {% if fw.feld.max_len %}maxlength="{{ fw.feld.max_len }}"{% endif %}>
+      {% elif fw.feld.typ == "checkbox" %}
+      <select id="feld_{{ loop.index }}" name="feld_{{ fw.feld.name }}">
+        <option value="{{ aus }}" {{ "selected" if fw.wert != an else "" }}>nicht angekreuzt</option>
+        <option value="{{ an }}" {{ "selected" if fw.wert == an else "" }}>angekreuzt</option>
+      </select>
+      {% else %}
+      <select id="feld_{{ loop.index }}" name="feld_{{ fw.feld.name }}">
+        <option value="" {{ "selected" if not fw.wert else "" }}>(leer)</option>
+        {% for o in fw.feld.optionen %}
+        <option value="{{ o }}" {{ "selected" if fw.wert == o else "" }}>{{ o }}</option>
+        {% endfor %}
+      </select>
+      {% endif %}
+      {% if fw.feld.label != fw.feld.name %}<p class="feld-hinweis">Feld „{{ fw.feld.name }}"</p>{% endif %}
+    </div>
+    {% endfor %}
+    <p class="feld-hinweis">Eine Änderung hier gilt nur für diesen Deal. Ein Feld, das dem Vorschlag entspricht, folgt weiter den gepflegten Daten.</p>
+  </div>
+
+  <div class="card ka-aktionen">
+    <button type="submit" name="aktion" value="ausfuellen">Ausgefülltes Formular herunterladen</button>
+    <button type="submit" name="aktion" value="speichern" class="secondary">Nur speichern</button>
+  </div>
+  <p class="feld-hinweis">Das ausgefüllte PDF bleibt bearbeitbar und landet im Assistenten unter „Gespeicherte Schreiben" - dort lässt es sich als versendet markieren. Unterschreiben musst du es weiterhin selbst.</p>
+</form>
+{% endif %}
+{% endif %}
+
+{# ---------- Formular laden ---------- #}
+<div class="sec-t">{{ "Anderes Formular" if formular else "Formular laden" }}</div>
+<div class="card">
+  {% if formular_url and laden_moeglich %}
+  <form method="post" action="deals/{{ deal.id }}/kuendigung/formular/laden" class="ka-recherche"
+        onsubmit="var b=this.querySelector('button'); b.disabled=true; b.textContent='Lade …';">
+    <button type="submit" {{ 'class=secondary' if formular else '' }}>Formular von der Bank laden</button>
+  </form>
+  <p class="feld-hinweis">Von <a href="{{ formular_url }}" target="_blank" rel="noopener">{{ formular_url }}</a></p>
+  {% endif %}
+  <form method="post" action="deals/{{ deal.id }}/kuendigung/formular/hochladen" enctype="multipart/form-data" class="ka-hochladen">
+    <label for="ka_datei">PDF-Formular hochladen</label>
+    <input type="file" id="ka_datei" name="datei" accept="application/pdf,.pdf" required>
+    <button type="submit" class="secondary">Hochladen</button>
+  </form>
+  <p class="feld-hinweis">Das Formular gilt danach für alle Deals bei {{ deal.bank.name }} mit Kontoart {{ deal.kontoart }}.</p>
+  {% if formular %}
+  <form method="post" action="deals/{{ deal.id }}/kuendigung/formular/entfernen"
+        onsubmit="return confirm('Formular für {{ deal.bank.name }} entfernen?');">
+    <button type="submit" class="secondary">Formular entfernen</button>
+  </form>
+  {% endif %}
+</div>
+
+{% endblock %}

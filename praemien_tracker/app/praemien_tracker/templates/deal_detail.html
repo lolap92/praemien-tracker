@@ -55,7 +55,7 @@
     <div class="detail-zeile">
       <dt>Kündigungsschreiben</dt>
       <dd>
-        <a href="deals/{{ deal.id }}/kuendigung#gespeichert">{{ "Brief" if letztes.kanal == "brief" else "E-Mail" }} vom {{ letztes.datum | datum }}</a>
+        <a href="deals/{{ deal.id }}/kuendigung#gespeichert">{{ {"brief": "Brief", "email": "E-Mail", "formular": "Formular"}[letztes.kanal] }} vom {{ letztes.datum | datum }}</a>
         · {{ "versendet am " ~ (letztes.versendet_am | datum) if letztes.versendet_am else "Entwurf" }}
       </dd>
     </div>

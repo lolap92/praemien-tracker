@@ -65,6 +65,16 @@ STANDARD_FELDER: dict[str, str] = {
     "termin": "Kündigungstermin",
 }
 
+# Aus den Standardangaben berechnet, nie eigens abgefragt - vor allem für
+# Bankformulare, die Vor- und Nachname oder "Ort, Datum" getrennt verlangen
+# (kuendigung_formular.py).
+ABGELEITETE_FELDER: dict[str, str] = {
+    "vorname": "Vorname",
+    "nachname": "Nachname",
+    "datum": "Heutiges Datum",
+    "ort_datum": "Ort, Datum",
+}
+
 # Ohne diese Angaben gibt es keinen Absender - im Brief steht er oben links,
 # in der E-Mail unter dem Gruß.
 ABSENDER_FELDER = ("name", "strasse", "plz", "ort")
@@ -176,10 +186,7 @@ class Anforderung:
     def platzhalter(self) -> list[str]:
         """Alle Platzhalter in Betreff und Text, in Reihenfolge des ersten
         Auftretens - das ist auch die Reihenfolge der Rückfragen."""
-        gesehen: dict[str, None] = {}
-        for treffer in _PLATZHALTER.finditer(self.betreff_vorlage + "\n" + self.text_vorlage):
-            gesehen.setdefault(treffer.group(1), None)
-        return list(gesehen)
+        return platzhalter_in(self.betreff_vorlage + "\n" + self.text_vorlage)
 
 
 def standard_anforderung() -> Anforderung:
@@ -245,27 +252,7 @@ def _bereinigt(ergebnis: _AnforderungErgebnis) -> dict | None:
     if kanal not in KANAELE:
         kanal = "brief"
 
-    benutzt: dict[str, None] = {}
-    for treffer in _PLATZHALTER.finditer(betreff + "\n" + text):
-        benutzt.setdefault(treffer.group(1), None)
-
-    aufgefuehrt = {
-        z.schluessel.strip(): z
-        for z in ergebnis.zusatzfelder
-        if _PLATZHALTER.fullmatch("{" + z.schluessel.strip() + "}")
-    }
-    zusatzfelder = []
-    for schluessel in benutzt:
-        if schluessel in STANDARD_FELDER:
-            continue
-        z = aufgefuehrt.get(schluessel)
-        zusatzfelder.append(
-            {
-                "schluessel": schluessel,
-                "label": (z.label.strip() if z and z.label.strip() else schluessel.replace("_", " ").capitalize()),
-                "hinweis": z.hinweis.strip() if z else "",
-            }
-        )
+    zusatzfelder = zusatzfelder_fuer(platzhalter_in(betreff + "\n" + text), ergebnis.zusatzfelder)
 
     besonderheiten = [b.strip() for b in ergebnis.besonderheiten if b.strip()][:4]
     return {
@@ -279,6 +266,38 @@ def _bereinigt(ergebnis: _AnforderungErgebnis) -> dict | None:
         "text_vorlage": text,
         "quelle_url": ergebnis.quelle_url.strip()[:500] or None,
     }
+
+
+def platzhalter_in(text: str) -> list[str]:
+    gesehen: dict[str, None] = {}
+    for treffer in _PLATZHALTER.finditer(text):
+        gesehen.setdefault(treffer.group(1), None)
+    return list(gesehen)
+
+
+def zusatzfelder_fuer(benutzt, aufgefuehrt_roh) -> list[dict]:
+    """Ein Zusatzfeld je benutztem Platzhalter, den die App nicht selbst
+    kennt - mit Label und Hinweis aus der KI-Antwort, sofern sie ihn dort
+    aufgeführt hat, sonst aus dem Schlüssel gebildet. Gemeinsam für die
+    Briefvorlage und die Formular-Zuordnung (kuendigung_formular.py)."""
+    aufgefuehrt = {
+        z.schluessel.strip(): z
+        for z in aufgefuehrt_roh
+        if _PLATZHALTER.fullmatch("{" + z.schluessel.strip() + "}")
+    }
+    zusatzfelder = []
+    for schluessel in benutzt:
+        if schluessel in STANDARD_FELDER or schluessel in ABGELEITETE_FELDER:
+            continue
+        z = aufgefuehrt.get(schluessel)
+        zusatzfelder.append(
+            {
+                "schluessel": schluessel,
+                "label": (z.label.strip() if z and z.label.strip() else schluessel.replace("_", " ").capitalize()),
+                "hinweis": z.hinweis.strip() if z else "",
+            }
+        )
+    return zusatzfelder
 
 
 def _prompt(deal: Deal) -> str:
@@ -374,6 +393,14 @@ def werte_fuer(deal: Deal) -> dict[str, str]:
         "kontoart": deal.kontoart,
         "termin": angaben.get("termin") or STANDARD_TERMIN,
     }
+    # Vorname = alles bis zum letzten Wort. Bei Doppelnamen ("Anna-Lena
+    # von Berg") nicht immer richtig - im Formular lässt sich das je Feld
+    # überschreiben.
+    teile = werte["name"].rsplit(" ", 1)
+    werte["vorname"] = teile[0] if len(teile) == 2 else ""
+    werte["nachname"] = teile[-1] if werte["name"] else ""
+    werte["datum"] = datetime.date.today().strftime("%d.%m.%Y")
+    werte["ort_datum"] = f"{werte['ort']}, {werte['datum']}" if werte["ort"] else ""
     for schluessel, wert in angaben.items():
         if schluessel not in werte:
             werte[schluessel] = wert
@@ -383,6 +410,8 @@ def werte_fuer(deal: Deal) -> dict[str, str]:
 def label_fuer(anforderung: Anforderung, schluessel: str) -> str:
     if schluessel in STANDARD_FELDER:
         return STANDARD_FELDER[schluessel]
+    if schluessel in ABGELEITETE_FELDER:
+        return ABGELEITETE_FELDER[schluessel]
     for z in anforderung.zusatzfelder:
         if z.get("schluessel") == schluessel:
             return z.get("label") or schluessel
@@ -425,7 +454,9 @@ def absender_zeilen(werte: dict[str, str]) -> list[str]:
     return [z for z in zeilen if z]
 
 
-def schreiben_speichern(deal: Deal, kanal: str, betreff: str, text: str) -> Kuendigungsschreiben:
+def schreiben_speichern(
+    deal: Deal, kanal: str, betreff: str, text: str, datei: bytes | None = None
+) -> Kuendigungsschreiben:
     """Hält ein Schreiben als Momentaufnahme fest. Solange zum selben Kanal
     noch ein unversendeter Entwurf existiert, wird der überschrieben statt
     ein weiterer angelegt - wer nach einer Korrektur das PDF erneut
@@ -452,4 +483,5 @@ def schreiben_speichern(deal: Deal, kanal: str, betreff: str, text: str) -> Kuen
     entwurf.betreff = betreff[:300]
     entwurf.text = text
     entwurf.name = werte.get("name", "")
+    entwurf.datei = datei
     return entwurf

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.69.0
+
+Der Kündigungs-Assistent füllt jetzt auch das eigene Kündigungsformular einer Bank aus, wenn sie eines verlangt.
+
+- **Formular laden oder hochladen (`kuendigung_formular.py`, `templates/kuendigung_formular.html`).** Im Assistenten führt „Formular laden" zu einer eigenen Seite. Liegt aus der Recherche ein Formular-Link vor, holt „Formular von der Bank laden" das PDF direkt; sonst - oder wenn der Link nur auf eine Webseite zeigt - lässt es sich hochladen. Das Formular wird je Bank+Kontoart gespeichert (neue Tabelle `kuendigung_formulare`, das PDF liegt mit in der Datenbank und damit im Backup) und gilt danach für alle Deals dieser Kombination. Geladen wird nur über https und nie im Demo-Modus.
+- **Felder erkennen und zuordnen.** Die App liest die Formularfelder (Text, Checkbox, Radio-Gruppe, Auswahlliste, auch verschachtelte Namen) und ordnet ihnen die gepflegten Angaben zu. Mit API-Key übernimmt das die KI anhand von Feldnamen, Beschriftungen und dem Text des leeren Formulars - wie beim Brief nur mit Platzhaltern, persönliche Daten gehen nicht an die API. Ohne Key ordnet eine Stichwortsuche zu („Vorname", „PLZ", „IBAN", „Ort, Datum", …). Neu berechnet werden dafür Vorname, Nachname, das heutige Datum und „Ort, Datum", weil Formulare das oft getrennt verlangen. Ein unverändert erneut geladenes PDF behält seine Zuordnung und kostet keinen weiteren API-Aufruf.
+- **Prüfen, ergänzen, herunterladen.** Jedes Feld steht vorausgefüllt zum Prüfen da; bankspezifische Angaben wie eine Kundennummer werden abgefragt und wie beim Brief am Deal gespeichert. Eine Änderung gilt nur für diesen Deal; ein Feld, das dem Vorschlag entspricht, folgt weiter den gepflegten Daten. Passt eine IBAN in Vierergruppen nicht in ein begrenztes Feld, wird sie ohne Leerzeichen eingetragen. „Ausgefülltes Formular herunterladen" liefert ein weiterhin bearbeitbares PDF und legt es unter „Gespeicherte Schreiben" ab, wo es sich wie Brief und E-Mail als versendet markieren lässt (Migration 0027).
+- **Wenn es nicht ausfüllbar ist.** Gescannte PDFs ohne Formularfelder, reine XFA-Formulare und verschlüsselte PDFs lassen sich nicht befüllen. Dann sagt die Seite, warum, bietet das leere Formular zum Herunterladen an und zeigt eine Ausfüllhilfe mit allen bekannten Werten zum Abschreiben.
+- **Neue Abhängigkeit `pypdf` (`requirements.txt`).** Reines Python ohne weitere Pakete, läuft damit auch auf armv7. Hybrid-Formulare mit zusätzlicher XFA-Fassung werden beim Ausfüllen auf die normale Fassung reduziert, sonst zeigte Adobe Reader die leere XFA-Fassung an.
+
 ## 2.68.0
 
 Prämien ohne festen Geldbetrag - Gratisaktie, ETF-Anteil, Gutschein - werden jetzt erkannt, statt als 0 € automatisch abgelehnt zu werden.
