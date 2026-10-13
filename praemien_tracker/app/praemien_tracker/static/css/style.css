@@ -932,6 +932,13 @@ body:has(#todotab-manuell:checked) .todo-faellig-filter-manuell {
 
 /* "monatlich" an einer wiederkehrenden Aufgabe: das Abhaken hat dort eine
    Folge (es legt den nächsten Termin an), das soll vorher zu sehen sein. */
+/* Deal und Konto sollen sich auf einen Blick unterscheiden: der Deal in
+   neutralem Grau, das Konto im Akzentgrün (wie überall sonst). */
+.wdh-marke.art-deal {
+  color: var(--ink-soft);
+  background: rgba(107, 122, 133, 0.18);
+}
+
 .wdh-marke {
   font-family: var(--font-mono);
   font-size: 0.64rem;

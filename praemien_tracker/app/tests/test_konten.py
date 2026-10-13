@@ -195,3 +195,20 @@ def test_import_kennt_die_art():
     assert DealImport(bank="B", kontoart="Girokonto", inhaber="I", art="konto").art == "konto"
     with pytest.raises(ValueError):
         DealImport(bank="B", kontoart="Girokonto", inhaber="I", art="sparbuch")
+
+
+def test_kuendigen_und_bestaetigung_zeigen_ob_deal_oder_konto(db):
+    """In beiden Reitern stehen Deals und Konten gemischt - jeder Eintrag
+    trägt deshalb ein Etikett."""
+    _konto(db, bank_name="Kuendigkonto")
+    _konto(db, bank_name="Bestaetigkonto", gekuendigt=True, gekuendigt_im_monat="2026-01")
+    deal = Deal(kontoart="Girokonto", kontofuehrungsgebuehren=Decimal("0"), bank=Bank(name="Kuendigdeal"), inhaber=Inhaber(name="Erika"))
+    deal.praemien.append(Praemie(quelle="bank", betrag=Decimal("100"), erhalten=True))
+    db.add(deal)
+    db.commit()
+
+    soup = BeautifulSoup(client.get("/todos").text, "html.parser")
+    kuendigen = [m.text for m in soup.select("#panel-kuendigen .wdh-marke")]
+    bestaetigung = [m.text for m in soup.select("#panel-bestaetigung .wdh-marke")]
+    assert sorted(kuendigen) == ["Deal", "Konto"]
+    assert bestaetigung == ["Konto"]

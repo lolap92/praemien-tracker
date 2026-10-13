@@ -3,6 +3,11 @@
 {% block appbar_title %}Zu erledigen{% endblock %}
 {% block content %}
 {% from "_filter_chips.html" import chip %}
+{# Kündigen und Bestätigung warten mischen Prämien-Deals und Konten ohne
+   Prämie (models.ART_KONTO) - das Etikett zeigt, was von beiden es ist. #}
+{% macro art_marke(deal) -%}
+<span class="wdh-marke {{ 'art-konto' if deal.ist_konto else 'art-deal' }}">{{ "Konto" if deal.ist_konto else "Deal" }}</span>
+{%- endmacro %}
 
 <div class="todo-tabs">
   {% for kategorie in kategorie_reihenfolge %}
@@ -219,6 +224,7 @@
             <div class="ti-main">
               <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.text }}</a>
               <div class="ti-meta">
+                {{ art_marke(todo.deal) }}
                 {# Laufende Gebühren sind hier das eigentliche Argument: jeder
                    Monat, den das Konto noch offen steht, kostet Geld und
                    frisst die Prämie auf. Nicht erfasst heißt nicht
@@ -242,6 +248,7 @@
             </form>
             <div class="ti-main">
               <a class="t" href="deals/{{ todo.deal.id }}">{{ todo.text }}</a>
+              <div class="ti-meta">{{ art_marke(todo.deal) }}</div>
             </div>
           </div>
 
