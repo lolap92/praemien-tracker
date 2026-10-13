@@ -47,6 +47,7 @@ from .routers import (
     backup as backup_router,
     deals,
     inhaber,
+    kuendigung,
     overview,
     protokoll as protokoll_router,
     sperrfristen,
@@ -261,6 +262,7 @@ def create_app() -> FastAPI:
     app.include_router(overview.router)
     app.include_router(todos.router)
     app.include_router(deals.router)
+    app.include_router(kuendigung.router)
     app.include_router(sperrfristen.router)
     app.include_router(protokoll_router.router)
     app.include_router(vorschlaege.router)

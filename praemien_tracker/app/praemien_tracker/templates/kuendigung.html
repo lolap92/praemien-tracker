@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Kündigung {{ deal.bank.name }} · {{ deal.inhaber.name }} – Prämien-Tracker{% endblock %}
+{% block appbar_title %}Kündigung vorbereiten{% endblock %}
+{% block appbar_actions %}
+<a class="icon-btn" href="deals/{{ deal.id }}">Zum Deal</a>
+{% endblock %}
+{% block content %}
+
+<div class="form-status">
+  <div class="card-label">{{ deal.bank.name }} · {{ deal.kontoart }} · {{ deal.inhaber.name }}</div>
+  {% if deal.gekuendigt %}
+  <span class="chip status-abgeschlossen">bereits gekündigt{% if deal.gekuendigt_im_monat %} ({{ deal.gekuendigt_im_monat }}){% endif %}</span>
+  {% endif %}
+</div>
+
+{% if meldung %}<div class="notiz">{{ meldung }}</div>{% endif %}
+
+{# ---------- 1. Kündigungsweg ---------- #}
+<div class="sec-t">1 · So kündigt man hier</div>
+<div class="card">
+  <dl class="detail-liste">
+    <div class="detail-zeile">
+      <dt>Weg</dt>
+      <dd>
+        {{ anforderung.kanal_label }}
+        {% if anforderung.ki %}
+        <span class="chip chip-ki-recherchiert" title="Von der KI per Websuche recherchiert am {{ anforderung.recherchiert_am | zeitpunkt }} - nicht manuell geprüft.">KI-recherchiert</span>
+        {% else %}
+        <span class="chip chip-ki-recherchiert" title="Noch keine bankspezifische Recherche - formlose schriftliche Kündigung.">Standardvorlage</span>
+        {% endif %}
+      </dd>
+    </div>
+    {% if deal.kuendigung_hinweis %}
+    <div class="detail-zeile"><dt>Anweisungen</dt><dd>{{ deal.kuendigung_hinweis }}</dd></div>
+    {% endif %}
+    {% if anforderung.besonderheiten %}
+    <div class="detail-zeile">
+      <dt>Vorher beachten</dt>
+      <dd><ul class="ka-liste">{% for b in anforderung.besonderheiten %}<li>{{ b }}</li>{% endfor %}</ul></dd>
+    </div>
+    {% endif %}
+    {% if anforderung.formular_url %}
+    <div class="detail-zeile">
+      <dt>Formular der Bank</dt>
+      <dd><a href="{{ anforderung.formular_url }}" target="_blank" rel="noopener">{{ anforderung.formular_url }}</a></dd>
+    </div>
+    {% endif %}
+    {% if anforderung.quelle_url %}
+    <div class="detail-zeile">
+      <dt>Quelle</dt>
+      <dd><a href="{{ anforderung.quelle_url }}" target="_blank" rel="noopener">{{ anforderung.quelle_url }}</a></dd>
+    </div>
+    {% endif %}
+  </dl>
+  {% if anforderung.kanal == "online" %}
+  <p class="feld-hinweis">Die Bank sieht die Kündigung im Kundenportal vor. Ein schriftliches Schreiben ist trotzdem wirksam - unten liegt eines bereit, falls der Online-Weg nicht klappt.</p>
+  {% elif anforderung.kanal == "formular" %}
+  <p class="feld-hinweis">Die Bank verlangt ihr eigenes Formular. Die Angaben unten helfen beim Ausfüllen; ein formloses Schreiben liegt zusätzlich bereit.</p>
+  {% endif %}
+  {% if ki_verfuegbar %}
+  <form method="post" action="deals/{{ deal.id }}/kuendigung/recherche" class="ka-recherche"
+        onsubmit="var b=this.querySelector('button'); b.disabled=true; b.textContent='Recherchiere … (bis zu einer Minute)';">
+    <button type="submit" class="secondary">{{ "Neu recherchieren" if anforderung.ki else "Anforderungen dieser Bank recherchieren" }}</button>
+  </form>
+  <p class="feld-hinweis">An die KI gehen nur Bank, Kontoart und der Kündigungshinweis - keine persönlichen Daten. Sie liefert eine Vorlage mit Platzhaltern, die erst hier eingesetzt werden.</p>
+  {% endif %}
+</div>
+
+{# ---------- 2. Angaben ---------- #}
+<div class="sec-t">2 · Angaben</div>
+{% if fehlend %}
+<div class="hinweis">
+  Für das Schreiben fehlt noch:
+  <ul>{% for label in fehlend %}<li>{{ label }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+<form method="post" action="deals/{{ deal.id }}/kuendigung/angaben">
+  <div class="card">
+    <div class="card-label">Empfänger · {{ deal.bank.name }}</div>
+    <div class="feld">
+      <label for="bank_anschrift">
+        Postanschrift {{ "⚠ offen" if not anschrift else "" }}
+        {% if anschrift_aus_recherche %}<span class="chip chip-ki-recherchiert">aus der Recherche, bitte prüfen</span>{% endif %}
+      </label>
+      <textarea id="bank_anschrift" name="bank_anschrift" rows="4" class="ka-anschrift">{{ anschrift }}</textarea>
+    </div>
+    <p class="feld-hinweis">Nur für den Brief nötig. Gilt für alle Deals bei dieser Bank.</p>
+    <div class="feld">
+      <label for="bank_email">
+        E-Mail-Adresse für Kündigungen
+        {% if email_aus_recherche %}<span class="chip chip-ki-recherchiert">aus der Recherche, bitte prüfen</span>{% endif %}
+      </label>
+      <input type="text" inputmode="email" id="bank_email" name="bank_email" value="{{ email }}">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Absender und Konto</div>
+    {% for f in felder %}
+    <div class="feld">
+      <label for="f_{{ f.schluessel }}">{{ f.label }} {{ "⚠ offen" if f.fehlt else "" }}</label>
+      {% set feldname = f.schluessel if f.schluessel in ('name', 'strasse', 'plz', 'ort', 'geburtsdatum', 'email', 'iban', 'kontonummer') else 'zusatz_' ~ f.schluessel %}
+      <input type="{{ f.typ }}" id="f_{{ f.schluessel }}" name="{{ feldname }}" value="{{ f.wert }}"
+             {% if f.schluessel == 'email' %}inputmode="email"{% endif %}
+             {% if f.schluessel == 'plz' %}inputmode="numeric"{% endif %}
+             {% if f.schluessel == 'iban' %}autocomplete="off" spellcheck="false"{% endif %}>
+      {% if f.hinweis %}<p class="feld-hinweis">{{ f.hinweis }}</p>{% endif %}
+      {% if f.schluessel == 'iban' and iban_warnung %}<p class="feld-hinweis ka-warnung">Die Prüfsumme dieser IBAN stimmt nicht - bitte auf Tippfehler prüfen.</p>{% endif %}
+    </div>
+    {% endfor %}
+    <div class="feld">
+      <label for="f_termin">Kündigungstermin</label>
+      <input type="text" id="f_termin" name="termin" value="{{ termin }}" placeholder="{{ standard_termin }}">
+    </div>
+    <p class="feld-hinweis">Name, Anschrift, Geburtsdatum, E-Mail und IBAN werden beim Inhaber {{ deal.inhaber.name }} gespeichert und gelten für alle Deals dieses Inhabers (änderbar unter Mehr → Inhaber). Termin und bankspezifische Angaben gelten nur für diesen Deal.</p>
+  </div>
+
+  <div class="card">
+    <button type="submit" class="save-btn">Angaben speichern</button>
+  </div>
+</form>
+
+{# ---------- 3. Schreiben ---------- #}
+<div class="sec-t" id="schreiben">3 · Schreiben</div>
+{% if schreiben %}
+<form method="post" action="deals/{{ deal.id }}/kuendigung/brief" target="_blank" id="ka-schreiben">
+  <div class="card">
+    <div class="feld">
+      <label for="ka_betreff">Betreff</label>
+      <input type="text" id="ka_betreff" name="betreff" value="{{ schreiben.betreff }}">
+    </div>
+    <div class="feld">
+      <label for="ka_text">Text <span class="auto">hier anpassbar, gilt für E-Mail und Brief</span></label>
+      <textarea id="ka_text" name="text" rows="14" class="ka-text">{{ schreiben.text }}</textarea>
+    </div>
+    <p class="feld-hinweis">Darunter folgt automatisch {{ "Ihr Name" if not signatur else signatur.splitlines()[0] }} - im Brief mit Platz für die Unterschrift, in der E-Mail mit Anschrift.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Per E-Mail</div>
+    {% if email %}
+    <p class="ka-empfaenger">An: <b>{{ email }}</b></p>
+    {% else %}
+    <p class="feld-hinweis">Keine E-Mail-Adresse der Bank hinterlegt - die Mail-App öffnet sich ohne Empfänger.</p>
+    {% endif %}
+    <div class="ka-aktionen">
+      <button type="button" id="ka-mail" data-an="{{ email }}" data-signatur="{{ signatur }}">In Mail-App öffnen</button>
+      <button type="button" class="secondary" id="ka-kopieren">Text kopieren</button>
+    </div>
+    <p class="feld-hinweis" id="ka-kopiert" hidden>Betreff und Text sind in der Zwischenablage.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Per Brief</div>
+    {% if not anschrift %}
+    <p class="feld-hinweis">Für den Brief fehlt noch die Postanschrift der Bank (oben unter Empfänger).</p>
+    {% else %}
+    <div class="ka-aktionen">
+      <button type="submit">Brief zum Drucken öffnen</button>
+    </div>
+    <p class="feld-hinweis">Öffnet den fertigen Brief in einem neuen Tab. Dort „Drucken" wählen - oder im Druckdialog „Als PDF speichern".</p>
+    {% endif %}
+  </div>
+</form>
+
+<script>
+  (function () {
+    var form = document.getElementById('ka-schreiben');
+    var betreff = document.getElementById('ka_betreff');
+    var text = document.getElementById('ka_text');
+    var mail = document.getElementById('ka-mail');
+    function mailText() {
+      var signatur = mail.getAttribute('data-signatur');
+      return text.value + (signatur ? '\n' + signatur : '');
+    }
+    mail.addEventListener('click', function () {
+      var an = mail.getAttribute('data-an') || '';
+      window.location.href = 'mailto:' + encodeURIComponent(an).replace(/%40/g, '@') +
+        '?subject=' + encodeURIComponent(betreff.value) + '&body=' + encodeURIComponent(mailText());
+    });
+    document.getElementById('ka-kopieren').addEventListener('click', function () {
+      var inhalt = 'Betreff: ' + betreff.value + '\n\n' + mailText();
+      function erledigt() { document.getElementById('ka-kopiert').hidden = false; }
+      function ersatzweg() {
+        /* Ohne HTTPS (Home Assistant im lokalen Netz) gibt es kein
+           navigator.clipboard - dann über ein unsichtbares Textfeld. */
+        var hilf = document.createElement('textarea');
+        hilf.value = inhalt;
+        hilf.setAttribute('readonly', '');
+        hilf.style.position = 'fixed';
+        hilf.style.opacity = '0';
+        document.body.appendChild(hilf);
+        hilf.select();
+        try { if (document.execCommand('copy')) erledigt(); } catch (e) {}
+        document.body.removeChild(hilf);
+      }
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(inhalt).then(erledigt, ersatzweg);
+      } else {
+        ersatzweg();
+      }
+    });
+  })();
+</script>
+{% else %}
+<div class="card">
+  <p class="leer">Sobald oben alle Angaben gespeichert sind, steht hier das fertige Schreiben - als E-Mail und als Brief zum Drucken.</p>
+</div>
+{% endif %}
+
+{% endblock %}

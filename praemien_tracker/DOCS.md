@@ -18,7 +18,10 @@ Inhaber"-Aktion gibt es nicht. Neu angelegte Inhaber gelten dabei zunächst
 immer als erwachsen. Unter **Mehr → Inhaber** lässt sich für jedes
 Haushaltsmitglied ein Häkchen **"minderjährig"** setzen; das steuert im
 KI-Deal-Finder, ob ein reines Erwachsenen-Angebot für diese Person überhaupt
-als Vorschlag erscheint (siehe unten).
+als Vorschlag erscheint (siehe unten). Darunter lassen sich unter
+**"Anschrift & Bankverbindung"** vollständiger Name, Anschrift,
+Geburtsdatum, E-Mail und die IBAN für das Restguthaben pflegen - die
+Absenderdaten für den Kündigungs-Assistenten.
 
 ## Zu erledigen
 
@@ -200,6 +203,31 @@ der nächtliche Batch lässt Deals mit einem bereits gesetzten Hinweis
 unangetastet. Über die eigene Option `kuendigung_hinweise_batch_aktiv`
 unabhängig vom KI-Deal-Finder abschaltbar.
 
+## Kündigungs-Assistent
+
+Auf der Deal-Seite (und im Reiter **Zu erledigen → Kündigen**) führt
+**"Kündigung vorbereiten"** zu einer Seite in drei Schritten:
+
+1. **So kündigt man hier** - Kündigungsweg, Besonderheiten ("Depot muss
+   leer sein"), ggf. Link auf das Formular der Bank. Mit API-Key lässt sich
+   das per Knopf für Bank+Kontoart recherchieren; das Ergebnis wird
+   gespeichert und für jeden weiteren Deal derselben Kombination
+   wiederverwendet. Ohne Recherche gilt eine Standardvorlage für eine
+   formlose schriftliche Kündigung.
+2. **Angaben** - die App fragt nur nach dem, was für das Schreiben fehlt:
+   Absender und IBAN (gespeichert am Inhaber), Postanschrift und
+   Kündigungs-E-Mail der Bank (gespeichert an der Bank), Kontonummer,
+   Kündigungstermin und bankspezifische Angaben wie eine Kundennummer
+   (gespeichert am Deal).
+3. **Schreiben** - Betreff und Text, hier noch anpassbar, dann **"In
+   Mail-App öffnen"**, **"Text kopieren"** oder **"Brief zum Drucken
+   öffnen"** (DIN 5008, passt ins Fensterkuvert; im Druckdialog auch "Als
+   PDF speichern").
+
+An die KI gehen nur Bank, Kontoart und der Kündigungshinweis. Sie liefert
+eine Vorlage mit Platzhaltern wie `{name}` oder `{iban}`; die echten Werte
+setzt erst die App ein. Im Demo-Modus wird nichts recherchiert.
+
 ## Kunden-wirbt-Kunden-Recherche
 
 Beim Anlegen eines Deals (egal ob per Formular, JSON-Import oder aus dem
@@ -261,6 +289,8 @@ Die Datei enthält private Daten und darf nie ins öffentliche Repo gelangen
   regulären Home-Assistant-Backups mit erfasst.
 - Es werden bewusst keine Zugangsdaten (Login/Passwort/TAN) gespeichert -
   nur ein Flag, ob diese im Passwortmanager gesichert sind.
+- Die IBAN eines Inhabers erscheint im Änderungsprotokoll nur maskiert
+  (`DE89 … 3000`), nie im Klartext.
 
 ## Zeitangaben
 

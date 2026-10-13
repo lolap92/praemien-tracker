@@ -25,13 +25,17 @@ from decimal import Decimal
 from sqlalchemy import event, inspect
 from sqlalchemy.orm import Session, attributes
 
-from . import derived
+from . import derived, iban
 from .database import SessionLocal
 from .models import Aufgabe, Bank, Bedingung, Deal, DealUrl, Inhaber, Praemie, ProtokollEintrag
 from .templating import templates
 
 GETRACKTE_MODELLE = (Deal, Bank, Inhaber, Praemie, Bedingung, Aufgabe, DealUrl)
 IGNORIERTE_FELDER = {"id", "erstellt_am", "geaendert_am"}
+# Werden protokolliert, aber nur maskiert - sonst läge jede je gepflegte IBAN
+# dauerhaft im Klartext im Protokoll, auch nachdem sie am Inhaber geändert
+# oder gelöscht wurde. Dass sie sich geändert hat, bleibt nachvollziehbar.
+MASKIERTE_FELDER = {(Inhaber, "iban"): iban.maskiert}
 
 
 def _serialisiere(wert):
@@ -42,9 +46,14 @@ def _serialisiere(wert):
     return wert
 
 
+def _maskiert(obj, feld: str, wert):
+    maske = MASKIERTE_FELDER.get((type(obj), feld))
+    return maske(wert) if maske is not None and wert is not None else wert
+
+
 def _spalten_snapshot(obj) -> dict:
     mapper = inspect(obj).mapper
-    return {col.key: _serialisiere(getattr(obj, col.key)) for col in mapper.columns}
+    return {col.key: _serialisiere(_maskiert(obj, col.key, getattr(obj, col.key))) for col in mapper.columns}
 
 
 def _deal_snapshot(deal: Deal) -> dict:
@@ -158,7 +167,7 @@ def _dirty_feld_aenderungen(obj):
             continue
         alt = hist.deleted[0] if hist.deleted else None
         neu = hist.added[0] if hist.added else getattr(obj, col.key)
-        yield col.key, _serialisiere(alt), _serialisiere(neu)
+        yield col.key, _serialisiere(_maskiert(obj, col.key, alt)), _serialisiere(_maskiert(obj, col.key, neu))
 
 
 @event.listens_for(Session, "before_flush")

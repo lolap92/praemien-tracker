@@ -25,7 +25,17 @@ def lade_demo_daten(db: Session) -> None:
     heute = datetime.date.today()
     jahr = heute.year
 
-    max_ = Inhaber(name="Max Mustermann")
+    # Absenderdaten nur für Max, damit der Kündigungs-Assistent einmal mit
+    # vollständigen und einmal (Erika) mit fehlenden Angaben vorführbar ist.
+    # Die IBAN ist das bekannte Dokumentationsbeispiel, kein echtes Konto.
+    max_ = Inhaber(
+        name="Max Mustermann",
+        voller_name="Max Mustermann",
+        strasse="Musterstraße 1",
+        plz="12345",
+        ort="Musterstadt",
+        iban="DE89370400440532013000",
+    )
     erika = Inhaber(name="Erika Mustermann")
     db.add_all([max_, erika])
     db.flush()
@@ -42,7 +52,8 @@ def lade_demo_daten(db: Session) -> None:
         return d
 
     # Kündigen (Prämie da, keine offenen Punkte, keine Sperrfrist)
-    d1 = deal("Musterbank", "Girokonto", max_, zugangsdaten_gespeichert=True)
+    d1 = deal("Musterbank", "Girokonto", max_, zugangsdaten_gespeichert=True, kontonummer="1234567890")
+    d1.bank.anschrift = "Musterbank AG\nKundenservice\nPostfach 10 00 00\n12345 Musterstadt"
     d1.praemien.append(Praemie(quelle="bank", betrag=Decimal("150"), erhalten=True))
 
     # Bedingungen offen
