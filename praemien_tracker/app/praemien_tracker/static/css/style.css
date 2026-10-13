@@ -1350,6 +1350,10 @@ label {
 }
 
 input[type="text"],
+/* Eingaben mit Vorschlagsliste (Bank, Inhaber, Kontoart) haben kein
+   type-Attribut und blieben ohne diese Zeile ungestylt - im dunklen Design
+   als weiße Kästen. */
+input[list],
 input[type="search"],
 input[type="date"],
 input[type="number"],

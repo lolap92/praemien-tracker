@@ -82,6 +82,18 @@ def ist_kuendbar(deal: Deal, heute: datetime.date | None = None) -> bool:
     return deal.kuendbar_ab is None or deal.kuendbar_ab <= heute
 
 
+def _konto_status(deal: Deal) -> str:
+    """Ein Konto ohne Prämie (models.ART_KONTO) kennt nur die Kündigung:
+    Kündigen -> Bestätigung warten -> Abgeschlossen. Bedingungen, Prämien
+    und eine Sperrfrist gibt es dort nicht - ohne diese Abkürzung bliebe es
+    mangels Prämie dauerhaft in "Auf Prämie warten" stehen."""
+    if not deal.gekuendigt:
+        return STATUS_KUENDIGEN
+    if not deal.kuendigung_bestaetigt:
+        return STATUS_BESTAETIGUNG_WARTEN
+    return STATUS_ABGESCHLOSSEN
+
+
 def status(deal: Deal, heute: datetime.date | None = None) -> str:
     """Sechsstufige Pipeline (Konzept Abschnitt 6, erweitert um 'Auf
     Kündigung warten' für den Fall, dass alles erledigt ist, aber
@@ -96,6 +108,8 @@ def status(deal: Deal, heute: datetime.date | None = None) -> str:
     sie erscheinen unter 'Zu prüfen' (siehe pruefpunkte).
     """
     heute = heute or datetime.date.today()
+    if deal.ist_konto:
+        return _konto_status(deal)
     if deal.storniert:
         return STATUS_ABGEBROCHEN
     if deal.gekuendigt and deal.kuendigung_bestaetigt:
@@ -334,7 +348,10 @@ def deal_todos(deal: Deal, heute: datetime.date | None = None) -> list[Todo]:
             kategorie = "Prämienauszahlung prüfen" if next_check <= heute else "Auf Prämie warten"
             todos.append(Todo(kategorie, text, deal, next_check, ueberfaellig, [p]))
     elif s == STATUS_KUENDIGEN:
-        todos.append(Todo("Kündigen", f"{bezeichnung}: jetzt kündbar – kündigen", deal, deal.kuendbar_ab))
+        # Ein Konto ohne Prämie hat keine Sperrfrist - "jetzt kündbar" wäre
+        # dort keine Neuigkeit, sondern der Normalzustand.
+        aufforderung = "Konto kündigen" if deal.ist_konto else "jetzt kündbar – kündigen"
+        todos.append(Todo("Kündigen", f"{bezeichnung}: {aufforderung}", deal, deal.kuendbar_ab))
     elif s == STATUS_BESTAETIGUNG_WARTEN:
         todos.append(Todo("Bestätigung warten", f"{bezeichnung}: Kündigung bestätigen lassen", deal))
 
@@ -536,6 +553,10 @@ def pruefung_abhaken(deal: Deal, regel: str, signatur: str) -> None:
 
 def _offene_pruefpunkte(deal: Deal, heute: datetime.date) -> list[Pruefpunkt]:
     punkte: list[Pruefpunkt] = []
+    # Konten ohne Prämie werden bewusst nirgends angemahnt - weder hier noch
+    # unter "Deal pflegen" (siehe offene_felder).
+    if deal.ist_konto:
+        return punkte
 
     if deal.gekuendigt and not deal.storniert:
         offene_bedingungen = [b.id for b in deal.bedingungen if not b.erfuellt]
@@ -619,6 +640,8 @@ class OffenesFeld:
 def offene_felder(deal: Deal) -> list[OffenesFeld]:
     """Ein leeres Feld gilt nur dann als 'offen', wenn es nicht bewusst als
     'nicht nötig' abgehakt wurde (uebersprungene_felder)."""
+    if deal.ist_konto:
+        return []
     uebersprungen = set(uebersprungene_felder_liste(deal))
     offen: list[OffenesFeld] = []
 

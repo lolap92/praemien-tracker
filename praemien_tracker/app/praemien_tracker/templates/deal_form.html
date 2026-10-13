@@ -1,6 +1,7 @@
 {% extends "base.html" %}
-{% block title %}{{ "Deal bearbeiten" if deal else "Neuer Deal" }} – Prämien-Tracker{% endblock %}
-{% block appbar_title %}{{ "Deal bearbeiten" if deal else "Neuer Deal" }}{% endblock %}
+{% set wort = "Konto" if deal and deal.ist_konto else "Deal" %}
+{% block title %}{{ wort ~ " bearbeiten" if deal else "Neuer Deal" }} – Prämien-Tracker{% endblock %}
+{% block appbar_title %}{{ wort ~ " bearbeiten" if deal else "Neuer Deal" }}{% endblock %}
 {% block appbar_actions %}
 {% if deal %}
 <button type="submit" form="deal-form" class="icon-btn accent">Speichern</button>
@@ -75,19 +76,26 @@
              value="{{ deal.kontofuehrungsgebuehren if deal.kontofuehrungsgebuehren is not none else '' }}">
     </div>
   </div>
+  {# Konten ohne Prämie (deal.ist_konto) zeigen nur die Felder, die dort
+     etwas bedeuten: keine Zugangsdaten, keine Sperrfrist, keine Prämien,
+     Bedingungen oder Links und kein Stornieren. #}
+  {% if not deal.ist_konto %}
   <div class="checkbox-zeile feld">
     <input type="checkbox" id="zugangsdaten_gespeichert" name="zugangsdaten_gespeichert" {{ "checked" if deal.zugangsdaten_gespeichert else "" }}>
     <label for="zugangsdaten_gespeichert">Zugangsdaten im Passwortmanager gesichert {{ "⚠ offen" if 'zugangsdaten_gespeichert' in offene_felder else "" }}</label>
   </div>
+  {% endif %}
 </div>
 
 <div class="sec-t">Kündigung</div>
 <div class="card">
   <div class="reihe">
+    {% if not deal.ist_konto %}
     <div class="feld">
       <label for="kuendbar_ab">Kündbar ab <span class="auto">leer = keine Sperrfrist</span></label>
       <input type="date" id="kuendbar_ab" name="kuendbar_ab" value="{{ deal.kuendbar_ab.isoformat() if deal.kuendbar_ab else '' }}">
     </div>
+    {% endif %}
     <div class="feld">
       <label for="gekuendigt_im_monat">Gekündigt im Monat (z. B. 2026-05)</label>
       <input type="text" id="gekuendigt_im_monat" name="gekuendigt_im_monat" value="{{ deal.gekuendigt_im_monat or '' }}">
@@ -128,6 +136,7 @@
       <input type="number" id="freibetrag_jahr" name="freibetrag_jahr" min="2000" max="2100" step="1"
              placeholder="{{ jahr_heute }}" value="{{ deal.freibetrag_jahr if deal.freibetrag_jahr else '' }}">
     </div>
+    {% if not deal.ist_konto %}
     <div class="feld">
       <label for="praemien_auf_sparkonto">Prämien auf Sparkonto</label>
       <select id="praemien_auf_sparkonto" name="praemien_auf_sparkonto">
@@ -136,6 +145,7 @@
         <option value="nein" {{ "selected" if deal.praemien_auf_sparkonto == False else "" }}>nein</option>
       </select>
     </div>
+    {% endif %}
   </div>
   <div class="feld">
     <label for="kommentar">Kommentar</label>
@@ -143,6 +153,7 @@
   </div>
 </div>
 
+{% if not deal.ist_konto %}
 <div class="sec-t">Prämien</div>
 <div class="card">
   <ul class="unterliste" data-leer-text="Noch keine Prämien erfasst.">
@@ -202,6 +213,7 @@
     <button type="submit" class="js-add-bedingung" formaction="deals/{{ deal.id }}/bedingungen" formnovalidate>+ Bedingung</button>
   </div>
 </div>
+{% endif %}
 
 <div class="sec-t">Aufgaben (frei)</div>
 <div class="card">
@@ -231,6 +243,7 @@
 
 </form>
 
+{% if not deal.ist_konto %}
 <div class="sec-t">Links</div>
 <div class="card">
   <ul class="unterliste" data-leer-text="Keine Links hinterlegt.">
@@ -251,18 +264,20 @@
     <button type="submit">+ Link</button>
   </form>
 </div>
+{% endif %}
 
 <div class="card" style="display: flex; gap: 0.8rem;">
-  {% if status not in ("abgeschlossen", "abgebrochen") %}
+  {% if status not in ("abgeschlossen", "abgebrochen") and not deal.ist_konto %}
   <button type="button" class="secondary" onclick="document.getElementById('dlg-stornieren').showModal()" style="flex: 1; margin: 0; padding: 0.85rem; font-size: 0.95rem;">Deal abbrechen (stornieren)</button>
   {% endif %}
-  <button type="button" class="danger" onclick="document.getElementById('dlg-loeschen').showModal()" style="flex: 1; margin: 0; padding: 0.85rem; font-size: 0.95rem;">Deal löschen</button>
+  <button type="button" class="danger" onclick="document.getElementById('dlg-loeschen').showModal()" style="flex: 1; margin: 0; padding: 0.85rem; font-size: 0.95rem;">{{ wort }} löschen</button>
 </div>
 
 <div class="card">
   <button type="submit" form="deal-form" class="save-btn">Speichern</button>
 </div>
 
+{% if not deal.ist_konto %}
 <dialog id="dlg-stornieren" class="vk-dialog">
   <h3>Deal abbrechen (stornieren)?</h3>
   <p class="vk-dialog-frage" style="color: var(--ink); margin-top: 0.5rem; line-height: 1.4;">
@@ -275,11 +290,12 @@
     </div>
   </form>
 </dialog>
+{% endif %}
 
 <dialog id="dlg-loeschen" class="vk-dialog">
-  <h3>Deal wirklich löschen?</h3>
+  <h3>{{ wort }} wirklich löschen?</h3>
   <p class="vk-dialog-frage" style="color: var(--ink); margin-top: 0.5rem; line-height: 1.4;">
-    Möchtest du diesen Deal wirklich unwiderruflich löschen? Alle zugehörigen Daten gehen dabei verloren.
+    Möchtest du {{ "dieses Konto" if deal.ist_konto else "diesen Deal" }} wirklich unwiderruflich löschen? Alle zugehörigen Daten gehen dabei verloren.
   </p>
   <form action="deals/{{ deal.id }}/delete" method="post" onsubmit="this.closest('dialog').close()">
     <div class="vk-dialog-aktionen">

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ deal.bank.name }} · {{ deal.inhaber.name }} – Prämien-Tracker{% endblock %}
-{% block appbar_title %}Deal ansehen{% endblock %}
+{% block appbar_title %}{{ "Konto ansehen" if deal.ist_konto else "Deal ansehen" }}{% endblock %}
 {% block appbar_actions %}
 <a class="icon-btn accent" href="deals/{{ deal.id }}/edit">Bearbeiten</a>
 {% endblock %}
@@ -9,6 +9,7 @@
 <div class="form-status">
   <div class="card-label">Status</div>
   <span class="chip status-{{ status }}">{{ status_labels[status] }}</span>
+  {% if deal.ist_konto %}<span class="wdh-marke">Konto ohne Prämie</span>{% endif %}
 </div>
 
 {% if entstanden_aus %}
@@ -25,14 +26,18 @@
     <div class="detail-zeile"><dt>Inhaber</dt><dd>{{ deal.inhaber.name }}</dd></div>
     <div class="detail-zeile"><dt>Kontoart</dt><dd>{{ deal.kontoart }}</dd></div>
     <div class="detail-zeile"><dt>Kontonummer</dt><dd>{{ deal.kontonummer or "–" }}</dd></div>
+    {% if not deal.ist_konto %}
     <div class="detail-zeile"><dt>Zugangsdaten gesichert</dt><dd>{{ "ja" if deal.zugangsdaten_gespeichert else "nein" }}</dd></div>
+    {% endif %}
   </dl>
 </div>
 
 <div class="sec-t">Kündigung</div>
 <div class="card">
   <dl class="detail-liste">
+    {% if not deal.ist_konto %}
     <div class="detail-zeile"><dt>Kündbar ab</dt><dd>{{ deal.kuendbar_ab | datum if deal.kuendbar_ab else "keine Sperrfrist" }}</dd></div>
+    {% endif %}
     <div class="detail-zeile"><dt>Gekündigt</dt><dd>{{ "ja" if deal.gekuendigt else "nein" }}{% if deal.gekuendigt_im_monat %} ({{ deal.gekuendigt_im_monat }}){% endif %}</dd></div>
     <div class="detail-zeile"><dt>Kündigung bestätigt</dt><dd>{{ "ja" if deal.kuendigung_bestaetigt else "nein" }}</dd></div>
     {% if deal.kuendigung_hinweis %}
@@ -53,11 +58,12 @@
   <dl class="detail-liste">
     <div class="detail-zeile"><dt>Kontoführungsgebühren</dt><dd>{% if deal.kontofuehrungsgebuehren is none %}–{% elif deal.kontofuehrungsgebuehren > 0 %}<span class="gebuehr-warnung">{{ deal.kontofuehrungsgebuehren | eur }} mtl.</span>{% else %}kostenlos{% endif %}</dd></div>
     <div class="detail-zeile"><dt>Freibetrag</dt><dd>{{ deal.freibetrag | eur if deal.freibetrag is not none else "–" }}{% if deal.freibetrag_jahr %} ({{ deal.freibetrag_jahr }}){% endif %}</dd></div>
-    <div class="detail-zeile"><dt>Prämien auf Sparkonto</dt><dd>{{ "ja" if deal.praemien_auf_sparkonto == True else ("nein" if deal.praemien_auf_sparkonto == False else "unbekannt") }}</dd></div>
+    {% if not deal.ist_konto %}<div class="detail-zeile"><dt>Prämien auf Sparkonto</dt><dd>{{ "ja" if deal.praemien_auf_sparkonto == True else ("nein" if deal.praemien_auf_sparkonto == False else "unbekannt") }}</dd></div>{% endif %}
     {% if deal.kommentar %}<div class="detail-zeile"><dt>Kommentar</dt><dd>{{ deal.kommentar }}</dd></div>{% endif %}
   </dl>
 </div>
 
+{% if not deal.ist_konto %}
 <div class="sec-t">Prämien</div>
 <div class="card">
   <ul class="unterliste">
@@ -89,6 +95,7 @@
     {% endfor %}
   </ul>
 </div>
+{% endif %}
 
 <div class="sec-t">Aufgaben</div>
 <div class="card">
@@ -104,6 +111,7 @@
   </ul>
 </div>
 
+{% if not deal.ist_konto %}
 <div class="sec-t">Links</div>
 <div class="card">
   <ul class="unterliste">
@@ -114,6 +122,7 @@
     {% endfor %}
   </ul>
 </div>
+{% endif %}
 
 <div class="card">
   <a class="button" href="deals/{{ deal.id }}/edit">Bearbeiten</a>
