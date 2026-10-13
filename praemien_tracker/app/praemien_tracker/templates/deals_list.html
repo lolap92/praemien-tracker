@@ -54,7 +54,7 @@
       <div class="titel">
         <div>
           <div class="bank">{{ zeile.deal.bank.name }}</div>
-          <div class="meta">{% if zeile.deal.ist_konto %}<span class="wdh-marke">Konto</span> {% endif %}{{ zeile.deal.kontoart }} · {{ zeile.deal.inhaber.name }}{% if zeile.deal.kuendbar_ab %} · kündbar ab {{ zeile.deal.kuendbar_ab | datum }}{% endif %}</div>
+          <div class="meta">{% if zeile.deal.ist_konto %}<span class="wdh-marke art-konto">Konto</span> {% endif %}{{ zeile.deal.kontoart }} · {{ zeile.deal.inhaber.name }}{% if zeile.deal.kuendbar_ab %} · kündbar ab {{ zeile.deal.kuendbar_ab | datum }}{% endif %}</div>
         </div>
         {% if zeile.deal.ist_konto %}
         {# Ein Konto hat keine Prämie - statt 0,00 € steht hier, was es kostet. #}
@@ -94,7 +94,7 @@
         {% for zeile in zeilen %}
         <tr>
           <td class="bank"><a href="deals/{{ zeile.deal.id }}">{{ zeile.deal.bank.name }}</a></td>
-          <td>{{ zeile.deal.kontoart }}{% if zeile.deal.ist_konto %} <span class="wdh-marke">Konto</span>{% endif %}</td>
+          <td>{{ zeile.deal.kontoart }}{% if zeile.deal.ist_konto %} <span class="wdh-marke art-konto">Konto</span>{% endif %}</td>
           <td>{{ zeile.deal.inhaber.name }}</td>
           <td class="geld">{{ "–" if zeile.deal.ist_konto else (zeile.kennzahlen.gesamt | eur) }}</td>
           <td class="geld">{{ "–" if zeile.deal.ist_konto else (zeile.kennzahlen.offen | eur) }}</td>
