@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy.orm import Session
@@ -53,6 +54,30 @@ VERWERFEN_GRUENDE = tuple(VERWERFEN_GRUENDE_LABELS)
 EINSCHAETZUNG_ERFUELLT = "erfuellt"
 EINSCHAETZUNG_ZU_PRUEFEN = "zu_pruefen"
 EINSCHAETZUNG_NICHT_ERFUELLT = "nicht_erfuellt"
+
+
+# Eingang von Gehalt, Lohn, Rente, BAföG oder sonstigem Einkommen. "lohn"
+# nicht vor "t" (sonst träfe "lohnt sich"), "rente" nur als ganzes Wort bzw.
+# "Renten..." (nicht "rentabel").
+_EINKOMMEN_MUSTER = re.compile(
+    r"\b(gehalt\w*|\w*gehalts?eingang\w*|lohn(?!t)\w*|\w*einkommen\w*|renten?\b|renten\w*|bafög|bafoeg)",
+    re.IGNORECASE,
+)
+# Verneinung wie "kein Gehaltseingang nötig" / "ohne Gehaltseingang" /
+# "Gehaltseingang nicht erforderlich" - dann ist es gerade keine Hürde.
+_VERNEINUNG_MUSTER = re.compile(
+    r"\b(kein\w*|ohne)\s+(\S+\s+){0,2}?(gehalt|\w*gehalts?eingang|lohn|\w*einkommen|rente|bafög|bafoeg)"
+    r"|\b(nicht|keine?)\s+(erforderlich|notwendig|nötig|vorausgesetzt|verpflichtend)",
+    re.IGNORECASE,
+)
+
+
+def einkommen_gefordert(beschreibung: str) -> bool:
+    """Verlangt die Bedingung einen Eingang von Gehalt, Lohn, Rente, BAföG
+    oder sonstigem Einkommen? Feste Prüfung zusätzlich zur KI: die stufte
+    etwa "Einkommenseingang (Gehalt, Rente, BAföG oder ähnlich)" wegen des
+    "oder ähnlich" als beliebigen Geldeingang und damit als erfüllt ein."""
+    return bool(_EINKOMMEN_MUSTER.search(beschreibung)) and not _VERNEINUNG_MUSTER.search(beschreibung)
 
 
 @dataclass(frozen=True)
@@ -293,6 +318,22 @@ def bewerten(
         )
         for b in extraktion.bedingungen
     ]
+    # Der Inhalts-Hash bleibt bei der Einschätzung der KI: sonst bekäme ein
+    # schon bestehender Vorschlag durch die Nachkorrektur unten einen neuen
+    # Hash, würde nicht mehr wiedererkannt und stünde als Dublette neben der
+    # neuen Karte. So wechselt die bestehende Karte nur ihren Status (lauf.py).
+    hash_bedingungen = list(bedingungen)
+
+    # Einkommens-Eingang (Gehalt, Rente, BAföG ...) ist nie "erfuellt" -
+    # höchstens zu prüfen. Bewusst keine Ablehnung: ob ein beliebiger
+    # Geldeingang genügt, entscheidet die/der Nutzer/in selbst. Eine schon
+    # von der KI als "nicht_erfuellt" erkannte Hürde bleibt unverändert.
+    bedingungen = [
+        replace(b, einschaetzung=EINSCHAETZUNG_ZU_PRUEFEN)
+        if b.einschaetzung == EINSCHAETZUNG_ERFUELLT and einkommen_gefordert(b.beschreibung)
+        else b
+        for b in bedingungen
+    ]
     for b in bedingungen:
         if b.einschaetzung == EINSCHAETZUNG_NICHT_ERFUELLT:
             ablehnung_gruende.append(f"Bedingung nicht erfüllbar: {b.beschreibung}")
@@ -366,7 +407,7 @@ def bewerten(
         praemien=teilpraemien,
         roh_json=roh_json,
         inhalt_hash=_inhalt_hash(
-            extraktion.bank_name, extraktion.kontoart, praemie_betrag, extraktion.sperrfrist_monate, bedingungen
+            extraktion.bank_name, extraktion.kontoart, praemie_betrag, extraktion.sperrfrist_monate, hash_bedingungen
         ),
     )
 

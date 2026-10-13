@@ -29,7 +29,9 @@ class BedingungExtraktion(BaseModel):
     beschreibung: str
     # erfuellt: keine Hürde erkennbar. zu_pruefen: unklar formuliert.
     # nicht_erfuellt: eindeutig eine Hürde (z.B. "Gehaltseingang zwingend
-    # erforderlich"). Sonstiger Geldeingang statt Gehalt zählt als erfuellt.
+    # erforderlich"). Ein Einkommens-Eingang ist nie erfuellt (siehe
+    # EXTRAKTION_PROMPT und matching.einkommen_gefordert), nur ein
+    # ausdrücklich beliebiger Geldeingang.
     einschaetzung: Literal["erfuellt", "zu_pruefen", "nicht_erfuellt"]
     # Strukturierte Kennzahlen der Auflage, sofern im Text ausdrücklich
     # genannt - erlauben eine kompakte Darstellung ("2× · 50 € · 4 Wochen") und
@@ -180,9 +182,13 @@ Konto online eröffnen), oder wenn es nur eine einzige Prämie gibt, null lassen
   - "erfuellt": keine erkennbare Hürde für einen typischen Neukunden (z.B. \
 "3 Kartenzahlungen im ersten Monat").
   - "nicht_erfuellt": eindeutig eine Hürde laut Text, z.B. ein zwingend \
-geforderter regelmäßiger Gehaltseingang. Ein sonstiger regelmäßiger \
-Geldeingang (nicht zwingend Gehalt) zählt NICHT als Hürde, sondern als \
-"erfuellt".
+geforderter regelmäßiger Gehaltseingang.
+  Wird ein Eingang von Gehalt, Lohn, Rente, BAföG oder sonstigem Einkommen \
+verlangt, ist das NIE "erfuellt" - auch nicht mit Zusätzen wie "oder \
+ähnlich", "Einkommenseingang" oder "regelmäßiger Eingang (z.B. Gehalt)": \
+"nicht_erfuellt", wenn eindeutig nur Einkommen zählt, sonst "zu_pruefen". \
+Als "erfuellt" zählt nur ein ausdrücklich beliebiger Geldeingang, z.B. \
+"Überweisung von einem eigenen Konto genügt" oder "beliebiger Zahlungseingang".
   - "zu_pruefen": unklar formuliert oder nicht eindeutig aus dem Text zu \
 beurteilen.
 Ist im Text keine Bedingung erkennbar, eine leere Liste zurückgeben.

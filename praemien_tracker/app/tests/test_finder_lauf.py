@@ -1057,3 +1057,42 @@ def test_geplanter_lauf_markiert_sich_und_wird_wieder_frei(db, zwei_inhaber, mon
 
     assert lauf.lauf_status()[0] is False
     assert db.query(FinderLauf).count() == 1
+
+
+def test_bestehender_vorschlag_mit_einkommenseingang_wechselt_ohne_dublette_auf_zu_pruefen(db, zwei_inhaber, monkeypatch):
+    """Ein schon vor der Einkommens-Prüfung angelegter "Vorgeschlagen"-Fund
+    (simuliert, indem die Prüfung im ersten Lauf abgeschaltet ist) rutscht
+    beim nächsten Lauf aus dem Cache - ohne API-Aufruf - auf "zu prüfen",
+    samt Einschätzung der Bedingung, und es entsteht keine zweite Karte."""
+    alice = zwei_inhaber[0]
+    fund = RohFund("mydealz", "https://mydealz.de/sparkasse", "t", "Sparkasse 200 Euro")
+    _patch_quellen(monkeypatch, [fund])
+    client = ZaehlenderFakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(
+            bank_name="Berliner Sparkasse",
+            kontoart="Girokonto",
+            praemie_betrag=200.0,
+            bedingungen=[
+                BedingungExtraktion(
+                    beschreibung="Monatlich ein Einkommenseingang (Gehalt, Rente, BAföG oder ähnlich)",
+                    einschaetzung="erfuellt",
+                )
+            ],
+        ),
+    )
+
+    monkeypatch.setattr(matching, "einkommen_gefordert", lambda text: False)
+    lauf.taeglicher_lauf(db, client=client)
+    eintrag = db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == alice.id).one()
+    assert eintrag.status == matching.STATUS_VORGESCHLAGEN
+
+    monkeypatch.undo()
+    _patch_quellen(monkeypatch, [fund])
+    lauf.taeglicher_lauf(db, client=client)
+
+    assert client.aufrufe == 2
+    assert db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == alice.id).count() == 1
+    db.refresh(eintrag)
+    assert eintrag.status == matching.STATUS_ZU_PRUEFEN
+    assert [b.einschaetzung for b in eintrag.bedingungen] == ["zu_pruefen"]

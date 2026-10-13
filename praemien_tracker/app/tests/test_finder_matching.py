@@ -498,3 +498,80 @@ def test_geschaeftskunden_flag_aendert_den_inhalts_hash_nicht(db, alice):
     assert privat.inhalt_hash == gewerbe.inhalt_hash
     assert privat.status == matching.STATUS_VORGESCHLAGEN
     assert gewerbe.status == matching.STATUS_ABGELEHNT
+
+
+# --- Einkommens-Eingang: nie "erfüllt", höchstens zu prüfen -----------------
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "In mindestens drei aufeinanderfolgenden Monaten jeweils ein Einkommenseingang (Gehalt, Rente, BAföG oder ähnlich)",
+        "Gehaltseingang von mindestens 1.000 € monatlich",
+        "Monatlicher Lohneingang",
+        "Renteneingang auf das neue Konto",
+    ],
+)
+def test_einkommen_wird_erkannt(text):
+    assert matching.einkommen_gefordert(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Kein Gehaltseingang nötig",
+        "Prämie auch ohne Gehaltseingang",
+        "Gehaltseingang nicht erforderlich",
+        "Das lohnt sich: 3 Kartenzahlungen im ersten Monat",
+        "Monatlich 500 € beliebiger Geldeingang",
+        "Konto online eröffnen",
+    ],
+)
+def test_kein_einkommen_oder_verneint(text):
+    assert not matching.einkommen_gefordert(text)
+
+
+def _sparkasse(einschaetzung: str) -> AngebotExtraktion:
+    return AngebotExtraktion(
+        bank_name="Berliner Sparkasse",
+        kontoart="Girokonto",
+        praemie_betrag=200.0,
+        bedingungen=[
+            BedingungExtraktion(beschreibung="Konto online eröffnen", einschaetzung="erfuellt"),
+            BedingungExtraktion(
+                beschreibung="In drei Monaten jeweils ein Einkommenseingang (Gehalt, Rente, BAföG oder ähnlich)",
+                einschaetzung=einschaetzung,
+            ),
+        ],
+    )
+
+
+def test_von_der_ki_als_erfuellt_eingestufter_einkommenseingang_wird_zu_pruefen(db, alice):
+    """Der Fall der Berliner Sparkasse: die KI las "oder ähnlich" als
+    beliebigen Geldeingang. Bewusst "zu prüfen" und keine Ablehnung."""
+    fund = RohFund("mydealz", "https://mydealz.de/sparkasse", "t", "x")
+    ergebnis = matching.bewerten(db, fund, _sparkasse("erfuellt"), alice, MINDESTPRAEMIE)
+    assert ergebnis.status == matching.STATUS_ZU_PRUEFEN
+    assert [b.einschaetzung for b in ergebnis.bedingungen] == ["erfuellt", "zu_pruefen"]
+    assert "Einkommenseingang" in ergebnis.ablehnungsgruende
+
+
+def test_nachkorrektur_aendert_den_inhalts_hash_nicht(db, alice):
+    """Sonst würde ein schon bestehender Vorschlag nicht wiedererkannt und
+    bekäme eine Dublette."""
+    fund = RohFund("mydealz", "https://mydealz.de/sparkasse", "t", "x")
+    korrigiert = matching.bewerten(db, fund, _sparkasse("erfuellt"), alice, MINDESTPRAEMIE)
+    unkorrigiert_hash = matching._inhalt_hash(
+        "Berliner Sparkasse",
+        "Girokonto",
+        korrigiert.praemie_betrag,
+        None,
+        [matching.BedingungBewertung("a", "erfuellt"), matching.BedingungBewertung("b", "erfuellt")],
+    )
+    assert korrigiert.inhalt_hash == unkorrigiert_hash
+
+
+def test_eindeutige_einkommens_huerde_der_ki_bleibt_ablehnung(db, alice):
+    fund = RohFund("mydealz", "https://mydealz.de/sparkasse", "t", "x")
+    ergebnis = matching.bewerten(db, fund, _sparkasse("nicht_erfuellt"), alice, MINDESTPRAEMIE)
+    assert ergebnis.status == matching.STATUS_ABGELEHNT

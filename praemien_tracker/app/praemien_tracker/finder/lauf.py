@@ -540,12 +540,18 @@ def taeglicher_lauf(
                         continue
                     if bestehend.status != match.status:
                         # Gleicher Inhalt wie zuvor - i.d.R. nichts zu tun.
-                        # Nur wenn sich die Bewertung rein durch Zeitablauf
+                        # Nur wenn sich die Bewertung ohne neue Extraktion
                         # geändert hat (z.B. eine Sperrfrist ist inzwischen
-                        # erreicht, ohne dass sich am Angebot etwas geändert
-                        # hätte), wird die Zeile nachgezogen.
+                        # erreicht, oder eine feste Prüfung in matching.py
+                        # stuft eine Bedingung jetzt anders ein), wird die
+                        # Zeile nachgezogen - samt Einschätzung je Bedingung,
+                        # damit die Karte nicht "alle erfüllbar" zeigt,
+                        # während sie unter "Zu prüfen" steht.
                         bestehend.status = match.status
                         bestehend.ablehnungsgruende = match.ablehnungsgruende
+                        for gespeichert, neu_bewertet in zip(bestehend.bedingungen, match.bedingungen):
+                            if gespeichert.beschreibung == neu_bewertet.beschreibung:
+                                gespeichert.einschaetzung = neu_bewertet.einschaetzung
                         zaehler["aktualisiert"] += 1
                         aktualisiert_fuer_fund = True
                         zaehler[match.status] = zaehler.get(match.status, 0) + 1
