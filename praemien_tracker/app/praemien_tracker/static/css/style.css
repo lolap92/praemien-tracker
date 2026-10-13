@@ -3126,3 +3126,22 @@ textarea.ka-text {
   width: auto;
   flex: 0 1 11rem;
 }
+
+.ka-hochladen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 0.4rem;
+}
+
+.ka-hochladen label {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.ka-hochladen input[type="file"] {
+  flex: 1 1 200px;
+  min-width: 0;
+  font-size: 0.85rem;
+}

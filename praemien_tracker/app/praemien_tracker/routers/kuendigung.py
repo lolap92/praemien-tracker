@@ -6,7 +6,10 @@ Momentaufnahme gespeichert und lässt sich als versendet markieren."""
 from __future__ import annotations
 
 import datetime
+import json
+import logging
 import re
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
@@ -15,6 +18,8 @@ from sqlalchemy.orm import Session, joinedload
 from .. import config, iban
 from .. import kuendigung_assistent as ka
 from .. import kuendigung_dokumente as kd
+from .. import kuendigung_formular as kf
+from ..anthropic_client import anthropic_client
 from ..database import get_db
 from ..helpers import als_gekuendigt_markieren, parse_date
 from ..ingress import redirect
@@ -22,6 +27,7 @@ from ..models import Deal, Kuendigungsschreiben
 from ..templating import templates
 
 router = APIRouter()
+logger = logging.getLogger("praemien_tracker")
 
 RECHERCHE_MELDUNGEN = {
     "ok": "Die Anforderungen der Bank wurden neu recherchiert. Bitte Empfänger und Text kurz prüfen.",
@@ -117,6 +123,7 @@ def kuendigung_view(request: Request, deal_id: int, recherche: str = "", db: Ses
             "meldung": RECHERCHE_MELDUNGEN.get(recherche),
             "ki_verfuegbar": bool(config.ANTHROPIC_API_KEY) and not config.DEMO_MODUS,
             "gespeichert": list(reversed(deal.kuendigungsschreiben)),
+            "formular": kf.formular_fuer(db, deal),
             "heute": datetime.date.today(),
         },
     )
@@ -205,8 +212,11 @@ def _dateiname(deal: Deal, schreiben: Kuendigungsschreiben, endung: str) -> str:
 
 
 def _datei(deal: Deal, schreiben: Kuendigungsschreiben, format_: str) -> Response:
-    brief = kd.brief_aus(schreiben)
-    inhalt = kd.als_pdf(brief) if format_ == "pdf" else kd.als_docx(brief)
+    if schreiben.kanal == "formular":
+        inhalt = schreiben.datei or b""
+    else:
+        brief = kd.brief_aus(schreiben)
+        inhalt = kd.als_pdf(brief) if format_ == "pdf" else kd.als_docx(brief)
     name = _dateiname(deal, schreiben, format_)
     return Response(
         content=inhalt,
@@ -271,6 +281,8 @@ def kuendigung_schreiben_abrufen(request: Request, deal_id: int, schreiben_id: i
         return _druckansicht(request, deal, schreiben)
     if format_ in _MEDIENTYPEN and schreiben.kanal == "brief":
         return _datei(deal, schreiben, format_)
+    if format_ == "pdf" and schreiben.kanal == "formular" and schreiben.datei:
+        return _datei(deal, schreiben, format_)
     raise HTTPException(status_code=404, detail=f"Format {format_!r} gibt es für dieses Schreiben nicht.")
 
 
@@ -298,3 +310,187 @@ def kuendigung_schreiben_loeschen(request: Request, deal_id: int, schreiben_id: 
     deal.kuendigungsschreiben.remove(_hole_schreiben(deal, schreiben_id))
     db.commit()
     return redirect(request, f"deals/{deal_id}/kuendigung#gespeichert")
+
+
+# ------------------------------------------------- Formular der Bank ----
+
+
+def _formular_redirect(request: Request, deal_id: int, meldung: str = "") -> Response:
+    ziel = f"deals/{deal_id}/kuendigung/formular"
+    if meldung:
+        ziel += "?" + urlencode({"meldung": meldung})
+    return redirect(request, ziel)
+
+
+def _ki_client():
+    return None if config.DEMO_MODUS else anthropic_client()
+
+
+@router.get("/deals/{deal_id}/kuendigung/formular")
+def formular_view(request: Request, deal_id: int, meldung: str = "", db: Session = Depends(get_db)):
+    deal = _hole_deal(db, deal_id)
+    formular = kf.formular_fuer(db, deal)
+    anforderung = ka.anforderung_fuer(db, deal)
+    werte = ka.werte_fuer(deal)
+    zusatzfelder = kf.zusatzfelder_von(formular) if formular else []
+    feldwerte = kf.feldwerte(formular, deal) if formular else []
+    zusatz_labels = {z["schluessel"]: z["label"] for z in zusatzfelder}
+    fehlend = dict.fromkeys(
+        zusatz_labels.get(p) or ka.label_fuer(anforderung, p) for fw in feldwerte for p in fw.fehlt
+    )
+
+    # Ausfüllhilfe für nicht ausfüllbare Formulare: alles, was bekannt ist.
+    hilfe_schluessel = [k for k in ka.STANDARD_FELDER if k not in ("bank", "kontoart", "termin")]
+    hilfe = [(ka.label_fuer(anforderung, k), werte.get(k)) for k in hilfe_schluessel if werte.get(k)] + [
+        (z["label"], werte.get(z["schluessel"])) for z in zusatzfelder if werte.get(z["schluessel"])
+    ]
+
+    return templates.TemplateResponse(
+        "kuendigung_formular.html",
+        {
+            "request": request,
+            "deal": deal,
+            "formular": formular,
+            "formular_url": anforderung.formular_url,
+            "feldwerte": feldwerte,
+            "zusatzfelder": [dict(z, wert=werte.get(z["schluessel"], "")) for z in zusatzfelder],
+            "fehlend": list(fehlend),
+            "hilfe": hilfe,
+            "meldung": meldung,
+            "ki_verfuegbar": bool(config.ANTHROPIC_API_KEY) and not config.DEMO_MODUS,
+            "laden_moeglich": not config.DEMO_MODUS,
+            "an": kf.AN,
+            "aus": kf.AUS,
+        },
+    )
+
+
+@router.post("/deals/{deal_id}/kuendigung/formular/laden")
+def formular_laden(request: Request, deal_id: int, db: Session = Depends(get_db)):
+    """Holt das Formular unter der recherchierten formular_url. Im
+    Demo-Modus nie - dort geht keine Anfrage nach draußen."""
+    deal = _hole_deal(db, deal_id)
+    url = ka.anforderung_fuer(db, deal).formular_url
+    if config.DEMO_MODUS or not url:
+        return _formular_redirect(request, deal_id, "Kein Formular-Link vorhanden." if not url else "Im Demo-Modus wird nichts heruntergeladen.")
+    try:
+        pdf = kf.von_url_laden(url)
+        kf.speichern(db, deal, pdf, url, _ki_client())
+    except kf.FormularFehler as exc:
+        return _formular_redirect(request, deal_id, str(exc))
+    db.commit()
+    return _formular_redirect(request, deal_id)
+
+
+@router.post("/deals/{deal_id}/kuendigung/formular/hochladen")
+async def formular_hochladen(request: Request, deal_id: int, db: Session = Depends(get_db)):
+    deal = _hole_deal(db, deal_id)
+    form = await request.form()
+    datei = form.get("datei")
+    if datei is None or not hasattr(datei, "read"):
+        return _formular_redirect(request, deal_id, "Bitte eine PDF-Datei auswählen.")
+    pdf = await datei.read(kf.MAX_GROESSE + 1)
+    if len(pdf) > kf.MAX_GROESSE:
+        return _formular_redirect(request, deal_id, "Die Datei ist größer als 10 MB.")
+    try:
+        kf.speichern(db, deal, pdf, f"hochgeladen: {datei.filename or 'formular.pdf'}", _ki_client())
+    except kf.FormularFehler as exc:
+        return _formular_redirect(request, deal_id, str(exc))
+    db.commit()
+    return _formular_redirect(request, deal_id)
+
+
+@router.post("/deals/{deal_id}/kuendigung/formular/zuordnen")
+def formular_zuordnen(request: Request, deal_id: int, db: Session = Depends(get_db)):
+    """Zuordnung neu ermitteln - etwa nachdem ein API-Key eingetragen wurde.
+    Eigene Werte bleiben erhalten."""
+    deal = _hole_deal(db, deal_id)
+    formular = kf.formular_fuer(db, deal)
+    if formular is None:
+        raise HTTPException(status_code=404, detail="Für diese Bank ist kein Formular hinterlegt.")
+    kf.zuordnen(formular, deal, _ki_client())
+    db.commit()
+    return _formular_redirect(request, deal_id, "Zuordnung neu ermittelt." if formular.zuordnung_ki else "Zuordnung per Stichwörter neu ermittelt.")
+
+
+def _formular_werte_uebernehmen(form, deal: Deal, formular) -> None:
+    """Ein Feldwert, der genau dem Vorschlag entspricht, wird nicht als
+    eigener gespeichert - sonst folgte er einer späteren Adressänderung
+    nicht mehr.
+
+    Verglichen wird mit dem Vorschlag, wie er beim Anzeigen galt, also vor
+    dem Übernehmen der Zusatzangaben: Wer gleichzeitig eine Kundennummer
+    einträgt, schickt das zugehörige Feld noch leer mit - das ist kein
+    bewusst geleertes Feld, sondern der alte Vorschlag."""
+    angezeigt = {fw.feld.name: fw.vorschlag for fw in kf.feldwerte(formular, deal)}
+    angaben = ka.angaben_laden(deal)
+    for name in form.keys():
+        if name.startswith("zusatz_"):
+            angaben[name.removeprefix("zusatz_")] = str(form.get(name) or "").strip()
+    ka.angaben_speichern(deal, angaben)
+
+    eigen = kf.eigene_werte(deal)
+    for fw in kf.feldwerte(formular, deal):
+        eingabe = form.get(f"feld_{fw.feld.name}")
+        if eingabe is None:
+            continue
+        eingabe = str(eingabe).strip()
+        if eingabe in (fw.vorschlag, angezeigt.get(fw.feld.name)):
+            eigen.pop(fw.feld.name, None)
+        else:
+            eigen[fw.feld.name] = eingabe
+    deal.kuendigung_formular_werte = json.dumps(eigen, ensure_ascii=False, sort_keys=True) if eigen else None
+
+
+@router.post("/deals/{deal_id}/kuendigung/formular/angaben")
+async def formular_angaben(request: Request, deal_id: int, db: Session = Depends(get_db)):
+    """Speichern oder - mit aktion=ausfuellen - speichern und das
+    ausgefüllte Formular herunterladen. Das Ergebnis landet wie Brief und
+    E-Mail unter "Gespeicherte Schreiben"."""
+    deal = _hole_deal(db, deal_id)
+    formular = kf.formular_fuer(db, deal)
+    if formular is None:
+        raise HTTPException(status_code=404, detail="Für diese Bank ist kein Formular hinterlegt.")
+    form = await request.form()
+    _formular_werte_uebernehmen(form, deal, formular)
+    if form.get("aktion") != "ausfuellen":
+        db.commit()
+        return _formular_redirect(request, deal_id, "Gespeichert.")
+
+    werte = kf.feldwerte(formular, deal)
+    try:
+        pdf = kf.ausfuellen(formular.pdf, werte)
+    except Exception:
+        db.commit()
+        logger.exception("Formular für Deal %s ließ sich nicht ausfüllen.", deal_id)
+        return _formular_redirect(request, deal_id, "Das Formular ließ sich nicht ausfüllen - bitte die Ausfüllhilfe nutzen.")
+    liste = "\n".join(
+        f"{fw.feld.label}: {fw.wert}" for fw in werte if fw.wert and fw.wert != kf.AUS
+    )
+    schreiben = ka.schreiben_speichern(deal, "formular", f"Kündigungsformular {deal.bank.name}", liste, datei=pdf)
+    db.commit()
+    return _datei(deal, schreiben, "pdf")
+
+
+@router.get("/deals/{deal_id}/kuendigung/formular/original")
+def formular_original(deal_id: int, db: Session = Depends(get_db)):
+    deal = _hole_deal(db, deal_id)
+    formular = kf.formular_fuer(db, deal)
+    if formular is None:
+        raise HTTPException(status_code=404, detail="Für diese Bank ist kein Formular hinterlegt.")
+    return Response(
+        content=formular.pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="Kuendigungsformular-leer.pdf"'},
+    )
+
+
+@router.post("/deals/{deal_id}/kuendigung/formular/entfernen")
+def formular_entfernen(request: Request, deal_id: int, db: Session = Depends(get_db)):
+    deal = _hole_deal(db, deal_id)
+    formular = kf.formular_fuer(db, deal)
+    if formular is not None:
+        db.delete(formular)
+    deal.kuendigung_formular_werte = None
+    db.commit()
+    return redirect(request, f"deals/{deal_id}/kuendigung")

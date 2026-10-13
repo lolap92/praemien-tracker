@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, LargeBinary, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -117,6 +117,11 @@ class Deal(Base):
     # bankspezifischen Zusatzfelder der Recherche (Kundennummer,
     # Depotnummer, ...). JSON {schluessel: wert}, siehe kuendigung_assistent.
     kuendigung_angaben: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Im Bankformular je Feld von Hand eingetragene Werte, die die
+    # automatische Zuordnung übersteuern - JSON {feldname: wert}. Eigene
+    # Spalte statt kuendigung_angaben, weil hier auch ein bewusst geleertes
+    # Feld ("") eine Angabe ist.
+    kuendigung_formular_werte: Mapped[str | None] = mapped_column(Text, nullable=True)
     # JSON-Liste von Feldnamen, die bewusst als "nicht nötig" abgehakt wurden
     uebersprungene_felder: Mapped[str | None] = mapped_column(Text, nullable=True)
     erstellt_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
@@ -268,7 +273,7 @@ class Kuendigungsschreiben(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     deal_id: Mapped[int] = mapped_column(ForeignKey("deals.id"), index=True)
-    kanal: Mapped[str] = mapped_column(String(10))  # "brief" | "email"
+    kanal: Mapped[str] = mapped_column(String(10))  # "brief" | "email" | "formular"
     # Brief: Postanschrift (mehrzeilig), E-Mail: Empfängeradresse.
     empfaenger: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Absenderzeilen (Name, Straße, PLZ Ort), mehrzeilig.
@@ -279,6 +284,9 @@ class Kuendigungsschreiben(Base):
     # Mit Anrede und Grußformel, ohne Namen (der steht in `name`).
     text: Mapped[str] = mapped_column(Text)
     name: Mapped[str] = mapped_column(String(200))
+    # Nur bei kanal "formular": das ausgefüllte Bankformular selbst. text
+    # hält dort die eingetragenen Werte als lesbare Liste fest.
+    datei: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     erstellt_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
     # NULL = Entwurf. Gesetzt über "Als versendet markieren".
     versendet_am: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
@@ -499,6 +507,38 @@ class KuendigungAnforderung(Base):
     text_vorlage: Mapped[str] = mapped_column(Text)
     quelle_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     recherchiert_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class KuendigungFormular(Base):
+    """Das eigene Kündigungsformular einer Bank (PDF), je Bank+Kontoart -
+    samt erkannten Formularfeldern und der Zuordnung, welcher Wert in
+    welches Feld gehört (kuendigung_formular.py). Das PDF selbst liegt mit
+    in der Datenbank, damit es nicht für jeden Deal neu heruntergeladen
+    werden muss und mit im Backup steckt.
+
+    zuordnung enthält wie die Briefvorlage nur Platzhalter ({name},
+    {iban}, ...) oder feste Texte, nie persönliche Daten."""
+
+    __tablename__ = "kuendigung_formulare"
+    __table_args__ = (UniqueConstraint("bank_name", "kontoart", name="uq_kuendigung_formular_bank_kontoart"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    bank_name: Mapped[str] = mapped_column(String(100), index=True)
+    kontoart: Mapped[str] = mapped_column(String(50))
+    # URL, von der es geladen wurde, oder der Dateiname beim Hochladen.
+    quelle: Mapped[str] = mapped_column(String(500))
+    pdf: Mapped[bytes] = mapped_column(LargeBinary)
+    # JSON-Liste der ausfüllbaren Felder (kuendigung_formular.FormFeld).
+    felder: Mapped[str] = mapped_column(Text)
+    # JSON {feldname: vorlage}
+    zuordnung: Mapped[str | None] = mapped_column(Text, nullable=True)
+    zusatzfelder: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # True, wenn die Zuordnung von der KI stammt, sonst aus Stichwörtern.
+    zuordnung_ki: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Warum sich das Formular nicht ausfüllen lässt (verschlüsselt, XFA,
+    # keine Felder) - dann bleibt nur die Ausfüllhilfe.
+    hinweis: Mapped[str | None] = mapped_column(Text, nullable=True)
+    erstellt_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
 
 
 class FinderLauf(Base):
