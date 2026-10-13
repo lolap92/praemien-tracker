@@ -219,10 +219,18 @@ Auf der Deal-Seite (und im Reiter **Zu erledigen → Kündigen**) führt
    Kündigungs-E-Mail der Bank (gespeichert an der Bank), Kontonummer,
    Kündigungstermin und bankspezifische Angaben wie eine Kundennummer
    (gespeichert am Deal).
-3. **Schreiben** - Betreff und Text, hier noch anpassbar, dann **"In
-   Mail-App öffnen"**, **"Text kopieren"** oder **"Brief zum Drucken
-   öffnen"** (DIN 5008, passt ins Fensterkuvert; im Druckdialog auch "Als
-   PDF speichern").
+3. **Schreiben** - Betreff und Text, hier noch anpassbar. Als Brief:
+   **"PDF herunterladen"**, **"Word herunterladen"** (zum Weiterbearbeiten)
+   oder **"Drucken"** - jeweils nach DIN 5008, die Anschrift passt ins
+   Fensterkuvert. Als E-Mail: **"In Mail-App öffnen"** oder **"Text
+   kopieren"**.
+4. **Gespeicherte Schreiben** - jedes erzeugte Schreiben wird als
+   Momentaufnahme festgehalten und lässt sich später genau so erneut
+   herunterladen, auch wenn sich Anschrift oder IBAN inzwischen geändert
+   haben. Pro Kanal gibt es einen Entwurf, der bei jedem neuen Download
+   aktualisiert wird. **"Als versendet markieren"** hält das Versanddatum
+   fest und setzt den Deal zugleich auf gekündigt (Kündigungsmonat aus dem
+   Versanddatum, ein schon eingetragener Monat bleibt).
 
 An die KI gehen nur Bank, Kontoart und der Kündigungshinweis. Sie liefert
 eine Vorlage mit Platzhaltern wie `{name}` oder `{iban}`; die echten Werte

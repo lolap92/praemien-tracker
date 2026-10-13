@@ -37,7 +37,7 @@ from sqlalchemy.orm import Session
 
 from . import config, iban
 from .anthropic_client import anthropic_client
-from .models import Deal, KuendigungAnforderung
+from .models import Deal, KuendigungAnforderung, Kuendigungsschreiben
 
 logger = logging.getLogger("praemien_tracker")
 
@@ -417,5 +417,39 @@ def schreiben(anforderung: Anforderung, werte: dict[str, str]) -> dict[str, str]
 
 
 def mail_signatur(werte: dict[str, str]) -> str:
+    return "\n".join(absender_zeilen(werte))
+
+
+def absender_zeilen(werte: dict[str, str]) -> list[str]:
     zeilen = [werte.get("name", ""), werte.get("strasse", ""), f"{werte.get('plz', '')} {werte.get('ort', '')}".strip()]
-    return "\n".join(z for z in zeilen if z)
+    return [z for z in zeilen if z]
+
+
+def schreiben_speichern(deal: Deal, kanal: str, betreff: str, text: str) -> Kuendigungsschreiben:
+    """Hält ein Schreiben als Momentaufnahme fest. Solange zum selben Kanal
+    noch ein unversendeter Entwurf existiert, wird der überschrieben statt
+    ein weiterer angelegt - wer nach einer Korrektur das PDF erneut
+    herunterlädt, soll nicht drei fast gleiche Entwürfe in der Liste haben.
+    Ein versendetes Schreiben wird dagegen nie mehr verändert."""
+    werte = werte_fuer(deal)
+    entwurf = next(
+        (s for s in reversed(deal.kuendigungsschreiben) if s.kanal == kanal and s.versendet_am is None),
+        None,
+    )
+    if entwurf is None:
+        entwurf = Kuendigungsschreiben(kanal=kanal)
+        deal.kuendigungsschreiben.append(entwurf)
+    if kanal == "email":
+        entwurf.empfaenger = deal.bank.kuendigung_email or None
+        # In der E-Mail steht die Anschrift unter dem Gruß statt im Briefkopf.
+        signatur = mail_signatur(werte)
+        text = f"{text}\n{signatur}" if signatur else text
+    else:
+        entwurf.empfaenger = deal.bank.anschrift or None
+    entwurf.absender = "\n".join(absender_zeilen(werte))
+    entwurf.ort = werte.get("ort") or None
+    entwurf.datum = datetime.date.today()
+    entwurf.betreff = betreff[:300]
+    entwurf.text = text
+    entwurf.name = werte.get("name", "")
+    return entwurf

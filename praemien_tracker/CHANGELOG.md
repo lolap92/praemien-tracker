@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.67.0
+
+Der Kündigungs-Assistent liefert den Brief jetzt auch als PDF- und Word-Datei, hebt jedes erzeugte Schreiben auf und hakt den Deal beim Versand als gekündigt ab.
+
+- **PDF und Word zum Herunterladen (`kuendigung_dokumente.py`).** Neben „Drucken" gibt es „PDF herunterladen" und „Word herunterladen". Beide setzen den Brief wie die Druckansicht nach DIN 5008 (Anschriftfeld 45 mm von oben, passt ins Fensterkuvert); die Word-Datei lässt sich danach frei weiterbearbeiten. Bisher ging ein PDF nur über den Druckdialog des Browsers - in der Home-Assistant-App am Handy ist der oft gar nicht erreichbar.
+- **Ohne neue Abhängigkeit.** Geplant war fpdf2 für das PDF. fpdf2 hängt aber zwingend an Pillow, und für Pillow gibt es keine fertigen Pakete für armv7 - der Add-on-Build hätte es dort aus dem Quelltext übersetzen müssen und wäre im schlanken Basis-Image gescheitert. PDF und Word entstehen deshalb mit der Standardbibliothek: das PDF mit der eingebauten Schrift Helvetica (Umlaute, ß, €, „" und – inklusive, mehrseitig bei langen Texten), die Word-Datei als minimales .docx, das Word und LibreOffice öffnen.
+- **Gespeicherte Schreiben (`models.Kuendigungsschreiben`, Migration 0025).** Jeder Download, jeder Druck und „In Mail-App öffnen" legt das Schreiben unter „Gespeicherte Schreiben" ab - als Momentaufnahme mit Absender, Empfänger, Datum und Text. Ein verschicktes Schreiben lässt sich so später genau so erneut herunterladen, auch wenn sich Anschrift oder IBAN inzwischen geändert haben. Pro Kanal (Brief, E-Mail) gibt es einen Entwurf, den jeder weitere Download überschreibt, damit nach einer Korrektur nicht drei fast gleiche Einträge entstehen; ein versendetes Schreiben wird nie mehr verändert.
+- **„Als versendet markieren".** Hält das Versanddatum fest (vorbelegt mit heute, änderbar) und setzt den Deal zugleich auf gekündigt, mit dem Kündigungsmonat aus dem Versanddatum. Ein schon eingetragener Monat bleibt stehen - dieselbe Regel wie beim Häkchen im Kündigen-Reiter, die dafür jetzt in einem gemeinsamen Helfer steckt (`helpers.als_gekuendigt_markieren`). Ein Schreiben zu löschen nimmt „gekündigt" nicht zurück: ob gekündigt wurde, ist ein eigener Fakt.
+- **Letztes Schreiben auf der Deal-Seite.** Unter Kündigung steht jetzt, welches Schreiben zuletzt erzeugt wurde und ob bzw. wann es versendet ist, mit Link in den Assistenten.
+- **Bewusst nicht im Änderungsprotokoll.** Die Schreiben enthalten die IBAN im Klartext und sind selbst schon die Historie; dass der Deal dadurch gekündigt wurde, steht wie jede Deal-Änderung im Protokoll.
+
 ## 2.66.1
 
 Ein Angebot, das einen Einkommens-Eingang verlangt (Gehalt, Lohn, Rente, BAföG), landet nicht mehr unter „Vorgeschlagen", sondern unter „Zu prüfen".

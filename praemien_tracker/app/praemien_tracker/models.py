@@ -138,6 +138,9 @@ class Deal(Base):
     urls: Mapped[list["DealUrl"]] = relationship(
         back_populates="deal", cascade="all, delete-orphan", order_by="DealUrl.id"
     )
+    kuendigungsschreiben: Mapped[list["Kuendigungsschreiben"]] = relationship(
+        back_populates="deal", cascade="all, delete-orphan", order_by="Kuendigungsschreiben.id"
+    )
 
     @property
     def ist_konto(self) -> bool:
@@ -247,6 +250,40 @@ class DealUrl(Base):
     bezeichnung: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     deal: Mapped["Deal"] = relationship(back_populates="urls")
+
+
+class Kuendigungsschreiben(Base):
+    """Ein aus dem Kündigungs-Assistenten erzeugtes Schreiben - als
+    Momentaufnahme, nicht als Verweis auf die aktuellen Daten: zieht der
+    Inhaber später um oder ändert die Bank ihre Anschrift, bleibt hier
+    trotzdem genau das stehen (und lässt sich erneut herunterladen), was
+    tatsächlich verschickt wurde.
+
+    Bewusst nicht im Änderungsprotokoll (protokoll.GETRACKTE_MODELLE): der
+    Text enthält die IBAN im Klartext, und das Schreiben ist selbst schon
+    die Historie. Die fachliche Folge - deal.gekuendigt beim Versenden -
+    wird dort wie jede andere Deal-Änderung erfasst."""
+
+    __tablename__ = "kuendigungsschreiben"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    deal_id: Mapped[int] = mapped_column(ForeignKey("deals.id"), index=True)
+    kanal: Mapped[str] = mapped_column(String(10))  # "brief" | "email"
+    # Brief: Postanschrift (mehrzeilig), E-Mail: Empfängeradresse.
+    empfaenger: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Absenderzeilen (Name, Straße, PLZ Ort), mehrzeilig.
+    absender: Mapped[str] = mapped_column(Text)
+    ort: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    datum: Mapped[datetime.date] = mapped_column(Date)
+    betreff: Mapped[str] = mapped_column(String(300))
+    # Mit Anrede und Grußformel, ohne Namen (der steht in `name`).
+    text: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(String(200))
+    erstellt_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
+    # NULL = Entwurf. Gesetzt über "Als versendet markieren".
+    versendet_am: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+
+    deal: Mapped["Deal"] = relationship(back_populates="kuendigungsschreiben")
 
 
 class DealVorschlag(Base):

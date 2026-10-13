@@ -58,6 +58,17 @@ def monat_aus_formular(wert: str | None) -> str | None:
     return format_monat(datum) if datum else wert.strip()
 
 
+def als_gekuendigt_markieren(deal: Deal, datum: datetime.date) -> None:
+    """Gemeinsamer Weg für das Häkchen im Kündigen-Reiter und "Als versendet
+    markieren" im Kündigungs-Assistenten. Einen gepflegten Monat nicht
+    überschreiben: sonst ersetzt ein versehentliches Ent- und
+    Wiederankreuzen das echte Kündigungsdatum - und verfälscht damit die
+    Sperrfristen-Auswertung."""
+    deal.gekuendigt = True
+    if not deal.gekuendigt_im_monat:
+        deal.gekuendigt_im_monat = format_monat(datum)
+
+
 def kuendigung_vorschlag(db: Session, deal: Deal) -> None:
     """Fest hinterlegten Kündigungsweg (KUENDIGUNG_HINWEISE) als Vorschlag
     setzen, falls einer für Bank und Kontoart existiert und der Deal noch

@@ -123,7 +123,7 @@
 {# ---------- 3. Schreiben ---------- #}
 <div class="sec-t" id="schreiben">3 · Schreiben</div>
 {% if schreiben %}
-<form method="post" action="deals/{{ deal.id }}/kuendigung/brief" target="_blank" id="ka-schreiben">
+<form method="post" action="deals/{{ deal.id }}/kuendigung/schreiben" id="ka-schreiben">
   <div class="card">
     <div class="feld">
       <label for="ka_betreff">Betreff</label>
@@ -133,7 +133,21 @@
       <label for="ka_text">Text <span class="auto">hier anpassbar, gilt für E-Mail und Brief</span></label>
       <textarea id="ka_text" name="text" rows="14" class="ka-text">{{ schreiben.text }}</textarea>
     </div>
-    <p class="feld-hinweis">Darunter folgt automatisch {{ "Ihr Name" if not signatur else signatur.splitlines()[0] }} - im Brief mit Platz für die Unterschrift, in der E-Mail mit Anschrift.</p>
+    <p class="feld-hinweis">Darunter folgt automatisch {{ signatur.splitlines()[0] }} - im Brief mit Platz für die Unterschrift, in der E-Mail mit Anschrift.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Per Brief</div>
+    {% if not anschrift %}
+    <p class="feld-hinweis">Für den Brief fehlt noch die Postanschrift der Bank (oben unter Empfänger).</p>
+    {% else %}
+    <div class="ka-aktionen">
+      <button type="submit" name="ausgabe" value="pdf">PDF herunterladen</button>
+      <button type="submit" name="ausgabe" value="docx" class="secondary">Word herunterladen</button>
+      <button type="submit" name="ausgabe" value="druck" class="secondary" formtarget="_blank">Drucken</button>
+    </div>
+    <p class="feld-hinweis">Nach DIN 5008, die Anschrift passt ins Fensterkuvert. Word zum Weiterbearbeiten, „Drucken" öffnet den Brief in einem neuen Tab.</p>
+    {% endif %}
   </div>
 
   <div class="card">
@@ -150,16 +164,9 @@
     <p class="feld-hinweis" id="ka-kopiert" hidden>Betreff und Text sind in der Zwischenablage.</p>
   </div>
 
-  <div class="card">
-    <div class="card-label">Per Brief</div>
-    {% if not anschrift %}
-    <p class="feld-hinweis">Für den Brief fehlt noch die Postanschrift der Bank (oben unter Empfänger).</p>
-    {% else %}
-    <div class="ka-aktionen">
-      <button type="submit">Brief zum Drucken öffnen</button>
-    </div>
-    <p class="feld-hinweis">Öffnet den fertigen Brief in einem neuen Tab. Dort „Drucken" wählen - oder im Druckdialog „Als PDF speichern".</p>
-    {% endif %}
+  <div class="notiz" id="ka-entwurf-hinweis" hidden>
+    Als Entwurf gespeichert. Ist das Schreiben raus, unten unter „Gespeicherte Schreiben" als versendet markieren -
+    <a href="deals/{{ deal.id }}/kuendigung#gespeichert" onclick="window.location.reload(); return false;">Liste aktualisieren</a>.
   </div>
 </form>
 
@@ -169,14 +176,29 @@
     var betreff = document.getElementById('ka_betreff');
     var text = document.getElementById('ka_text');
     var mail = document.getElementById('ka-mail');
+    var hinweis = document.getElementById('ka-entwurf-hinweis');
     function mailText() {
       var signatur = mail.getAttribute('data-signatur');
       return text.value + (signatur ? '\n' + signatur : '');
     }
+    /* PDF, Word und Drucken speichern den Entwurf serverseitig - die Seite
+       selbst bleibt dabei stehen, damit ein nachbearbeiteter Text nicht
+       verloren geht. */
+    form.addEventListener('submit', function () {
+      setTimeout(function () { hinweis.hidden = false; }, 600);
+    });
     mail.addEventListener('click', function () {
       var an = mail.getAttribute('data-an') || '';
-      window.location.href = 'mailto:' + encodeURIComponent(an).replace(/%40/g, '@') +
+      var ziel = 'mailto:' + encodeURIComponent(an).replace(/%40/g, '@') +
         '?subject=' + encodeURIComponent(betreff.value) + '&body=' + encodeURIComponent(mailText());
+      var daten = new FormData(form);
+      daten.set('ausgabe', 'mail');
+      /* Erst speichern, dann das Mailprogramm öffnen - schlägt das
+         Speichern fehl, öffnet es trotzdem. */
+      fetch(form.action, { method: 'POST', body: daten })
+        .then(function (r) { if (r.ok) hinweis.hidden = false; })
+        .catch(function () {})
+        .then(function () { window.location.href = ziel; });
     });
     document.getElementById('ka-kopieren').addEventListener('click', function () {
       var inhalt = 'Betreff: ' + betreff.value + '\n\n' + mailText();
@@ -204,8 +226,50 @@
 </script>
 {% else %}
 <div class="card">
-  <p class="leer">Sobald oben alle Angaben gespeichert sind, steht hier das fertige Schreiben - als E-Mail und als Brief zum Drucken.</p>
+  <p class="leer">Sobald oben alle Angaben gespeichert sind, steht hier das fertige Schreiben - als Brief (PDF, Word, Drucken) und als E-Mail.</p>
 </div>
 {% endif %}
+
+{# ---------- 4. Gespeicherte Schreiben ---------- #}
+<div class="sec-t" id="gespeichert">4 · Gespeicherte Schreiben</div>
+<div class="card">
+  {% if gespeichert %}
+  <ul class="unterliste">
+    {% for s in gespeichert %}
+    <li class="ka-schreiben-eintrag">
+      <div class="ka-schreiben-kopf">
+        <span class="ka-schreiben-titel">{{ "Brief" if s.kanal == "brief" else "E-Mail" }} · {{ s.datum | datum }}</span>
+        {% if s.versendet_am %}
+        <span class="chip status-abgeschlossen">versendet am {{ s.versendet_am | datum }}</span>
+        {% else %}
+        <span class="chip status-praemie_warten">Entwurf</span>
+        {% endif %}
+      </div>
+      <div class="ka-schreiben-betreff">{{ s.betreff }}{% if s.kanal == "email" and s.empfaenger %} · an {{ s.empfaenger }}{% endif %}</div>
+      <div class="ka-aktionen">
+        {% if s.kanal == "brief" %}
+        <a class="button secondary" href="deals/{{ deal.id }}/kuendigung/schreiben/{{ s.id }}/pdf">PDF</a>
+        <a class="button secondary" href="deals/{{ deal.id }}/kuendigung/schreiben/{{ s.id }}/docx">Word</a>
+        <a class="button secondary" href="deals/{{ deal.id }}/kuendigung/schreiben/{{ s.id }}/druck" target="_blank" rel="noopener">Drucken</a>
+        {% endif %}
+        <form method="post" action="deals/{{ deal.id }}/kuendigung/schreiben/{{ s.id }}/loeschen" class="inline"
+              onsubmit="return confirm('Dieses Schreiben löschen? Ein gesetztes „gekündigt" am Deal bleibt.');">
+          <button type="submit" class="secondary">Löschen</button>
+        </form>
+      </div>
+      {% if not s.versendet_am %}
+      <form method="post" action="deals/{{ deal.id }}/kuendigung/schreiben/{{ s.id }}/versendet" class="ka-versendet">
+        <input type="date" name="datum" value="{{ heute.isoformat() }}" aria-label="Versanddatum">
+        <button type="submit">Als versendet markieren</button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="feld-hinweis">„Als versendet markieren" setzt den Deal zugleich auf gekündigt (Kündigungsmonat aus dem Versanddatum, ein schon eingetragener bleibt). Jedes Schreiben bleibt so erhalten, wie es erzeugt wurde - auch wenn sich Anschrift oder IBAN später ändern.</p>
+  {% else %}
+  <p class="leer">Noch kein Schreiben erzeugt. PDF, Word, Drucken und „In Mail-App öffnen" legen hier automatisch einen Eintrag an.</p>
+  {% endif %}
+</div>
 
 {% endblock %}

@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from praemien_tracker import config, iban
 from praemien_tracker import kuendigung_assistent as ka
 from praemien_tracker.main import app
-from praemien_tracker.models import Bank, Deal, Inhaber, KuendigungAnforderung, ProtokollEintrag
+from praemien_tracker.models import Bank, Deal, Inhaber, KuendigungAnforderung, Kuendigungsschreiben, ProtokollEintrag
 
 client = TestClient(app)
 
@@ -247,40 +247,203 @@ def test_nicht_mitgeschickte_felder_bleiben_unangetastet(db, deal):
     assert inhaber.iban == GUELTIGE_IBAN
 
 
-def test_brief_enthaelt_absender_empfaenger_und_text(db, deal):
+def _brief_bereit(db, deal) -> None:
     _absender(deal.inhaber)
     deal.inhaber.iban = GUELTIGE_IBAN
     deal.kontonummer = "4711"
     deal.bank.anschrift = "Testbank AG\nPostfach 1\n10000 Berlin"
+    deal.bank.kuendigung_email = "kuendigung@testbank.example"
     db.commit()
 
-    html = client.get(f"/deals/{deal.id}/kuendigung/brief").text
 
-    assert "Max Mustermann" in html
-    assert "Postfach 1" in html
-    assert "Kündigung Depot, Kontonummer 4711" in html
-    assert "Musterstadt, " in html
-    assert "Noch nicht vollständig" not in html
+def _schreiben(deal, ausgabe: str, betreff: str = "Kündigung Depot 4711", text: str = "Sehr geehrte Damen und Herren,\n\nhiermit kündige ich.\n\nMit freundlichen Grüßen"):
+    return client.post(
+        f"/deals/{deal.id}/kuendigung/schreiben",
+        data={"ausgabe": ausgabe, "betreff": betreff, "text": text},
+        follow_redirects=False,
+    )
 
 
-def test_brief_mit_bearbeitetem_text(db, deal):
-    _absender(deal.inhaber)
-    deal.bank.anschrift = "Testbank AG"
+def _pdf_text(inhalt: bytes) -> bytes:
+    """Entpackte Inhaltsströme - genug, um gesetzten Text wiederzufinden,
+    ohne eine PDF-Bibliothek als Testabhängigkeit."""
+    import re
+    import zlib
+
+    return b"".join(zlib.decompress(m) for m in re.findall(rb"stream\n(.*?)\nendstream", inhalt, re.S))
+
+
+def test_druckansicht_speichert_entwurf_mit_bearbeitetem_text(db, deal):
+    _brief_bereit(db, deal)
+
+    antwort = _schreiben(deal, "druck", betreff="Eigener Betreff", text="Absatz eins\n\nAbsatz zwei")
+
+    assert antwort.status_code == 200
+    assert "Eigener Betreff" in antwort.text
+    assert "<p>Absatz eins</p>" in antwort.text and "<p>Absatz zwei</p>" in antwort.text
+    assert "Postfach 1" in antwort.text and "Musterstadt, " in antwort.text
+    gespeichert = db.query(Kuendigungsschreiben).one()
+    assert (gespeichert.kanal, gespeichert.versendet_am) == ("brief", None)
+
+
+def test_pdf_download(db, deal):
+    _brief_bereit(db, deal)
+
+    antwort = _schreiben(deal, "pdf")
+
+    assert antwort.status_code == 200
+    assert antwort.headers["content-type"] == "application/pdf"
+    assert 'filename="Kuendigung_Testbank_Depot_Max_' in antwort.headers["content-disposition"]
+    assert antwort.content.startswith(b"%PDF-1.4")
+    text = _pdf_text(antwort.content)
+    assert "Kündigung Depot 4711".encode("cp1252") in text
+    assert "Grüßen".encode("cp1252") in text
+    assert b"Postfach 1" in text
+
+
+def test_word_download_ist_gueltiges_docx(db, deal):
+    import io
+    import zipfile
+    from xml.dom import minidom
+
+    _brief_bereit(db, deal)
+
+    antwort = _schreiben(deal, "docx")
+
+    assert antwort.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(antwort.content)) as z:
+        assert {"[Content_Types].xml", "word/document.xml", "word/styles.xml"} <= set(z.namelist())
+        dokument = z.read("word/document.xml").decode()
+    minidom.parseString(dokument)  # wohlgeformt
+    assert "Kündigung Depot 4711" in dokument
+    assert "Postfach 1" in dokument
+
+
+def test_erneuter_download_ueberschreibt_den_entwurf(db, deal):
+    """Ein Entwurf je Kanal - erst nach dem Versand entsteht ein neuer."""
+    _brief_bereit(db, deal)
+    _schreiben(deal, "pdf", betreff="Erster")
+    _schreiben(deal, "docx", betreff="Zweiter")
+    assert [s.betreff for s in db.query(Kuendigungsschreiben).all()] == ["Zweiter"]
+
+    erstes = db.query(Kuendigungsschreiben).one()
+    client.post(f"/deals/{deal.id}/kuendigung/schreiben/{erstes.id}/versendet", data={"datum": "2026-10-01"})
+    _schreiben(deal, "pdf", betreff="Dritter")
+
+    db.expire_all()
+    assert [s.betreff for s in db.query(Kuendigungsschreiben).order_by(Kuendigungsschreiben.id)] == ["Zweiter", "Dritter"]
+
+
+def test_brief_ohne_absender_oder_anschrift_wird_abgelehnt(db, deal):
+    antwort = _schreiben(deal, "pdf")
+
+    assert antwort.status_code == 400
+    assert db.query(Kuendigungsschreiben).count() == 0
+
+
+def test_email_entwurf_mit_signatur_und_empfaenger(db, deal):
+    _brief_bereit(db, deal)
+
+    antwort = _schreiben(deal, "mail")
+
+    assert antwort.status_code == 200
+    gespeichert = db.get(Kuendigungsschreiben, antwort.json()["id"])
+    assert gespeichert.kanal == "email"
+    assert gespeichert.empfaenger == "kuendigung@testbank.example"
+    assert gespeichert.text.endswith("Mit freundlichen Grüßen\nMax Mustermann\nMusterweg 1\n12345 Musterstadt")
+    # Eine E-Mail hat kein PDF.
+    assert client.get(f"/deals/{deal.id}/kuendigung/schreiben/{gespeichert.id}/pdf").status_code == 404
+
+
+def test_versendet_markiert_deal_als_gekuendigt(db, deal):
+    _brief_bereit(db, deal)
+    _schreiben(deal, "pdf")
+    gespeichert = db.query(Kuendigungsschreiben).one()
+
+    antwort = client.post(
+        f"/deals/{deal.id}/kuendigung/schreiben/{gespeichert.id}/versendet",
+        data={"datum": "2026-09-30"},
+        follow_redirects=False,
+    )
+
+    assert antwort.status_code == 303
+    db.expire_all()
+    deal = db.get(Deal, deal.id)
+    assert deal.gekuendigt is True
+    assert deal.gekuendigt_im_monat == "2026-09"
+    assert deal.kuendigungsschreiben[0].versendet_am.isoformat() == "2026-09-30"
+    assert "versendet am 30.09.2026" in client.get(f"/deals/{deal.id}/kuendigung").text
+    assert "versendet am 30.09.2026" in client.get(f"/deals/{deal.id}").text
+
+
+def test_versendet_behaelt_gepflegten_kuendigungsmonat(db, deal):
+    _brief_bereit(db, deal)
+    deal.gekuendigt_im_monat = "2026-08"
+    db.commit()
+    _schreiben(deal, "pdf")
+    gespeichert = db.query(Kuendigungsschreiben).one()
+
+    client.post(f"/deals/{deal.id}/kuendigung/schreiben/{gespeichert.id}/versendet", data={"datum": "2026-09-30"})
+
+    db.expire_all()
+    assert db.get(Deal, deal.id).gekuendigt_im_monat == "2026-08"
+
+
+def test_gespeichertes_schreiben_ist_eine_momentaufnahme(db, deal):
+    """Eine spätere Adressänderung darf ein schon erzeugtes Schreiben nicht
+    nachträglich umschreiben."""
+    _brief_bereit(db, deal)
+    _schreiben(deal, "pdf")
+    gespeichert = db.query(Kuendigungsschreiben).one()
+    deal.inhaber.strasse = "Neue Straße 9"
     db.commit()
 
-    html = client.post(
-        f"/deals/{deal.id}/kuendigung/brief",
-        data={"betreff": "Eigener Betreff", "text": "Absatz eins\n\nAbsatz zwei"},
-    ).text
+    html = client.get(f"/deals/{deal.id}/kuendigung/schreiben/{gespeichert.id}/druck").text
 
-    assert "Eigener Betreff" in html
-    assert "<p>Absatz eins</p>" in html and "<p>Absatz zwei</p>" in html
+    assert "Musterweg 1" in html
+    assert "Neue Straße 9" not in html
 
 
-def test_brief_ohne_angaben_warnt(deal):
-    html = client.get(f"/deals/{deal.id}/kuendigung/brief").text
-    assert "Noch nicht vollständig" in html
-    assert "Postanschrift der Bank" in html
+def test_schreiben_eines_anderen_deals_ist_nicht_abrufbar(db, deal):
+    _brief_bereit(db, deal)
+    _schreiben(deal, "pdf")
+    gespeichert = db.query(Kuendigungsschreiben).one()
+    anderer = Deal(kontoart="Girokonto", bank=deal.bank, inhaber=deal.inhaber)
+    db.add(anderer)
+    db.commit()
+
+    assert client.get(f"/deals/{anderer.id}/kuendigung/schreiben/{gespeichert.id}/pdf").status_code == 404
+
+
+def test_loeschen_laesst_gekuendigt_stehen_und_deal_loeschen_nimmt_schreiben_mit(db, deal):
+    _brief_bereit(db, deal)
+    _schreiben(deal, "pdf")
+    gespeichert = db.query(Kuendigungsschreiben).one()
+    client.post(f"/deals/{deal.id}/kuendigung/schreiben/{gespeichert.id}/versendet", data={})
+    client.post(f"/deals/{deal.id}/kuendigung/schreiben/{gespeichert.id}/loeschen")
+
+    db.expire_all()
+    deal = db.get(Deal, deal.id)
+    assert deal.gekuendigt is True
+    assert deal.kuendigungsschreiben == []
+
+    _schreiben(deal, "pdf")
+    db.expire_all()
+    db.delete(db.get(Deal, deal.id))
+    db.commit()
+    assert db.query(Kuendigungsschreiben).count() == 0
+
+
+def test_pdf_umbruch_und_folgeseite():
+    from praemien_tracker import kuendigung_dokumente as kd
+
+    zeilen = kd._umbrechen("a " * 200 + "x" * 300, 165, 11)
+    assert all(kd._breite_mm(z, 11) <= 165 for z in zeilen)
+    assert "".join(zeilen).count("x") == 300
+
+    brief = kd.Brief(["A"], ["B"], "Ort, 01.01.2026", "Betreff", ["Absatz " * 40] * 30, "Name")
+    # 30 Absätze à drei Zeilen füllen vier Seiten.
+    assert kd.als_pdf(brief).count(b"/Type /Page ") == 4
 
 
 def test_deal_seite_verlinkt_den_assistenten(deal):

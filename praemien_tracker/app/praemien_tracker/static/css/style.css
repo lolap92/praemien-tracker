@@ -3090,3 +3090,39 @@ textarea.ka-text {
   color: var(--ink-soft);
   margin: 0.2rem 0 0.6rem;
 }
+
+/* Gespeicherte Kündigungsschreiben */
+.unterliste li.ka-schreiben-eintrag {
+  display: block;
+}
+
+.ka-schreiben-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ka-schreiben-titel {
+  font-weight: 600;
+}
+
+.ka-schreiben-betreff {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin: 0.25rem 0 0.6rem;
+  overflow-wrap: anywhere;
+}
+
+.ka-versendet {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ka-versendet input[type="date"] {
+  width: auto;
+  flex: 0 1 11rem;
+}

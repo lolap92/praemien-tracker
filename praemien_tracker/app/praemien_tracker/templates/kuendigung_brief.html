@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kündigung {{ deal.bank.name }} – {{ name or deal.inhaber.name }}</title>
+<title>Kündigung {{ deal.bank.name }} – {{ brief.name or deal.inhaber.name }}</title>
 <base href="{{ request.headers.get('X-Ingress-Path', '') }}/">
 {# Eigenständige Seite ohne base.html: sie wird gedruckt oder als PDF
    gespeichert, Navigation und Design-Umschalter hätten darauf nichts
    verloren. Maße nach DIN 5008, Form B (Anschriftfeld 45 mm von oben,
    Seitenrand links 25 mm) - so passt die Anschrift in ein DIN-lang-
-   Fensterkuvert. Bewusst immer hell: es ist ein Blatt Papier. #}
+   Fensterkuvert. Bewusst immer hell: es ist ein Blatt Papier. Dieselben
+   Maße setzen kuendigung_dokumente.py für PDF und Word. #}
 <style>
   @page { size: A4; margin: 0; }
   :root { color-scheme: light; }
@@ -32,7 +33,7 @@
     flex-wrap: wrap;
     font-size: 14px;
   }
-  .leiste button {
+  .leiste button, .leiste .knopf {
     background: #0f7c67;
     color: #fff;
     border: none;
@@ -41,17 +42,9 @@
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
+    text-decoration: none;
   }
-  .warnung {
-    max-width: 210mm;
-    margin: 0 auto 12px;
-    padding: 12px 16px;
-    background: #fbf1e1;
-    border: 1px solid #e3c48f;
-    border-radius: 10px;
-    color: #7a531a;
-    font-size: 14px;
-  }
+  .leiste .knopf.zweit { background: #fff; color: #33424c; border: 1px solid #b9c2bd; }
   .blatt {
     position: relative;
     width: 210mm;
@@ -97,7 +90,7 @@
   }
   @media print {
     body { background: #fff; }
-    .leiste, .warnung { display: none; }
+    .leiste { display: none; }
     .blatt {
       width: 210mm; min-height: 297mm; margin: 0; padding: 0 20mm 20mm 25mm; box-shadow: none;
     }
@@ -109,34 +102,29 @@
 </head>
 <body>
 <div class="leiste">
-  <button type="button" onclick="window.print()">Drucken / Als PDF speichern</button>
-  <a href="deals/{{ deal.id }}/kuendigung">Zurück zum Assistenten</a>
+  <button type="button" onclick="window.print()">Drucken</button>
+  <a class="knopf zweit" href="deals/{{ deal.id }}/kuendigung/schreiben/{{ schreiben.id }}/pdf">PDF</a>
+  <a class="knopf zweit" href="deals/{{ deal.id }}/kuendigung/schreiben/{{ schreiben.id }}/docx">Word</a>
+  <a href="deals/{{ deal.id }}/kuendigung#gespeichert">Zurück zum Assistenten</a>
 </div>
-
-{% if fehlend or ohne_anschrift %}
-<div class="warnung">
-  Noch nicht vollständig - bitte im Assistenten ergänzen:
-  {{ (fehlend + (["Postanschrift der Bank"] if ohne_anschrift else [])) | join(", ") }}.
-</div>
-{% endif %}
 
 <div class="blatt">
   <div class="absender-kopf">
-    {% for zeile in absender if zeile %}{{ zeile }}<br>{% endfor %}
+    {% for zeile in brief.absender %}{{ zeile }}<br>{% endfor %}
   </div>
 
   <div class="anschriftfeld">
-    <div class="ruecksende">{{ absender | select | join(" · ") }}</div>
-    {% for zeile in empfaenger %}{{ zeile }}<br>{% endfor %}
+    <div class="ruecksende">{{ brief.absender | join(" · ") }}</div>
+    {% for zeile in brief.empfaenger %}{{ zeile }}<br>{% endfor %}
   </div>
 
   <div class="inhalt">
-    <div class="datum">{{ ort_datum }}</div>
-    <div class="betreff">{{ betreff }}</div>
-    {% for absatz in absaetze %}
+    <div class="datum">{{ brief.ort_datum }}</div>
+    <div class="betreff">{{ brief.betreff }}</div>
+    {% for absatz in brief.absaetze %}
     <p>{{ absatz }}</p>
     {% endfor %}
-    <div class="unterschrift">{{ name }}</div>
+    <div class="unterschrift">{{ brief.name }}</div>
   </div>
 </div>
 </body>

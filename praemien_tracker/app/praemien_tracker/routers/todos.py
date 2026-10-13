@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from .. import derived
 from ..database import get_db
-from ..helpers import parse_date
+from ..helpers import als_gekuendigt_markieren, parse_date
 from ..ingress import redirect
 from ..models import Aufgabe, Bedingung, Deal, Praemie
 from ..templating import templates
@@ -514,15 +514,10 @@ def toggle_kuendigen(
 ):
     deal = db.get(Deal, deal_id)
     if deal:
-        deal.gekuendigt = _ziel(wert, deal.gekuendigt)
-        if deal.gekuendigt:
-            # Einen gepflegten Monat nicht überschreiben: sonst ersetzt ein
-            # versehentliches Ent- und Wiederankreuzen das echte
-            # Kündigungsdatum durch heute - und verfälscht damit die
-            # Sperrfristen-Auswertung.
-            if not deal.gekuendigt_im_monat:
-                deal.gekuendigt_im_monat = derived.format_monat(datetime.date.today())
+        if _ziel(wert, deal.gekuendigt):
+            als_gekuendigt_markieren(deal, datetime.date.today())
         else:
+            deal.gekuendigt = False
             deal.gekuendigt_im_monat = None
         db.commit()
     return _todos_redirect(request, tab, quelle=quelle)
