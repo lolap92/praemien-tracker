@@ -67,6 +67,15 @@ class AngebotExtraktion(BaseModel):
     bank_name: str
     kontoart: str
     praemie_betrag: float
+    # Prämie ohne festen Geldbetrag (Gratisaktie, ETF-Anteil, Gutschein,
+    # Sachprämie): praemie_art "sachpraemie". praemie_bis ist der Höchstwert
+    # bei schwankendem Wert ("Gratisaktie im Wert von bis zu 100 €"),
+    # praemie_betrag dann der sichere Mindestwert (oft 0). Defaults für alte
+    # Cache-Einträge, die diese Felder noch nicht kennen (siehe lauf.py:
+    # solche Einträge mit Prämie 0 werden einmalig neu extrahiert).
+    praemie_art: Literal["geld", "sachpraemie"] = "geld"
+    praemie_bis: float | None = None
+    praemie_beschreibung: str | None = None
     # Monate bis wieder Neukunde bei derselben Bank, aus dem Angebotstext.
     # None, wenn im Text keine Sperrfrist erkennbar ist - wird in matching.py
     # zu "zu_pruefen", nicht zu "automatisch_abgelehnt".
@@ -128,7 +137,18 @@ Nebeninhalte ignorierst du vollständig.
 - kontoart: Art des Kontos (z.B. "Girokonto", "Tagesgeld", "Depot", \
 "Kreditkarte").
 - praemie_betrag: Gesamte Prämiensumme in Euro als Zahl (nur die Zahl, ohne \
-Währungszeichen). Wenn mehrere Teilprämien genannt sind, die Summe.
+Währungszeichen). Wenn mehrere Teilprämien genannt sind, die Summe. Bei einer \
+Prämie mit schwankendem Wert (z.B. "Gratisaktie im Wert von bis zu 100 €") \
+nur der sicher garantierte Mindestwert - 0, wenn keiner genannt ist.
+- praemie_art: "geld" für eine Geldprämie (Gutschrift, Überweisung, \
+Cashback), "sachpraemie" für alles andere mit Geldwert: Gratisaktie, \
+ETF-Anteil, Gutschein, Sachprämie. Eine Sachprämie mit festem Wert (z.B. \
+"ETF im Wert von 80 €") hat praemie_betrag 80.
+- praemie_bis: Nur bei schwankendem Wert der genannte Höchstwert in Euro als \
+Zahl (bei "Gratisaktie bis zu 100 €" also 100), sonst null.
+- praemie_beschreibung: Nur bei praemie_art "sachpraemie" oder schwankendem \
+Wert eine kurze Beschreibung der Prämie, z.B. "Gratisaktie im Wert von bis \
+zu 100 €", sonst null.
 - praemien: Wenn sich die Gesamtprämie aus mehreren Teilprämien mit \
 unterschiedlichen Voraussetzungen zusammensetzt (z.B. "50 EUR von Spartanien \
 für die Kontoeröffnung" und "250 EUR von der Bank für den \

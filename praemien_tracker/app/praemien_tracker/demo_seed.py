@@ -139,12 +139,10 @@ def lade_demo_daten(db: Session) -> None:
             quelle_url=f"https://beispiel.invalid/demo-{index}",
             inhalt_hash=f"demo-hash-{index}",
             bank_name=bank,
-            kontoart="Girokonto",
-            praemie_betrag=Decimal("80"),
             status=status,
             inhaber=inhaber,
             roh_json="{}",
-            **kwargs,
+            **{"kontoart": "Girokonto", "praemie_betrag": Decimal("80"), **kwargs},
         )
         db.add(v)
         return v
@@ -173,6 +171,23 @@ def lade_demo_daten(db: Session) -> None:
             gilt_fuer="250 € für den Kontowechselservice",
         )
     )
+    # Prämie ohne festen Geldbetrag: Gratisaktie mit schwankendem Wert.
+    v6 = vorschlag(
+        "Aktienbroker Demo",
+        erika,
+        "zu_pruefen",
+        6,
+        kontoart="Depot",
+        praemie_betrag=Decimal("0"),
+        praemie_art="sachpraemie",
+        praemie_bis=Decimal("100"),
+        praemie_beschreibung="Gratisaktie im Wert von bis zu 100 €",
+        ablehnungsgruende=(
+            "Prämie schwankt: Gratisaktie im Wert von bis zu 100 € - sicher sind nur 0 €, "
+            "die Mindestprämie von 50 € wird erst mit einem höheren Wert erreicht."
+        ),
+    )
+    v6.bedingungen.append(VorschlagBedingung(beschreibung="Mindesteinzahlung innerhalb von 10 Tagen", einschaetzung="erfuellt"))
     vorschlag("Abgelehnt-Bank", erika, "automatisch_abgelehnt", 4, ablehnungsgruende="Prämie unter Mindestbetrag")
     vorschlag("Verworfen-Bank", max_, "verworfen", 5, verwerfen_gruende="bestandskunde")
 

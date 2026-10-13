@@ -94,6 +94,10 @@ class VorschlagGruppe:
     verwerfen_gruende: object
     ablehnungsgruende: object
     mitglieder: list[DealVorschlag]
+    # Prämie ohne festen Geldbetrag (siehe models.DealVorschlag.praemie_art).
+    praemie_art: str = "geld"
+    praemie_bis: object = None
+    praemie_beschreibung: object = None
 
 
 def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
@@ -137,6 +141,9 @@ def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
                 verwerfen_gruende=fuehrend.verwerfen_gruende,
                 ablehnungsgruende=alle_gruende,
                 mitglieder=mitglieder,
+                praemie_art=fuehrend.praemie_art,
+                praemie_bis=fuehrend.praemie_bis,
+                praemie_beschreibung=fuehrend.praemie_beschreibung,
             )
         )
     gruppen.sort(key=lambda g: max(m.gefunden_am for m in g.mitglieder), reverse=True)
@@ -674,6 +681,9 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
                     bank_name=referenz.bank_name,
                     kontoart=referenz.kontoart,
                     praemie_betrag=referenz.praemie_betrag,
+                    praemie_art=referenz.praemie_art,
+                    praemie_bis=referenz.praemie_bis,
+                    praemie_beschreibung=referenz.praemie_beschreibung,
                     sperrfrist_monate=referenz.sperrfrist_monate,
                     roh_json=json.dumps(roh, ensure_ascii=False),
                     inhalt_hash=referenz.inhalt_hash,

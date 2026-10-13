@@ -238,6 +238,12 @@
 {% endif %}
 {% endmacro %}
 
+{# Prämie für Kopf und Duplikat-Vergleich: bei schwankendem Wert (Gratisaktie
+   "bis 100 €") der Höchstwert mit "bis", statt eines irreführenden 0,00 €. #}
+{% macro praemie_anzeige(x) -%}
+{% if x.praemie_bis %}bis {{ x.praemie_bis | eur }}{% else %}{{ x.praemie_betrag | eur }}{% endif %}
+{%- endmacro %}
+
 {% macro vorschlag_karte(g) %}
 {% set n_pruefen = g.bedingungen | selectattr('einschaetzung', 'equalto', 'zu_pruefen') | list | length %}
 {% set n_nicht = g.bedingungen | selectattr('einschaetzung', 'equalto', 'nicht_erfuellt') | list | length %}
@@ -247,13 +253,14 @@
       <span class="bank">{{ g.bank_name }}</span>
     </div>
     <div class="vk-geld">
-      <span class="geld d-amt">{{ g.praemie_betrag | eur }}</span>
+      <span class="geld d-amt">{{ praemie_anzeige(g) }}</span>
     </div>
   </div>
 
   <div class="vk-tags">
     <span class="vorschlag-tag tag-{{ g.quelle }}">{{ g.quelle | quelle }}</span>
     {% if g.kontoart %}<span class="vorschlag-tag tag-kontoart">{{ g.kontoart }}</span>{% endif %}
+    {% if g.praemie_art == "sachpraemie" %}<span class="vorschlag-tag tag-kontoart" title="{{ g.praemie_beschreibung or '' }}">Sachprämie</span>{% endif %}
     {% if g.mitglieder | selectattr('inhaber.ist_minderjaehrig') | list %}
     <span class="vorschlag-tag tag-kind">Auch für Kinder</span>
     {% endif %}
@@ -273,6 +280,7 @@
   <div class="vk-fakten">
     <span class="vk-fakt">Gefunden {{ g.gefunden_am | datum }}</span>
     {% if g.sperrfrist_monate %}<span class="vk-fakt">Sperrfrist {{ g.sperrfrist_monate }} Mon.</span>{% endif %}
+    {% if g.praemie_beschreibung %}<span class="vk-fakt">{{ g.praemie_beschreibung }}</span>{% endif %}
   </div>
 
   {% if g.praemien | length > 1 %}
@@ -433,7 +441,7 @@
       <div class="dup-quelle-inhalt">
         <div class="dup-quelle-kopf">
           <span class="dup-quelle-name">{{ f.quelle | quelle }}</span>
-          <span class="dup-quelle-geld">{{ f.praemie_betrag | eur }}</span>
+          <span class="dup-quelle-geld">{{ praemie_anzeige(f) }}</span>
         </div>
         <div class="dup-quelle-fakten">
           {% if f.sperrfrist_monate %}<span>Sperrfrist {{ f.sperrfrist_monate }} Mon.</span>{% endif %}
@@ -506,7 +514,7 @@
       <span class="bank">{{ g.bank_name }}</span>
     </div>
     <div class="vk-geld">
-      <span class="geld d-amt">{{ g.praemie_betrag | eur }}</span>
+      <span class="geld d-amt">{{ praemie_anzeige(g) }}</span>
     </div>
   </div>
 
@@ -547,7 +555,7 @@
       <span class="bank">{{ v.bank_name }}</span>
     </div>
     <div class="vk-geld">
-      <span class="geld d-amt">{{ v.praemie_betrag | eur }}</span>
+      <span class="geld d-amt">{{ praemie_anzeige(v) }}</span>
     </div>
   </div>
 

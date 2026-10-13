@@ -304,6 +304,13 @@ class DealVorschlag(Base):
     bank_name: Mapped[str] = mapped_column(String(100))
     kontoart: Mapped[str] = mapped_column(String(50))
     praemie_betrag: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    # Prämie ohne festen Geldbetrag (Gratisaktie, ETF-Anteil, Gutschein ...):
+    # praemie_art "sachpraemie", praemie_bis der Höchstwert bei schwankendem
+    # Wert ("Gratisaktie bis 100 €"), praemie_beschreibung eine Kurzfassung
+    # für die Karte. praemie_betrag bleibt der sichere Mindestwert (oft 0).
+    praemie_art: Mapped[str] = mapped_column(String(20), default="geld", server_default="geld")
+    praemie_bis: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    praemie_beschreibung: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Aus dem Angebotstext extrahiert, optional; bei Mehrdeutigkeit ("6 oder
     # 12 Monate") wird die kürzere Angabe übernommen (siehe extraktion.py).
     sperrfrist_monate: Mapped[int | None] = mapped_column(nullable=True)

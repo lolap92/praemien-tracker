@@ -145,6 +145,15 @@ def _cache_speichern(
     eintrag.zuletzt_gesehen_am = datetime.datetime.utcnow()
 
 
+def _vor_sachpraemien_mit_null_euro(extraktion_json: str, extrahiert: AngebotExtraktion) -> bool:
+    """Ein Cache-Eintrag von vor der Erkennung von Sachprämien (das Feld
+    praemie_art fehlt im gespeicherten JSON) mit Prämie 0 €: genau so landete
+    eine Gratisaktie "bis 100 €" in der automatischen Ablehnung. Solche
+    Einträge werden einmalig neu extrahiert - danach steht praemie_art im
+    Cache, und es bleibt beim kostenlosen Cache-Treffer."""
+    return extrahiert.praemie_betrag == 0 and '"praemie_art"' not in extraktion_json
+
+
 def _vorschlag_felder_setzen(
     vorschlag: DealVorschlag, extrahiert: AngebotExtraktion, match: matching.MatchErgebnis
 ) -> None:
@@ -158,6 +167,9 @@ def _vorschlag_felder_setzen(
     vorschlag.bank_name = extrahiert.bank_name.strip()
     vorschlag.kontoart = extrahiert.kontoart.strip()
     vorschlag.praemie_betrag = match.praemie_betrag
+    vorschlag.praemie_art = match.praemie_art
+    vorschlag.praemie_bis = match.praemie_bis
+    vorschlag.praemie_beschreibung = match.praemie_beschreibung
     vorschlag.sperrfrist_monate = match.sperrfrist_monate
     vorschlag.ablehnungsgruende = match.ablehnungsgruende
     vorschlag.roh_json = match.roh_json
@@ -404,7 +416,7 @@ def taeglicher_lauf(
                     continue
                 try:
                     extrahiert = AngebotExtraktion.model_validate_json(cache_eintrag.extraktion_json)
-                    aus_cache = True
+                    aus_cache = not _vor_sachpraemien_mit_null_euro(cache_eintrag.extraktion_json, extrahiert)
                 except Exception:
                     # Fällt z.B. an, wenn sich die extrahierten Felder seit
                     # einem App-Update geändert haben - kein API-Fehler,
@@ -538,20 +550,18 @@ def taeglicher_lauf(
                         # Bereits vom Nutzer übernommen oder verworfen -
                         # bleibt in jedem Fall unangetastet.
                         continue
-                    if bestehend.status != match.status:
+                    if bestehend.status != match.status or bestehend.praemie_bis != match.praemie_bis:
                         # Gleicher Inhalt wie zuvor - i.d.R. nichts zu tun.
-                        # Nur wenn sich die Bewertung ohne neue Extraktion
-                        # geändert hat (z.B. eine Sperrfrist ist inzwischen
-                        # erreicht, oder eine feste Prüfung in matching.py
-                        # stuft eine Bedingung jetzt anders ein), wird die
-                        # Zeile nachgezogen - samt Einschätzung je Bedingung,
-                        # damit die Karte nicht "alle erfüllbar" zeigt,
-                        # während sie unter "Zu prüfen" steht.
-                        bestehend.status = match.status
-                        bestehend.ablehnungsgruende = match.ablehnungsgruende
-                        for gespeichert, neu_bewertet in zip(bestehend.bedingungen, match.bedingungen):
-                            if gespeichert.beschreibung == neu_bewertet.beschreibung:
-                                gespeichert.einschaetzung = neu_bewertet.einschaetzung
+                        # Nur wenn sich die Bewertung geändert hat (z.B. eine
+                        # Sperrfrist ist inzwischen erreicht, eine feste
+                        # Prüfung in matching.py stuft eine Bedingung anders
+                        # ein, oder eine Neuanalyse erkennt jetzt eine
+                        # schwankende Prämie "bis 100 €"), wird die Zeile
+                        # vollständig nachgezogen - samt Einschätzung je
+                        # Bedingung und Prämien-Feldern, damit die Karte
+                        # nicht "alle erfüllbar" oder "0,00 €" zeigt, während
+                        # sie unter "Zu prüfen" steht.
+                        _vorschlag_felder_setzen(bestehend, extrahiert, match)
                         zaehler["aktualisiert"] += 1
                         aktualisiert_fuer_fund = True
                         zaehler[match.status] = zaehler.get(match.status, 0) + 1

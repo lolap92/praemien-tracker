@@ -575,3 +575,63 @@ def test_eindeutige_einkommens_huerde_der_ki_bleibt_ablehnung(db, alice):
     fund = RohFund("mydealz", "https://mydealz.de/sparkasse", "t", "x")
     ergebnis = matching.bewerten(db, fund, _sparkasse("nicht_erfuellt"), alice, MINDESTPRAEMIE)
     assert ergebnis.status == matching.STATUS_ABGELEHNT
+
+
+# --- Prämie ohne festen Geldbetrag (Gratisaktie "bis 100 €") ---------------
+
+
+def _gratisaktie(bis: float | None, betrag: float = 0.0, art: str = "sachpraemie") -> AngebotExtraktion:
+    return AngebotExtraktion(
+        bank_name="Trading 212",
+        kontoart="Depot",
+        praemie_betrag=betrag,
+        praemie_art=art,
+        praemie_bis=bis,
+        praemie_beschreibung="Gratisaktie im Wert von bis zu 100 €" if bis else None,
+        bedingungen=[],
+    )
+
+
+def test_schwankende_praemie_mit_hoechstwert_ueber_mindestpraemie_ist_zu_pruefen(db, alice):
+    fund = RohFund("mydealz", "https://mydealz.de/trading212", "t", "x")
+    ergebnis = matching.bewerten(db, fund, _gratisaktie(100.0), alice, MINDESTPRAEMIE)
+    assert ergebnis.status == matching.STATUS_ZU_PRUEFEN
+    assert "Prämie schwankt: Gratisaktie im Wert von bis zu 100 €" in ergebnis.ablehnungsgruende
+    assert ergebnis.praemie_betrag == Decimal("0")
+    assert ergebnis.praemie_bis == Decimal("100.0")
+    assert ergebnis.praemie_art == "sachpraemie"
+
+
+def test_beim_uebernehmen_wird_der_hoechstwert_mit_hinweis_eingetragen(db, alice):
+    fund = RohFund("mydealz", "https://mydealz.de/trading212", "t", "x")
+    daten = DealImport.model_validate_json(
+        matching.bewerten(db, fund, _gratisaktie(100.0), alice, MINDESTPRAEMIE).roh_json
+    )
+    assert len(daten.praemien) == 1
+    assert daten.praemien[0].betrag == Decimal("100.0")
+    assert "Höchstwert eingetragen" in daten.praemien[0].zweck
+    assert "Gratisaktie" in daten.praemien[0].zweck
+
+
+def test_schwankende_praemie_mit_hoechstwert_unter_mindestpraemie_bleibt_abgelehnt(db, alice):
+    fund = RohFund("mydealz", "https://mydealz.de/trading212", "t", "x")
+    ergebnis = matching.bewerten(db, fund, _gratisaktie(30.0), alice, MINDESTPRAEMIE)
+    assert ergebnis.status == matching.STATUS_ABGELEHNT
+    assert "unter der Mindestprämie" in ergebnis.ablehnungsgruende
+
+
+def test_sachpraemie_mit_festem_wert_zaehlt_normal(db, alice):
+    """"ETF im Wert von 80 €": fester Wert, kein Höchstwert - wie eine
+    Geldprämie."""
+    fund = RohFund("mydealz", "https://mydealz.de/etf", "t", "x")
+    ergebnis = matching.bewerten(db, fund, _gratisaktie(None, betrag=80.0), alice, MINDESTPRAEMIE)
+    assert ergebnis.status == matching.STATUS_VORGESCHLAGEN
+    assert ergebnis.praemie_bis is None
+    assert DealImport.model_validate_json(ergebnis.roh_json).praemien[0].betrag == Decimal("80.0")
+
+
+def test_hoechstwert_nicht_ueber_dem_sicheren_betrag_wird_ignoriert(db, alice):
+    fund = RohFund("mydealz", "https://mydealz.de/etf", "t", "x")
+    ergebnis = matching.bewerten(db, fund, _gratisaktie(80.0, betrag=80.0), alice, MINDESTPRAEMIE)
+    assert ergebnis.praemie_bis is None
+    assert ergebnis.status == matching.STATUS_VORGESCHLAGEN

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.68.0
+
+Prämien ohne festen Geldbetrag - Gratisaktie, ETF-Anteil, Gutschein - werden jetzt erkannt, statt als 0 € automatisch abgelehnt zu werden.
+
+- **Anlass:** Das Trading-212-Angebot „Gratisaktie bis 100 €" stand mit 0,00 € unter „Automatisch abgelehnt" (unter der Mindestprämie). Die KI kannte nur ein Feld „Prämiensumme in Euro"; für eine Aktie mit schwankendem Wert gibt es keinen garantierten Betrag, also trug sie 0 ein.
+- **Die KI liest die Prämie ausführlicher aus (`finder/extraktion.py`).** Neben dem sicheren Betrag liefert sie jetzt die Art (Geld oder Sachprämie), bei schwankendem Wert den Höchstwert und eine Kurzbeschreibung („Gratisaktie im Wert von bis zu 100 €"). Eine Sachprämie mit festem Wert („ETF im Wert von 80 €") zählt mit diesem Wert wie eine Geldprämie.
+- **Bewertung (`finder/matching.py`).** Liegt der sichere Betrag unter der Mindestprämie, der Höchstwert aber darüber, kommt der Fund auf „Zu prüfen" mit dem Hinweis „Prämie schwankt: …" - ob sich das lohnt, entscheidest du. Liegt auch der Höchstwert darunter, bleibt es bei der Ablehnung.
+- **Übernehmen als Deal.** Eingetragen wird der Höchstwert, mit dem Zweck „… - Höchstwert eingetragen, tatsächlichen Wert nach Erhalt anpassen", damit die Summen nicht dauerhaft zu hoch bleiben.
+- **Anzeige (`templates/vorschlaege.html`, Migration 0026).** Die Karte zeigt „bis 100,00 €" statt „0,00 €", ein Etikett „Sachprämie" und die Kurzbeschreibung. Dafür hat `deal_vorschlaege` drei neue Spalten: `praemie_art`, `praemie_bis`, `praemie_beschreibung`.
+- **Bereits gefundene Angebote (`finder/lauf.py`).** Zwischengespeicherte Funde mit Prämie 0 € aus der Zeit vor dieser Version werden beim nächsten Lauf einmalig neu analysiert - nur diese, alle anderen kommen weiter kostenlos aus dem Zwischenspeicher. Die bestehende Karte wird dabei vollständig nachgezogen statt eine zweite daneben anzulegen; das gilt künftig generell, wenn sich die Bewertung eines unveränderten Fundes ändert.
+
 ## 2.67.0
 
 Der Kündigungs-Assistent liefert den Brief jetzt auch als PDF- und Word-Datei, hebt jedes erzeugte Schreiben auf und hakt den Deal beim Versand als gekündigt ab.

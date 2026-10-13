@@ -117,6 +117,10 @@ class MatchErgebnis:
     praemien: list[PraemieBewertung]
     roh_json: str
     inhalt_hash: str
+    praemie_art: str = "geld"
+    # Höchstwert bei schwankendem Wert, nur gesetzt, wenn über praemie_betrag.
+    praemie_bis: Decimal | None = None
+    praemie_beschreibung: str | None = None
 
 
 def _bank_finden(db: Session, bank_name: str) -> Bank | None:
@@ -281,9 +285,26 @@ def bewerten(
     ablehnung_gruende: list[str] = []
     unklar_gruende: list[str] = []
 
+    # Schwankender Wert (Gratisaktie "bis 100 €"): nur ein Höchstwert über
+    # dem sicheren Betrag zählt, sonst ist es eine gewöhnliche feste Prämie.
+    praemie_bis = _praemie_betrag(extraktion.praemie_bis) if extraktion.praemie_bis else None
+    if praemie_bis is not None and praemie_bis <= praemie_betrag:
+        praemie_bis = None
+    praemie_beschreibung = (extraktion.praemie_beschreibung or "").strip() or None
+
     # 1) Mindestprämie - deterministisch, kein Teil der Bedingungen-Liste.
+    # Reicht nur der Höchstwert einer schwankenden Prämie an die
+    # Mindestprämie heran, ist das "zu prüfen" statt einer Ablehnung - ob
+    # sich das Angebot lohnt, entscheidet die/der Nutzer/in.
     if praemie_betrag < mindestpraemie:
-        ablehnung_gruende.append(f"Prämie {praemie_betrag} € liegt unter der Mindestprämie von {mindestpraemie} €.")
+        if praemie_bis is not None and praemie_bis >= mindestpraemie:
+            unklar_gruende.append(
+                f"Prämie schwankt: {praemie_beschreibung or f'bis zu {praemie_bis} €'} - "
+                f"sicher sind nur {praemie_betrag} €, die Mindestprämie von {mindestpraemie} € "
+                "wird erst mit einem höheren Wert erreicht."
+            )
+        else:
+            ablehnung_gruende.append(f"Prämie {praemie_betrag} € liegt unter der Mindestprämie von {mindestpraemie} €.")
 
     # 2) Geschäftskunden-Angebote scheiden grundsätzlich aus - ein
     # Geschäftskonto lässt sich privat gar nicht eröffnen. Deshalb eine harte
@@ -353,7 +374,19 @@ def bewerten(
     # Herkunft je Teilprämie: Spartanien zahlt als "spartanien", die
     # eigentliche Bank als "bank" (das Kernmodell kennt nur diese zwei
     # Quellen). Ohne KI-Aufteilung fällt alles auf die Fund-Quelle zurück.
-    if extraktion.praemien:
+    if praemie_bis is not None:
+        # Beim Übernehmen wird der Höchstwert eingetragen - mit dem Hinweis,
+        # ihn nach Erhalt auf den tatsächlichen Wert zu korrigieren.
+        praemien_json = [
+            {
+                "quelle": _standard_praemienquelle(fund.quelle),
+                "betrag": str(praemie_bis),
+                "erhalten": False,
+                "zweck": f"{praemie_beschreibung or 'Prämie mit schwankendem Wert'} - Höchstwert eingetragen, "
+                "tatsächlichen Wert nach Erhalt anpassen",
+            }
+        ]
+    elif extraktion.praemien:
         praemien_json = [
             {
                 "quelle": _quelle_aus_geber(p.geber, fund.quelle),
@@ -409,6 +442,9 @@ def bewerten(
         inhalt_hash=_inhalt_hash(
             extraktion.bank_name, extraktion.kontoart, praemie_betrag, extraktion.sperrfrist_monate, hash_bedingungen
         ),
+        praemie_art=extraktion.praemie_art,
+        praemie_bis=praemie_bis,
+        praemie_beschreibung=praemie_beschreibung,
     )
 
 

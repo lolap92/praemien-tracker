@@ -1096,3 +1096,50 @@ def test_bestehender_vorschlag_mit_einkommenseingang_wechselt_ohne_dublette_auf_
     db.refresh(eintrag)
     assert eintrag.status == matching.STATUS_ZU_PRUEFEN
     assert [b.einschaetzung for b in eintrag.bedingungen] == ["zu_pruefen"]
+
+
+def test_alter_cache_eintrag_mit_null_euro_wird_einmalig_neu_analysiert(db, zwei_inhaber, monkeypatch):
+    """Trading 212: vor der Erkennung von Sachprämien landete die Gratisaktie
+    "bis 100 €" als 0 € in der Ablehnung. Der nächste Lauf analysiert solche
+    Cache-Einträge einmal neu und zieht die bestehende Karte nach - ohne
+    Dublette -, danach kommt wieder alles aus dem Cache."""
+    import json as _json
+
+    alice = zwei_inhaber[0]
+    fund = RohFund("mydealz", "https://mydealz.de/trading212", "t", "Trading 212 Gratisaktie bis 100 Euro")
+    _patch_quellen(monkeypatch, [fund])
+    alt = AngebotExtraktion(bank_name="Trading 212", kontoart="Depot", praemie_betrag=0.0, bedingungen=[])
+    client = ZaehlenderFakeClient(RelevanzErgebnis(ist_relevant=True), alt)
+
+    lauf.taeglicher_lauf(db, client=client)
+    eintrag = db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == alice.id).one()
+    assert eintrag.status == matching.STATUS_ABGELEHNT
+
+    # So sah der Cache-Eintrag vor diesem Update aus: ohne praemie_art & Co.
+    cache = db.query(FinderFund).filter(FinderFund.quelle_url == fund.quelle_url).one()
+    gespeichert = _json.loads(cache.extraktion_json)
+    for feld in ("praemie_art", "praemie_bis", "praemie_beschreibung"):
+        gespeichert.pop(feld, None)
+    cache.extraktion_json = _json.dumps(gespeichert)
+    db.commit()
+
+    client.extraktion = AngebotExtraktion(
+        bank_name="Trading 212",
+        kontoart="Depot",
+        praemie_betrag=0.0,
+        praemie_art="sachpraemie",
+        praemie_bis=100.0,
+        praemie_beschreibung="Gratisaktie im Wert von bis zu 100 €",
+        bedingungen=[],
+    )
+    lauf.taeglicher_lauf(db, client=client)
+    assert client.aufrufe == 4  # einmal neu: Themen-Check + Extraktion
+
+    assert db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == alice.id).count() == 1
+    db.refresh(eintrag)
+    assert eintrag.status == matching.STATUS_ZU_PRUEFEN
+    assert eintrag.praemie_bis == 100
+    assert eintrag.praemie_beschreibung == "Gratisaktie im Wert von bis zu 100 €"
+
+    lauf.taeglicher_lauf(db, client=client)
+    assert client.aufrufe == 4  # danach wieder kostenlos aus dem Cache
