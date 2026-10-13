@@ -2,7 +2,8 @@
 {% block title %}Deals – Prämien-Tracker{% endblock %}
 {% block appbar_title %}Deals{% endblock %}
 {% block appbar_actions %}
-<a class="icon-btn accent" href="deals/new">+ Neuer Deal</a>
+<a class="icon-btn accent" href="deals/new">+ Deal</a>
+<a class="icon-btn" href="konten/new" title="Konto ohne Prämie, nur bis zur Kündigung mitverfolgen">+ Konto</a>
 {% endblock %}
 {% block content %}
 {% from "_filter_chips.html" import chip %}
@@ -25,12 +26,21 @@
     {% endif %}
     {% endfor %}
   </div>
+  {# Deals und Konten ohne Prämie (siehe models.ART_KONTO) stehen gemischt in
+     der Liste. Die Zeile erscheint erst, wenn es überhaupt Konten gibt. #}
+  {% if anzahl_art.get("konto", 0) or filter_art %}
+  <div class="chip-reihe umbrechen" aria-label="Art">
+    {{ chip("art", "", "Alle", not filter_art, typ="radio") }}
+    {{ chip("art", "deal", "Deals", filter_art == "deal", anzahl_art.get("deal", 0), typ="radio") }}
+    {{ chip("art", "konto", "Konten", filter_art == "konto", anzahl_art.get("konto", 0), typ="radio") }}
+  </div>
+  {% endif %}
   <div class="chip-suche">
     <input type="search" name="q" placeholder="Bank suchen…" value="{{ filter_q }}" enterkeyhint="search" onsearch="this.form.submit()">
     <a class="button secondary" href="deals/export.xlsx">Export</a>
   </div>
   {% if filter_aktiv %}
-  <div class="chip-treffer">{{ zeilen | length }} Deal{{ "s" if zeilen | length != 1 else "" }} · <a href="deals">Filter zurücksetzen</a></div>
+  <div class="chip-treffer">{{ zeilen | length }} Treffer · <a href="deals">Filter zurücksetzen</a></div>
   {% endif %}
 </form>
 
@@ -44,17 +54,26 @@
       <div class="titel">
         <div>
           <div class="bank">{{ zeile.deal.bank.name }}</div>
-          <div class="meta">{{ zeile.deal.kontoart }} · {{ zeile.deal.inhaber.name }}{% if zeile.deal.kuendbar_ab %} · kündbar ab {{ zeile.deal.kuendbar_ab | datum }}{% endif %}</div>
+          <div class="meta">{% if zeile.deal.ist_konto %}<span class="wdh-marke art-konto">Konto</span> {% endif %}{{ zeile.deal.kontoart }} · {{ zeile.deal.inhaber.name }}{% if zeile.deal.kuendbar_ab %} · kündbar ab {{ zeile.deal.kuendbar_ab | datum }}{% endif %}</div>
         </div>
+        {% if zeile.deal.ist_konto %}
+        {# Ein Konto hat keine Prämie - statt 0,00 € steht hier, was es kostet. #}
+        {% if zeile.deal.kontofuehrungsgebuehren %}<div class="geld d-amt"><span class="gebuehr-warnung">{{ zeile.deal.kontofuehrungsgebuehren | eur }} mtl.</span></div>{% endif %}
+        {% else %}
         <div class="geld d-amt">{{ zeile.kennzahlen.gesamt | eur }}</div>
+        {% endif %}
       </div>
       <div class="betraege">
         <span class="chip status-{{ zeile.status }}">{{ status_labels[zeile.status] }}</span>
+        {# Die Fortschrittsleiste bildet die Deal-Pipeline ab - ein Konto
+           durchläuft nur deren letzte drei Stufen und bekommt keine. #}
+        {% if not zeile.deal.ist_konto %}
         <div class="track">
           {% for i in range(pipeline_stufen) %}
           <i class="{{ 'done' if i < zeile.status_index else ('on' if i == zeile.status_index else '') }}"></i>
           {% endfor %}
         </div>
+        {% endif %}
       </div>
     </a>
     </li>
@@ -75,10 +94,10 @@
         {% for zeile in zeilen %}
         <tr>
           <td class="bank"><a href="deals/{{ zeile.deal.id }}">{{ zeile.deal.bank.name }}</a></td>
-          <td>{{ zeile.deal.kontoart }}</td>
+          <td>{{ zeile.deal.kontoart }}{% if zeile.deal.ist_konto %} <span class="wdh-marke art-konto">Konto</span>{% endif %}</td>
           <td>{{ zeile.deal.inhaber.name }}</td>
-          <td class="geld">{{ zeile.kennzahlen.gesamt | eur }}</td>
-          <td class="geld">{{ zeile.kennzahlen.offen | eur }}</td>
+          <td class="geld">{{ "–" if zeile.deal.ist_konto else (zeile.kennzahlen.gesamt | eur) }}</td>
+          <td class="geld">{{ "–" if zeile.deal.ist_konto else (zeile.kennzahlen.offen | eur) }}</td>
           <td class="datum">{{ zeile.deal.kuendbar_ab | datum if zeile.deal.kuendbar_ab else "–" }}</td>
           <td><span class="chip status-{{ zeile.status }}">{{ status_labels[zeile.status] }}</span></td>
         </tr>

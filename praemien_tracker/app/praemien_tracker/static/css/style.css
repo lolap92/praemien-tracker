@@ -932,6 +932,14 @@ body:has(#todotab-manuell:checked) .todo-faellig-filter-manuell {
 
 /* "monatlich" an einer wiederkehrenden Aufgabe: das Abhaken hat dort eine
    Folge (es legt den nächsten Termin an), das soll vorher zu sehen sein. */
+/* Deal und Konto sollen sich auf einen Blick unterscheiden: der Deal im
+   Akzentgrün (Grundfarbe von .wdh-marke), das Konto ohne Prämie in
+   neutralem Grau - überall, wo das Etikett steht. */
+.wdh-marke.art-konto {
+  color: var(--ink-soft);
+  background: rgba(107, 122, 133, 0.18);
+}
+
 .wdh-marke {
   font-family: var(--font-mono);
   font-size: 0.64rem;
@@ -1350,6 +1358,10 @@ label {
 }
 
 input[type="text"],
+/* Eingaben mit Vorschlagsliste (Bank, Inhaber, Kontoart) haben kein
+   type-Attribut und blieben ohne diese Zeile ungestylt - im dunklen Design
+   als weiße Kästen. */
+input[list],
 input[type="search"],
 input[type="date"],
 input[type="number"],

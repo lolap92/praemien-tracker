@@ -57,10 +57,22 @@ class Inhaber(Base):
     deals: Mapped[list["Deal"]] = relationship(back_populates="inhaber")
 
 
+ART_DEAL = "deal"
+# Ein Konto, das nicht über einen Prämien-Deal eröffnet wurde und nur bis zur
+# Kündigung mitverfolgt wird: keine Prämien, keine Bedingungen, nur die drei
+# Kündigungs-Status (siehe derived.status). Bewusst eine Spalte an Deal statt
+# einer eigenen Tabelle - Kündigen-ToDos, Sperrfristen, der nächtliche
+# Kündigungshinweis-Batch und der "bereits Kunde"-Abgleich des KI-Deal-Finders
+# arbeiten alle auf Deal und gelten so ohne zweiten Codepfad auch für Konten.
+ART_KONTO = "konto"
+ARTEN = (ART_DEAL, ART_KONTO)
+
+
 class Deal(Base):
     __tablename__ = "deals"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    art: Mapped[str] = mapped_column(String(10), default=ART_DEAL, server_default=ART_DEAL)
     bank_id: Mapped[int] = mapped_column(ForeignKey("banks.id"), index=True)
     inhaber_id: Mapped[int] = mapped_column(ForeignKey("inhaber.id"), index=True)
     kontoart: Mapped[str] = mapped_column(String(50))
@@ -126,6 +138,10 @@ class Deal(Base):
     urls: Mapped[list["DealUrl"]] = relationship(
         back_populates="deal", cascade="all, delete-orphan", order_by="DealUrl.id"
     )
+
+    @property
+    def ist_konto(self) -> bool:
+        return self.art == ART_KONTO
 
 
 class Praemie(Base):

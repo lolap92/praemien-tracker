@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.65.0
+## 2.66.0
 
 Neu: ein Kündigungs-Assistent, der aus einem Deal eine fertige Kündigung macht - als E-Mail oder als Brief zum Ausdrucken - und vorher nur nach den Angaben fragt, die dafür noch fehlen.
 
@@ -11,7 +11,18 @@ Neu: ein Kündigungs-Assistent, der aus einem Deal eine fertige Kündigung macht
 - **E-Mail und Brief aus demselben Text.** Betreff und Text sind vor dem Versand noch anpassbar. „In Mail-App öffnen" übergibt Empfänger, Betreff und Text samt Absender an das Mailprogramm; „Text kopieren" funktioniert auch ohne HTTPS im lokalen Netz. „Brief zum Drucken öffnen" setzt einen Brief nach DIN 5008 (Anschrift passt ins Fensterkuvert), der sich drucken oder im Druckdialog als PDF speichern lässt (`templates/kuendigung_brief.html`).
 - **Absenderdaten unter Mehr → Inhaber (`routers/inhaber.py`, `templates/inhaber.html`).** Je Person aufklappbar „Anschrift & Bankverbindung". Die IBAN wird ohne Leerzeichen gespeichert, in Vierergruppen angezeigt und per Prüfsumme auf Tippfehler geprüft.
 - **IBAN im Änderungsprotokoll nur maskiert (`protokoll.py`, `iban.py`).** Sonst läge jede je gepflegte IBAN dauerhaft im Klartext im Protokoll, auch nachdem sie geändert wurde. Dass sie sich geändert hat, bleibt sichtbar (`DE89 … 3000`).
-- **Migration 0023.** Neue, leere Spalten an Inhaber, Bank und Deal sowie die neue Tabelle - bestehende Daten bleiben unverändert. Der Demo-Modus bringt für Max Mustermann und die Musterbank Beispieldaten mit, damit sich der Assistent vollständig vorführen lässt; recherchiert wird im Demo-Modus nie.
+- **Migration 0024.** Neue, leere Spalten an Inhaber, Bank und Deal sowie die neue Tabelle - bestehende Daten bleiben unverändert. Der Demo-Modus bringt für Max Mustermann und die Musterbank Beispieldaten mit, damit sich der Assistent vollständig vorführen lässt; recherchiert wird im Demo-Modus nie.
+
+## 2.65.0
+
+Neu: Konten ohne Prämie. Ein Konto, das du anderweitig eröffnet hast, lässt sich jetzt bis zur Kündigung mitverfolgen - mit Kündigungshinweis, Sperrfristen und Kündigen-Erinnerung, aber ohne Prämien, Bedingungen und Pflichtfelder.
+
+- **Eigene Art statt eigener Tabelle (`models.py`, Migration 0023).** Neue Spalte `deals.art` mit den Werten „deal" (Standard, alle bestehenden Einträge) und „konto". Ein Konto ist technisch ein Deal mit diesem Kennzeichen - dadurch gelten Kündigen-Reiter, Sperrfristen, der nächtliche Kündigungshinweis-Batch und der „bereits Kunde"-Abgleich des KI-Deal-Finders ohne zweiten Codepfad auch für Konten. Der Deal-Finder schlägt dir damit keine Neukunden-Prämie mehr bei einer Bank vor, bei der du bereits ein Konto führst.
+- **Nur drei Status (`derived.status`).** Ein Konto steht sofort auf „Kündigen", nach dem Abhaken auf „Bestätigung warten", danach auf „Abgeschlossen". Bedingungen, Prämien und eine Sperrfrist („Kündbar ab") gibt es dort nicht - ohne diese Abkürzung wäre ein Konto mangels Prämie dauerhaft in „Auf Prämie warten" hängen geblieben.
+- **Keine Erinnerungen (`derived.offene_felder`, `derived.pruefpunkte`).** Konten erscheinen weder unter „Deal pflegen" noch unter „Zu prüfen". Damit ein gekündigtes Konto trotzdem nicht aus den Sperrfristen fällt, setzt das Speichern mit „Gekündigt" den laufenden Monat, wenn keiner eingetragen ist - wie schon das Abhaken im Kündigen-Reiter.
+- **Anlegen über „+ Konto" (`templates/konto_neu.html`, `routers/deals.py`).** Nur Bank, Inhaber und Kontoart - mehr braucht der Batch für die Recherche des Kündigungswegs nicht. Optional lassen sich danach Kontoführungsgebühren, Freistellungsauftrag (zählt in die Freibetrag-Summe je Inhaber mit), Kontonummer, Kommentar und Aufgaben ergänzen; alles andere ist auf Ansicht und Bearbeiten-Seite ausgeblendet. „+ Neuer Deal" heißt jetzt kurz „+ Deal", damit beide Knöpfe am Handy in eine Zeile passen.
+- **Überall erkennbar.** In der Deals-Liste tragen Konten ein graues Etikett „Konto" und statt „0,00 €" ihre Gebühr, die Fortschrittsleiste der Deal-Pipeline entfällt. Ein Filter-Chip „Alle / Deals / Konten" erscheint, sobald es Konten gibt. In den Reitern „Kündigen" und „Bestätigung warten" trägt jeder Eintrag ein Etikett „Deal" (grün) oder „Konto" (grau). Der Excel-Export hat eine neue Spalte „Art", der JSON-Import ein optionales Feld `art`.
+- **Eingaben mit Vorschlagsliste im dunklen Design (`static/css/style.css`).** Die Felder Bank, Inhaber und Kontoart waren dort weiße Kästen, weil sie ohne `type`-Attribut keinem Eingabe-Stil zugeordnet waren - betraf auch das Anlegen und Bearbeiten von Deals.
 
 ## 2.64.1
 

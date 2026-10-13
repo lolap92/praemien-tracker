@@ -18,7 +18,7 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
-from .models import Aufgabe, Bank, Bedingung, Deal, DealVorschlag, Inhaber, Praemie, VorschlagBedingung
+from .models import ART_KONTO, Aufgabe, Bank, Bedingung, Deal, DealVorschlag, Inhaber, Praemie, VorschlagBedingung
 
 
 def lade_demo_daten(db: Session) -> None:
@@ -106,6 +106,20 @@ def lade_demo_daten(db: Session) -> None:
         zugangsdaten_gespeichert=True,
     )
     d6.praemien.append(Praemie(quelle="bank", betrag=Decimal("90"), erhalten=True))
+
+    # Konten ohne Prämie (models.ART_KONTO): anderweitig eröffnet, nur bis
+    # zur Kündigung mitverfolgt.
+    deal("Hausbank Demo", "Girokonto", max_, art=ART_KONTO, kontofuehrungsgebuehren=Decimal("4.90"))
+    deal(
+        "Altbank Beispiel",
+        "Tagesgeld",
+        erika,
+        art=ART_KONTO,
+        gekuendigt=True,
+        gekuendigt_im_monat=f"{jahr}-{heute.month:02d}",
+        freibetrag=Decimal("200"),
+        freibetrag_jahr=jahr,
+    )
 
     db.add(Aufgabe(beschreibung="Demo-Aufgabe: Kontoauszüge prüfen", erledigt=False, deal=None))
     db.add(

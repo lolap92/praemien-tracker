@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -75,6 +75,9 @@ class UrlIn(BaseModel):
 
 
 class DealImport(BaseModel):
+    # "deal" oder "konto" (Konto ohne Prämie, siehe models.ART_KONTO) - fehlt
+    # das Feld, ist es wie bisher ein Deal.
+    art: Literal["deal", "konto"] = "deal"
     bank: str
     kontoart: str
     inhaber: str

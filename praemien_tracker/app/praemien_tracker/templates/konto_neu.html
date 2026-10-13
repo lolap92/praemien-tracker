@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Neues Konto – Prämien-Tracker{% endblock %}
+{% block appbar_title %}Neues Konto{% endblock %}
+{% block content %}
+
+<datalist id="banken-liste">
+  {% for b in banken %}<option value="{{ b.name }}">{% endfor %}
+</datalist>
+<datalist id="inhaber-liste">
+  {% for i in inhaber_liste %}<option value="{{ i.name }}">{% endfor %}
+</datalist>
+<datalist id="kontoart-liste">
+  <option value="Girokonto">
+  <option value="Depot">
+  <option value="Tagesgeld">
+  <option value="Kreditkarte">
+</datalist>
+
+<div class="notiz">
+  Für ein Konto, das du nicht über einen Prämien-Deal eröffnet hast und nur bis zur Kündigung mitverfolgen willst.
+  Es kennt nur die Status Kündigen, Bestätigung warten und Abgeschlossen, und die App mahnt dafür nichts an.
+  Den Kündigungsweg recherchiert der nächtliche Batch, falls er noch nicht bekannt ist.
+</div>
+
+<div class="sec-t">Konto</div>
+<div class="card">
+  {% if form_fehler %}
+  <div class="hinweis">{{ form_fehler }}</div>
+  {% endif %}
+  <form action="konten/new" method="post">
+    <div class="reihe">
+      <div class="feld">
+        <label for="bank">Bank</label>
+        <input list="banken-liste" id="bank" name="bank" required value="{{ eingaben.get('bank', '') }}">
+      </div>
+      <div class="feld">
+        <label for="inhaber">Inhaber</label>
+        <input list="inhaber-liste" id="inhaber" name="inhaber" required value="{{ eingaben.get('inhaber', '') }}">
+      </div>
+    </div>
+    <div class="reihe">
+      <div class="feld">
+        <label for="kontoart">Kontoart</label>
+        <input list="kontoart-liste" id="kontoart" name="kontoart" required value="{{ eingaben.get('kontoart', '') }}">
+      </div>
+    </div>
+    <p class="feld-hinweis">Gebühren, Freistellungsauftrag, Kontonummer und Kommentar kannst du danach optional ergänzen.</p>
+    <button type="submit" class="save-btn">Konto anlegen</button>
+  </form>
+</div>
+
+{% endblock %}

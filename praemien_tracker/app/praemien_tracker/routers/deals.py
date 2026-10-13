@@ -27,7 +27,7 @@ from ..helpers import (
     spartanien_aufgabe_sicherstellen,
 )
 from ..ingress import redirect
-from ..models import Aufgabe, Bank, Bedingung, Deal, DealUrl, DealVorschlag, Inhaber, Praemie
+from ..models import ART_KONTO, ARTEN, Aufgabe, Bank, Bedingung, Deal, DealUrl, DealVorschlag, Inhaber, Praemie
 from ..schemas import DealImport
 from ..templating import templates
 
@@ -90,21 +90,24 @@ def deals_list(
     request: Request,
     inhaber_id: list[str] = Query(default=[]),
     status: list[str] = Query(default=[]),
+    art: str = "",
     q: str | None = None,
     db: Session = Depends(get_db),
 ):
     inhaber_ids = _als_int(inhaber_id)
     status_werte = [s for s in status if s.strip() in derived.STATUS_INDEX]
+    art_wert = art if art in ARTEN else ""
 
     deals = _deal_query(db).join(Bank).order_by(Bank.name, Deal.kontoart).all()
 
     status_je_deal = {d.id: derived.status(d) for d in deals}
     q_lower = (q or "").strip().lower()
 
-    def passt(d: Deal, inhaber: bool = True, stat: bool = True) -> bool:
+    def passt(d: Deal, inhaber: bool = True, stat: bool = True, mit_art: bool = True) -> bool:
         return (
             (not inhaber or not inhaber_ids or d.inhaber_id in inhaber_ids)
             and (not stat or not status_werte or status_je_deal[d.id] in status_werte)
+            and (not mit_art or not art_wert or d.art == art_wert)
             and (not q_lower or q_lower in d.bank.name.lower())
         )
 
@@ -113,6 +116,7 @@ def deals_list(
     # Deals dazukämen, wenn man ihn zusätzlich antippt.
     anzahl_status = Counter(status_je_deal[d.id] for d in deals if passt(d, stat=False))
     anzahl_inhaber = Counter(d.inhaber_id for d in deals if passt(d, inhaber=False))
+    anzahl_art = Counter(d.art for d in deals if passt(d, mit_art=False))
     deals = [d for d in deals if passt(d)]
 
     zeilen = [
@@ -137,9 +141,11 @@ def deals_list(
             "filter_inhaber_id": inhaber_ids,
             "filter_status": status_werte,
             "filter_q": q or "",
-            "filter_aktiv": bool(inhaber_ids or status_werte or q),
+            "filter_art": art_wert,
+            "filter_aktiv": bool(inhaber_ids or status_werte or art_wert or q),
             "anzahl_status": anzahl_status,
             "anzahl_inhaber": anzahl_inhaber,
+            "anzahl_art": anzahl_art,
         },
     )
 
@@ -237,6 +243,65 @@ def deal_new_create(
     db.add(deal)
     db.commit()
     return redirect(request, f"deals/{deal.id}/edit")
+
+
+def _konto_formular(request: Request, db: Session, *, form_fehler: str | None = None, eingaben: dict | None = None, status_code: int = 200):
+    return templates.TemplateResponse(
+        "konto_neu.html",
+        {
+            "request": request,
+            "banken": db.query(Bank).order_by(Bank.name).all(),
+            "inhaber_liste": db.query(Inhaber).order_by(Inhaber.name).all(),
+            "form_fehler": form_fehler,
+            "eingaben": eingaben or {},
+        },
+        status_code=status_code,
+    )
+
+
+@router.get("/konten/new")
+def konto_new_form(request: Request, db: Session = Depends(get_db)):
+    return _konto_formular(request, db)
+
+
+@router.post("/konten/new")
+def konto_new_create(
+    request: Request,
+    bank: str = Form(...),
+    inhaber: str = Form(...),
+    kontoart: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    """Legt ein Konto ohne Prämie an (models.ART_KONTO) - nur Bank, Inhaber
+    und Kontoart. Bank und Kontoart braucht der nächtliche
+    Kündigungshinweis-Batch für die Recherche, der Inhaber die Sperrfristen
+    und den "bereits Kunde"-Abgleich des KI-Deal-Finders. Alles Weitere ist
+    optional und wird nicht angemahnt."""
+    eingaben = {"bank": bank.strip(), "inhaber": inhaber.strip(), "kontoart": kontoart.strip()}
+    fehlend = [
+        label
+        for feld, label in (("bank", "Bank"), ("inhaber", "Inhaber"), ("kontoart", "Kontoart"))
+        if not eingaben[feld]
+    ]
+    if fehlend:
+        return _konto_formular(
+            request, db, form_fehler="Bitte ausfüllen: " + ", ".join(fehlend) + ".", eingaben=eingaben, status_code=400
+        )
+
+    konto = Deal(
+        art=ART_KONTO,
+        bank=get_or_create_bank(db, eingaben["bank"]),
+        inhaber=get_or_create_inhaber(db, eingaben["inhaber"]),
+        kontoart=eingaben["kontoart"],
+    )
+    # Fester Tabellen-Lookup, keine KI-Websuche - die übernimmt nachts der
+    # Kündigungshinweis-Batch, falls hier nichts gefunden wird. Anders als
+    # beim Deal bewusst keine Kunden-werben-Kunden-Recherche: ohne Prämie
+    # gibt es nichts zu werben.
+    kuendigung_vorschlag(db, konto)
+    db.add(konto)
+    db.commit()
+    return redirect(request, f"deals/{konto.id}")
 
 
 def _lesbare_fehler(exc: ValidationError, mit_index: bool) -> list[str]:
@@ -409,6 +474,11 @@ async def deal_update(request: Request, deal_id: int, db: Session = Depends(get_
     deal.kuendbar_ab = parse_date(form.get("kuendbar_ab") or "")
     deal.gekuendigt = form.get("gekuendigt") == "on"
     deal.gekuendigt_im_monat = monat_aus_formular(form.get("gekuendigt_im_monat") or "")
+    if deal.ist_konto and deal.gekuendigt and not deal.gekuendigt_im_monat:
+        # Ohne Kündigungsmonat fehlt das Konto in den Sperrfristen, und
+        # anmahnen ("Zu prüfen") soll die App bei Konten bewusst nichts -
+        # also wie beim Abhaken im Kündigen-Reiter den laufenden Monat nehmen.
+        deal.gekuendigt_im_monat = derived.format_monat(datetime.date.today())
     deal.kuendigung_bestaetigt = form.get("kuendigung_bestaetigt") == "on"
     deal.kuendigung_hinweis = (form.get("kuendigung_hinweis") or "").strip() or None
     deal.kuendigung_hinweis_url = (form.get("kuendigung_hinweis_url") or "").strip() or None

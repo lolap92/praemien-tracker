@@ -252,6 +252,7 @@ def build_deal_from_import(db: Session, daten: DealImport, *, hintergrund_recher
     auszulösen. Der Kündigungsweg-Lookup (kuendigung_vorschlag) läuft davon
     unabhängig immer - er ist reiner Tabellen-Lookup, keine KI-Websuche."""
     deal = Deal(
+        art=daten.art,
         bank=get_or_create_bank(db, daten.bank),
         inhaber=get_or_create_inhaber(db, daten.inhaber),
         kontoart=daten.kontoart.strip(),
