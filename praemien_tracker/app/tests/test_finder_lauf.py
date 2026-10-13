@@ -1143,3 +1143,41 @@ def test_alter_cache_eintrag_mit_null_euro_wird_einmalig_neu_analysiert(db, zwei
 
     lauf.taeglicher_lauf(db, client=client)
     assert client.aufrufe == 4  # danach wieder kostenlos aus dem Cache
+
+
+@pytest.mark.parametrize("entscheidung", [matching.STATUS_VERWORFEN, matching.STATUS_UEBERNOMMEN])
+def test_endgueltig_entschiedener_fund_kommt_nach_neuanalyse_nicht_zurueck(db, zwei_inhaber, monkeypatch, entscheidung):
+    """Liefert die einmalige Neuanalyse eines alten 0-€-Eintrags andere
+    Bedingungen (anderer Inhalts-Hash), darf für einen von Hand verworfenen
+    oder übernommenen Fund trotzdem keine neue Karte entstehen."""
+    import json as _json
+
+    alice = zwei_inhaber[0]
+    fund = RohFund("mydealz", "https://mydealz.de/trading212", "t", "Trading 212 Gratisaktie bis 100 Euro")
+    _patch_quellen(monkeypatch, [fund])
+    client = ZaehlenderFakeClient(
+        RelevanzErgebnis(ist_relevant=True),
+        AngebotExtraktion(bank_name="Trading 212", kontoart="Depot", praemie_betrag=0.0, bedingungen=[]),
+    )
+    lauf.taeglicher_lauf(db, client=client)
+    for eintrag in db.query(DealVorschlag).all():
+        eintrag.status = entscheidung
+    cache = db.query(FinderFund).filter(FinderFund.quelle_url == fund.quelle_url).one()
+    gespeichert = _json.loads(cache.extraktion_json)
+    gespeichert.pop("praemie_art", None)
+    cache.extraktion_json = _json.dumps(gespeichert)
+    db.commit()
+
+    client.extraktion = AngebotExtraktion(
+        bank_name="Trading 212",
+        kontoart="Depot",
+        praemie_betrag=0.0,
+        praemie_art="sachpraemie",
+        praemie_bis=100.0,
+        bedingungen=[BedingungExtraktion(beschreibung="Mindesteinzahlung", einschaetzung="zu_pruefen")],
+    )
+    lauf.taeglicher_lauf(db, client=client)
+
+    assert client.aufrufe == 4  # neu analysiert ...
+    zeilen = db.query(DealVorschlag).filter(DealVorschlag.inhaber_id == alice.id).all()
+    assert [z.status for z in zeilen] == [entscheidung]  # ... aber keine neue Karte

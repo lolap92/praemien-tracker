@@ -567,6 +567,23 @@ def taeglicher_lauf(
                         zaehler[match.status] = zaehler.get(match.status, 0) + 1
                     continue
 
+                # Von der/dem Nutzer/in endgültig entschiedene Funde (verworfen
+                # oder übernommen) kommen nie als neue Karte zurück - auch dann
+                # nicht, wenn eine erneute Extraktion (z.B. die einmalige
+                # Neuanalyse alter 0-€-Einträge) andere Bedingungen liefert und
+                # der Inhalts-Hash deshalb nicht mehr zur alten Karte passt.
+                if (
+                    db.query(DealVorschlag.id)
+                    .filter(
+                        DealVorschlag.quelle_url == fund.quelle_url,
+                        DealVorschlag.inhaber_id == inhaber.id,
+                        DealVorschlag.status.in_((matching.STATUS_VERWORFEN, matching.STATUS_UEBERNOMMEN)),
+                    )
+                    .first()
+                    is not None
+                ):
+                    continue
+
                 vorschlag = DealVorschlag(
                     inhaber_id=inhaber.id,
                     quelle=fund.quelle,
