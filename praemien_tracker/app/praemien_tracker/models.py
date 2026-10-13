@@ -23,6 +23,13 @@ class Bank(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    # Empfänger einer Kündigung (kuendigung_assistent.py). Mehrzeiliger
+    # Freitext statt Einzelfeldern, weil Bankanschriften zu unterschiedlich
+    # aufgebaut sind (Abteilung, Postfach, Ausland) - im Brief wird er
+    # zeilenweise unverändert gesetzt. Vorbelegt aus der KI-Recherche, erst
+    # mit "Angaben speichern" landet er hier.
+    anschrift: Mapped[str | None] = mapped_column(Text, nullable=True)
+    kuendigung_email: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     deals: Mapped[list["Deal"]] = relationship(back_populates="bank")
 
@@ -33,6 +40,19 @@ class Inhaber(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     ist_minderjaehrig: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Absenderangaben für Kündigungsschreiben (kuendigung_assistent.py).
+    # `name` bleibt der kurze Anzeigename in der ganzen App ("Max"); im
+    # Schreiben steht voller_name, sofern gepflegt.
+    voller_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    strasse: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    plz: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    ort: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    geburtsdatum: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+    email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Referenzkonto für das Restguthaben einer Kündigung. Ohne Leerzeichen
+    # und in Großbuchstaben gespeichert (helpers.iban_normalisieren); im
+    # Änderungsprotokoll erscheint sie nur maskiert (protokoll.py).
+    iban: Mapped[str | None] = mapped_column(String(34), nullable=True)
 
     deals: Mapped[list["Deal"]] = relationship(back_populates="inhaber")
 
@@ -92,6 +112,11 @@ class Deal(Base):
     # Hinweis. Wird beim manuellen Bearbeiten des Felds wieder auf False
     # gesetzt, da es dann Nutzerhoheit ist.
     kuendigung_hinweis_ki: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Angaben, die nur für das Kündigungsschreiben dieses Deals gebraucht
+    # werden und sonst nirgends ein Feld haben - Kündigungstermin und die
+    # bankspezifischen Zusatzfelder der Recherche (Kundennummer,
+    # Depotnummer, ...). JSON {schluessel: wert}, siehe kuendigung_assistent.
+    kuendigung_angaben: Mapped[str | None] = mapped_column(Text, nullable=True)
     # JSON-Liste von Feldnamen, die bewusst als "nicht nötig" abgehakt wurden
     uebersprungene_felder: Mapped[str | None] = mapped_column(Text, nullable=True)
     erstellt_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
@@ -392,6 +417,43 @@ class KuendigungRecherche(Base):
     kontoart: Mapped[str] = mapped_column(String(50))
     hinweis: Mapped[str] = mapped_column(Text)
     hinweis_url: Mapped[str] = mapped_column(String(500))
+    recherchiert_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class KuendigungAnforderung(Base):
+    """Was eine Bank für die Kündigung einer Kontoart verlangt, samt Vorlage
+    für das Schreiben - KI-recherchiert (kuendigung_assistent.py) und je
+    Bank+Kontoart gecacht wie KuendigungRecherche.
+
+    Bewusst eine eigene Tabelle statt weiterer Spalten an
+    KuendigungRecherche: die dortigen Zeilen beantworten nur "wie kündige
+    ich?" und entstehen im nächtlichen Batch; diese hier entstehen erst auf
+    Knopfdruck im Assistenten und lassen sich dort gezielt neu recherchieren,
+    ohne den Kündigungshinweis der Deals anzufassen.
+
+    betreff_vorlage/text_vorlage enthalten ausschließlich Platzhalter wie
+    {name} oder {iban}, nie echte persönliche Daten - die setzt erst die App
+    lokal ein. Dadurch geht auch nichts Persönliches an die API."""
+
+    __tablename__ = "kuendigung_anforderungen"
+    __table_args__ = (UniqueConstraint("bank_name", "kontoart", name="uq_kuendigung_anforderung_bank_kontoart"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    bank_name: Mapped[str] = mapped_column(String(100), index=True)
+    kontoart: Mapped[str] = mapped_column(String(50))
+    # "online" | "email" | "brief" | "formular" (kuendigung_assistent.KANAELE)
+    kanal: Mapped[str] = mapped_column(String(20))
+    empfaenger_anschrift: Mapped[str | None] = mapped_column(Text, nullable=True)
+    empfaenger_email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    formular_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # JSON-Liste kurzer Hinweise ("Depot muss leer sein").
+    besonderheiten: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # JSON-Liste {schluessel, label, hinweis} für Platzhalter, die keine
+    # Standardangabe sind (z.B. {kundennummer}).
+    zusatzfelder: Mapped[str | None] = mapped_column(Text, nullable=True)
+    betreff_vorlage: Mapped[str] = mapped_column(String(300))
+    text_vorlage: Mapped[str] = mapped_column(Text)
+    quelle_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     recherchiert_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
 
 

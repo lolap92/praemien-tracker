@@ -3027,3 +3027,66 @@ dialog.vk-dialog h3 {
     font-size: 2rem;
   }
 }
+
+/* ---------- Kündigungs-Assistent (kuendigung.html) ---------- */
+
+.ka-liste {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.ka-recherche {
+  margin: 0.8rem 0 0.4rem;
+}
+
+/* Anschrift und Brieftext sind Prosa, kein Code - die Monospace-Vorgabe
+   für textarea passt hier nicht. */
+textarea.ka-anschrift,
+textarea.ka-text {
+  font-family: var(--font-body);
+  line-height: 1.45;
+}
+
+textarea.ka-anschrift {
+  min-height: 6rem;
+}
+
+textarea.ka-text {
+  min-height: 18rem;
+}
+
+.ka-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.ka-empfaenger {
+  margin: 0 0 0.7rem;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.feld-hinweis.ka-warnung {
+  color: var(--danger);
+}
+
+.ka-link {
+  font-size: 0.75rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* Inhaber-Seite: Absenderangaben je Person, aufklappbar */
+.inhaber-angaben {
+  flex: 1 1 100%;
+}
+
+.inhaber-angaben summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  margin: 0.2rem 0 0.6rem;
+}

@@ -12,6 +12,11 @@
     (auch) für Kinder abschließbar ist - ein reiner Erwachsenen-Deal
     erscheint für ihn im "Übernehmen"-Dialog dann gar nicht erst zur Auswahl.
   </p>
+  <p style="color: var(--ink-soft); font-size: 0.88rem; margin: 0.6rem 0 0;">
+    Name, Anschrift und IBAN braucht der Kündigungs-Assistent als Absender
+    und Referenzkonto für das Restguthaben. Sie bleiben in dieser App und
+    gehen nie an die KI.
+  </p>
 </div>
 
 {% if inhaber_liste %}
@@ -25,6 +30,43 @@
           <input type="checkbox" name="minderjaehrig_{{ inhaber.id }}" id="minderjaehrig_{{ inhaber.id }}" {{ "checked" if inhaber.ist_minderjaehrig else "" }}>
           <label for="minderjaehrig_{{ inhaber.id }}" style="margin:0;">minderjährig</label>
         </span>
+        {% set absender_fehlt = not (inhaber.voller_name and inhaber.strasse and inhaber.plz and inhaber.ort) %}
+        <details class="inhaber-angaben">
+          <summary>Anschrift &amp; Bankverbindung {{ "· ⚠ unvollständig" if absender_fehlt else "· " ~ inhaber.voller_name }}</summary>
+          <div class="feld">
+            <label for="voller_name_{{ inhaber.id }}">Vollständiger Name</label>
+            <input type="text" id="voller_name_{{ inhaber.id }}" name="voller_name_{{ inhaber.id }}" value="{{ inhaber.voller_name or '' }}" placeholder="{{ inhaber.name }}">
+          </div>
+          <div class="feld">
+            <label for="strasse_{{ inhaber.id }}">Straße und Hausnummer</label>
+            <input type="text" id="strasse_{{ inhaber.id }}" name="strasse_{{ inhaber.id }}" value="{{ inhaber.strasse or '' }}">
+          </div>
+          <div class="reihe">
+            <div class="feld">
+              <label for="plz_{{ inhaber.id }}">PLZ</label>
+              <input type="text" inputmode="numeric" id="plz_{{ inhaber.id }}" name="plz_{{ inhaber.id }}" value="{{ inhaber.plz or '' }}">
+            </div>
+            <div class="feld">
+              <label for="ort_{{ inhaber.id }}">Ort</label>
+              <input type="text" id="ort_{{ inhaber.id }}" name="ort_{{ inhaber.id }}" value="{{ inhaber.ort or '' }}">
+            </div>
+          </div>
+          <div class="reihe">
+            <div class="feld">
+              <label for="geburtsdatum_{{ inhaber.id }}">Geburtsdatum</label>
+              <input type="date" id="geburtsdatum_{{ inhaber.id }}" name="geburtsdatum_{{ inhaber.id }}" value="{{ inhaber.geburtsdatum.isoformat() if inhaber.geburtsdatum else '' }}">
+            </div>
+            <div class="feld">
+              <label for="email_{{ inhaber.id }}">E-Mail</label>
+              <input type="text" inputmode="email" id="email_{{ inhaber.id }}" name="email_{{ inhaber.id }}" value="{{ inhaber.email or '' }}">
+            </div>
+          </div>
+          <div class="feld">
+            <label for="iban_{{ inhaber.id }}">IBAN für das Restguthaben</label>
+            <input type="text" id="iban_{{ inhaber.id }}" name="iban_{{ inhaber.id }}" value="{{ iban_formatiert(inhaber.iban) }}" autocomplete="off" spellcheck="false">
+            {% if inhaber.iban and not iban_gueltig(inhaber.iban) %}<p class="feld-hinweis ka-warnung">Die Prüfsumme dieser IBAN stimmt nicht - bitte auf Tippfehler prüfen.</p>{% endif %}
+          </div>
+        </details>
       </li>
       {% endfor %}
     </ul>

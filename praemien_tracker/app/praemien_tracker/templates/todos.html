@@ -234,6 +234,7 @@
                 <span class="gebuehr-warnung">kostet {{ todo.deal.kontofuehrungsgebuehren | eur }} mtl.</span>
                 {% endif %}
                 {% if todo.faellig_bis %}<span class="frist">Kündbar seit {{ todo.faellig_bis | datum }}</span>{% endif %}
+                <a class="ka-link" href="deals/{{ todo.deal.id }}/kuendigung">Kündigung vorbereiten →</a>
               </div>
             </div>
           </div>

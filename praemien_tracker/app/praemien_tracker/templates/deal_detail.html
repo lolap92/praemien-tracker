@@ -51,6 +51,9 @@
     </div>
     {% endif %}
   </dl>
+  {% if not deal.storniert %}
+  <a class="button {{ 'secondary' if deal.gekuendigt else '' }}" href="deals/{{ deal.id }}/kuendigung">Kündigung vorbereiten</a>
+  {% endif %}
 </div>
 
 <div class="sec-t">Steuer &amp; Notiz</div>
