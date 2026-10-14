@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.70.0
+
+Neu: alle automatisch abgelehnten Vorschläge auf einmal verwerfen - für den Ablauf „durchsehen, die wenigen Interessanten von Hand übernehmen, den Rest weg".
+
+- **Knopf „Alle N verwerfen" (`templates/vorschlaege.html`).** Steht im aufgeklappten Abschnitt „automatisch abgelehnte anzeigen" oben rechts, mit der aktuellen Anzahl. Ein Bestätigungsfenster fragt vorher nach; danach stehen die Funde unter „Verworfen" und tauchen nicht wieder auf, auch nicht nach einer späteren Neuanalyse.
+- **Fester Grund „Automatisch abgelehnt" (`finder/matching.py`).** Wird ohne Rückfrage gesetzt und ist in der Liste der verworfenen Funde zu sehen. Im Verwerfen-Dialog einzelner Karten steht er bewusst nicht zur Auswahl - dort wählst du weiter einen echten Grund. Der Ablehnungsgrund der App („Prämie unter Mindestprämie" usw.) bleibt an jeder Karte erhalten.
+- **Nur was du gesehen hast (`routers/vorschlaege.py`).** Verworfen werden genau die Karten, die beim Laden der Seite angezeigt wurden - mit aktiven Filter-Chips also nur die gefilterten. Ein Fund, der zwischen Ansehen und Klicken dazukommt, bleibt stehen. Ebenso unberührt bleibt eine Karte, die inzwischen übernommen wurde oder durch einen Lauf auf „Zu prüfen" gewechselt ist. Bei Funden für mehrere Personen werden alle Personen verworfen.
+
 ## 2.69.1
 
 Von dir verworfene oder übernommene Vorschläge tauchen auch nach einer erneuten Analyse nie wieder als neue Karte auf.
