@@ -50,6 +50,14 @@ VERWERFEN_GRUENDE_LABELS = {
     VERWERFEN_GRUND_NICHT_ANWENDBAR: "Nicht anwendbar",
 }
 VERWERFEN_GRUENDE = tuple(VERWERFEN_GRUENDE_LABELS)
+# Fester Grund für "Alle automatisch abgelehnten verwerfen" - kein Angebot im
+# Einzel-Dialog (dort wählt man einen echten Grund), deshalb nicht Teil von
+# VERWERFEN_GRUENDE_LABELS, aber in der Anzeige verworfener Funde lesbar.
+VERWERFEN_GRUND_AUTO_ABGELEHNT = "automatisch_abgelehnt"
+VERWERFEN_GRUENDE_ANZEIGE = {
+    **VERWERFEN_GRUENDE_LABELS,
+    VERWERFEN_GRUND_AUTO_ABGELEHNT: "Automatisch abgelehnt",
+}
 
 EINSCHAETZUNG_ERFUELLT = "erfuellt"
 EINSCHAETZUNG_ZU_PRUEFEN = "zu_pruefen"

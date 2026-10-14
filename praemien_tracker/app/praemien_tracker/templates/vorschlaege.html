@@ -603,6 +603,34 @@
 {% if automatisch_abgelehnt %}
 <details class="json-import" {{ "open" if "automatisch_abgelehnt" in filter_status else "" }}>
   <summary>{{ automatisch_abgelehnt | length }} automatisch abgelehnte anzeigen</summary>
+  {# Alle angezeigten auf einmal verwerfen - genau diese IDs, nicht "alles,
+     was gerade abgelehnt ist" (siehe routers/vorschlaege.abgelehnte_verwerfen). #}
+  <div class="abgelehnte-sammelaktion">
+    <button type="button" class="secondary" onclick="document.getElementById('dlg-abgelehnte-verwerfen').showModal()">
+      Alle {{ automatisch_abgelehnt | length }} verwerfen
+    </button>
+  </div>
+  <dialog id="dlg-abgelehnte-verwerfen" class="vk-dialog">
+    <h3>{{ automatisch_abgelehnt | length }} automatisch abgelehnte verwerfen?</h3>
+    <p class="vk-dialog-frage" style="color: var(--ink); margin-top: 0.5rem; line-height: 1.4;">
+      Alle hier angezeigten{% if filter_quelle or filter_typ %} (nur die gefilterten){% endif %} werden mit dem Grund
+      „Automatisch abgelehnt“ verworfen und tauchen nicht wieder auf. Rückgängig nur einzeln über „Doch übernehmen“.
+    </p>
+    <form method="post" action="vorschlaege/abgelehnte-verwerfen" onsubmit="this.closest('dialog').close()">
+      {% for g in automatisch_abgelehnt %}
+        {% for f in (g.funde if g.funde is defined else [g]) %}
+          {% for m in f.mitglieder %}<input type="hidden" name="vorschlag_ids" value="{{ m.id }}">{% endfor %}
+        {% endfor %}
+      {% endfor %}
+      {% for q in filter_quelle %}<input type="hidden" name="quelle" value="{{ q }}">{% endfor %}
+      {% for t in filter_typ %}<input type="hidden" name="typ" value="{{ t }}">{% endfor %}
+      {% for s in filter_status %}<input type="hidden" name="status" value="{{ s }}">{% endfor %}
+      <div class="vk-dialog-aktionen">
+        <button type="button" class="secondary" onclick="this.closest('dialog').close()">Abbrechen</button>
+        <button type="submit" class="danger">Alle verwerfen</button>
+      </div>
+    </form>
+  </dialog>
   {% for g in automatisch_abgelehnt %}
   {{ dup_gruppe_karte(g) if g.funde is defined else vorschlag_karte(g) }}
   {% endfor %}

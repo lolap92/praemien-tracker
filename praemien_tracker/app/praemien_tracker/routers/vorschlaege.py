@@ -757,6 +757,37 @@ def verwerfen(
     return redirect(request, ziel)
 
 
+@router.post("/vorschlaege/abgelehnte-verwerfen")
+def abgelehnte_verwerfen(
+    request: Request,
+    vorschlag_ids: list[int] = Form(default=[]),
+    quelle: list[str] = Form(default=[]),
+    typ: list[str] = Form(default=[]),
+    status: list[str] = Form(default=[]),
+    db: Session = Depends(get_db),
+):
+    """Verwirft alle automatisch abgelehnten Vorschläge auf einmal - für den
+    Ablauf "durchsehen, die wenigen Interessanten von Hand übernehmen, den
+    Rest weg".
+
+    Bewusst nur die IDs, die beim Laden der Seite angezeigt wurden (versteckte
+    Felder, siehe vorschlaege.html), nicht "alle abgelehnten in der DB": ein
+    Fund, der zwischen Ansehen und Klicken dazukommt (z.B. "Jetzt suchen" in
+    einem zweiten Tab), soll nicht ungesehen verschwinden. Aus demselben Grund
+    zählt nur, was jetzt noch automatisch abgelehnt ist - eine Karte, die
+    inzwischen übernommen wurde oder durch einen Lauf auf "zu prüfen"
+    gewechselt ist, bleibt unberührt. Grund ist immer der feste
+    VERWERFEN_GRUND_AUTO_ABGELEHNT; der Ablehnungsgrund der App bleibt in
+    ablehnungsgruende erhalten."""
+    for vorschlag_id in vorschlag_ids:
+        vorschlag = db.get(DealVorschlag, vorschlag_id)
+        if vorschlag is not None and vorschlag.status == matching.STATUS_ABGELEHNT:
+            vorschlag.status = matching.STATUS_VERWORFEN
+            vorschlag.verwerfen_gruende = matching.VERWERFEN_GRUND_AUTO_ABGELEHNT
+    db.commit()
+    return redirect(request, _filter_ziel(quelle, typ, status))
+
+
 @router.post("/vorschlaege/jetzt-suchen")
 def jetzt_suchen(request: Request, db: Session = Depends(get_db)):
     """Manueller Anstoß des täglichen Laufs - nicht Teil des Konzepts, aber

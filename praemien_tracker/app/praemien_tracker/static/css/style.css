@@ -1860,6 +1860,15 @@ table.pc-tabelle tr:hover {
 
 /* ---------- Vorschläge (KI-Deal-Finder) ---------- */
 
+.abgelehnte-sammelaktion {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0.6rem 0 0.8rem;
+}
+.abgelehnte-sammelaktion button {
+  margin: 0;
+}
+
 /* Statuszeile ist die aufklappbare Zusammenfassung: eingeklappt zeigt sie nur
    "Letzter Lauf ...", die Zahlen/Fehler erscheinen erst per Klick auf genau
    diese Zeile (kein separater "Details"-Link nötig - der ganze <summary>

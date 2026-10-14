@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from chip_hilfen import chip_anzahl
 
 from praemien_tracker import helpers
+from praemien_tracker.finder import matching
 from praemien_tracker.main import app
 from praemien_tracker.models import Deal, DealVorschlag, FinderLauf, Inhaber, VorschlagBedingung, VorschlagPraemie
 
@@ -1342,3 +1343,85 @@ def test_deal_detailseite_ohne_herkunft_zeigt_keinen_rueckverweis(db, inhaber):
 
     antwort = client.get(f"/deals/{deal.id}")
     assert "übernommenen Vorschlag" not in antwort.text
+
+
+# --- Alle automatisch abgelehnten auf einmal verwerfen ---------------------
+
+
+def _abgelehnt(db, inhaber, bank: str, **kwargs) -> DealVorschlag:
+    return _vorschlag(
+        db,
+        inhaber,
+        "automatisch_abgelehnt",
+        bank_name=bank,
+        quelle_url=f"https://www.mydealz.de/{bank}",
+        inhalt_hash=f"hash-{bank}",
+        ablehnungsgruende="Prämie unter Mindestprämie",
+        **kwargs,
+    )
+
+
+def test_seite_bietet_alle_abgelehnten_zum_verwerfen_an(db, inhaber):
+    erster = _abgelehnt(db, inhaber, "Ablehnbank1")
+    zweiter = _abgelehnt(db, inhaber, "Ablehnbank2")
+    offen = _vorschlag(db, inhaber, "vorgeschlagen", bank_name="Offenbank", quelle_url="https://x/o", inhalt_hash="o")
+
+    soup = BeautifulSoup(client.get("/vorschlaege").text, "html.parser")
+    form = soup.select_one('form[action="vorschlaege/abgelehnte-verwerfen"]')
+    assert form is not None
+    ids = {int(i["value"]) for i in form.select('input[name="vorschlag_ids"]')}
+    assert ids == {erster.id, zweiter.id}
+    assert offen.id not in ids
+    assert "Alle 2 verwerfen" in soup.text
+
+
+def test_alle_abgelehnten_verwerfen_mit_festem_grund(db, inhaber):
+    erster = _abgelehnt(db, inhaber, "Ablehnbank1")
+    zweiter = _abgelehnt(db, inhaber, "Ablehnbank2")
+
+    antwort = client.post(
+        "/vorschlaege/abgelehnte-verwerfen",
+        data={"vorschlag_ids": [erster.id, zweiter.id]},
+        follow_redirects=False,
+    )
+    assert antwort.status_code in (302, 303)
+    for eintrag in (erster, zweiter):
+        db.refresh(eintrag)
+        assert eintrag.status == matching.STATUS_VERWORFEN
+        assert eintrag.verwerfen_gruende == matching.VERWERFEN_GRUND_AUTO_ABGELEHNT
+        # Der Ablehnungsgrund der App bleibt erhalten.
+        assert eintrag.ablehnungsgruende == "Prämie unter Mindestprämie"
+    assert "Automatisch abgelehnt" in client.get("/vorschlaege?status=verworfen").text
+
+
+def test_nur_was_noch_abgelehnt_ist_wird_verworfen(db, inhaber):
+    """Seit dem Laden der Seite übernommen oder auf "zu prüfen" gewechselt:
+    bleibt unberührt, auch wenn die ID noch im Formular steht."""
+    uebernommen = _abgelehnt(db, inhaber, "Uebernahmebank")
+    gewechselt = _abgelehnt(db, inhaber, "Wechselbank")
+    uebernommen.status = matching.STATUS_UEBERNOMMEN
+    gewechselt.status = matching.STATUS_ZU_PRUEFEN
+    db.commit()
+
+    client.post("/vorschlaege/abgelehnte-verwerfen", data={"vorschlag_ids": [uebernommen.id, gewechselt.id]})
+    db.refresh(uebernommen)
+    db.refresh(gewechselt)
+    assert uebernommen.status == matching.STATUS_UEBERNOMMEN
+    assert gewechselt.status == matching.STATUS_ZU_PRUEFEN
+
+
+def test_nicht_angezeigte_abgelehnte_bleiben_stehen(db, inhaber):
+    """Nur die beim Laden angezeigten IDs - ein inzwischen neu dazugekommener
+    abgelehnter Fund verschwindet nicht ungesehen."""
+    gesehen = _abgelehnt(db, inhaber, "Gesehenbank")
+    neu = _abgelehnt(db, inhaber, "Neubank")
+    client.post("/vorschlaege/abgelehnte-verwerfen", data={"vorschlag_ids": [gesehen.id]})
+    db.refresh(neu)
+    assert neu.status == matching.STATUS_ABGELEHNT
+
+
+def test_fester_grund_steht_nicht_im_einzel_dialog(db, inhaber):
+    _vorschlag(db, inhaber, "vorgeschlagen")
+    soup = BeautifulSoup(client.get("/vorschlaege").text, "html.parser")
+    codes = {i["value"] for i in soup.select('form.vk-verwerfen-form input[name="gruende"]')}
+    assert codes and matching.VERWERFEN_GRUND_AUTO_ABGELEHNT not in codes

@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 
 from .config import DEMO_MODUS
 from .derived import praemie_naechste_pruefung, quelle_label
-from .finder.matching import VERWERFEN_GRUENDE_LABELS
+from .finder.matching import VERWERFEN_GRUENDE_ANZEIGE
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -76,7 +76,7 @@ def format_verwerfen_gruende(value: str | None) -> list[str]:
     Liste von Klartext-Labels für die Chip-Anzeige übersetzen."""
     if not value:
         return []
-    return [VERWERFEN_GRUENDE_LABELS.get(code, code) for code in value.split(",") if code]
+    return [VERWERFEN_GRUENDE_ANZEIGE.get(code, code) for code in value.split(",") if code]
 
 
 # Reihenfolge ist relevant: Der erste passende Eintrag gewinnt.
