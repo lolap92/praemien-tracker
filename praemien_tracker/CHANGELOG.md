@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.71.1
+
+Das Add-on-Log ist mit eingeschaltetem MCP-Server wieder vollständig.
+
+- **Logging der Oberfläche nicht mehr stummgeschaltet (`mcp_server.py`).** Beim Start des MCP-Servers richtete uvicorn das Logging für den ganzen Prozess neu ein und setzte es auf „warning" - danach fehlten im Add-on-Log „Application startup complete", die Seitenaufrufe und die Zeilen beim Herunterfahren. Der MCP-Server lässt das Logging jetzt unverändert; seine eigenen Anfragen erscheinen als `POST /mcp` im Log.
+- **Lebenszeichen beim Start (`main.py`).** Läuft der MCP-Server, steht im Log „MCP-Server (nur lesend) lauscht auf Port 8001 unter /mcp." - bisher war von außen nicht zu erkennen, ob er gestartet ist.
+- **Begrenztes Herunterfahren.** Eine noch offene Verbindung von Claude hält das Stoppen des Add-ons höchstens 3 Sekunden auf. Beim Stoppen unter 2.71.0 stand einmal ein `CancelledError` im Log; nachstellen ließ er sich nicht, und mit vollständigem Log wäre beim nächsten Auftreten auch zu sehen, woher er kommt.
+
 ## 2.71.0
 
 Neu: ein MCP-Server, über den Claude den Prämien-Tracker lesen kann - z. B. Claude Code auf deinem Rechner im Heimnetz. Nur lesend und standardmäßig aus.

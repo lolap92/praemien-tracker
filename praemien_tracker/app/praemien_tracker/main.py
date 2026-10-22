@@ -224,6 +224,7 @@ def _mcp_starten():
         )
         return None, None
     server = mcp_server.server_erstellen(config.MCP_TOKEN, config.MCP_PORT)
+    logger.info("MCP-Server (nur lesend) lauscht auf Port %d unter /mcp.", config.MCP_PORT)
     return server, asyncio.create_task(server.serve())
 
 

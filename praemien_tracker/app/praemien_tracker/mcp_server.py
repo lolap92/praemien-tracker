@@ -664,7 +664,19 @@ def server_erstellen(token: str, port: int):
     Herunterfahren ab."""
     import uvicorn
 
-    config = uvicorn.Config(asgi_app(token), host="0.0.0.0", port=port, log_level="warning", lifespan="on")
+    # log_config=None und keine log_level: uvicorn.Config richtet sonst das
+    # Logging für den ganzen Prozess neu ein - mit log_level="warning" waren
+    # danach auch Start-, Stopp- und Zugriffszeilen der Oberfläche stumm.
+    # timeout_graceful_shutdown: eine offen gehaltene Verbindung von Claude
+    # darf das Herunterfahren des Add-ons nicht aufhalten.
+    config = uvicorn.Config(
+        asgi_app(token),
+        host="0.0.0.0",
+        port=port,
+        lifespan="on",
+        log_config=None,
+        timeout_graceful_shutdown=3,
+    )
     server = uvicorn.Server(config)
     server.capture_signals = contextlib.nullcontext  # type: ignore[method-assign]
     return server

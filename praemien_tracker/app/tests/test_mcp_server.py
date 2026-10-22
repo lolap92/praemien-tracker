@@ -192,3 +192,15 @@ def test_schluessel_mindestlaenge():
     assert not mcp_server.token_ok("")
     assert not mcp_server.token_ok("kurz")
     assert mcp_server.token_ok("x" * mcp_server.MINDESTLAENGE_TOKEN)
+
+
+def test_server_laesst_das_logging_der_oberflaeche_in_ruhe():
+    """uvicorn.Config richtet sonst das Logging prozessweit neu ein - mit
+    log_level="warning" verschwanden Start-, Stopp- und Zugriffszeilen der
+    Oberfläche aus dem Add-on-Log."""
+    import logging
+
+    vorher = {name: logging.getLogger(name).level for name in ("uvicorn", "uvicorn.error", "uvicorn.access")}
+    mcp_server.server_erstellen(TOKEN, 8099)
+    nachher = {name: logging.getLogger(name).level for name in vorher}
+    assert nachher == vorher
