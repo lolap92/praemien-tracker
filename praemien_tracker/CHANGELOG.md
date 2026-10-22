@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.71.0
+
+Neu: ein MCP-Server, über den Claude den Prämien-Tracker lesen kann - z. B. Claude Code auf deinem Rechner im Heimnetz. Nur lesend und standardmäßig aus.
+
+- **Elf lesende Werkzeuge (`mcp_server.py`).** Übersicht, Deals und Konten suchen, alle Details eines Deals, die Liste „Zu erledigen", Sperrfristen, Statistiken samt Freibeträgen, Vorschläge des KI-Deal-Finders mit Bedingungen und Gründen, Inhaber, bekannte Kündigungswege einer Bank, Änderungsprotokoll und die letzten Finder-Läufe. Status, ToDos und Kennzahlen kommen aus denselben Funktionen wie die Seiten der App - Claude sieht also dasselbe wie du.
+- **Nur lesend, ohne persönliche Daten.** Kein Werkzeug ändert etwas. Kontonummern, Anschrift, Geburtsdatum, E-Mail und IBAN gibt der Server nicht heraus, nur ob sie hinterlegt sind; im Änderungsprotokoll stehen sie als „(verdeckt)". Den Text gespeicherter Kündigungsschreiben liefert er nicht, weil darin die IBAN steht.
+- **Eigener Port, eigener Schlüssel (`config.yaml`, `main.py`).** Die Oberfläche ist nur über den Home-Assistant-Ingress mit HA-Anmeldung erreichbar, an der sich ein MCP-Client nicht anmelden kann. Der MCP-Server läuft deshalb im selben Prozess auf Port 8001 - der ist im Add-on erst erreichbar, wenn du ihn unter „Netzwerk" freigibst. Er startet nur mit der neuen Option „MCP-Schlüssel (Claude)" (mindestens 16 Zeichen), und jede Anfrage muss ihn als `Authorization: Bearer …` mitschicken. Einrichtung für Claude Code: siehe Dokumentation, Abschnitt „Mit Claude arbeiten".
+- **Neue Abhängigkeiten.** `mcp==1.12.4` und `sse-starlette==3.0.3`, passend zu den bereits festgelegten Versionen von FastAPI, Starlette und Pydantic.
+
 ## 2.70.0
 
 Neu: alle automatisch abgelehnten Vorschläge auf einmal verwerfen - für den Ablauf „durchsehen, die wenigen Interessanten von Hand übernehmen, den Rest weg".
