@@ -11,3 +11,5 @@ beautifulsoup4==4.12.3
 apscheduler==3.10.4
 pypdf==6.19.0
 anthropic==0.120.2
+mcp==1.12.4
+sse-starlette==3.0.3

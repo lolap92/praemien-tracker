@@ -272,6 +272,48 @@ KI-Websuche), blockiert das die Deal-Anlage nicht - beim Übernehmen eines
 KI-Deal-Finder-Vorschlags erscheint dann oben im Vorschläge-Tab ein Hinweis,
 das Empfehlungsprogramm bei Interesse manuell zu prüfen.
 
+## Mit Claude arbeiten (MCP, nur lesend)
+
+Das Add-on bringt einen MCP-Server mit, über den Claude den Prämien-Tracker
+lesen kann - etwa Claude Code auf deinem Rechner im Heimnetz. Claude sieht
+dabei dasselbe wie die Seiten der App: Deals und Konten mit Status, Prämien,
+Bedingungen und Aufgaben, die Liste „Zu erledigen", Sperrfristen,
+Statistiken und Freibeträge, Vorschläge des KI-Deal-Finders samt Gründen,
+bekannte Kündigungswege und das Änderungsprotokoll.
+
+- **Nur lesend.** Kein Werkzeug ändert etwas - Änderungen machst du weiter
+  in der App.
+- **Ohne persönliche Daten.** Kontonummern, Anschrift, Geburtsdatum, E-Mail
+  und IBAN gibt der Server nicht heraus, nur ob sie hinterlegt sind; auch im
+  Änderungsprotokoll stehen sie nur als „(verdeckt)". Den Text gespeicherter
+  Kündigungsschreiben (enthält die IBAN) liefert er ebenfalls nicht.
+- **Standardmäßig aus.** Der Server startet nur mit einem Schlüssel, und sein
+  Port ist erst erreichbar, wenn du ihn freigibst.
+
+**Einrichten:**
+
+1. In der Add-on-Konfiguration bei **MCP-Schlüssel (Claude)** einen langen,
+   zufälligen Schlüssel eintragen (mindestens 16 Zeichen).
+2. Unter **Netzwerk** für `8001/tcp` einen Port eintragen, z. B. `8001`.
+3. Add-on neu starten.
+4. In Claude Code (auf einem Rechner im selben Netz):
+
+   ```
+   claude mcp add --transport http praemien-tracker \
+     http://homeassistant.local:8001/mcp \
+     --header "Authorization: Bearer DEIN-SCHLÜSSEL"
+   ```
+
+   Statt `homeassistant.local` geht auch die IP-Adresse deines Home
+   Assistant.
+
+Danach kannst du Claude z. B. fragen: „Was ist beim Prämien-Tracker
+überfällig?", „Welche Konten kosten noch Gebühren?" oder „Fasse die
+Vorschläge zusammen, die zu prüfen sind."
+
+Der Port gehört nur ins Heimnetz - bitte nicht über den Router ins Internet
+weiterleiten. Wer den Schlüssel kennt, kann alles oben Genannte lesen.
+
 ## Erste Schritte
 
 1. Add-on starten.

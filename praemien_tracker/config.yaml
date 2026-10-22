@@ -12,6 +12,13 @@ startup: application
 boot: auto
 ingress: true
 ingress_port: 8000
+# MCP-Server für Claude (nur lesend, siehe app/praemien_tracker/mcp_server.py).
+# Standardmäßig nicht freigegeben (null) - wer ihn nutzen will, trägt unter
+# "Netzwerk" einen Host-Port ein und setzt die Option mcp_token.
+ports:
+  8001/tcp: null
+ports_description:
+  8001/tcp: "MCP-Server für Claude (nur lesend)"
 panel_icon: mdi:medal-outline
 panel_title: "Prämien-Tracker"
 homeassistant_api: true
@@ -31,6 +38,7 @@ options:
   benachrichtigungsgeraete: "sm_g990b,sm_g990u,fp5"
   taeglicher_lauf_aktiv: true
   kuendigung_hinweise_batch_aktiv: true
+  mcp_token: ""
 schema:
   demo_modus: "bool"
   anthropic_api_key: "password"
@@ -49,3 +57,6 @@ schema:
   benachrichtigungsgeraete: "str"
   taeglicher_lauf_aktiv: "bool"
   kuendigung_hinweise_batch_aktiv: "bool"
+  # Leer = MCP-Server aus. Als "password?", damit der Schlüssel in der
+  # Add-on-Konfiguration verdeckt angezeigt wird und leer bleiben darf.
+  mcp_token: "password?"

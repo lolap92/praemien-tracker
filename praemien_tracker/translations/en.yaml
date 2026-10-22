@@ -45,3 +45,13 @@ configuration:
       ausschalten. Der Batch durchsucht alle aktiven Deals ohne Kündigungsweg
       und recherchiert diesen per KI-Websuche nach (erfordert einen
       konfigurierten Anthropic-API-Key).
+  mcp_token:
+    name: MCP-Schlüssel (Claude)
+    description: >-
+      Geheimer Schlüssel für den MCP-Server, über den Claude (z. B. Claude
+      Code im Heimnetz) den Prämien-Tracker lesen kann - nur lesend, ohne
+      Kontonummern, Anschrift oder IBAN. Mindestens 16 Zeichen; leer lassen
+      schaltet den MCP-Server ab. Zusätzlich unter "Netzwerk" einen Port für
+      8001/tcp eintragen.
+network:
+  8001/tcp: MCP-Server für Claude (nur lesend)

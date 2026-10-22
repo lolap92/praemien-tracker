@@ -27,7 +27,8 @@ def test_translations_are_valid():
             "benachrichtigungsgeraete",
             "benachrichtigungen_aktiv",
             "taeglicher_lauf_aktiv",
-            "kuendigung_hinweise_batch_aktiv"
+            "kuendigung_hinweise_batch_aktiv",
+            "mcp_token",
         ]
 
         # Check existing and new keys are present and correctly formatted

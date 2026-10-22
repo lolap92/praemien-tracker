@@ -11,6 +11,7 @@ Ablauf beim Start (Konzept Abschnitt 7):
 
 from __future__ import annotations
 
+import asyncio
 import datetime
 import logging
 import os
@@ -30,6 +31,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import inspect
 
 from . import auszahlungs_sync  # noqa: F401  (registriert die Budget-Tracker-Sync-Events)
+from . import config, mcp_server
 from . import protokoll  # noqa: F401  (registriert die Änderungsprotokoll-Events)
 from .config import (
     DATABASE_URL,
@@ -200,9 +202,29 @@ async def lifespan(app: FastAPI):
     # sonst bei jedem Add-on-Start echte, kostenpflichtige API-/Website-
     # Anfragen auslösen und die Demo-Vorschläge mit echten Funden vermischen.
     scheduler = _scheduler_starten() if not DEMO_MODUS else None
+    mcp_server, mcp_task = _mcp_starten()
     yield
+    if mcp_server is not None:
+        mcp_server.should_exit = True
+        await mcp_task
     if scheduler is not None:
         scheduler.shutdown(wait=False)
+
+
+def _mcp_starten():
+    """MCP-Server für Claude (nur lesend, siehe mcp_server.py) als
+    Hintergrund-Task im selben Prozess - kein zweiter Container. Ohne
+    ausreichend langen Schlüssel bleibt er aus."""
+    if not config.MCP_TOKEN:
+        return None, None
+    if not mcp_server.token_ok(config.MCP_TOKEN):
+        logger.warning(
+            "MCP-Server nicht gestartet: der Schlüssel (Option mcp_token) muss mindestens %d Zeichen lang sein.",
+            mcp_server.MINDESTLAENGE_TOKEN,
+        )
+        return None, None
+    server = mcp_server.server_erstellen(config.MCP_TOKEN, config.MCP_PORT)
+    return server, asyncio.create_task(server.serve())
 
 
 def create_app() -> FastAPI:
