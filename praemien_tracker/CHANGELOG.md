@@ -1,14 +1,23 @@
 # Changelog
 
-## 2.73.0
+## 2.74.0
 
 Zweite Einstufung auf den Vorschlägen: Kontoführungsgebühren, als Punkte von 1 bis 3 unter dem Aufwand.
 
 - **Drei Gebührenstufen.** 1 = kostenlos, 2 = vermeidbar (die Gebühr entfällt bei regelmäßiger Aktivität, z. B. Geldeingang ab 700 € im Monat), 3 = feste Gebühr. Daneben stehen, wenn genannt, der Monatsbetrag und kurz, wodurch die Gebühr entfällt. Ist das Konto nur bis zu einem Alter kostenlos („kostenlos bis 30 Jahre, danach 3,90 €"), gilt es als feste Gebühr mit der Altersgrenze als Hinweis - wegüberweisen lässt sich so eine Gebühr nicht.
-- **Kommt aus der KI-Extraktion (`finder/extraktion.py`).** Anders als der Aufwand stehen Gebühren selten als Bedingung im Text, sondern im Fließtext oder Kleingedruckten; Stichwörter in den Bedingungen reichen dafür nicht. Die Extraktion liefert dafür drei neue Felder, die am Vorschlag gespeichert werden (Migration `0028`). Sagt der Text nichts zu Gebühren, steht auf der Karte „Unbekannt".
+- **Kommt aus der KI-Extraktion (`finder/extraktion.py`).** Anders als der Aufwand stehen Gebühren selten als Bedingung im Text, sondern im Fließtext oder Kleingedruckten; Stichwörter in den Bedingungen reichen dafür nicht. Die Extraktion liefert dafür drei neue Felder, die am Vorschlag gespeichert werden (Migration `0029`). Sagt der Text nichts zu Gebühren, steht auf der Karte „Unbekannt".
 - **Vorhandene Vorschläge zeigen zunächst „Unbekannt".** Ihre Analyse stammt von vor dieser Version. Mit „Alle neu analysieren" werden die offenen Karten (vorgeschlagen und zu prüfen) neu ausgewertet; das kostet je Fund einen KI-Aufruf. Bewusst kein automatisches Nachholen, damit keine ungefragten API-Kosten entstehen. Neue Funde bekommen die Gebühren sofort.
 - **Beim Übernehmen vorausgefüllt (`finder/matching.py`).** Kostenlos trägt am Deal 0 € ein, eine feste Gebühr ihren Monatsbetrag. Bei vermeidbarer oder unbekannter Gebühr bleibt das Feld leer und wird am Deal wie bisher als offene Angabe angemahnt.
 - **Auch im MCP-Server.** Die Vorschläge enthalten dort `kontofuehrung`, `kontofuehrung_euro_monat` und `kontofuehrung_hinweis`.
+
+## 2.73.0
+
+Neu: Die Vorschlagskarten zeigen, ob sich das Konto per eID (Online-Ausweisfunktion des Personalausweises) eröffnen lässt oder nur per VideoIdent, PostIdent bzw. in der Filiale - weil Video- und Post-Identifikation deutlich aufwendiger sind.
+
+- **Etikett auf der Karte (`templates/vorschlaege.html`, `finder/matching.py`).** „eID möglich" in Grün oder „Ohne eID: VideoIdent / PostIdent" in Bernstein; der Tooltip nennt alle Verfahren und woher die Angabe stammt. Ist nichts bekannt, erscheint bewusst kein Etikett statt eines geratenen „ohne eID". Status und Ablehnung bleiben unberührt - ein guter Deal mit VideoIdent ist weiter ein Vorschlag, die Abwägung triffst du.
+- **Websuche je Bank (`ident_recherche.py`, neue Tabelle `ident_recherchen`, Migration 0028).** In Deal-Beschreibungen steht das Identifikationsverfahren fast nie. Nach jedem Finder-Lauf (täglich und „Jetzt suchen"/„Alle neu analysieren") recherchiert die KI es deshalb per Websuche - bevorzugt auf der Bank-Website - für die Banken offener Vorschläge. Einmal je Bank, gemerkt für 180 Tage, ein fehlgeschlagener Versuch wird nach 7 Tagen wiederholt; höchstens 10 neue Banken pro Lauf, damit die API-Kosten überschaubar bleiben. Ohne API-Key und im Demo-Modus passiert nichts. Ein Fehler der Recherche bricht den Finder-Lauf nicht ab.
+- **Angabe im Angebot hat Vorrang (`finder/extraktion.py`).** Nennt der Angebotstext doch einmal ein Verfahren, übernimmt die Extraktion es und die Websuche überschreibt es nicht. Bestehende Karten bekommen das Etikett mit dem nächsten Lauf über die Websuche, ohne erneute Analyse.
+- **Auch über den MCP-Server sichtbar (`mcp_server.py`).** Die Vorschläge enthalten jetzt `identifikation` und `identifikation_quelle`.
 
 ## 2.72.0
 

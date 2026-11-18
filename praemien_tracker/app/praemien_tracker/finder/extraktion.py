@@ -95,6 +95,14 @@ class AngebotExtraktion(BaseModel):
     # einem alten Cache-Eintrag oder ist die Zielgruppe unklar, gilt das
     # Angebot als Privatkundenangebot und wird nicht ausgeschlossen.
     nur_geschaeftskunden: bool = False
+    # Angebotene Verfahren zur Identifikation bei der Kontoeröffnung, soweit
+    # im Text genannt: "eid" (Online-Ausweisfunktion des Personalausweises,
+    # z.B. per AusweisApp/Nect/"eID"), "video" (VideoIdent), "post"
+    # (PostIdent in der Filiale), "filiale" (Identifikation in einer
+    # Bankfiliale). Leer = im Text nicht erkennbar. Rein informativ (siehe
+    # matching.ident_einordnung), keine Ablehnung. Default [] für alte
+    # Cache-Einträge.
+    identifikation: list[Literal["eid", "video", "post", "filiale"]] = []
     # Einzelne Teilprämien mit je eigener Voraussetzung (z.B. 50 EUR von
     # Spartanien für die Kontoeröffnung plus 250 EUR von der Bank für den
     # Kontowechselservice). Leer lassen, wenn es nur eine einzige Prämie ohne
@@ -187,6 +195,13 @@ Selbstständige oder Freiberufler in dieser Eigenschaft. Ein Angebot, das \
 Privatpersonen offensteht, ist false - auch dann, wenn Selbstständige es \
 ebenfalls nutzen dürfen. Im Zweifel false (die meisten Neukunden-Prämien \
 richten sich an Privatkunden).
+- identifikation: Liste der Verfahren, mit denen man sich laut Text bei der \
+Kontoeröffnung identifizieren kann - "eid" für die Online-Ausweisfunktion \
+des Personalausweises (eID, AusweisApp, Nect mit Ausweis-Chip, "mit dem \
+Smartphone den Ausweis auslesen"), "video" für VideoIdent/Video-Chat, \
+"post" für PostIdent in einer Postfiliale, "filiale" für Identifikation in \
+einer Bankfiliale. Alle genannten Verfahren aufführen. Nur aufnehmen, was \
+der Text ausdrücklich nennt; ist nichts dazu erkennbar, eine leere Liste.
 - bedingungen: ALLE einzelnen Bedingungen, die für die Prämie erfüllt werden \
 müssen (z.B. Mindesteinlage, Kontoeröffnung online, TAN-Verfahren aktivieren, \
 Anzahl Kartenzahlungen, Mindestumsatz, Gehaltseingang, Vertragslaufzeit). \

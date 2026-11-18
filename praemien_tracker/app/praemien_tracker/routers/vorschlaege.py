@@ -102,6 +102,9 @@ class VorschlagGruppe:
     kontofuehrung: object = None
     kontofuehrung_euro_monat: object = None
     kontofuehrung_hinweis: object = None
+    # Etikett "eID möglich" / "Ohne eID" (matching.ident_einordnung), None =
+    # Angebot sagt nichts zur Identifikation.
+    ident: object = None
 
 
 def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
@@ -151,6 +154,7 @@ def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
                 kontofuehrung=fuehrend.kontofuehrung,
                 kontofuehrung_euro_monat=fuehrend.kontofuehrung_euro_monat,
                 kontofuehrung_hinweis=fuehrend.kontofuehrung_hinweis,
+                ident=matching.ident_einordnung(fuehrend.identifikation, fuehrend.identifikation_quelle),
             )
         )
     gruppen.sort(key=lambda g: max(m.gefunden_am for m in g.mitglieder), reverse=True)
@@ -694,6 +698,8 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
                     kontofuehrung=referenz.kontofuehrung,
                     kontofuehrung_euro_monat=referenz.kontofuehrung_euro_monat,
                     kontofuehrung_hinweis=referenz.kontofuehrung_hinweis,
+                    identifikation=referenz.identifikation,
+                    identifikation_quelle=referenz.identifikation_quelle,
                     sperrfrist_monate=referenz.sperrfrist_monate,
                     roh_json=json.dumps(roh, ensure_ascii=False),
                     inhalt_hash=referenz.inhalt_hash,

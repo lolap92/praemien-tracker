@@ -387,6 +387,11 @@ def vorschlaege_abfragen(
                 "praemie_bis": _wert(v.praemie_bis),
                 "praemie_art": v.praemie_art,
                 "praemie_beschreibung": v.praemie_beschreibung,
+                # Identifikationsverfahren bei der Kontoeröffnung (eid, video,
+                # post, filiale) aus dem Angebot oder der Websuche zur Bank;
+                # leer = unbekannt.
+                "identifikation": [c for c in (v.identifikation or "").split(",") if c],
+                "identifikation_quelle": v.identifikation_quelle,
                 "teilpraemien": [{"betrag": _wert(p.betrag), "geber": p.geber, "wofuer": p.bedingung} for p in v.praemien],
                 "sperrfrist_monate": v.sperrfrist_monate,
                 "kontofuehrung": v.kontofuehrung,

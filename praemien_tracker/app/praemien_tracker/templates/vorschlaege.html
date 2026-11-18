@@ -301,6 +301,7 @@
     <span class="vorschlag-tag tag-{{ g.quelle }}">{{ g.quelle | quelle }}</span>
     {% if g.kontoart %}<span class="vorschlag-tag tag-kontoart">{{ g.kontoart }}</span>{% endif %}
     {% if g.praemie_art == "sachpraemie" %}<span class="vorschlag-tag tag-kontoart" title="{{ g.praemie_beschreibung or '' }}">Sachprämie</span>{% endif %}
+    {% if g.ident %}<span class="vorschlag-tag tag-{{ g.ident.klasse }}" title="{{ g.ident.titel }}">{{ g.ident.label }}</span>{% endif %}
     {% if g.mitglieder | selectattr('inhaber.ist_minderjaehrig') | list %}
     <span class="vorschlag-tag tag-kind">Auch für Kinder</span>
     {% endif %}

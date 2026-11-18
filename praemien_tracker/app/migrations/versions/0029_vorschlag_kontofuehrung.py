@@ -5,16 +5,16 @@ zweite Einstufung auf der Vorschlagskarte (kostenlos / vermeidbar / fest).
 NULL heißt "nicht erkannt"; bestehende Vorschläge bekommen die Werte erst bei
 "Alle neu analysieren".
 
-Revision ID: 0028
-Revises: 0027
+Revision ID: 0029
+Revises: 0028
 Create Date: 2026-11-18 00:00:00.000000
 """
 
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0028"
-down_revision = "0027"
+revision = "0029"
+down_revision = "0028"
 branch_labels = None
 depends_on = None
 
