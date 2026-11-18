@@ -2533,6 +2533,79 @@ table.lauf-tabelle tr:hover {
   margin-top: 0.4rem;
 }
 
+/* Aufwand als Punkte 1-5 (finder/aufwand.py): ersetzt auf der Karte die
+   immer sichtbare Stichpunktliste. Gefüllte Punkte färben sich mit der Stufe
+   von grün (nur eröffnen) bis rot (Gehaltseingang). */
+.vk-aufwand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.vk-aufwand-titel {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.vk-aufwand-label {
+  font-weight: 600;
+}
+
+.vk-aufwand .vk-bed-status {
+  margin-left: auto;
+  font-size: 0.8rem;
+}
+
+.aufwand-punkte {
+  display: inline-flex;
+  gap: 4px;
+  --punkt-farbe: var(--st-done);
+}
+.aufwand-punkte.stufe-3,
+.aufwand-punkte.stufe-4 {
+  --punkt-farbe: var(--st-wait);
+}
+.aufwand-punkte.stufe-5 {
+  --punkt-farbe: var(--danger);
+}
+
+.aufwand-punkte .punkt {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  box-sizing: border-box;
+}
+.aufwand-punkte .punkt.an {
+  background: var(--punkt-farbe);
+  border-color: var(--punkt-farbe);
+}
+
+.vk-bed-details {
+  margin-top: 0.35rem;
+}
+
+.vk-bed-details > summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  width: fit-content;
+}
+
+/* Stufe der einzelnen Bedingung in der aufgeklappten Liste - zeigt, welche
+   Auflage den Aufwand der Karte bestimmt. */
+.bed-stufe {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+  white-space: nowrap;
+}
+
 /* Übernehmen/Verwerfen/Deal öffnen nebeneinander; das Verwerfen-Formular
    erzeugt keine eigene Box, damit sein Button in der Button-Zeile mitläuft. */
 .vk-inline-form {

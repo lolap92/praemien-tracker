@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.72.0
+
+Vorschläge zeigen den Aufwand jetzt als Punkte von 1 bis 5 statt als lange Stichpunktliste. So siehst du auf einen Blick, was ein Deal von dir verlangt.
+
+- **Fünf Aufwandsstufen (`finder/aufwand.py`).** 1 = nur eröffnen (Neukunde sein, online eröffnen, App aktivieren), 2 = Geld überweisen (Mindesteinzahlung, Geldeingang, Dauerauftrag, Einlage, Buchungen), 3 = Karte einsetzen (Kartenzahlungen, Kartenumsatz, Apple Pay), 4 = Wertpapiere kaufen (Aktie/ETF, Sparplan, Trade, Depotübertrag), 5 = Gehaltseingang (Gehalt, Lohn, Rente, BAföG, Einkommen). Gehaltseingang ist die oberste Stufe, weil echtes Einkommen gefordert sein kann - das lässt sich anders als eine Überweisung nicht einfach selbst herstellen.
+- **Die aufwendigste Bedingung zählt.** Jede Bedingung wird einzeln eingestuft, die Karte zeigt die höchste Stufe. Nennt eine Bedingung Alternativen („dazu zählen Gehaltseingänge, Kartenzahlungen oder Lastschriften", „z. B. …"), zählt die einfachste davon - etwa bei Sparda BW: drei beliebige Buchungen pro Monat ergeben Stufe 2, nicht 5. Eine Bedingung ohne erkennbares Stichwort gilt als Stufe 1.
+- **Fester Code statt KI.** Die Einstufung läuft über Stichwörter im Bedingungstext, wie schon die Gehaltsprüfung in `matching.py`. Sie gilt deshalb sofort für alle vorhandenen Vorschläge, ohne Neuanalyse und ohne API-Kosten.
+- **Bedingungen zum Aufklappen (`templates/vorschlaege.html`).** Unter den Punkten steht „N Bedingungen anzeigen". Aufgeklappt trägt jede Bedingung ihre Stufe als kleines Etikett, damit erkennbar ist, welche Auflage den Wert bestimmt. Die Einschätzung („alle erfüllbar", „zu prüfen", „nicht erfüllbar") steht weiter rechts in derselben Zeile. Dasselbe gilt im Vergleich doppelter Funde.
+
 ## 2.71.1
 
 Das Add-on-Log ist mit eingeschaltetem MCP-Server wieder vollständig.
