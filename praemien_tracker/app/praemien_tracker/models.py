@@ -319,6 +319,14 @@ class DealVorschlag(Base):
     praemie_art: Mapped[str] = mapped_column(String(20), default="geld", server_default="geld")
     praemie_bis: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     praemie_beschreibung: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Identifikationsverfahren bei der Kontoeröffnung, kommagetrennt aus
+    # matching.IDENT_VERFAHREN ("eid,video"). Aus dem Angebotstext, sonst aus
+    # der Websuche je Bank (IdentRecherche, siehe ident_recherche.py). NULL =
+    # (noch) unbekannt. Nur zur Anzeige (Etikett "eID möglich" / "Ohne eID"),
+    # kein Teil des Inhalts-Hash.
+    identifikation: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Woher identifikation stammt: "angebot" | "recherche" | NULL.
+    identifikation_quelle: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # Aus dem Angebotstext extrahiert, optional; bei Mehrdeutigkeit ("6 oder
     # 12 Monate") wird die kürzere Angabe übernommen (siehe extraktion.py).
     sperrfrist_monate: Mapped[int | None] = mapped_column(nullable=True)
@@ -451,6 +459,29 @@ class FinderFund(Base):
     zuletzt_gesehen_am: Mapped[datetime.datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
     )
+
+
+class IdentRecherche(Base):
+    """Per KI-Websuche ermittelte Identifikationsverfahren einer Bank bei der
+    Kontoeröffnung (eID, VideoIdent, PostIdent, Filiale) - je Bank einmal
+    recherchiert und für alle Vorschläge dieser Bank wiederverwendet (siehe
+    ident_recherche.py). Schlüssel ist der normalisierte Bankname
+    (derived.bank_name_normalisieren), weil Vorschläge die Bank nur als
+    Freitext kennen und oft noch kein Bank-Datensatz existiert."""
+
+    __tablename__ = "ident_recherchen"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    bank_schluessel: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    bank_name: Mapped[str] = mapped_column(String(100))
+    # Kommagetrennt wie DealVorschlag.identifikation; NULL = nichts
+    # Verlässliches gefunden bzw. Recherche fehlgeschlagen.
+    verfahren: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    quelle_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # True, wenn die Recherche selbst scheiterte (API-Fehler, kein
+    # auswertbares Ergebnis) - dann wird früher erneut versucht.
+    fehlgeschlagen: Mapped[bool] = mapped_column(Boolean, default=False)
+    recherchiert_am: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
 
 
 class KuendigungRecherche(Base):

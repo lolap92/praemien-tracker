@@ -69,6 +69,17 @@ unklare Sperrfrist) landet ein Fund unter "Zu prüfen" statt automatisch
 ausgeschlossen zu werden. Über den Button **Jetzt suchen** lässt sich ein
 Lauf jederzeit manuell anstoßen, z. B. um die Einrichtung zu testen.
 
+**Identifikation (eID).** Jede Karte zeigt, wenn bekannt, wie man sich bei
+der Kontoeröffnung ausweist: **„eID möglich"** (grün - Online-Ausweisfunktion
+des Personalausweises, kein Videocall, kein Gang zur Post) oder **„Ohne eID:
+VideoIdent / PostIdent"** (bernstein). Nennt das Angebot selbst ein Verfahren,
+gilt das; sonst recherchiert die KI es nach jedem Lauf per Websuche einmal je
+Bank (bevorzugt auf der Bank-Website) und merkt sich das Ergebnis ein halbes
+Jahr - höchstens 10 neue Banken pro Lauf, der Rest folgt beim nächsten. Der
+Tooltip des Etiketts sagt, woher die Angabe stammt. Ohne Treffer bleibt das
+Etikett weg. Das Etikett ändert nichts am Status: ein guter Deal mit
+VideoIdent bleibt ein Vorschlag, ob er die Mühe wert ist, entscheidest du.
+
 Der Button **Alle neu analysieren** daneben erzwingt für jeden aktuell
 gelisteten Fund eine frische KI-Prüfung, auch wenn sich am Text nichts
 geändert hat und er sonst aus dem Cache bedient würde - z. B. um bestehende

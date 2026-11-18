@@ -129,6 +129,51 @@ class MatchErgebnis:
     # Höchstwert bei schwankendem Wert, nur gesetzt, wenn über praemie_betrag.
     praemie_bis: Decimal | None = None
     praemie_beschreibung: str | None = None
+    # Genannte Identifikationsverfahren, kommagetrennt in fester Reihenfolge
+    # (IDENT_VERFAHREN), None = im Angebot nicht erkennbar.
+    identifikation: str | None = None
+
+
+# Identifikationsverfahren in Anzeige-Reihenfolge mit Kurzlabel. eID steht
+# vorn, weil es das bequemste Verfahren ist (kein Videocall, kein Gang zur
+# Post) - darauf zielt das Etikett auf der Vorschlagskarte.
+IDENT_VERFAHREN = {"eid": "eID", "video": "VideoIdent", "post": "PostIdent", "filiale": "Filiale"}
+
+
+def identifikation_normalisieren(verfahren) -> str | None:
+    """Liste der Verfahren aus der Extraktion zu einem stabilen,
+    kommagetrennten Wert (feste Reihenfolge, ohne Dubletten/Unbekanntes)."""
+    gesetzt = set(verfahren or ())
+    werte = [code for code in IDENT_VERFAHREN if code in gesetzt]
+    return ",".join(werte) or None
+
+
+@dataclass(frozen=True)
+class IdentAnzeige:
+    klasse: str  # "eid" | "ohne-eid"
+    label: str
+    titel: str
+
+
+def ident_einordnung(identifikation: str | None, quelle: str | None = None) -> IdentAnzeige | None:
+    """Etikett für die Vorschlagskarte: eID möglich, oder nur aufwendigere
+    Verfahren (Video/Post/Filiale). None, wenn nichts bekannt ist - dann wird
+    bewusst nichts angezeigt statt "ohne eID" zu raten. `quelle` ("angebot"
+    oder "recherche", siehe ident_recherche.py) erscheint im Tooltip. Fließt
+    nicht in den Status ein: ein guter Deal mit VideoIdent bleibt ein
+    Vorschlag, die Abwägung trifft die/der Nutzer/in."""
+    codes = [c for c in (identifikation or "").split(",") if c in IDENT_VERFAHREN]
+    if not codes:
+        return None
+    herkunft = "laut Websuche zur Bank" if quelle == "recherche" else "laut Angebot"
+    alle = ", ".join(IDENT_VERFAHREN[c] for c in codes)
+    if "eid" in codes:
+        return IdentAnzeige("eid", "eID möglich", f"Identifikation {herkunft}: {alle}")
+    return IdentAnzeige(
+        "ohne-eid",
+        "Ohne eID: " + " / ".join(IDENT_VERFAHREN[c] for c in codes),
+        f"Keine Identifikation per eID {herkunft} - nur {alle}",
+    )
 
 
 def _bank_finden(db: Session, bank_name: str) -> Bank | None:
@@ -453,6 +498,7 @@ def bewerten(
         praemie_art=extraktion.praemie_art,
         praemie_bis=praemie_bis,
         praemie_beschreibung=praemie_beschreibung,
+        identifikation=identifikation_normalisieren(extraktion.identifikation),
     )
 
 

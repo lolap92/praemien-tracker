@@ -2172,6 +2172,18 @@ table.lauf-tabelle tr:hover {
   color: var(--accent-ink);
 }
 
+/* Identifikation: eID = bequem (grün wie "Auch für Kinder"), sonst nur
+   Video-/Post-/Filial-Ident = aufwendiger (bernstein). */
+.vorschlag-tag.tag-eid {
+  background: rgba(15, 124, 103, 0.13);
+  color: var(--accent-ink);
+}
+
+.vorschlag-tag.tag-ohne-eid {
+  background: rgba(185, 130, 47, 0.14);
+  color: var(--st-wait);
+}
+
 .vorschlag-tag.tag-grund {
   background: rgba(180, 70, 42, 0.1);
   color: var(--danger);

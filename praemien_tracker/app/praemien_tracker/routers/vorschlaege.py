@@ -98,6 +98,9 @@ class VorschlagGruppe:
     praemie_art: str = "geld"
     praemie_bis: object = None
     praemie_beschreibung: object = None
+    # Etikett "eID möglich" / "Ohne eID" (matching.ident_einordnung), None =
+    # Angebot sagt nichts zur Identifikation.
+    ident: object = None
 
 
 def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
@@ -144,6 +147,7 @@ def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
                 praemie_art=fuehrend.praemie_art,
                 praemie_bis=fuehrend.praemie_bis,
                 praemie_beschreibung=fuehrend.praemie_beschreibung,
+                ident=matching.ident_einordnung(fuehrend.identifikation, fuehrend.identifikation_quelle),
             )
         )
     gruppen.sort(key=lambda g: max(m.gefunden_am for m in g.mitglieder), reverse=True)
@@ -684,6 +688,8 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
                     praemie_art=referenz.praemie_art,
                     praemie_bis=referenz.praemie_bis,
                     praemie_beschreibung=referenz.praemie_beschreibung,
+                    identifikation=referenz.identifikation,
+                    identifikation_quelle=referenz.identifikation_quelle,
                     sperrfrist_monate=referenz.sperrfrist_monate,
                     roh_json=json.dumps(roh, ensure_ascii=False),
                     inhalt_hash=referenz.inhalt_hash,

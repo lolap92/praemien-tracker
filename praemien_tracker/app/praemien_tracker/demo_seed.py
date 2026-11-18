@@ -147,8 +147,8 @@ def lade_demo_daten(db: Session) -> None:
         db.add(v)
         return v
 
-    vorschlag("Neubank Demo", max_, "vorgeschlagen", 1)
-    vorschlag("Wechselbank Beispiel", erika, "vorgeschlagen", 2)
+    vorschlag("Neubank Demo", max_, "vorgeschlagen", 1, identifikation="eid,video", identifikation_quelle="recherche")
+    vorschlag("Wechselbank Beispiel", erika, "vorgeschlagen", 2, identifikation="video,post", identifikation_quelle="recherche")
     v3 = vorschlag("Prüfbank Beispiel", max_, "zu_pruefen", 3)
     v3.bedingungen.append(
         VorschlagBedingung(

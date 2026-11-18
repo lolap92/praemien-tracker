@@ -170,6 +170,16 @@ def _vorschlag_felder_setzen(
     vorschlag.praemie_art = match.praemie_art
     vorschlag.praemie_bis = match.praemie_bis
     vorschlag.praemie_beschreibung = match.praemie_beschreibung
+    # Nennt der Angebotstext selbst ein Verfahren, gilt das. Sonst bleibt ein
+    # schon recherchierter Wert (ident_recherche.py) stehen; nur ein früher
+    # aus dem Text übernommener Wert wird bei einer Neuanalyse ohne Angabe
+    # geleert und anschließend wieder aus der Recherche gefüllt.
+    if match.identifikation:
+        vorschlag.identifikation = match.identifikation
+        vorschlag.identifikation_quelle = "angebot"
+    elif vorschlag.identifikation_quelle == "angebot":
+        vorschlag.identifikation = None
+        vorschlag.identifikation_quelle = None
     vorschlag.sperrfrist_monate = match.sperrfrist_monate
     vorschlag.ablehnungsgruende = match.ablehnungsgruende
     vorschlag.roh_json = match.roh_json
@@ -712,6 +722,7 @@ def lauf_im_hintergrund_starten(*, ignoriere_cache: bool = False) -> bool:
         try:
             with SessionLocal() as db:
                 taeglicher_lauf(db, ignoriere_cache=ignoriere_cache)
+                _ident_nachtragen(db)
         except Exception:
             # taeglicher_lauf() faengt eigene Fehler bereits ab und
             # protokolliert sie (siehe Docstring dort) - dieser Fang ist nur
@@ -736,5 +747,20 @@ def geplanter_lauf() -> None:
     try:
         with SessionLocal() as db:
             taeglicher_lauf(db)
+            _ident_nachtragen(db)
     finally:
         _lauf_beenden()
+
+
+def _ident_nachtragen(db: Session) -> None:
+    """Nach dem Lauf die Identifikationsverfahren (eID/Video/Post) der Banken
+    offener Vorschläge per Websuche nachtragen (ident_recherche.py). Bewusst
+    ein eigener Schritt außerhalb von taeglicher_lauf(): ein Fehler hier darf
+    den Lauf und sein Protokoll nicht berühren."""
+    from .. import ident_recherche
+
+    try:
+        ident_recherche.offene_vorschlaege_nachtragen(db)
+    except Exception:
+        db.rollback()
+        logger.exception("Identifikations-Recherche nach dem Lauf fehlgeschlagen.")

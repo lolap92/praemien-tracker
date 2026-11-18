@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.72.0
+
+Neu: Die Vorschlagskarten zeigen, ob sich das Konto per eID (Online-Ausweisfunktion des Personalausweises) eröffnen lässt oder nur per VideoIdent, PostIdent bzw. in der Filiale - weil Video- und Post-Identifikation deutlich aufwendiger sind.
+
+- **Etikett auf der Karte (`templates/vorschlaege.html`, `finder/matching.py`).** „eID möglich" in Grün oder „Ohne eID: VideoIdent / PostIdent" in Bernstein; der Tooltip nennt alle Verfahren und woher die Angabe stammt. Ist nichts bekannt, erscheint bewusst kein Etikett statt eines geratenen „ohne eID". Status und Ablehnung bleiben unberührt - ein guter Deal mit VideoIdent ist weiter ein Vorschlag, die Abwägung triffst du.
+- **Websuche je Bank (`ident_recherche.py`, neue Tabelle `ident_recherchen`, Migration 0028).** In Deal-Beschreibungen steht das Identifikationsverfahren fast nie. Nach jedem Finder-Lauf (täglich und „Jetzt suchen"/„Alle neu analysieren") recherchiert die KI es deshalb per Websuche - bevorzugt auf der Bank-Website - für die Banken offener Vorschläge. Einmal je Bank, gemerkt für 180 Tage, ein fehlgeschlagener Versuch wird nach 7 Tagen wiederholt; höchstens 10 neue Banken pro Lauf, damit die API-Kosten überschaubar bleiben. Ohne API-Key und im Demo-Modus passiert nichts. Ein Fehler der Recherche bricht den Finder-Lauf nicht ab.
+- **Angabe im Angebot hat Vorrang (`finder/extraktion.py`).** Nennt der Angebotstext doch einmal ein Verfahren, übernimmt die Extraktion es und die Websuche überschreibt es nicht. Bestehende Karten bekommen das Etikett mit dem nächsten Lauf über die Websuche, ohne erneute Analyse.
+- **Auch über den MCP-Server sichtbar (`mcp_server.py`).** Die Vorschläge enthalten jetzt `identifikation` und `identifikation_quelle`.
+
 ## 2.71.1
 
 Das Add-on-Log ist mit eingeschaltetem MCP-Server wieder vollständig.
