@@ -200,7 +200,8 @@
 <ul class="vorschlag-bedingungen">
   {% for b in items %}
   <li class="{{ b.einschaetzung }}">
-    <span class="bed-text">{{ b.beschreibung }}{{ bed_kennzahlen(b) }}</span>
+    {% set st = b.beschreibung | bedingung_stufe %}
+    <span class="bed-text">{{ b.beschreibung }}<span class="bed-stufe stufe-{{ st }}">{{ aufwand_labels[st] }}</span>{{ bed_kennzahlen(b) }}</span>
   </li>
   {% endfor %}
 </ul>
@@ -238,6 +239,35 @@
 {% endif %}
 {% endmacro %}
 
+{# Aufwand als Punkte (1-5, siehe finder/aufwand.py) statt einer langen
+   Stichpunktliste; die einzelnen Bedingungen stehen aufklappbar darunter.
+   Die höchste Stufe aller Bedingungen bestimmt den Wert. #}
+{% macro aufwand_block(x, extra_klasse="") %}
+{% set a = x.bedingungen | aufwand %}
+{% set n_pruefen_x = x.bedingungen | selectattr('einschaetzung', 'equalto', 'zu_pruefen') | list | length %}
+{% set n_nicht_x = x.bedingungen | selectattr('einschaetzung', 'equalto', 'nicht_erfuellt') | list | length %}
+<div class="vk-bedingungen {{ extra_klasse }}">
+  <div class="vk-aufwand">
+    <span class="vk-aufwand-titel">Aufwand</span>
+    <span class="aufwand-punkte stufe-{{ a.stufe }}" role="img" aria-label="Aufwand {{ a.stufe }} von {{ a.hoechste }}" title="Aufwand {{ a.stufe }} von {{ a.hoechste }}">
+      {%- for i in range(1, a.hoechste + 1) %}<span class="punkt{{ ' an' if i <= a.stufe else '' }}"></span>{% endfor -%}
+    </span>
+    <span class="vk-aufwand-label">{{ a.label }}</span>
+    {% if x.bedingungen %}
+    {% if n_nicht_x %}<span class="vk-bed-status nicht_erfuellt">{{ n_nicht_x }} nicht erfüllbar</span>
+    {% elif n_pruefen_x %}<span class="vk-bed-status zu_pruefen">{{ n_pruefen_x }} zu prüfen</span>
+    {% else %}<span class="vk-bed-status erfuellt">alle erfüllbar</span>{% endif %}
+    {% endif %}
+  </div>
+  {% if x.bedingungen %}
+  <details class="vk-bed-details">
+    <summary>{{ x.bedingungen | length }} Bedingung{{ "en" if x.bedingungen | length != 1 else "" }} anzeigen</summary>
+    {{ bedingungen_liste(x) }}
+  </details>
+  {% endif %}
+</div>
+{% endmacro %}
+
 {# Prämie für Kopf und Duplikat-Vergleich: bei schwankendem Wert (Gratisaktie
    "bis 100 €") der Höchstwert mit "bis", statt eines irreführenden 0,00 €. #}
 {% macro praemie_anzeige(x) -%}
@@ -245,8 +275,6 @@
 {%- endmacro %}
 
 {% macro vorschlag_karte(g) %}
-{% set n_pruefen = g.bedingungen | selectattr('einschaetzung', 'equalto', 'zu_pruefen') | list | length %}
-{% set n_nicht = g.bedingungen | selectattr('einschaetzung', 'equalto', 'nicht_erfuellt') | list | length %}
 <div class="card vorschlag-karte status-{{ g.status }}">
   <div class="vk-kopf">
     <div class="vk-titel">
@@ -296,17 +324,7 @@
   </ul>
   {% endif %}
 
-  {% if g.bedingungen %}
-  <div class="vk-bedingungen">
-    <div class="vk-bed-kopf">
-      <span class="vk-bed-anzahl">{{ g.bedingungen | length }} Bedingung{{ "en" if g.bedingungen | length != 1 else "" }}</span>
-      {% if n_nicht %}<span class="vk-bed-status nicht_erfuellt">{{ n_nicht }} nicht erfüllbar</span>
-      {% elif n_pruefen %}<span class="vk-bed-status zu_pruefen">{{ n_pruefen }} zu prüfen</span>
-      {% else %}<span class="vk-bed-status erfuellt">alle erfüllbar</span>{% endif %}
-    </div>
-    {{ bedingungen_liste(g) }}
-  </div>
-  {% endif %}
+  {{ aufwand_block(g) }}
 
   {% set kid = g.mitglieder[0].id %}
   {% set ns = namespace(hinweise=false) %}
@@ -449,19 +467,7 @@
           <span>Gefunden {{ f.gefunden_am | datum }}</span>
           <a class="dup-quelle-link" href="{{ f.quelle_url }}" target="_blank" rel="noopener noreferrer">Deal öffnen ↗</a>
         </div>
-        {% if f.bedingungen %}
-        {% set n_pruefen_f = f.bedingungen | selectattr('einschaetzung', 'equalto', 'zu_pruefen') | list | length %}
-        {% set n_nicht_f = f.bedingungen | selectattr('einschaetzung', 'equalto', 'nicht_erfuellt') | list | length %}
-        <div class="vk-bedingungen dup-quelle-bedingungen">
-          <div class="vk-bed-kopf">
-            <span class="vk-bed-anzahl">{{ f.bedingungen | length }} Bedingung{{ "en" if f.bedingungen | length != 1 else "" }}</span>
-            {% if n_nicht_f %}<span class="vk-bed-status nicht_erfuellt">{{ n_nicht_f }} nicht erfüllbar</span>
-            {% elif n_pruefen_f %}<span class="vk-bed-status zu_pruefen">{{ n_pruefen_f }} zu prüfen</span>
-            {% else %}<span class="vk-bed-status erfuellt">alle erfüllbar</span>{% endif %}
-          </div>
-          {{ bedingungen_liste(f) }}
-        </div>
-        {% endif %}
+        {{ aufwand_block(f, "dup-quelle-bedingungen") }}
       </div>
     </label>
     {% endfor %}

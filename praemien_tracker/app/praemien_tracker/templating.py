@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from .config import DEMO_MODUS
 from .derived import praemie_naechste_pruefung, quelle_label
 from .finder.matching import VERWERFEN_GRUENDE_ANZEIGE
+from .finder.aufwand import STUFEN_LABELS as AUFWAND_LABELS, aufwand, bedingung_stufe
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -123,6 +124,10 @@ templates.env.filters["zeitpunkt"] = format_zeitpunkt
 templates.env.filters["quelle"] = quelle_label
 templates.env.filters["vorschlag_status"] = format_vorschlag_status
 templates.env.filters["verwerfen_gruende"] = format_verwerfen_gruende
+# Aufwand eines Vorschlags als Punkte 1-5 (finder/aufwand.py).
+templates.env.filters["aufwand"] = aufwand
+templates.env.filters["bedingung_stufe"] = bedingung_stufe
+templates.env.globals["aufwand_labels"] = AUFWAND_LABELS
 # Bewusst nicht "aktiver_tab": diesen Namen belegt der ToDo-Router schon
 # mit dem gewählten ToDo-Reiter, er würde den Helfer hier überschatten.
 templates.env.globals["nav_tab"] = nav_tab
