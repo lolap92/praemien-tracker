@@ -239,9 +239,10 @@
 {% endif %}
 {% endmacro %}
 
-{# Aufwand als Punkte (1-5, siehe finder/aufwand.py) statt einer langen
-   Stichpunktliste; die einzelnen Bedingungen stehen aufklappbar darunter.
-   Die höchste Stufe aller Bedingungen bestimmt den Wert. #}
+{# Zwei Einstufungen als Punkte (siehe finder/aufwand.py) statt einer langen
+   Stichpunktliste: Aufwand 1-5 (höchste Stufe aller Bedingungen) und
+   Kontoführungsgebühren 1-3 (kostenlos / vermeidbar / fest, aus der
+   KI-Extraktion). Die einzelnen Bedingungen stehen aufklappbar darunter. #}
 {% macro aufwand_block(x, extra_klasse="") %}
 {% set a = x.bedingungen | aufwand %}
 {% set n_pruefen_x = x.bedingungen | selectattr('einschaetzung', 'equalto', 'zu_pruefen') | list | length %}
@@ -258,6 +259,17 @@
     {% elif n_pruefen_x %}<span class="vk-bed-status zu_pruefen">{{ n_pruefen_x }} zu prüfen</span>
     {% else %}<span class="vk-bed-status erfuellt">alle erfüllbar</span>{% endif %}
     {% endif %}
+  </div>
+  {% set gb = x | gebuehren %}
+  <div class="vk-aufwand vk-gebuehren">
+    <span class="vk-aufwand-titel">Gebühren</span>
+    <span class="aufwand-punkte gebuehren-stufe-{{ gb.stufe or 0 }}" role="img"
+          aria-label="{{ 'Gebühren ' ~ gb.stufe ~ ' von ' ~ gb.hoechste if gb.stufe else 'Gebühren unbekannt' }}"
+          title="{{ 'Kontoführungsgebühren ' ~ gb.stufe ~ ' von ' ~ gb.hoechste if gb.stufe else 'Im Angebot nicht erkannt' }}">
+      {%- for i in range(1, gb.hoechste + 1) %}<span class="punkt{{ ' an' if gb.stufe and i <= gb.stufe else '' }}"></span>{% endfor -%}
+    </span>
+    <span class="vk-aufwand-label{{ ' unbekannt' if not gb.stufe else '' }}">{{ gb.label }}</span>
+    {% if gb.hinweis %}<span class="vk-gebuehren-hinweis">{{ gb.hinweis }}</span>{% endif %}
   </div>
   {% if x.bedingungen %}
   <details class="vk-bed-details">

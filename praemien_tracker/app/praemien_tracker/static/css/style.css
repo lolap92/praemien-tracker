@@ -2571,6 +2571,33 @@ table.lauf-tabelle tr:hover {
   --punkt-farbe: var(--danger);
 }
 
+.aufwand-punkte.gebuehren-stufe-2 {
+  --punkt-farbe: var(--st-wait);
+}
+.aufwand-punkte.gebuehren-stufe-3 {
+  --punkt-farbe: var(--danger);
+}
+
+/* Gebühren-Zeile: gleiche Spaltenbreite für den Titel wie beim Aufwand,
+   damit die Punkte beider Zeilen untereinander stehen. */
+.vk-aufwand-titel {
+  min-width: 4.6rem;
+}
+
+.vk-gebuehren {
+  margin-top: 0.3rem;
+}
+
+.vk-aufwand-label.unbekannt {
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+
+.vk-gebuehren-hinweis {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
 .aufwand-punkte .punkt {
   width: 10px;
   height: 10px;

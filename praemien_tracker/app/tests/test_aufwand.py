@@ -1,17 +1,22 @@
-"""finder/aufwand.py: Aufwandsstufe je Bedingung und je Vorschlag, und die
-Punkte-Anzeige auf der Vorschlagskarte."""
+"""finder/aufwand.py: Aufwandsstufe je Bedingung und je Vorschlag,
+Gebühren-Einstufung, und die Punkte-Anzeige auf der Vorschlagskarte."""
 
 from __future__ import annotations
 
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
 from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
 
-from praemien_tracker.finder.aufwand import aufwand, bedingung_stufe
+from praemien_tracker.finder import matching
+from praemien_tracker.finder.aufwand import aufwand, bedingung_stufe, gebuehren
+from praemien_tracker.finder.extraktion import AngebotExtraktion
+from praemien_tracker.finder.quellen import RohFund
 from praemien_tracker.main import app
 from praemien_tracker.models import VorschlagBedingung
+from praemien_tracker.schemas import DealImport
 
 from test_vorschlaege_router import _vorschlag, inhaber  # noqa: F401 (Fixture)
 
@@ -92,3 +97,71 @@ def test_karte_zeigt_punkte_und_bedingungen_aufklappbar(db, inhaber):  # noqa: F
     assert details is not None and not details.has_attr("open")
     assert "2 Bedingungen anzeigen" in details.summary.get_text()
     assert [s.get_text(strip=True) for s in details.select(".bed-stufe")] == ["Nur eröffnen", "Geld überweisen"]
+
+
+# --- Kontoführungsgebühren --------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("art", "euro", "stufe", "label"),
+    [
+        ("kostenlos", None, 1, "Kostenlos"),
+        ("vermeidbar", Decimal("4.90"), 2, "Vermeidbar · 4,90 €/Monat"),
+        ("fest", Decimal("3.90"), 3, "Feste Gebühr · 3,90 €/Monat"),
+        ("fest", None, 3, "Feste Gebühr"),
+        (None, None, None, "Unbekannt"),
+    ],
+)
+def test_gebuehren_stufe(art, euro, stufe, label):
+    ergebnis = gebuehren(SimpleNamespace(kontofuehrung=art, kontofuehrung_euro_monat=euro, kontofuehrung_hinweis=None))
+    assert ergebnis.stufe == stufe
+    assert ergebnis.label == label
+
+
+def _ext(**kwargs) -> AngebotExtraktion:
+    return AngebotExtraktion(bank_name="Testbank", kontoart="Girokonto", praemie_betrag=100.0, bedingungen=[], **kwargs)
+
+
+@pytest.mark.parametrize(
+    ("art", "euro", "erwartet"),
+    [("kostenlos", None, Decimal("0")), ("fest", 3.9, Decimal("3.90")), ("vermeidbar", 4.9, None), (None, None, None)],
+)
+def test_gebuehren_landen_beim_uebernehmen_im_deal(db, inhaber, art, euro, erwartet):  # noqa: F811
+    """Kostenlos -> 0, feste Gebühr -> Betrag; vermeidbar/unbekannt bleibt
+    leer und wird am Deal wie bisher als Lücke angemahnt."""
+    fund = RohFund("mydealz", "https://mydealz.de/t", "t", "x")
+    ergebnis = matching.bewerten(
+        db, fund, _ext(kontofuehrung=art, kontofuehrung_euro_monat=euro), inhaber, Decimal("50")
+    )
+    assert ergebnis.kontofuehrung == art
+    assert DealImport.model_validate_json(ergebnis.roh_json).kontofuehrungsgebuehren == erwartet
+
+
+def test_alter_cache_eintrag_ohne_gebuehrenfeld_bleibt_lesbar():
+    alt = '{"bank_name": "X", "kontoart": "Girokonto", "praemie_betrag": 50, "bedingungen": []}'
+    assert AngebotExtraktion.model_validate_json(alt).kontofuehrung is None
+
+
+def test_karte_zeigt_gebuehren_zeile(db, inhaber):  # noqa: F811
+    _vorschlag(
+        db,
+        inhaber,
+        "vorgeschlagen",
+        kontofuehrung="vermeidbar",
+        kontofuehrung_euro_monat=Decimal("4.90"),
+        kontofuehrung_hinweis="entfällt ab 700 € Geldeingang pro Monat",
+    )
+    soup = BeautifulSoup(client.get("/vorschlaege").text, "html.parser")
+    zeile = soup.select_one(".vorschlag-karte .vk-gebuehren")
+    assert zeile.select_one(".aufwand-punkte")["aria-label"] == "Gebühren 2 von 3"
+    assert len(zeile.select(".punkt.an")) == 2
+    assert zeile.select_one(".vk-aufwand-label").get_text(strip=True) == "Vermeidbar · 4,90 €/Monat"
+    assert zeile.select_one(".vk-gebuehren-hinweis").get_text(strip=True) == "entfällt ab 700 € Geldeingang pro Monat"
+
+
+def test_karte_ohne_gebuehren_zeigt_unbekannt(db, inhaber):  # noqa: F811
+    _vorschlag(db, inhaber, "vorgeschlagen")
+    soup = BeautifulSoup(client.get("/vorschlaege").text, "html.parser")
+    zeile = soup.select_one(".vorschlag-karte .vk-gebuehren")
+    assert zeile.select(".punkt.an") == []
+    assert zeile.select_one(".vk-aufwand-label").get_text(strip=True) == "Unbekannt"

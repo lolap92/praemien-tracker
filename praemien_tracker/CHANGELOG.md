@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.73.0
+
+Zweite Einstufung auf den Vorschlägen: Kontoführungsgebühren, als Punkte von 1 bis 3 unter dem Aufwand.
+
+- **Drei Gebührenstufen.** 1 = kostenlos, 2 = vermeidbar (die Gebühr entfällt bei regelmäßiger Aktivität, z. B. Geldeingang ab 700 € im Monat), 3 = feste Gebühr. Daneben stehen, wenn genannt, der Monatsbetrag und kurz, wodurch die Gebühr entfällt. Ist das Konto nur bis zu einem Alter kostenlos („kostenlos bis 30 Jahre, danach 3,90 €"), gilt es als feste Gebühr mit der Altersgrenze als Hinweis - wegüberweisen lässt sich so eine Gebühr nicht.
+- **Kommt aus der KI-Extraktion (`finder/extraktion.py`).** Anders als der Aufwand stehen Gebühren selten als Bedingung im Text, sondern im Fließtext oder Kleingedruckten; Stichwörter in den Bedingungen reichen dafür nicht. Die Extraktion liefert dafür drei neue Felder, die am Vorschlag gespeichert werden (Migration `0028`). Sagt der Text nichts zu Gebühren, steht auf der Karte „Unbekannt".
+- **Vorhandene Vorschläge zeigen zunächst „Unbekannt".** Ihre Analyse stammt von vor dieser Version. Mit „Alle neu analysieren" werden die offenen Karten (vorgeschlagen und zu prüfen) neu ausgewertet; das kostet je Fund einen KI-Aufruf. Bewusst kein automatisches Nachholen, damit keine ungefragten API-Kosten entstehen. Neue Funde bekommen die Gebühren sofort.
+- **Beim Übernehmen vorausgefüllt (`finder/matching.py`).** Kostenlos trägt am Deal 0 € ein, eine feste Gebühr ihren Monatsbetrag. Bei vermeidbarer oder unbekannter Gebühr bleibt das Feld leer und wird am Deal wie bisher als offene Angabe angemahnt.
+- **Auch im MCP-Server.** Die Vorschläge enthalten dort `kontofuehrung`, `kontofuehrung_euro_monat` und `kontofuehrung_hinweis`.
+
 ## 2.72.0
 
 Vorschläge zeigen den Aufwand jetzt als Punkte von 1 bis 5 statt als lange Stichpunktliste. So siehst du auf einen Blick, was ein Deal von dir verlangt.

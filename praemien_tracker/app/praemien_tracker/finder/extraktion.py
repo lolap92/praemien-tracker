@@ -101,6 +101,19 @@ class AngebotExtraktion(BaseModel):
     # sinnvolle Aufteilung gibt - dann zählt allein praemie_betrag.
     praemien: list[PraemieExtraktion] = []
     bedingungen: list[BedingungExtraktion]
+    # Kontoführungsgebühren des beworbenen Kontos: "kostenlos" (keine
+    # Gebühr), "vermeidbar" (Gebühr entfällt bei regelmäßiger Aktivität,
+    # z.B. Geldeingang ab 700 €), "fest" (Gebühr fällt in jedem Fall an).
+    # None, wenn der Text nichts dazu sagt - nicht raten. Default None auch
+    # für alte Cache-Einträge, die das Feld noch nicht kennen.
+    kontofuehrung: Literal["kostenlos", "vermeidbar", "fest"] | None = None
+    # Monatliche Gebühr in Euro, wenn eine genannt ist (bei "vermeidbar" die
+    # Gebühr, die ohne die Aktivität anfällt).
+    kontofuehrung_euro_monat: float | None = None
+    # Kurz, wodurch die Gebühr entfällt bzw. was sonst dazu gesagt wird
+    # (z.B. "entfällt ab 700 € Geldeingang pro Monat", "kostenlos bis 30
+    # Jahre").
+    kontofuehrung_hinweis: str | None = None
 
 
 class AnthropicMessagesClient(Protocol):
@@ -212,6 +225,23 @@ Als "erfuellt" zählt nur ein ausdrücklich beliebiger Geldeingang, z.B. \
   - "zu_pruefen": unklar formuliert oder nicht eindeutig aus dem Text zu \
 beurteilen.
 Ist im Text keine Bedingung erkennbar, eine leere Liste zurückgeben.
+- kontofuehrung: Kontoführungsgebühren des beworbenen Kontos (bei einer \
+Kreditkarte die Jahresgebühr, umgerechnet pro Monat):
+  - "kostenlos": keine Kontoführungsgebühr, ohne Bedingung (z.B. "kostenloses \
+Girokonto", Tagesgeld oder Depot ohne Depotgebühren).
+  - "vermeidbar": die Gebühr entfällt, wenn man regelmäßig etwas tut - z.B. \
+monatlicher Geldeingang ab einem Betrag, eine Mindestzahl an Buchungen oder \
+Kartenzahlungen.
+  - "fest": die Gebühr fällt in jedem Fall an. Auch eine nur altersabhängige \
+Gebührenfreiheit ("kostenlos bis 30 Jahre, danach 3,90 €") ist "fest" - \
+schreibe die Altersgrenze dann in kontofuehrung_hinweis.
+  Ist zu Gebühren nichts erkennbar, null - nicht raten.
+- kontofuehrung_euro_monat: die monatliche Gebühr in Euro als Zahl, sofern \
+genannt (bei "vermeidbar" die Gebühr, die ohne die Aktivität anfällt; bei \
+"kostenlos" 0), sonst null.
+- kontofuehrung_hinweis: kurz, wodurch die Gebühr entfällt oder was sonst \
+wichtig ist (z.B. "entfällt ab 700 € Geldeingang pro Monat", "kostenlos bis \
+30 Jahre"), sonst null.
 
 Angebotstext:
 {text}"""

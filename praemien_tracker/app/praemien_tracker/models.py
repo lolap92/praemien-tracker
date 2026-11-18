@@ -322,6 +322,13 @@ class DealVorschlag(Base):
     # Aus dem Angebotstext extrahiert, optional; bei Mehrdeutigkeit ("6 oder
     # 12 Monate") wird die kürzere Angabe übernommen (siehe extraktion.py).
     sperrfrist_monate: Mapped[int | None] = mapped_column(nullable=True)
+    # Kontoführungsgebühren laut Angebotstext (siehe extraktion.py):
+    # "kostenlos" | "vermeidbar" | "fest", NULL = im Text nicht erkennbar
+    # oder Vorschlag stammt von vor dieser Erkennung (dann hilft "Alle neu
+    # analysieren").
+    kontofuehrung: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    kontofuehrung_euro_monat: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    kontofuehrung_hinweis: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Klartext-Begründung(en), nur bei zu_pruefen/automatisch_abgelehnt gefüllt.
     ablehnungsgruende: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Komma-getrennte Codes aus matching.VERWERFEN_GRUENDE_LABELS, nur beim

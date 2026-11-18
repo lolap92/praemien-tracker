@@ -98,6 +98,10 @@ class VorschlagGruppe:
     praemie_art: str = "geld"
     praemie_bis: object = None
     praemie_beschreibung: object = None
+    # Kontoführungsgebühren (siehe models.DealVorschlag.kontofuehrung).
+    kontofuehrung: object = None
+    kontofuehrung_euro_monat: object = None
+    kontofuehrung_hinweis: object = None
 
 
 def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
@@ -144,6 +148,9 @@ def _gruppieren(vorschlaege: list[DealVorschlag]) -> list[VorschlagGruppe]:
                 praemie_art=fuehrend.praemie_art,
                 praemie_bis=fuehrend.praemie_bis,
                 praemie_beschreibung=fuehrend.praemie_beschreibung,
+                kontofuehrung=fuehrend.kontofuehrung,
+                kontofuehrung_euro_monat=fuehrend.kontofuehrung_euro_monat,
+                kontofuehrung_hinweis=fuehrend.kontofuehrung_hinweis,
             )
         )
     gruppen.sort(key=lambda g: max(m.gefunden_am for m in g.mitglieder), reverse=True)
@@ -684,6 +691,9 @@ async def uebernehmen_bestaetigen(request: Request, db: Session = Depends(get_db
                     praemie_art=referenz.praemie_art,
                     praemie_bis=referenz.praemie_bis,
                     praemie_beschreibung=referenz.praemie_beschreibung,
+                    kontofuehrung=referenz.kontofuehrung,
+                    kontofuehrung_euro_monat=referenz.kontofuehrung_euro_monat,
+                    kontofuehrung_hinweis=referenz.kontofuehrung_hinweis,
                     sperrfrist_monate=referenz.sperrfrist_monate,
                     roh_json=json.dumps(roh, ensure_ascii=False),
                     inhalt_hash=referenz.inhalt_hash,

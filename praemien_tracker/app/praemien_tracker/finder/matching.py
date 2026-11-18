@@ -129,6 +129,10 @@ class MatchErgebnis:
     # Höchstwert bei schwankendem Wert, nur gesetzt, wenn über praemie_betrag.
     praemie_bis: Decimal | None = None
     praemie_beschreibung: str | None = None
+    # Kontoführungsgebühren (siehe extraktion.AngebotExtraktion.kontofuehrung).
+    kontofuehrung: str | None = None
+    kontofuehrung_euro_monat: Decimal | None = None
+    kontofuehrung_hinweis: str | None = None
 
 
 def _bank_finden(db: Session, bank_name: str) -> Bank | None:
@@ -410,6 +414,11 @@ def bewerten(
     else:
         fallback_quelle = _standard_praemienquelle(fund.quelle)
         praemien_json = [{"quelle": fallback_quelle, "betrag": str(praemie_betrag), "erhalten": False}]
+    kontofuehrung_euro = (
+        _praemie_betrag(extraktion.kontofuehrung_euro_monat)
+        if extraktion.kontofuehrung_euro_monat is not None and extraktion.kontofuehrung_euro_monat >= 0
+        else None
+    )
     roh_json = json.dumps(
         {
             "bank": extraktion.bank_name.strip(),
@@ -435,6 +444,16 @@ def bewerten(
                 for b in bedingungen
             ],
             "urls": [{"url": fund.quelle_url, "bezeichnung": f"{fund.quelle}-Angebot"}],
+            # Für den übernommenen Deal: kostenlos = 0, feste Gebühr = Betrag.
+            # Bei vermeidbarer oder unbekannter Gebühr bleibt das Feld leer
+            # und wird am Deal wie bisher als Lücke angemahnt.
+            "kontofuehrungsgebuehren": (
+                "0"
+                if extraktion.kontofuehrung == "kostenlos"
+                else str(kontofuehrung_euro)
+                if extraktion.kontofuehrung == "fest" and kontofuehrung_euro is not None
+                else None
+            ),
         },
         ensure_ascii=False,
     )
@@ -453,6 +472,9 @@ def bewerten(
         praemie_art=extraktion.praemie_art,
         praemie_bis=praemie_bis,
         praemie_beschreibung=praemie_beschreibung,
+        kontofuehrung=extraktion.kontofuehrung,
+        kontofuehrung_euro_monat=kontofuehrung_euro,
+        kontofuehrung_hinweis=(extraktion.kontofuehrung_hinweis or "").strip()[:255] or None,
     )
 
 

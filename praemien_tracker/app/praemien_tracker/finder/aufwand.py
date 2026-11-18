@@ -104,3 +104,43 @@ def aufwand(bedingungen: Iterable) -> Aufwand:
     .beschreibung). Ohne Bedingungen bleibt nur die Eröffnung - Stufe 1."""
     stufe = max((bedingung_stufe(b.beschreibung) for b in bedingungen), default=STUFE_EROEFFNEN)
     return Aufwand(stufe=stufe, label=STUFEN_LABELS[stufe])
+
+
+# --- Zweite Einstufung: Kontoführungsgebühren -------------------------------
+#
+#   1  Kostenlos    keine Gebühr
+#   2  Vermeidbar   Gebühr entfällt bei regelmäßiger Aktivität (Geldeingang …)
+#   3  Fest         Gebühr fällt in jedem Fall an
+#
+# Anders als der Aufwand kommt das nicht aus Stichwörtern, sondern direkt aus
+# der KI-Extraktion (DealVorschlag.kontofuehrung): Gebühren stehen selten als
+# Bedingung im Text, sondern im Fließtext oder Kleingedruckten.
+
+GEBUEHREN_STUFEN = {"kostenlos": 1, "vermeidbar": 2, "fest": 3}
+GEBUEHREN_LABELS = {"kostenlos": "Kostenlos", "vermeidbar": "Vermeidbar", "fest": "Feste Gebühr"}
+GEBUEHREN_HOECHSTE = 3
+
+
+@dataclass(frozen=True)
+class Gebuehren:
+    stufe: int | None  # None = nicht bekannt
+    label: str
+    hinweis: str | None
+    hoechste: int = GEBUEHREN_HOECHSTE
+
+
+def _euro(wert) -> str:
+    return f"{wert:.2f}".replace(".", ",") + " €"
+
+
+def gebuehren(vorschlag) -> Gebuehren:
+    """Gebühren-Einstufung eines Vorschlags (Objekt mit kontofuehrung,
+    kontofuehrung_euro_monat, kontofuehrung_hinweis)."""
+    art = getattr(vorschlag, "kontofuehrung", None)
+    if art not in GEBUEHREN_STUFEN:
+        return Gebuehren(stufe=None, label="Unbekannt", hinweis=None)
+    label = GEBUEHREN_LABELS[art]
+    betrag = getattr(vorschlag, "kontofuehrung_euro_monat", None)
+    if art != "kostenlos" and betrag:
+        label += f" · {_euro(betrag)}/Monat"
+    return Gebuehren(stufe=GEBUEHREN_STUFEN[art], label=label, hinweis=getattr(vorschlag, "kontofuehrung_hinweis", None))

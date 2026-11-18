@@ -389,6 +389,9 @@ def vorschlaege_abfragen(
                 "praemie_beschreibung": v.praemie_beschreibung,
                 "teilpraemien": [{"betrag": _wert(p.betrag), "geber": p.geber, "wofuer": p.bedingung} for p in v.praemien],
                 "sperrfrist_monate": v.sperrfrist_monate,
+                "kontofuehrung": v.kontofuehrung,
+                "kontofuehrung_euro_monat": _wert(v.kontofuehrung_euro_monat),
+                "kontofuehrung_hinweis": v.kontofuehrung_hinweis,
                 "bedingungen": [{"beschreibung": b.beschreibung, "einschaetzung": b.einschaetzung} for b in v.bedingungen],
                 "ablehnungs_oder_pruefgruende": [g for g in (v.ablehnungsgruende or "").split("; ") if g],
                 "verwerfen_gruende": [

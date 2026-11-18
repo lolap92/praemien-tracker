@@ -170,6 +170,9 @@ def _vorschlag_felder_setzen(
     vorschlag.praemie_art = match.praemie_art
     vorschlag.praemie_bis = match.praemie_bis
     vorschlag.praemie_beschreibung = match.praemie_beschreibung
+    vorschlag.kontofuehrung = match.kontofuehrung
+    vorschlag.kontofuehrung_euro_monat = match.kontofuehrung_euro_monat
+    vorschlag.kontofuehrung_hinweis = match.kontofuehrung_hinweis
     vorschlag.sperrfrist_monate = match.sperrfrist_monate
     vorschlag.ablehnungsgruende = match.ablehnungsgruende
     vorschlag.roh_json = match.roh_json
