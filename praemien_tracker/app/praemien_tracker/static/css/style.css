@@ -1131,6 +1131,11 @@ dialog.todo-dialog .dialog-loeschen {
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
+  /* Bezugspunkt für das versteckte input unten: ohne ihn hängt es am
+     Seitenrand statt am Chip, ragt aus der seitlich wischbaren Chip-Zeile
+     heraus und macht auf dem Handy die ganze Seite breiter als den
+     Bildschirm - die Karten wirken dann abgeschnitten. */
+  position: relative;
 }
 .filter-chip input {
   position: absolute;
@@ -2088,6 +2093,9 @@ table.lauf-tabelle tr:hover {
 .vorschlag-karte {
   padding: 0.8rem 0.9rem;
   margin-bottom: 0.7rem;
+  /* Lange Wörter/URLs aus der KI-Extraktion umbrechen statt überstehen. */
+  overflow-wrap: break-word;
+  min-width: 0;
 }
 
 .vk-kopf {
@@ -2143,6 +2151,15 @@ table.lauf-tabelle tr:hover {
 
 .vk-fakt {
   white-space: nowrap;
+}
+
+/* Freitext wie die Prämienbeschreibung ("Prämie ist personalisiert …") kann
+   beliebig lang sein: eigene Zeile und Umbruch erlaubt, sonst ragt er auf
+   dem Handy über die Karte hinaus und verschiebt die ganze Seite seitlich. */
+.vk-fakt.vk-fakt-text {
+  white-space: normal;
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
 }
 
 .vorschlag-tag {

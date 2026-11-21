@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.74.1
+
+Auf dem Handy ragte die Seite „Vorschläge" seitlich über den Bildschirm hinaus - Karten und Texte wirkten rechts abgeschnitten.
+
+- **Eigentliche Ursache: die Filter-Chips (`static/css/style.css`).** Jeder Chip enthält ein unsichtbares Auswahlfeld. Es hing bisher nicht am Chip, sondern am Seitenrand und ragte deshalb aus der seitlich wischbaren Chip-Zeile („Vorgeschlagen · Zu prüfen · Automatisch abgelehnt …") heraus. Die Seite wurde dadurch so breit wie die ganze Zeile, und man konnte sie seitlich verschieben. Jetzt bleibt das Feld im Chip; die Chip-Zeile lässt sich weiter für sich wischen. Betroffen waren auf schmalen Bildschirmen auch „Deals" und „Zu erledigen", wenn ihre Chip-Zeile breiter als der Bildschirm war.
+- **Lange Prämienbeschreibung bricht um (`templates/vorschlaege.html`).** Ein Text wie „Prämie ist personalisiert/zufallsbasiert bestimmt, sichere Garantie 120 € …" stand bisher ohne Umbruch in einer Zeile. Er steht jetzt in einer eigenen Zeile und bricht um. Zusätzlich brechen sehr lange Wörter auf der Vorschlagskarte um, statt über den Rand zu ragen.
+
 ## 2.74.0
 
 Zweite Einstufung auf den Vorschlägen: Kontoführungsgebühren, als Punkte von 1 bis 3 unter dem Aufwand.

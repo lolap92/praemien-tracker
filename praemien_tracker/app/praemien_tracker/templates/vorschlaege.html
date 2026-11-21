@@ -321,7 +321,7 @@
   <div class="vk-fakten">
     <span class="vk-fakt">Gefunden {{ g.gefunden_am | datum }}</span>
     {% if g.sperrfrist_monate %}<span class="vk-fakt">Sperrfrist {{ g.sperrfrist_monate }} Mon.</span>{% endif %}
-    {% if g.praemie_beschreibung %}<span class="vk-fakt">{{ g.praemie_beschreibung }}</span>{% endif %}
+    {% if g.praemie_beschreibung %}<span class="vk-fakt vk-fakt-text">{{ g.praemie_beschreibung }}</span>{% endif %}
   </div>
 
   {% if g.praemien | length > 1 %}
