@@ -163,8 +163,12 @@ TAEGLICHER_LAUF_AKTIV: bool = bool(_OPTIONEN.get("taeglicher_lauf_aktiv", True))
 # keine KI-Websuche für Kündigungswege wollen, oder umgekehrt).
 KUENDIGUNG_HINWEISE_BATCH_AKTIV: bool = bool(_OPTIONEN.get("kuendigung_hinweise_batch_aktiv", True))
 
-# MCP-Server für Claude (siehe mcp_server.py): nur lesend, eigener Port neben
+# MCP-Server für Claude (siehe mcp_server.py): lesend, eigener Port neben
 # der Oberfläche. Startet nur mit gesetztem Schlüssel - ohne "mcp_token" gibt
 # es keinen offenen Endpunkt, auch wenn der Port freigegeben ist.
 MCP_TOKEN: str = str(_OPTIONEN.get("mcp_token") or "").strip()
 MCP_PORT: int = int(os.environ.get("MCP_PORT", "8001"))
+# Einzige Schreib-Ausnahme des MCP-Servers: Kündigungsschreiben als Entwurf
+# speichern. Standardmäßig aus, damit der Server ohne bewusste Entscheidung
+# rein lesend bleibt.
+MCP_ENTWUERFE_SPEICHERN: bool = bool(_OPTIONEN.get("mcp_entwuerfe_speichern", False))

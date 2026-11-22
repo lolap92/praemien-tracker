@@ -49,10 +49,17 @@ configuration:
     name: MCP-Schlüssel (Claude)
     description: >-
       Geheimer Schlüssel für den MCP-Server, über den Claude (z. B. Claude
-      Code im Heimnetz) den Prämien-Tracker lesen kann - nur lesend.
+      Code im Heimnetz) den Prämien-Tracker lesen kann.
       Kontonummern, Anschrift, IBAN und Kündigungsschreiben gibt er nur über
       die Kündigungs-Werkzeuge heraus. Mindestens 16 Zeichen; leer lassen
       schaltet den MCP-Server ab. Zusätzlich unter "Netzwerk" einen Port für
       8001/tcp eintragen.
+  mcp_entwuerfe_speichern:
+    name: MCP darf Kündigungsentwürfe speichern
+    description: >-
+      Erlaubt Claude über den MCP-Server, Kündigungsschreiben (Brief, E-Mail,
+      ausgefülltes Bankformular) als Entwurf unter "Gespeicherte Schreiben"
+      abzulegen. Als versendet markieren, als gekündigt abhaken und alle
+      anderen Änderungen bleiben in der App. Aus = MCP-Server nur lesend.
 network:
-  8001/tcp: MCP-Server für Claude (nur lesend)
+  8001/tcp: MCP-Server für Claude

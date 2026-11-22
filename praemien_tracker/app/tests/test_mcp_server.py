@@ -352,3 +352,114 @@ def test_schreiben_downloads(db, daten):
         assert client.get(f"/dateien/schreiben/{ausgefuellt.id}.docx", headers=kopf).status_code == 404
         assert client.get("/dateien/schreiben/999999.pdf", headers=kopf).status_code == 404
         assert client.get("/dateien/schreiben/x.exe", headers=kopf).status_code == 404
+
+
+# --- Entwürfe speichern (Option mcp_entwuerfe_speichern) ----------------------
+
+
+def _werkzeuge(entwuerfe_speichern: bool) -> dict:
+    kopf = {**KOPF, "Authorization": f"Bearer {TOKEN}"}
+    with TestClient(mcp_server.asgi_app(TOKEN, entwuerfe_speichern)) as client:
+        _rpc(
+            client,
+            "initialize",
+            {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}},
+            kopf=kopf,
+        )
+        return {w["name"]: w for w in _rpc(client, "tools/list", kopf=kopf, nr=2).json()["result"]["tools"]}
+
+
+def test_speicher_werkzeuge_nur_mit_option():
+    aus = _werkzeuge(False)
+    assert "kuendigungsbrief_speichern" not in aus and "kuendigungsformular_speichern" not in aus
+    an = _werkzeuge(True)
+    for name in ("kuendigungsbrief_speichern", "kuendigungsformular_speichern"):
+        assert an[name]["annotations"]["readOnlyHint"] is False
+    assert {n for n, w in an.items() if not w["annotations"]["readOnlyHint"]} == {
+        "kuendigungsbrief_speichern", "kuendigungsformular_speichern",
+    }
+
+
+def test_brief_entwurf_aus_app_vorlage(db, daten):
+    daten["inhaber"].voller_name = "Max Muster"
+    daten["deal"].bank.anschrift = "Prämienbank AG\nPostfach 1\n10000 Berlin"
+    db.commit()
+    r = mcp_server.kuendigungsbrief_speichern_ausfuehren(db, daten["deal"].id, "brief", None, None)
+    assert r["gespeichert"] is True
+    s = db.query(Kuendigungsschreiben).one()
+    assert s.kanal == "brief" and s.versendet_am is None
+    assert "DE11111111111111111111" in s.betreff + s.text
+    assert s.empfaenger.startswith("Prämienbank AG") and s.absender.startswith("Max Muster")
+    # Nichts als gekündigt markiert.
+    db.expire_all()
+    assert db.get(Deal, daten["deal"].id).gekuendigt is False
+
+
+def test_email_eigener_text_ersetzt_offenen_entwurf(db, daten):
+    daten["inhaber"].voller_name = "Max Muster"
+    db.commit()
+    deal_id = daten["deal"].id
+    mcp_server.kuendigungsbrief_speichern_ausfuehren(db, deal_id, "email", "Kündigung", "Sehr geehrte Damen und Herren,\n\nerste Fassung")
+    r = mcp_server.kuendigungsbrief_speichern_ausfuehren(db, deal_id, "email", "Kündigung Girokonto", "Sehr geehrte Damen und Herren,\n\nzweite Fassung")
+    alle = db.query(Kuendigungsschreiben).all()
+    assert len(alle) == 1 and "zweite Fassung" in alle[0].text
+    assert "Geheimweg 1" in alle[0].text  # Signatur mit Anschrift wie in der App
+    assert r["schreiben"]["betreff"] == "Kündigung Girokonto"
+
+
+def test_brief_ohne_angaben_wird_nicht_gespeichert(db, daten):
+    r = mcp_server.kuendigungsbrief_speichern_ausfuehren(db, daten["deal"].id, "brief", None, None)
+    assert "fehlt" in r["fehler"]
+    # Mit eigenem Text, aber ohne vollen Namen und Bankanschrift: kein Brief.
+    r = mcp_server.kuendigungsbrief_speichern_ausfuehren(db, daten["deal"].id, "brief", "Kündigung", "Text")
+    assert "Postanschrift der Bank" in r["fehler"]
+    assert mcp_server.kuendigungsbrief_speichern_ausfuehren(db, daten["deal"].id, "fax", "a", "b")["fehler"]
+    assert mcp_server.kuendigungsbrief_speichern_ausfuehren(db, 999999, "email", "a", "b")["fehler"]
+    assert db.query(Kuendigungsschreiben).count() == 0
+
+
+def test_formular_entwurf_speichert_pdf_und_eigene_werte(db, daten, formular):
+    deal_id = daten["deal"].id
+    r = mcp_server.kuendigungsformular_speichern_ausfuehren(
+        db, deal_id, {"Kundennummer": "K-9", "Restguthaben": "an", "Feld2": "Muster"}
+    )
+    assert r["gespeichert"] is True
+    s = db.query(Kuendigungsschreiben).one()
+    assert s.kanal == "formular" and s.versendet_am is None
+    werte = _felder(s.datei)
+    assert werte["Kundennummer"] == "K-9" and werte["Restguthaben"] == "/Ja"
+    assert werte["IBAN"] == "DE02120300000000202051"
+    assert "Kundennummer: K-9" in s.text
+    db.expire_all()
+    deal = db.get(Deal, deal_id)
+    # Feld2 entspricht dem Vorschlag - kein eigener Wert, folgt also Änderungen.
+    assert json.loads(deal.kuendigung_formular_werte) == {"Kundennummer": "K-9", "Restguthaben": "an"}
+    assert deal.gekuendigt is False
+
+
+def test_formular_entwurf_unbekanntes_feld(db, daten, formular):
+    r = mcp_server.kuendigungsformular_speichern_ausfuehren(db, daten["deal"].id, {"Gibtsnicht": "x"})
+    assert r["fehler"] == "Unbekannte Felder: Gibtsnicht"
+    assert db.query(Kuendigungsschreiben).count() == 0
+    assert mcp_server.kuendigungsformular_speichern_ausfuehren(db, daten["konto"].id, None)["fehler"]
+
+
+def test_formular_entwurf_ueber_http(db, daten, formular):
+    kopf = {**KOPF, "Authorization": f"Bearer {TOKEN}"}
+    with TestClient(mcp_server.asgi_app(TOKEN, True)) as client:
+        _rpc(
+            client,
+            "initialize",
+            {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}},
+            kopf=kopf,
+        )
+        aufruf = _rpc(
+            client,
+            "tools/call",
+            {"name": "kuendigungsformular_speichern", "arguments": {"deal_id": daten["deal"].id, "werte": {"Kundennummer": "K-1"}}},
+            kopf=kopf,
+            nr=3,
+        ).json()["result"]
+        assert not aufruf.get("isError"), aufruf
+    db.expire_all()
+    assert db.query(Kuendigungsschreiben).one().kanal == "formular"

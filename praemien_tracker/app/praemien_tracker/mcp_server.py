@@ -1,6 +1,11 @@
 """MCP-Server: Claude (z. B. Claude Code im Heimnetz) liest den Prämien-Tracker.
 
-Ausschließlich lesend - kein Werkzeug ändert etwas an der Datenbank. Läuft
+Lesend - mit einer schmalen, abschaltbaren Ausnahme: Mit der Option
+"mcp_entwuerfe_speichern" darf Claude Kündigungsschreiben (Brief, E-Mail,
+ausgefülltes Bankformular) als Entwurf speichern, genau wie die Knöpfe des
+Kündigungs-Assistenten. Als versendet markieren, als gekündigt abhaken und
+jede andere Änderung bleiben der App vorbehalten. Ohne die Option werden die
+beiden Werkzeuge gar nicht erst angeboten. Läuft
 auf einem eigenen Port (MCP_PORT, Standard 8001) neben der eigentlichen
 Oberfläche, weil die nur über den Home-Assistant-Ingress mit HA-Anmeldung
 erreichbar ist, an der sich ein MCP-Client nicht anmelden kann. Der Port ist
@@ -76,6 +81,8 @@ MINDESTLAENGE_TOKEN = 16
 _VERDECKTE_PROTOKOLLFELDER = {"kontonummer", "iban", "voller_name", "strasse", "plz", "ort", "geburtsdatum", "email"}
 
 _NUR_LESEN = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+# Überschreibt einen offenen Entwurf desselben Kanals - nichts sonst.
+_ENTWURF = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 ANWEISUNGEN = """\
 Lesezugriff auf den Prämien-Tracker: Bank-Prämien-Deals (Neukunden-Prämien für \
@@ -90,6 +97,14 @@ kuendigungsformular(deal_id). Dateien (PDF/Word) als HTTP-Download unter dem \
 Pfad aus "downloads", relativ zur Adresse dieses MCP-Servers (ohne /mcp), mit \
 demselben Authorization-Kopf. \
 Nur lesend - Änderungen macht die Nutzerin/der Nutzer in der App."""
+
+ANWEISUNGEN_ENTWUERFE = """\
+Lesend, mit einer Ausnahme: kuendigungsbrief_speichern und \
+kuendigungsformular_speichern legen ein Kündigungsschreiben als Entwurf unter \
+"Gespeicherte Schreiben" ab (ein offener Entwurf desselben Kanals wird \
+ersetzt). Versenden, als versendet markieren und alle anderen Änderungen \
+macht die Nutzerin/der Nutzer in der App. Vor dem Speichern das Schreiben \
+bzw. das ausgefüllte PDF zeigen und bestätigen lassen."""
 
 
 # --- Hilfen ---------------------------------------------------------------
@@ -639,6 +654,92 @@ def kuendigung_daten_abfragen(db: Session, deal_id: int) -> dict:
     }
 
 
+# --- Entwürfe speichern (nur mit Option mcp_entwuerfe_speichern) ------------
+
+
+def kuendigungsbrief_speichern_ausfuehren(
+    db: Session, deal_id: int, kanal: str, betreff: str | None, text: str | None
+) -> dict:
+    """Wie der Knopf im Kündigungs-Assistenten (routers/kuendigung.py,
+    kuendigung_schreiben): dieselben Prüfungen, derselbe Speicherweg
+    (ka.schreiben_speichern). Ohne betreff/text gilt der Entwurf der App."""
+    if kanal not in ("brief", "email"):
+        return {"fehler": 'kanal muss "brief" oder "email" sein.'}
+    deal = (
+        db.query(Deal)
+        .options(joinedload(Deal.bank), joinedload(Deal.inhaber), joinedload(Deal.kuendigungsschreiben))
+        .filter(Deal.id == deal_id)
+        .one_or_none()
+    )
+    if deal is None:
+        return {"fehler": f"Deal {deal_id} existiert nicht."}
+    werte = ka.werte_fuer(deal)
+    if not betreff or not text:
+        anforderung = ka.anforderung_fuer(db, deal)
+        fehlend = list(dict.fromkeys(ka.absender_fehlend(werte) + ka.fehlende(anforderung, werte)))
+        if fehlend and (not betreff or not text):
+            labels = [ka.label_fuer(anforderung, k) for k in fehlend]
+            return {"fehler": "Ohne eigenen Betreff und Text fehlt für den Entwurf noch: " + ", ".join(labels) + "."}
+        entwurf = ka.schreiben(anforderung, werte)
+        betreff = betreff or entwurf["betreff"]
+        text = text or entwurf["text"]
+    betreff, text = betreff.strip(), text.strip()
+    if not betreff or not text:
+        return {"fehler": "Betreff und Text dürfen nicht leer sein."}
+    if kanal == "brief":
+        fehlend = ka.absender_fehlend(werte)
+        if fehlend or not deal.bank.anschrift:
+            labels = [ka.STANDARD_FELDER[f] for f in fehlend] + ([] if deal.bank.anschrift else ["Postanschrift der Bank"])
+            return {"fehler": "Für den Brief fehlt noch: " + ", ".join(labels) + " (in der App eintragen)."}
+    schreiben = ka.schreiben_speichern(deal, kanal, betreff, text)
+    db.commit()
+    return {"gespeichert": True, "schreiben": _schreiben(schreiben)}
+
+
+def kuendigungsformular_speichern_ausfuehren(db: Session, deal_id: int, eingaben: dict[str, str] | None) -> dict:
+    """Wie "Ausfüllen" in der Ausfüllhilfe (routers/kuendigung.py,
+    formular_angaben): eigene Feldwerte am Deal merken - ein Wert gleich dem
+    Vorschlag gilt nicht als eigener, damit er Adressänderungen folgt -,
+    Formular ausfüllen und als Entwurf speichern. Zusatzangaben, Inhaber und
+    Bank bleiben unberührt."""
+    deal = (
+        db.query(Deal)
+        .options(joinedload(Deal.bank), joinedload(Deal.inhaber), joinedload(Deal.kuendigungsschreiben))
+        .filter(Deal.id == deal_id)
+        .one_or_none()
+    )
+    if deal is None:
+        return {"fehler": f"Deal {deal_id} existiert nicht."}
+    formular = kf.formular_fuer(db, deal)
+    if formular is None:
+        return {"fehler": f"Für {_bezeichnung(deal)} ist kein Bankformular hinterlegt."}
+    eingaben = {str(k): "" if v is None else str(v).strip() for k, v in (eingaben or {}).items()}
+    vorher = kf.feldwerte(formular, deal)
+    unbekannt = sorted(set(eingaben) - {fw.feld.name for fw in vorher})
+    if unbekannt:
+        return {"fehler": f"Unbekannte Felder: {', '.join(unbekannt)}"}
+    eigen = kf.eigene_werte(deal)
+    for fw in vorher:
+        if fw.feld.name not in eingaben:
+            continue
+        if eingaben[fw.feld.name] == fw.vorschlag:
+            eigen.pop(fw.feld.name, None)
+        else:
+            eigen[fw.feld.name] = eingaben[fw.feld.name]
+    deal.kuendigung_formular_werte = json.dumps(eigen, ensure_ascii=False, sort_keys=True) if eigen else None
+    werte = kf.feldwerte(formular, deal)
+    try:
+        pdf = kf.ausfuellen(formular.pdf, werte)
+    except Exception:
+        db.rollback()
+        logger.exception("Formular für Deal %s ließ sich nicht ausfüllen.", deal_id)
+        return {"fehler": "Das Formular ließ sich nicht ausfüllen - nichts gespeichert."}
+    liste = "\n".join(f"{fw.feld.label}: {fw.wert}" for fw in werte if fw.wert and fw.wert != kf.AUS)
+    schreiben = ka.schreiben_speichern(deal, "formular", f"Kündigungsformular {deal.bank.name}", liste, datei=pdf)
+    db.commit()
+    return {"gespeichert": True, "schreiben": _schreiben(schreiben)}
+
+
 def protokoll_abfragen(db: Session, deal_id: int | None, limit: int) -> dict:
     abfrage = db.query(ProtokollEintrag)
     if deal_id is not None:
@@ -690,13 +791,14 @@ def finder_laeufe_abfragen(db: Session, limit: int) -> dict:
 # --- MCP-Werkzeuge -------------------------------------------------------
 
 
-def server_bauen() -> FastMCP:
+def server_bauen(entwuerfe_speichern: bool = False) -> FastMCP:
     """Je Aufruf ein frischer Server - der Session-Manager eines FastMCP lässt
     sich nur einmal starten (relevant für Tests, die die App mehrfach
-    hochfahren)."""
+    hochfahren). entwuerfe_speichern: die beiden Speicher-Werkzeuge
+    anbieten (Option mcp_entwuerfe_speichern)."""
     mcp = FastMCP(
         "Prämien-Tracker",
-        instructions=ANWEISUNGEN,
+        instructions=ANWEISUNGEN + ("\n\n" + ANWEISUNGEN_ENTWUERFE if entwuerfe_speichern else ""),
         # Zustandslos: jede Anfrage steht für sich, nichts bleibt im Speicher
         # hängen. Antworten bewusst als Event-Stream (Standard) statt
         # json_response - im JSON-Modus loggt mcp 1.12 nach jeder Anfrage einen
@@ -835,6 +937,33 @@ def server_bauen() -> FastMCP:
         Fehlern."""
         return await laufen(finder_laeufe_abfragen, max(1, min(limit, 50)))
 
+    if entwuerfe_speichern:
+
+        @mcp.tool(annotations=_ENTWURF)
+        async def kuendigungsbrief_speichern(
+            deal_id: int, kanal: Literal["brief", "email"], betreff: str | None = None, text: str | None = None
+        ) -> dict:
+            """Speichert ein Kündigungsschreiben als Entwurf unter "Gespeicherte
+            Schreiben" - wie der Knopf im Kündigungs-Assistenten. Ohne betreff
+            und text gilt der Entwurf aus kuendigung_daten. text mit Anrede und
+            Grußformel, ohne Namen und Absender (fügt die App an). Ein noch
+            nicht versendeter Entwurf desselben Kanals wird ersetzt. Markiert
+            nichts als versendet oder gekündigt. Vorher Text zeigen und
+            bestätigen lassen."""
+            return await laufen(kuendigungsbrief_speichern_ausfuehren, deal_id, kanal, betreff, text)
+
+        @mcp.tool(annotations=_ENTWURF)
+        async def kuendigungsformular_speichern(deal_id: int, werte: dict[str, str] | None = None) -> dict:
+            """Füllt das Bankformular aus und speichert es als Entwurf unter
+            "Gespeicherte Schreiben" - wie "Ausfüllen" in der Ausfüllhilfe.
+            werte: {"feldname": "wert"} (Namen aus kuendigungsformular,
+            Ankreuzfelder "an"/"aus"); sie werden als eigene Eingaben am Deal
+            gemerkt, nicht genannte Felder behalten ihren Wert. Ein noch nicht
+            versendeter Formular-Entwurf wird ersetzt. Markiert nichts als
+            versendet oder gekündigt. Vorher das ausgefüllte PDF zeigen und
+            bestätigen lassen."""
+            return await laufen(kuendigungsformular_speichern_ausfuehren, deal_id, werte)
+
     return mcp
 
 
@@ -961,8 +1090,8 @@ class BearerSchutz:
         await self.app(scope, receive, send)
 
 
-def asgi_app(token: str) -> ASGIApp:
-    app = server_bauen().streamable_http_app()
+def asgi_app(token: str, entwuerfe_speichern: bool = False) -> ASGIApp:
+    app = server_bauen(entwuerfe_speichern).streamable_http_app()
     app.router.routes.extend(DATEI_ROUTEN)
     return BearerSchutz(app, token)
 
@@ -971,7 +1100,7 @@ def token_ok(token: str | None) -> bool:
     return bool(token) and len(token) >= MINDESTLAENGE_TOKEN
 
 
-def server_erstellen(token: str, port: int):
+def server_erstellen(token: str, port: int, entwuerfe_speichern: bool = False):
     """uvicorn-Server für den MCP-Endpunkt. main.py startet ihn als
     Hintergrund-Task im Lifespan der Haupt-App und beendet ihn dort über
     should_exit wieder. Die Signalbehandlung bleibt beim Haupt-Server
@@ -985,7 +1114,7 @@ def server_erstellen(token: str, port: int):
     # timeout_graceful_shutdown: eine offen gehaltene Verbindung von Claude
     # darf das Herunterfahren des Add-ons nicht aufhalten.
     config = uvicorn.Config(
-        asgi_app(token),
+        asgi_app(token, entwuerfe_speichern),
         host="0.0.0.0",
         port=port,
         lifespan="on",

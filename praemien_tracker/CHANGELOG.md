@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.77.0
+
+Claude kann Kündigungsschreiben jetzt auch direkt in der App speichern, als Entwurf. Das gilt für Briefe, E-Mails und ausgefüllte Bankformulare. Bisher musstest du das von Claude ausgefüllte Formular in der App noch einmal selbst ausfüllen und speichern.
+
+- **Neue Add-on-Option „MCP darf Kündigungsentwürfe speichern"** (`mcp_entwuerfe_speichern`, standardmäßig aus). Ohne sie ist der MCP-Server rein lesend wie bisher, und die neuen Werkzeuge werden gar nicht erst angeboten.
+- **`kuendigungsbrief_speichern` (`mcp_server.py`).** Das Werkzeug speichert einen Brief oder eine E-Mail als Entwurf, wahlweise mit dem Text aus dem Kündigungs-Assistenten oder mit einem eigenen Betreff und Text. Es macht dasselbe wie der Knopf in der App und prüft dasselbe: Ein Brief braucht Absenderangaben und die Postanschrift der Bank. Die E-Mail bekommt die Signatur mit Anschrift.
+- **`kuendigungsformular_speichern`.** Das Werkzeug füllt das Bankformular aus und speichert es als Entwurf, wie „Ausfüllen" in der Ausfüllhilfe. Claudes Feldwerte merkt sich die App dabei wie deine eigenen Eingaben. Ein Wert, der ohnehin dem Vorschlag entspricht, gilt nicht als eigener, damit er einer späteren Adressänderung folgt. Unbekannte Feldnamen werden abgelehnt, dann wird nichts gespeichert.
+- **Bewusst eng gefasst.** Ein noch nicht versendeter Entwurf desselben Kanals wird ersetzt, genau wie in der App. Ein versendetes Schreiben fasst Claude nie an. Als versendet markieren und damit den Deal als gekündigt abhaken bleibt bei dir in der App. Anschrift, IBAN, Bankdaten, Zusatzangaben und alles andere kann Claude auch mit der Option nicht ändern. Grund: Das Speichern eines Entwurfs ist harmlos und lässt sich in der App löschen. Ob wirklich gekündigt wurde, ist dagegen ein Fakt, den nur du bestätigen sollst.
+
 ## 2.76.0
 
 Claude kann über den MCP-Server jetzt auch die Kündigungsdateien selbst lesen und Bankformulare ausfüllen: als Vorschau, ohne dass in der App etwas gespeichert wird. Bisher sah er nur den Text der Schreiben und dass es ein ausgefülltes Formular gibt.

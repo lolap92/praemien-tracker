@@ -212,7 +212,8 @@ async def lifespan(app: FastAPI):
 
 
 def _mcp_starten():
-    """MCP-Server für Claude (nur lesend, siehe mcp_server.py) als
+    """MCP-Server für Claude (lesend, optional Kündigungsentwürfe speichern,
+    siehe mcp_server.py) als
     Hintergrund-Task im selben Prozess - kein zweiter Container. Ohne
     ausreichend langen Schlüssel bleibt er aus."""
     if not config.MCP_TOKEN:
@@ -223,8 +224,12 @@ def _mcp_starten():
             mcp_server.MINDESTLAENGE_TOKEN,
         )
         return None, None
-    server = mcp_server.server_erstellen(config.MCP_TOKEN, config.MCP_PORT)
-    logger.info("MCP-Server (nur lesend) lauscht auf Port %d unter /mcp.", config.MCP_PORT)
+    server = mcp_server.server_erstellen(config.MCP_TOKEN, config.MCP_PORT, config.MCP_ENTWUERFE_SPEICHERN)
+    logger.info(
+        "MCP-Server (%s) lauscht auf Port %d unter /mcp.",
+        "lesend, darf Kündigungsentwürfe speichern" if config.MCP_ENTWUERFE_SPEICHERN else "nur lesend",
+        config.MCP_PORT,
+    )
     return server, asyncio.create_task(server.serve())
 
 

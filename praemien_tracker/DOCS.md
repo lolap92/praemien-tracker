@@ -295,7 +295,7 @@ KI-Websuche), blockiert das die Deal-Anlage nicht - beim Übernehmen eines
 KI-Deal-Finder-Vorschlags erscheint dann oben im Vorschläge-Tab ein Hinweis,
 das Empfehlungsprogramm bei Interesse manuell zu prüfen.
 
-## Mit Claude arbeiten (MCP, nur lesend)
+## Mit Claude arbeiten (MCP)
 
 Das Add-on bringt einen MCP-Server mit, über den Claude den Prämien-Tracker
 lesen kann - etwa Claude Code auf deinem Rechner im Heimnetz. Claude sieht
@@ -304,8 +304,21 @@ Bedingungen und Aufgaben, die Liste „Zu erledigen", Sperrfristen,
 Statistiken und Freibeträge, Vorschläge des KI-Deal-Finders samt Gründen,
 bekannte Kündigungswege und das Änderungsprotokoll.
 
-- **Nur lesend.** Kein Werkzeug ändert etwas - Änderungen machst du weiter
-  in der App.
+- **Lesend, mit einer abschaltbaren Ausnahme.** Grundsätzlich ändert kein
+  Werkzeug etwas, Änderungen machst du in der App. Nur wenn du die Option
+  **MCP darf Kündigungsentwürfe speichern** einschaltest, bekommt Claude
+  zwei zusätzliche Werkzeuge:
+  - `kuendigungsbrief_speichern`: Brief oder E-Mail als Entwurf speichern,
+    mit dem Text aus dem Assistenten oder einem eigenen.
+  - `kuendigungsformular_speichern`: das Bankformular ausfüllen und als
+    Entwurf speichern. Claudes Feldwerte merkt sich die App dabei wie deine
+    eigenen Eingaben in der Ausfüllhilfe.
+
+  Beides landet wie in der App unter „Gespeicherte Schreiben"; ein noch
+  nicht versendeter Entwurf desselben Kanals wird ersetzt. Als versendet
+  markieren und damit als gekündigt abhaken machst weiterhin du in der
+  App. Anschrift, IBAN, Bedingungen usw. kann Claude auch mit der Option
+  nicht ändern.
 - **Persönliche Daten nur fürs Kündigen.** Zwei Werkzeuge sind für
   Kündigungen da und liefern dafür alles im Klartext:
   - `kuendigung_daten`: zu einem Deal oder Konto voller Name, Anschrift,
@@ -345,8 +358,9 @@ bekannte Kündigungswege und das Änderungsprotokoll.
 1. In der Add-on-Konfiguration bei **MCP-Schlüssel (Claude)** einen langen,
    zufälligen Schlüssel eintragen (mindestens 16 Zeichen).
 2. Unter **Netzwerk** für `8001/tcp` einen Port eintragen, z. B. `8001`.
-3. Add-on neu starten.
-4. In Claude Code (auf einem Rechner im selben Netz):
+3. Optional: **MCP darf Kündigungsentwürfe speichern** einschalten.
+4. Add-on neu starten.
+5. In Claude Code (auf einem Rechner im selben Netz):
 
    ```
    claude mcp add --transport http praemien-tracker \
@@ -361,7 +375,8 @@ Danach kannst du Claude z. B. fragen: „Was ist beim Prämien-Tracker
 überfällig?", „Welche Konten kosten noch Gebühren?", „Fasse die
 Vorschläge zusammen, die zu prüfen sind." oder „Welche Kündigungen stehen
 an, und welche Angaben fehlen mir dafür noch?" oder „Füll das
-Kündigungsformular für Deal 12 aus und zeig mir das PDF."
+Kündigungsformular für Deal 12 aus und zeig mir das PDF." – mit der
+Option zum Speichern auch „… und speichere es als Entwurf."
 
 Der Port gehört nur ins Heimnetz - bitte nicht über den Router ins Internet
 weiterleiten. Wer den Schlüssel kennt, kann alles oben Genannte lesen,
