@@ -9,6 +9,14 @@ Claude kann Kündigungsschreiben jetzt auch direkt in der App speichern, als Ent
 - **`kuendigungsformular_speichern`.** Das Werkzeug füllt das Bankformular aus und speichert es als Entwurf, wie „Ausfüllen" in der Ausfüllhilfe. Claudes Feldwerte merkt sich die App dabei wie deine eigenen Eingaben. Ein Wert, der ohnehin dem Vorschlag entspricht, gilt nicht als eigener, damit er einer späteren Adressänderung folgt. Unbekannte Feldnamen werden abgelehnt, dann wird nichts gespeichert.
 - **Bewusst eng gefasst.** Ein noch nicht versendeter Entwurf desselben Kanals wird ersetzt, genau wie in der App. Ein versendetes Schreiben fasst Claude nie an. Als versendet markieren und damit den Deal als gekündigt abhaken bleibt bei dir in der App. Anschrift, IBAN, Bankdaten, Zusatzangaben und alles andere kann Claude auch mit der Option nicht ändern. Grund: Das Speichern eines Entwurfs ist harmlos und lässt sich in der App löschen. Ob wirklich gekündigt wurde, ist dagegen ein Fakt, den nur du bestätigen sollst.
 
+## 2.76.1
+
+„Backup herunterladen" funktioniert jetzt auch in der Home-Assistant-App auf Android. Bisher meldete Android „<Unbenannt> – Fehler bei Download".
+
+- **Ursache.** Die Android-App von Home Assistant lädt Dateien nicht selbst, sondern übergibt sie dem Android-Download-Manager. Der ruft die Adresse noch einmal eigenständig auf, und zwar immer per GET. Der Backup-Knopf ist aber ein POST-Formular, weil er nebenbei eine neue Sicherung anlegt. Diese Adresse lieferte beim GET nichts, daher der Fehler ohne Dateinamen. Alle anderen Downloads der App (Excel-Export, Kündigungsschreiben, Formulare) sind schon GET-Links und waren nicht betroffen.
+- **Zwei Schritte statt einem (`routers/backup.py`, `backup.py`).** Der Knopf legt das Backup an, speichert das ZIP kurz im Backup-Ordner (Unterordner `download`, die letzten drei bleiben liegen) und leitet auf eine GET-Adresse weiter, die genau diese Datei ausliefert. Die kann der Download-Manager beliebig oft abrufen, ohne dass dabei eine weitere Sicherung entsteht. Im Browser ändert sich nichts: Die Datei wird heruntergeladen, und die Seite bleibt stehen.
+- **Nur abgelegte Backups.** Die neue Adresse liefert ausschließlich ZIPs mit dem festen Namensmuster `praemien-tracker-backup-JJJJMMTT-HHMMSS.zip` aus dem Download-Ordner, keine anderen Dateien.
+
 ## 2.76.0
 
 Claude kann über den MCP-Server jetzt auch die Kündigungsdateien selbst lesen und Bankformulare ausfüllen: als Vorschau, ohne dass in der App etwas gespeichert wird. Bisher sah er nur den Text der Schreiben und dass es ein ausgefülltes Formular gibt.

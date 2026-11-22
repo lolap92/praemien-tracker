@@ -15,6 +15,7 @@ test_migrieren_bringt_leere_datei_auf_aktuellen_schema_stand für sich.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import zipfile
 from io import BytesIO
@@ -124,6 +125,52 @@ def test_download_endpunkt_liefert_zip_mit_datenbank(client, db):
     assert "attachment" in antwort.headers["content-disposition"]
     with zipfile.ZipFile(BytesIO(antwort.content)) as zip_datei:
         assert any(n.endswith(".db") for n in zip_datei.namelist())
+
+
+def test_download_leitet_auf_get_adresse_weiter(client, db):
+    """Die Home-Assistant-App auf Android lädt Downloads über den Android-
+    Download-Manager, der die Adresse selbst noch einmal per GET abruft. Das
+    POST legt deshalb nur das Backup an und leitet auf eine GET-Adresse um."""
+    antwort = client.post(
+        "/backup/herunterladen", headers={"X-Ingress-Path": "/api/hassio_ingress/abc"}, follow_redirects=False
+    )
+
+    assert antwort.status_code == 303
+    ziel = antwort.headers["location"]
+    assert re.fullmatch(r"/api/hassio_ingress/abc/backup/datei/praemien-tracker-backup-\d{8}-\d{6}\.zip", ziel)
+
+    # Wie der Download-Manager: ein eigenständiger GET-Abruf derselben Adresse,
+    # beliebig oft wiederholbar, ohne ein weiteres Backup anzulegen.
+    pfad = ziel.removeprefix("/api/hassio_ingress/abc")
+    anzahl_vorher = len(list(BACKUP_DIR.glob("praemien-*.db")))
+    for _ in range(2):
+        datei = client.get(pfad)
+        assert datei.status_code == 200
+        assert datei.headers["content-type"] == "application/zip"
+        assert pfad.rsplit("/", 1)[1] in datei.headers["content-disposition"]
+        with zipfile.ZipFile(BytesIO(datei.content)) as zip_datei:
+            assert any(n.endswith(".db") for n in zip_datei.namelist())
+    assert len(list(BACKUP_DIR.glob("praemien-*.db"))) == anzahl_vorher
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["praemien-tracker-backup-20990101-000000.zip", "options.json", "..%2Fpraemien.db", "praemien-20260101-000000.db"],
+)
+def test_backup_datei_nur_abgelegte_zips(client, db, name):
+    assert client.get(f"/backup/datei/{name}").status_code == 404
+
+
+def test_download_ablage_behaelt_nur_die_juengsten(client, db, monkeypatch):
+    namen = iter(f"praemien-tracker-backup-20260101-00000{i}.zip" for i in range(6))
+    monkeypatch.setattr(backup, "zip_erstellen", lambda: (next(namen), b"zip"))
+    for alt in backup.DOWNLOAD_DIR.glob("*.zip"):
+        alt.unlink()
+    for _ in range(6):
+        backup.zip_fuer_download_ablegen()
+    vorhanden = sorted(p.name for p in backup.DOWNLOAD_DIR.glob("*.zip"))
+    assert len(vorhanden) == backup.MAX_DOWNLOADS
+    assert vorhanden[-1] == "praemien-tracker-backup-20260101-000005.zip"
 
 
 def _banken_anzahl_live() -> int:
