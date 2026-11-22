@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.78.1
+
+„Deal bearbeiten": Kontoführungsgebühren und Kontonummer tauschen die Plätze.
+
+- **Kontonummer in eigener Zeile (`templates/deal_form.html`).** Bisher stand die Kontonummer neben der Kontoart im halben Feld - eine IBAN passte dort auf dem Handy nicht hinein und war nur abgeschnitten zu sehen. Jetzt steht die Gebühr (ein kurzer Betrag) neben der Kontoart und die Kontonummer darunter über die volle Breite.
+
 ## 2.78.0
 
 Neukunde heißt jetzt standardmäßig: noch gar kein Kunde der Bank. Außerdem liest die KI aus dem Angebot, wie die Bank „Neukunde" definiert.

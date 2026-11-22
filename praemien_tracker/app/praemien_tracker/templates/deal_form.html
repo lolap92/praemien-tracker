@@ -62,18 +62,20 @@
       <input list="kontoart-liste" id="kontoart" name="kontoart" required value="{{ deal.kontoart }}">
     </div>
     <div class="feld">
-      <label for="kontonummer">Kontonummer {{ "⚠ offen" if 'kontonummer' in offene_felder else "" }}</label>
-      <input type="text" id="kontonummer" name="kontonummer" value="{{ deal.kontonummer or '' }}">
-    </div>
-  </div>
-  <div class="reihe">
-    <div class="feld">
       <label for="kontofuehrungsgebuehren">
         Kontoführungsgebühren (€ mtl.) <span class="auto">0 = kostenlos</span>
         {{ "⚠ offen" if 'kontofuehrungsgebuehren' in offene_felder else "" }}
       </label>
       <input type="text" id="kontofuehrungsgebuehren" name="kontofuehrungsgebuehren" inputmode="decimal"
              value="{{ deal.kontofuehrungsgebuehren if deal.kontofuehrungsgebuehren is not none else '' }}">
+    </div>
+  </div>
+  {# Kontonummer in eigener, voller Zeile: eine IBAN passt neben der
+     Kontoart auf dem Handy nicht ins halbe Feld. #}
+  <div class="reihe">
+    <div class="feld">
+      <label for="kontonummer">Kontonummer {{ "⚠ offen" if 'kontonummer' in offene_felder else "" }}</label>
+      <input type="text" id="kontonummer" name="kontonummer" value="{{ deal.kontonummer or '' }}">
     </div>
   </div>
   {# Konten ohne Prämie (deal.ist_konto) zeigen nur die Felder, die dort
