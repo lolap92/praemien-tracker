@@ -38,7 +38,6 @@ client = TestClient(app)
         ("Mindesteinlage von 2.000 €", 2),
         ("regelmäßiger Geldeingang", 2),
         ("Dauerauftrag einrichten", 2),
-        ("Kontowechselservice nutzen", 2),
         ("10.000 € als Festgeld anlegen", 2),
         ("Konto innerhalb der ersten 6 Monate aktiv nutzen mit mindestens drei Buchungen pro Monat", 2),
         # 3 - Karte einsetzen
@@ -50,6 +49,12 @@ client = TestClient(app)
         ("Depotübertrag von mindestens 5.000 €", 4),
         ("Wertpapiersparplan über mind. 50 € einrichten und 3x ausführen", 4),
         ("Mindestens 3 Trades innerhalb von 3 Monaten", 4),
+        # 4 - Kontowechselservice
+        ("Kontowechselservice nutzen", 4),
+        ("Kontowechselservice nutzen und mind. 2 Daueraufträge umziehen", 4),
+        ("Nutzung des digitalen Kontowechsel-Service", 4),
+        ("Kontoumzug beauftragen", 4),
+        ("Wechselservice nutzen oder 3 Kartenzahlungen", 3),
         # 5 - Gehaltseingang, auch wenn "Eingang" zusätzlich nach Stufe 2 klingt
         ("Gehaltseingang von mind. 1000€", 5),
         ("In drei Monaten jeweils ein Einkommenseingang (Gehalt, Rente, BAföG oder ähnlich)", 5),
@@ -165,3 +170,8 @@ def test_karte_ohne_gebuehren_zeigt_unbekannt(db, inhaber):  # noqa: F811
     zeile = soup.select_one(".vorschlag-karte .vk-gebuehren")
     assert zeile.select(".punkt.an") == []
     assert zeile.select_one(".vk-aufwand-label").get_text(strip=True) == "Unbekannt"
+
+
+def test_kontowechsel_bestimmt_label_der_karte():
+    ergebnis = aufwand([SimpleNamespace(beschreibung="Neukunde sein"), SimpleNamespace(beschreibung="Kontowechselservice nutzen")])
+    assert (ergebnis.stufe, ergebnis.label) == (4, "Kontowechselservice")

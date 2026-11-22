@@ -72,8 +72,8 @@ Lauf jederzeit manuell anstoßen, z. B. um die Einrichtung zu testen.
 **Aufwand und Gebühren.** Statt einer Stichpunktliste zeigt jede Karte zwei
 Punktewertungen; die einzelnen Bedingungen lassen sich darunter aufklappen.
 **Aufwand** (1-5) richtet sich nach der aufwendigsten Bedingung: nur
-eröffnen, Geld überweisen, Karte einsetzen, Wertpapiere kaufen,
-Gehaltseingang. Nennt eine Bedingung Alternativen („z. B. Gehaltseingang,
+eröffnen, Geld überweisen, Karte einsetzen, Wertpapiere kaufen bzw.
+Kontowechselservice nutzen (beide 4), Gehaltseingang. Nennt eine Bedingung Alternativen („z. B. Gehaltseingang,
 Kartenzahlung oder Lastschrift"), zählt die einfachste. **Gebühren** (1-3):
 kostenlos, vermeidbar (entfällt z. B. ab einem monatlichen Geldeingang) oder
 fest - nur altersabhängig kostenlose Konten gelten als fest. Der Aufwand

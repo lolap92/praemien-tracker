@@ -8,6 +8,8 @@ bestimmt, was man insgesamt tun muss.
   2  Geld überweisen   Mindesteinzahlung, Geldeingang, Dauerauftrag, Einlage …
   3  Karte einsetzen   Kartenzahlungen, Kartenumsatz, Apple Pay …
   4  Wertpapiere       Aktien-/ETF-Kauf, Sparplan, Trade, Depotübertrag
+  4  Kontowechsel      Kontowechselservice/Kontoumzug nutzen - zieht
+                       Daueraufträge, Lastschriften und Gehalt ums Konto um
   5  Gehaltseingang    Eingang von Gehalt, Lohn, Rente, BAföG, Einkommen
 
 Bewusst fester, deterministischer Code statt einer KI-Einschätzung (wie
@@ -44,6 +46,30 @@ STUFEN_LABELS = {
     STUFE_GEHALT: "Gehaltseingang",
 }
 
+
+@dataclass(frozen=True)
+class Kategorie:
+    """Art einer Bedingung: Stufe für die Punkte, Label fürs Etikett. Zwei
+    Kategorien können dieselbe Stufe haben (Wertpapiere, Kontowechsel)."""
+
+    stufe: int
+    label: str
+
+
+EROEFFNEN = Kategorie(STUFE_EROEFFNEN, "Nur eröffnen")
+GELD = Kategorie(STUFE_GELD, "Geld überweisen")
+KARTE = Kategorie(STUFE_KARTE, "Karte einsetzen")
+WERTPAPIERE = Kategorie(STUFE_WERTPAPIERE, "Wertpapiere kaufen")
+# Gleich aufwendig wie Wertpapiere: Der Wechselservice zieht Daueraufträge,
+# Lastschriften und Gehaltseingang aufs neue Konto um - das muss man nach dem
+# Prämien-Deal alles wieder zurückholen.
+KONTOWECHSEL = Kategorie(STUFE_WERTPAPIERE, "Kontowechselservice")
+GEHALT = Kategorie(STUFE_GEHALT, "Gehaltseingang")
+
+_KONTOWECHSEL_MUSTER = re.compile(
+    r"konto\s*-?\s*wechsel|wechsel\s*-?\s*(service|hilfe|assistent)|konto\s*-?\s*umzug|umzugs\s*-?\s*service",
+    re.IGNORECASE,
+)
 _WERTPAPIER_MUSTER = re.compile(
     r"(?<!gratis)aktie|wertpapier|sparplan|\betfs?\b|\btrades?\b|\btraden|\border(n|s)?\b"
     r"|depot\s*(ü|ue)bertrag|depotwechsel|\bfonds|krypto|anleihe|zertifikat|derivat",
@@ -59,7 +85,7 @@ _KARTE_MUSTER = re.compile(
 )
 _GELD_MUSTER = re.compile(
     r"(ü|ue)berweis|einzahl|eingang|eingäng|einlage|guthaben|lastschrift|dauerauftr"
-    r"|buchung|gutschrift|kontowechsel|transaktion|bargeld|(€|euro|eur)\s+(\S+\s+){0,3}?anleg|aktiv\s+(zu\s+)?nutz",
+    r"|buchung|gutschrift|transaktion|bargeld|(€|euro|eur)\s+(\S+\s+){0,3}?anleg|aktiv\s+(zu\s+)?nutz",
     re.IGNORECASE,
 )
 # Signalwörter für eine Aufzählung von Alternativen innerhalb einer Bedingung.
@@ -69,27 +95,37 @@ _ALTERNATIVEN_MUSTER = re.compile(
 )
 
 
-def bedingung_stufe(beschreibung: str) -> int:
-    """Aufwandsstufe (1-5) einer einzelnen Bedingung aus ihrem Text."""
+def bedingung_kategorie(beschreibung: str) -> Kategorie:
+    """Kategorie (und damit Aufwandsstufe 1-5) einer Bedingung aus ihrem Text."""
     text = beschreibung or ""
-    treffer: set[int] = set()
+    treffer: list[Kategorie] = []
     if einkommen_gefordert(text):
-        treffer.add(STUFE_GEHALT)
+        treffer.append(GEHALT)
     # Einkommenswörter ausblenden, damit "Gehaltseingang" nicht zusätzlich
     # als "Eingang" (Stufe 2) zählt und eine Aufzählung wie "Gehalt, Rente
     # oder ähnlich" nicht auf Stufe 2 herunterrutscht.
     rest = _EINKOMMEN_MUSTER.sub(" ", text)
+    if _KONTOWECHSEL_MUSTER.search(rest):
+        treffer.append(KONTOWECHSEL)
+        # "Kontowechselservice nutzen, Daueraufträge umziehen" ist eine
+        # Auflage, nicht zusätzlich "Geld überweisen" als Alternative.
+        rest = _KONTOWECHSEL_MUSTER.sub(" ", rest)
     if _WERTPAPIER_MUSTER.search(rest):
-        treffer.add(STUFE_WERTPAPIERE)
+        treffer.append(WERTPAPIERE)
     if _KARTE_MUSTER.search(rest):
-        treffer.add(STUFE_KARTE)
-    if _GELD_MUSTER.search(rest):
-        treffer.add(STUFE_GELD)
+        treffer.append(KARTE)
+    if _GELD_MUSTER.search(rest) and not (KONTOWECHSEL in treffer and len(treffer) == 1):
+        treffer.append(GELD)
     if not treffer:
-        return STUFE_EROEFFNEN
+        return EROEFFNEN
     if len(treffer) > 1 and _ALTERNATIVEN_MUSTER.search(text):
-        return min(treffer)
-    return max(treffer)
+        return min(treffer, key=lambda k: k.stufe)
+    return max(treffer, key=lambda k: k.stufe)
+
+
+def bedingung_stufe(beschreibung: str) -> int:
+    """Aufwandsstufe (1-5) einer einzelnen Bedingung aus ihrem Text."""
+    return bedingung_kategorie(beschreibung).stufe
 
 
 @dataclass(frozen=True)
@@ -102,8 +138,8 @@ class Aufwand:
 def aufwand(bedingungen: Iterable) -> Aufwand:
     """Aufwand eines Vorschlags: höchste Stufe seiner Bedingungen (Objekte mit
     .beschreibung). Ohne Bedingungen bleibt nur die Eröffnung - Stufe 1."""
-    stufe = max((bedingung_stufe(b.beschreibung) for b in bedingungen), default=STUFE_EROEFFNEN)
-    return Aufwand(stufe=stufe, label=STUFEN_LABELS[stufe])
+    kategorie = max((bedingung_kategorie(b.beschreibung) for b in bedingungen), key=lambda k: k.stufe, default=EROEFFNEN)
+    return Aufwand(stufe=kategorie.stufe, label=kategorie.label)
 
 
 # --- Zweite Einstufung: Kontoführungsgebühren -------------------------------

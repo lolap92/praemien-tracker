@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.77.3
+
+Ein geforderter Kontowechselservice zählt beim Aufwand jetzt 4 Punkte, so viel wie ein Wertpapierkauf.
+
+- **Bisher nur 2 Punkte (`finder/aufwand.py`).** „Kontowechselservice nutzen" lief unter „Geld überweisen". Der Wechselservice zieht aber Daueraufträge, Lastschriften und Gehaltseingang auf das neue Konto um - das muss man nach dem Deal alles wieder zurückholen. Er ist damit deutlich aufwendiger als eine Überweisung.
+- **Eigenes Etikett „Kontowechselservice".** Erkannt werden Kontowechsel(-service), Wechselservice/-hilfe/-assistent, Kontoumzug und Umzugsservice. Auf der Karte steht dann „Aufwand ●●●●○ Kontowechselservice", aufgeklappt trägt die Bedingung dasselbe Etikett. Ein Gehaltseingang bleibt mit 5 Punkten die höchste Stufe, auch wenn er über den Wechselservice umzieht.
+- **Alternativen wie bisher.** Lässt eine Bedingung die Wahl („Wechselservice nutzen oder 3 Kartenzahlungen"), zählt die einfachere Möglichkeit. Wirkt sofort auf alle vorhandenen Karten, ohne Neuanalyse.
+
 ## 2.77.2
 
 Bestehende Konten werden beim KI-Deal-Finder auch dann erkannt, wenn die Kontoart am Deal anders heißt als im Angebot.

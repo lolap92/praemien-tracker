@@ -200,8 +200,8 @@
 <ul class="vorschlag-bedingungen">
   {% for b in items %}
   <li class="{{ b.einschaetzung }}">
-    {% set st = b.beschreibung | bedingung_stufe %}
-    <span class="bed-text">{{ b.beschreibung }}<span class="bed-stufe stufe-{{ st }}">{{ aufwand_labels[st] }}</span>{{ bed_kennzahlen(b) }}</span>
+    {% set kat = b.beschreibung | bedingung_kategorie %}
+    <span class="bed-text">{{ b.beschreibung }}<span class="bed-stufe stufe-{{ kat.stufe }}">{{ kat.label }}</span>{{ bed_kennzahlen(b) }}</span>
   </li>
   {% endfor %}
 </ul>
