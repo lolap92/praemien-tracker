@@ -49,8 +49,9 @@ configuration:
     name: MCP-Schlüssel (Claude)
     description: >-
       Geheimer Schlüssel für den MCP-Server, über den Claude (z. B. Claude
-      Code im Heimnetz) den Prämien-Tracker lesen kann - nur lesend, ohne
-      Kontonummern, Anschrift oder IBAN. Mindestens 16 Zeichen; leer lassen
+      Code im Heimnetz) den Prämien-Tracker lesen kann - nur lesend.
+      Kontonummern, Anschrift, IBAN und Kündigungsschreiben gibt er nur über
+      die Kündigungs-Werkzeuge heraus. Mindestens 16 Zeichen; leer lassen
       schaltet den MCP-Server ab. Zusätzlich unter "Netzwerk" einen Port für
       8001/tcp eintragen.
 network:

@@ -1,5 +1,5 @@
-"""MCP-Server (mcp_server.py): nur lesend, Schlüssel-geschützt, ohne
-persönliche Daten wie Kontonummer, Anschrift oder IBAN."""
+"""MCP-Server (mcp_server.py): nur lesend, Schlüssel-geschützt. Persönliche
+Daten wie Kontonummer, Anschrift oder IBAN nur über die Kündigungs-Werkzeuge."""
 
 from __future__ import annotations
 
@@ -12,7 +12,16 @@ from starlette.testclient import TestClient
 
 from praemien_tracker import mcp_server
 from praemien_tracker.main import app  # noqa: F401  (registriert u. a. das Änderungsprotokoll)
-from praemien_tracker.models import ART_KONTO, Bank, Bedingung, Deal, DealVorschlag, Inhaber, Praemie
+from praemien_tracker.models import (
+    ART_KONTO,
+    Bank,
+    Bedingung,
+    Deal,
+    DealVorschlag,
+    Inhaber,
+    Kuendigungsschreiben,
+    Praemie,
+)
 
 TOKEN = "geheimer-test-schluessel-123"
 KOPF = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
@@ -130,6 +139,60 @@ def test_protokoll_verdeckt_kontonummer(db, daten):
     assert "DE11111111111111111111" not in json.dumps(eintraege)
 
 
+def test_deal_details_nennt_schreiben_ohne_text(db, daten):
+    db.add(
+        Kuendigungsschreiben(
+            deal_id=daten["konto"].id, kanal="brief", absender="Max Muster", datum=datetime.date(2026, 1, 5),
+            betreff="Kündigung", text="IBAN DE02 1203 0000 0000 2020 51", name="Max Muster",
+        )
+    )
+    db.commit()
+    d = mcp_server.deal_details_abfragen(db, daten["konto"].id)
+    assert d["kuendigungsschreiben"][0]["id"] and "DE02" not in json.dumps(d)
+
+
+def test_kuendigung_daten_unvollstaendig(db, daten):
+    k = mcp_server.kuendigung_daten_abfragen(db, daten["deal"].id)
+    werte = {a["schluessel"]: a["wert"] for a in k["angaben"]}
+    # Persönliche Angaben im Klartext - die braucht das Schreiben.
+    assert werte["strasse"] == "Geheimweg 1" and werte["kontonummer"] == "DE11111111111111111111"
+    assert werte["iban"].replace(" ", "") == "DE02120300000000202051"
+    assert k["iban_gueltig"] is True
+    # Ohne vollen Namen kein Entwurf, nur die Rückfrage.
+    assert k["entwurf"] is None and k["fehlende_angaben"]
+    assert mcp_server.kuendigung_daten_abfragen(db, 999999) == {"fehler": "Deal 999999 existiert nicht."}
+
+
+def test_kuendigung_daten_mit_entwurf(db, daten):
+    daten["inhaber"].voller_name = "Max Muster"
+    db.commit()
+    k = mcp_server.kuendigung_daten_abfragen(db, daten["deal"].id)
+    assert k["fehlende_angaben"] == []
+    assert "DE11111111111111111111" in k["entwurf"]["betreff"] + k["entwurf"]["text"]
+    assert k["entwurf"]["name"] == "Max Muster"
+    assert "Geheimweg 1" in k["entwurf"]["absender"]
+
+
+def test_kuendigungsschreiben_im_wortlaut(db, daten):
+    for versendet in (datetime.date(2026, 1, 6), None):
+        db.add(
+            Kuendigungsschreiben(
+                deal_id=daten["konto"].id, kanal="email", empfaenger="kuendigung@altbank.de",
+                absender="Max Muster\nGeheimweg 1", datum=datetime.date(2026, 1, 5), betreff="Kündigung Tagesgeld",
+                text="Restguthaben bitte auf DE02 1203 0000 0000 2020 51", name="Max Muster", versendet_am=versendet,
+            )
+        )
+    db.commit()
+    alle = mcp_server.kuendigungsschreiben_abfragen(db, None, False)
+    assert alle["anzahl"] == 2
+    assert "DE02 1203" in alle["schreiben"][0]["text"]
+    assert alle["schreiben"][0]["deal"] == "Altbank · Tagesgeld · Max"
+    entwuerfe = mcp_server.kuendigungsschreiben_abfragen(db, daten["konto"].id, True)["schreiben"]
+    assert len(entwuerfe) == 1 and entwuerfe[0]["entwurf"] is True
+    assert mcp_server.kuendigungsschreiben_abfragen(db, daten["deal"].id, False)["anzahl"] == 0
+    assert len(mcp_server.kuendigung_daten_abfragen(db, daten["konto"].id)["gespeicherte_schreiben"]) == 2
+
+
 # --- Zugriff über HTTP -----------------------------------------------------
 
 
@@ -177,7 +240,8 @@ def test_mcp_ueber_http_nur_lesende_werkzeuge(db, daten):
         namen = {w["name"] for w in werkzeuge}
         assert namen == {
             "uebersicht", "deals_suchen", "deal_details", "todos", "sperrfristen", "statistiken",
-            "vorschlaege", "inhaber", "kuendigung_infos", "aenderungsprotokoll", "finder_laeufe",
+            "vorschlaege", "inhaber", "kuendigung_infos", "kuendigung_daten", "kuendigungsschreiben",
+            "aenderungsprotokoll", "finder_laeufe",
         }
         assert all(w["annotations"]["readOnlyHint"] is True for w in werkzeuge)
 

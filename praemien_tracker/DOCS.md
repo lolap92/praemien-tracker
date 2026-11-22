@@ -306,10 +306,19 @@ bekannte Kündigungswege und das Änderungsprotokoll.
 
 - **Nur lesend.** Kein Werkzeug ändert etwas - Änderungen machst du weiter
   in der App.
-- **Ohne persönliche Daten.** Kontonummern, Anschrift, Geburtsdatum, E-Mail
-  und IBAN gibt der Server nicht heraus, nur ob sie hinterlegt sind; auch im
-  Änderungsprotokoll stehen sie nur als „(verdeckt)". Den Text gespeicherter
-  Kündigungsschreiben (enthält die IBAN) liefert er ebenfalls nicht.
+- **Persönliche Daten nur fürs Kündigen.** Zwei Werkzeuge sind für
+  Kündigungen da und liefern dafür alles im Klartext:
+  - `kuendigung_daten`: zu einem Deal oder Konto voller Name, Anschrift,
+    Geburtsdatum, E-Mail, IBAN, Kontonummer und weitere Angaben der Bank.
+    Dazu, was davon noch fehlt, Kanal, Empfänger, Vorlage und Besonderheiten
+    der Bank, das Bankformular mit eingesetzten Werten und, wenn nichts
+    fehlt, der fertige Entwurf – genau wie der Kündigungs-Assistent.
+  - `kuendigungsschreiben`: gespeicherte Schreiben im Wortlaut, auf Wunsch
+    nur Entwürfe.
+
+  Alle anderen Werkzeuge zeigen nur, ob diese Daten hinterlegt sind; im
+  Änderungsprotokoll stehen sie weiter als „(verdeckt)". Das ausgefüllte
+  PDF-Formular selbst gibt der Server nicht heraus, nur dass es existiert.
 - **Standardmäßig aus.** Der Server startet nur mit einem Schlüssel, und sein
   Port ist erst erreichbar, wenn du ihn freigibst.
 
@@ -331,11 +340,13 @@ bekannte Kündigungswege und das Änderungsprotokoll.
    Assistant.
 
 Danach kannst du Claude z. B. fragen: „Was ist beim Prämien-Tracker
-überfällig?", „Welche Konten kosten noch Gebühren?" oder „Fasse die
-Vorschläge zusammen, die zu prüfen sind."
+überfällig?", „Welche Konten kosten noch Gebühren?", „Fasse die
+Vorschläge zusammen, die zu prüfen sind." oder „Welche Kündigungen stehen
+an, und welche Angaben fehlen mir dafür noch?"
 
 Der Port gehört nur ins Heimnetz - bitte nicht über den Router ins Internet
-weiterleiten. Wer den Schlüssel kennt, kann alles oben Genannte lesen.
+weiterleiten. Wer den Schlüssel kennt, kann alles oben Genannte lesen,
+also auch Anschrift, IBAN und Kontonummern.
 
 ## Erste Schritte
 

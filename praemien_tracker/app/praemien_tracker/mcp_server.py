@@ -13,11 +13,11 @@ Status, ToDos, Sperrfristen und Kennzahlen kommen aus denselben Funktionen
 wie die Oberfläche (derived.py) - Claude sieht also dasselbe wie die Seiten,
 ohne dass hier eine zweite Fachlogik entsteht.
 
-Bewusst NICHT herausgegeben werden persönliche Daten, die für die Arbeit an
-den Prämien nicht nötig sind: Kontonummern (nur "hinterlegt ja/nein"),
-Anschrift, Geburtsdatum, E-Mail und IBAN der Inhaber, der Text gespeicherter
-Kündigungsschreiben (enthält die IBAN) sowie die entsprechenden Werte im
-Änderungsprotokoll.
+Persönliche Daten (Kontonummer, voller Name, Anschrift, Geburtsdatum,
+E-Mail, IBAN) und der Text gespeicherter Kündigungsschreiben gibt es nur über
+die beiden Kündigungs-Werkzeuge (kuendigung_daten, kuendigungsschreiben) -
+dort werden sie für das Kündigen gebraucht. Alle übrigen Werkzeuge zeigen nur
+"hinterlegt ja/nein", das Änderungsprotokoll "(verdeckt)".
 """
 
 # Bewusst ohne "from __future__ import annotations": FastMCP baut die
@@ -36,7 +36,9 @@ from sqlalchemy.orm import Session, joinedload
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from . import derived
+from . import derived, iban
+from . import kuendigung_assistent as ka
+from . import kuendigung_formular as kf
 from .database import SessionLocal
 from .finder import matching
 from .kuendigung_hinweise import hinweis_fuer
@@ -49,6 +51,7 @@ from .models import (
     KuendigungAnforderung,
     KuendigungFormular,
     KuendigungRecherche,
+    Kuendigungsschreiben,
     ProtokollEintrag,
 )
 
@@ -70,6 +73,9 @@ Girokonto, Depot, Tagesgeld, Kreditkarte), Konten ohne Prämie, die nur bis zur 
 Kündigung mitverfolgt werden, abgeleitete ToDos, Sperrfristen, Statistiken, \
 Vorschläge des KI-Deal-Finders und das Änderungsprotokoll. Beträge in Euro. \
 Einstieg: uebersicht(), dann deals_suchen()/deal_details() oder todos(). \
+Kündigen: todos(kategorie="Kündigen"), dann kuendigung_daten(deal_id) - liefert \
+alle Angaben für das Schreiben samt fertigem Entwurf; gespeicherte Schreiben \
+mit Volltext über kuendigungsschreiben(). \
 Nur lesend - Änderungen macht die Nutzerin/der Nutzer in der App."""
 
 
@@ -261,9 +267,10 @@ def deal_details_abfragen(db: Session, deal_id: int) -> dict:
             "offene_angaben": [f.label for f in derived.offene_felder(deal)],
             "zu_pruefen": [p.text for p in derived.pruefpunkte(deal, heute)],
             "todos": [_todo(t) for t in derived.deal_todos(deal, heute)],
-            # Nur die Eckdaten - der Text enthält die IBAN im Klartext.
+            # Nur die Eckdaten - den Volltext liefert kuendigungsschreiben().
             "kuendigungsschreiben": [
                 {
+                    "id": k.id,
                     "kanal": k.kanal,
                     "datum": _wert(k.datum),
                     "betreff": k.betreff,
@@ -467,6 +474,107 @@ def kuendigung_infos_abfragen(db: Session, bank: str, kontoart: str | None) -> d
     }
 
 
+def _schreiben(k: Kuendigungsschreiben) -> dict:
+    """Ein gespeichertes Schreiben im Wortlaut, wie es verschickt wurde bzw.
+    wird (Momentaufnahme, nicht die aktuellen Daten)."""
+    deal = k.deal
+    return {
+        "id": k.id,
+        "deal_id": k.deal_id,
+        "deal": _bezeichnung(deal),
+        "kanal": k.kanal,
+        "empfaenger": k.empfaenger,
+        "absender": k.absender,
+        "ort": k.ort,
+        "datum": _wert(k.datum),
+        "betreff": k.betreff,
+        "text": k.text,
+        "name": k.name,
+        "ausgefuelltes_formular_vorhanden": k.datei is not None,
+        "erstellt_am": _wert(k.erstellt_am),
+        "versendet_am": _wert(k.versendet_am),
+        "entwurf": k.versendet_am is None,
+    }
+
+
+def kuendigungsschreiben_abfragen(db: Session, deal_id: int | None, nur_entwuerfe: bool) -> dict:
+    abfrage = db.query(Kuendigungsschreiben).options(
+        joinedload(Kuendigungsschreiben.deal).joinedload(Deal.bank),
+        joinedload(Kuendigungsschreiben.deal).joinedload(Deal.inhaber),
+    )
+    if deal_id is not None:
+        abfrage = abfrage.filter(Kuendigungsschreiben.deal_id == deal_id)
+    if nur_entwuerfe:
+        abfrage = abfrage.filter(Kuendigungsschreiben.versendet_am.is_(None))
+    zeilen = abfrage.order_by(Kuendigungsschreiben.id.desc()).all()
+    return {"anzahl": len(zeilen), "schreiben": [_schreiben(k) for k in zeilen]}
+
+
+def kuendigung_daten_abfragen(db: Session, deal_id: int) -> dict:
+    """Dieselbe Sicht wie der Kündigungs-Assistent der App (routers/
+    kuendigung.py): Werte für alle Platzhalter, was noch fehlt, Vorlage und
+    Empfänger, Bankformular und - wenn nichts fehlt - der fertige Entwurf."""
+    deal = (
+        db.query(Deal)
+        .options(joinedload(Deal.bank), joinedload(Deal.inhaber), joinedload(Deal.kuendigungsschreiben))
+        .filter(Deal.id == deal_id)
+        .one_or_none()
+    )
+    if deal is None:
+        return {"fehler": f"Deal {deal_id} existiert nicht."}
+    anforderung = ka.anforderung_fuer(db, deal)
+    werte = ka.werte_fuer(deal)
+    fehlend = list(dict.fromkeys(ka.absender_fehlend(werte) + ka.fehlende(anforderung, werte)))
+    formular = kf.formular_fuer(db, deal)
+    formular_info = None
+    if formular is not None:
+        zuordnung = kf.zuordnung_von(formular)
+        formular_info = {
+            "quelle": formular.quelle,
+            "hinweis": formular.hinweis,
+            "felder": [
+                {
+                    "feld": f.label or f.name,
+                    "typ": f.typ,
+                    "wert": ka.einsetzen(zuordnung[f.name], werte) if f.name in zuordnung else None,
+                }
+                for f in kf.felder_von(formular)
+            ],
+        }
+    return {
+        "deal_id": deal.id,
+        "deal": _bezeichnung(deal),
+        "kuendbar_ab": _wert(deal.kuendbar_ab),
+        "gekuendigt": deal.gekuendigt,
+        "gekuendigt_im_monat": deal.gekuendigt_im_monat,
+        "kuendigung_bestaetigt": deal.kuendigung_bestaetigt,
+        "kuendigung_hinweis": deal.kuendigung_hinweis,
+        "kuendigung_hinweis_url": deal.kuendigung_hinweis_url,
+        # Schlüssel = Platzhalter der Vorlage ({name}, {iban}, ...).
+        "angaben": [{"schluessel": k, "label": ka.label_fuer(anforderung, k), "wert": v} for k, v in werte.items()],
+        "iban_gueltig": iban.gueltig(deal.inhaber.iban) if deal.inhaber.iban else None,
+        "fehlende_angaben": [ka.label_fuer(anforderung, k) for k in fehlend],
+        "vorlage": {
+            "kanal": anforderung.kanal_label,
+            "ki_recherchiert": anforderung.ki,
+            "empfaenger_anschrift": deal.bank.anschrift or anforderung.empfaenger_anschrift or None,
+            "empfaenger_email": deal.bank.kuendigung_email or anforderung.empfaenger_email or None,
+            "formular_url": anforderung.formular_url or None,
+            "besonderheiten": anforderung.besonderheiten,
+            "quelle_url": anforderung.quelle_url or None,
+            "betreff_vorlage": anforderung.betreff_vorlage,
+            "text_vorlage": anforderung.text_vorlage,
+        },
+        "entwurf": (
+            {**ka.schreiben(anforderung, werte), "absender": ka.mail_signatur(werte), "name": werte["name"]}
+            if not fehlend
+            else None
+        ),
+        "bankformular": formular_info,
+        "gespeicherte_schreiben": [_schreiben(k) for k in reversed(deal.kuendigungsschreiben)],
+    }
+
+
 def protokoll_abfragen(db: Session, deal_id: int | None, limit: int) -> dict:
     abfrage = db.query(ProtokollEintrag)
     if deal_id is not None:
@@ -618,6 +726,25 @@ def server_bauen() -> FastMCP:
         Hinweis, KI-recherchierte Kündigungswege, Anforderungen und Anschrift
         aus dem Kündigungs-Assistenten, vorhandene Bankformulare."""
         return await laufen(kuendigung_infos_abfragen, bank, kontoart)
+
+    @mcp.tool(annotations=_NUR_LESEN)
+    async def kuendigung_daten(deal_id: int) -> dict:
+        """Alles, um einen Deal oder ein Konto zu kündigen - wie der
+        Kündigungs-Assistent der App: Angaben im Klartext (voller Name,
+        Anschrift, Geburtsdatum, E-Mail, IBAN, Kontonummer und weitere
+        Angaben der Bank), welche davon fehlen, Kanal, Empfänger, Vorlage
+        und Besonderheiten der Bank, das Bankformular mit eingesetzten
+        Werten, der fertige Entwurf (nur wenn nichts fehlt) und die schon
+        gespeicherten Schreiben im Wortlaut."""
+        return await laufen(kuendigung_daten_abfragen, deal_id)
+
+    @mcp.tool(annotations=_NUR_LESEN)
+    async def kuendigungsschreiben(deal_id: int | None = None, nur_entwuerfe: bool = False) -> dict:
+        """Gespeicherte Kündigungsschreiben im Wortlaut, neueste zuerst:
+        Empfänger, Absender, Datum, Betreff, Text, Unterschrift-Name und
+        wann versendet (leer = Entwurf). deal_id: nur die eines Deals.
+        nur_entwuerfe: nur noch nicht versendete."""
+        return await laufen(kuendigungsschreiben_abfragen, deal_id, nur_entwuerfe)
 
     @mcp.tool(annotations=_NUR_LESEN)
     async def aenderungsprotokoll(deal_id: int | None = None, limit: int = 50) -> dict:

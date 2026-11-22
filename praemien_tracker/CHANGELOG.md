@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.75.0
+
+Der MCP-Server liest jetzt auch Kündigungsschreiben und alle Angaben, die man zum Kündigen braucht. So kann Claude bei den Kündigungen helfen: prüfen, was fehlt, Schreiben gegenlesen, an Entwürfe erinnern. Der Server bleibt nur lesend – Claude ändert weiter nichts.
+
+- **Neues Werkzeug `kuendigung_daten` (`mcp_server.py`).** Zu einem Deal oder Konto liefert es dieselbe Sicht wie der Kündigungs-Assistent der App. Es nutzt dafür dieselben Funktionen, damit keine zweite Logik entsteht. Enthalten sind:
+  - alle Angaben für die Vorlage im Klartext (voller Name, Anschrift, Geburtsdatum, E-Mail, IBAN samt Prüfsummen-Check, Kontonummer und zusätzliche Angaben der Bank),
+  - welche Angaben noch fehlen,
+  - Kanal, Empfängeranschrift bzw. -E-Mail, Vorlage und Besonderheiten der Bank,
+  - das hinterlegte Bankformular mit den Werten, die eingetragen würden,
+  - der fertige Entwurf, sobald nichts mehr fehlt,
+  - die bereits gespeicherten Schreiben.
+- **Neues Werkzeug `kuendigungsschreiben`.** Es gibt die gespeicherten Schreiben im Wortlaut aus: Empfänger, Absender, Datum, Betreff, Text und Versanddatum. Filtern lässt sich nach Deal oder nur nach noch nicht versendeten Entwürfen. Das ausgefüllte PDF-Formular selbst gibt es nicht heraus, nur dass es existiert.
+- **Warum jetzt doch persönliche Daten:** Bisher gab der Server Anschrift, IBAN, Kontonummer und den Text der Schreiben bewusst nicht heraus. Ohne diese Daten kann Claude aber kein Schreiben prüfen und nicht sagen, was für eine Kündigung noch fehlt. Sie kommen deshalb nur über diese beiden Werkzeuge. Alle übrigen Werkzeuge zeigen weiter nur „hinterlegt ja/nein", das Änderungsprotokoll weiter „(verdeckt)". In `deal_details` stehen die Schreiben nun mit ihrer `id`, aber weiter ohne Text.
+- **Bitte beachten:** Wer den MCP-Schlüssel kennt, kann damit jetzt auch Anschrift, IBAN und Kontonummern lesen. Der Port gehört weiterhin nur ins Heimnetz.
+
 ## 2.74.1
 
 Auf dem Handy ragte die Seite „Vorschläge" seitlich über den Bildschirm hinaus - Karten und Texte wirkten rechts abgeschnitten.
