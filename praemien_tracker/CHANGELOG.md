@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.76.1
+
+„Backup herunterladen" funktioniert jetzt auch in der Home-Assistant-App auf Android. Bisher meldete Android „<Unbenannt> – Fehler bei Download".
+
+- **Ursache.** Die Android-App von Home Assistant lädt Dateien nicht selbst, sondern übergibt sie dem Android-Download-Manager. Der ruft die Adresse noch einmal eigenständig auf, und zwar immer per GET. Der Backup-Knopf ist aber ein POST-Formular, weil er nebenbei eine neue Sicherung anlegt. Diese Adresse lieferte beim GET nichts, daher der Fehler ohne Dateinamen. Alle anderen Downloads der App (Excel-Export, Kündigungsschreiben, Formulare) sind schon GET-Links und waren nicht betroffen.
+- **Zwei Schritte statt einem (`routers/backup.py`, `backup.py`).** Der Knopf legt das Backup an, speichert das ZIP kurz im Backup-Ordner (Unterordner `download`, die letzten drei bleiben liegen) und leitet auf eine GET-Adresse weiter, die genau diese Datei ausliefert. Die kann der Download-Manager beliebig oft abrufen, ohne dass dabei eine weitere Sicherung entsteht. Im Browser ändert sich nichts: Die Datei wird heruntergeladen, und die Seite bleibt stehen.
+- **Nur abgelegte Backups.** Die neue Adresse liefert ausschließlich ZIPs mit dem festen Namensmuster `praemien-tracker-backup-JJJJMMTT-HHMMSS.zip` aus dem Download-Ordner, keine anderen Dateien.
+
 ## 2.76.0
 
 Claude kann über den MCP-Server jetzt auch die Kündigungsdateien selbst lesen und Bankformulare ausfüllen: als Vorschau, ohne dass in der App etwas gespeichert wird. Bisher sah er nur den Text der Schreiben und dass es ein ausgefülltes Formular gibt.

@@ -38,6 +38,7 @@ import io
 import json
 import logging
 import os
+import re
 import sqlite3
 import zipfile
 from pathlib import Path
@@ -109,6 +110,40 @@ def zip_erstellen() -> tuple[str, bytes]:
             zip_datei.write(OPTIONS_PATH, arcname="options.json")
 
     return f"praemien-tracker-backup-{zeitstempel}.zip", puffer.getvalue()
+
+
+# Ablage für das zuletzt erzeugte Download-ZIP (siehe routers/backup.py):
+# Der Download läuft in zwei Schritten - POST legt das Backup an, ein GET
+# liefert die Datei. Die Home-Assistant-App auf Android übergibt Downloads an
+# den Android-Download-Manager, und der ruft die Adresse noch einmal selbst
+# per GET ab; eine reine POST-Antwort scheitert dort ("Fehler bei Download").
+# Ein Unterordner, damit _alte_backups_aufraeumen() und die Wiederherstellung
+# (beide nur praemien-*.db direkt in BACKUP_DIR) davon nichts sehen.
+DOWNLOAD_DIR = BACKUP_DIR / "download"
+DOWNLOAD_NAME_MUSTER = re.compile(r"praemien-tracker-backup-\d{8}-\d{6}\.zip")
+# Ein paar aufheben, falls zwei Downloads kurz nacheinander laufen.
+MAX_DOWNLOADS = 3
+
+
+def zip_fuer_download_ablegen() -> str:
+    """Erzeugt das Backup-ZIP (zip_erstellen) und legt es in DOWNLOAD_DIR
+    ab; ältere Download-ZIPs werden bis auf die MAX_DOWNLOADS jüngsten
+    entfernt. Gibt den Dateinamen zurück."""
+    dateiname, inhalt = zip_erstellen()
+    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    (DOWNLOAD_DIR / dateiname).write_bytes(inhalt)
+    for alt in sorted(DOWNLOAD_DIR.glob("praemien-tracker-backup-*.zip"), key=lambda p: p.name, reverse=True)[MAX_DOWNLOADS:]:
+        alt.unlink(missing_ok=True)
+    return dateiname
+
+
+def download_pfad(dateiname: str) -> Path | None:
+    """Pfad eines abgelegten Download-ZIPs, None bei unbekanntem oder
+    ungültigem Namen (nur das feste Namensmuster - kein Pfad aus der URL)."""
+    if not DOWNLOAD_NAME_MUSTER.fullmatch(dateiname):
+        return None
+    pfad = DOWNLOAD_DIR / dateiname
+    return pfad if pfad.is_file() else None
 
 
 def wiederherstellen(inhalt: bytes) -> tuple[bool, bool]:
