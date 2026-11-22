@@ -635,3 +635,42 @@ def test_hoechstwert_nicht_ueber_dem_sicheren_betrag_wird_ignoriert(db, alice):
     ergebnis = matching.bewerten(db, fund, _gratisaktie(80.0, betrag=80.0), alice, MINDESTPRAEMIE)
     assert ergebnis.praemie_bis is None
     assert ergebnis.status == matching.STATUS_VORGESCHLAGEN
+
+
+@pytest.mark.parametrize(
+    ("deal_kontoart", "angebot_kontoart", "status"),
+    [
+        # Der Fall norisbank: Deal mit zwei Produkten, Angebot nur für eins.
+        ("Girokonto und Tagesgeldkonto", "Girokonto", matching.STATUS_ABGELEHNT),
+        ("Girokonto", "Girokonto und Tagesgeld", matching.STATUS_ABGELEHNT),
+        ("Giro", "Girokonto", matching.STATUS_ABGELEHNT),
+        ("Wertpapierdepot", "Depot", matching.STATUS_ABGELEHNT),
+        # Andere Produktfamilie bei derselben Bank bleibt ein Neukunden-Deal.
+        ("Tagesgeld", "Girokonto", matching.STATUS_VORGESCHLAGEN),
+        ("Depot", "Kreditkarte", matching.STATUS_VORGESCHLAGEN),
+    ],
+)
+def test_bestehendes_konto_auch_bei_abweichender_kontoart(db, alice, deal_kontoart, angebot_kontoart, status):
+    bank = Bank(name="norisbank")
+    db.add(bank)
+    db.commit()
+    db.add(Deal(bank=bank, inhaber=alice, kontoart=deal_kontoart))
+    db.commit()
+
+    fund = RohFund("spartanien", "https://spartanien.de/norisbank", "t", "x")
+    ext = AngebotExtraktion(bank_name="norisbank", kontoart=angebot_kontoart, praemie_betrag=200.0, bedingungen=[])
+    assert matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE).status == status
+
+
+@pytest.mark.parametrize(
+    ("a", "b", "erwartet"),
+    [
+        ("Girokonto und Tagesgeldkonto", "Girokonto", True),
+        ("Tagesgeld", "Festgeld", False),
+        ("Kreditkarte", "Credit Card", True),
+        ("Sparbrief", "sparbrief ", True),
+        ("Sparbrief", "Girokonto", False),
+    ],
+)
+def test_kontoarten_ueberschneiden(a, b, erwartet):
+    assert matching.kontoarten_ueberschneiden(a, b) is erwartet

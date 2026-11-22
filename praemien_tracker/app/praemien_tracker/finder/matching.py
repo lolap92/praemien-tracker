@@ -192,6 +192,35 @@ def _bank_finden(db: Session, bank_name: str) -> Bank | None:
     return next((b for b in db.query(Bank).all() if derived.bank_name_normalisieren(b.name) == ziel), None)
 
 
+# Kontoart-Familien für den Neukunden-Abgleich. Selbst erfasste Deals und
+# Angebote benennen dasselbe Produkt unterschiedlich ("Girokonto und
+# Tagesgeldkonto" am Deal, "Girokonto" im Angebot) - ein exakter Textvergleich
+# übersah dadurch bestehende Konten und schlug sie als Neukunden-Deal vor.
+_KONTOART_FAMILIEN = {
+    "giro": re.compile(r"giro", re.IGNORECASE),
+    "tagesgeld": re.compile(r"tagesgeld", re.IGNORECASE),
+    "festgeld": re.compile(r"festgeld", re.IGNORECASE),
+    "depot": re.compile(r"depot|wertpapier|broker", re.IGNORECASE),
+    "kreditkarte": re.compile(r"kredit\s*karte|credit\s*card", re.IGNORECASE),
+}
+
+
+def _kontoart_familien(kontoart: str) -> set[str]:
+    return {name for name, muster in _KONTOART_FAMILIEN.items() if muster.search(kontoart or "")}
+
+
+def kontoarten_ueberschneiden(a: str, b: str) -> bool:
+    """Betreffen zwei Kontoart-Angaben dasselbe Produkt? Ja, wenn sie eine
+    Familie teilen (Girokonto, Tagesgeld, Festgeld, Depot, Kreditkarte) - so
+    zählt ein Deal "Girokonto und Tagesgeldkonto" bei einem Girokonto-Angebot
+    als bestehendes Konto. Ohne erkennbare Familie bleibt es beim Vergleich
+    des Textes (ohne Groß-/Kleinschreibung und Leerzeichen am Rand)."""
+    fa, fb = _kontoart_familien(a), _kontoart_familien(b)
+    if fa and fb:
+        return bool(fa & fb)
+    return a.strip().lower() == b.strip().lower()
+
+
 def _sperrfrist_pruefen(
     db: Session, bank: Bank | None, kontoart: str, inhaber_id: int, sperrfrist_monate: int | None
 ) -> tuple[str, str | None]:
@@ -207,7 +236,7 @@ def _sperrfrist_pruefen(
         for d in db.query(Deal).filter(
             Deal.bank_id == bank.id, Deal.inhaber_id == inhaber_id, Deal.storniert.is_(False)
         )
-        if d.kontoart.strip().lower() == kontoart.strip().lower()
+        if kontoarten_ueberschneiden(d.kontoart, kontoart)
     ]
     if not bestehende:
         return EINSCHAETZUNG_ERFUELLT, None

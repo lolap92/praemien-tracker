@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.77.2
+
+Bestehende Konten werden beim KI-Deal-Finder auch dann erkannt, wenn die Kontoart am Deal anders heißt als im Angebot.
+
+- **Ursache (`finder/matching.py`).** Für „Bin ich hier schon Kunde?" verglich die App die Kontoart wörtlich. Ein Deal „Girokonto und Tagesgeldkonto" bei der norisbank passte deshalb nicht zum Angebot „Girokonto" derselben Bank. Das Angebot galt als Neukunden-Deal und stand unter „Vorgeschlagen", obwohl das Konto noch läuft bzw. die Sperrfrist nicht vorbei ist.
+- **Vergleich nach Produktfamilie.** Kontoarten zählen jetzt als gleich, wenn sie eine Familie teilen: Girokonto, Tagesgeld, Festgeld, Depot (auch „Wertpapierdepot", „Broker") oder Kreditkarte. „Girokonto und Tagesgeldkonto" passt also zu Girokonto- und zu Tagesgeld-Angeboten. Ein Tagesgeld-Deal macht ein Girokonto-Angebot derselben Bank dagegen weiter nicht zum Bestandskunden-Fall. Kontoarten ohne erkennbare Familie (z. B. „Sparbrief") werden wie bisher wörtlich verglichen.
+- **Bestehende Karten.** Der Finder bewertet bei jedem Lauf alle noch gelisteten Angebote neu. Die norisbank-Karte wechselt beim nächsten Lauf („Jetzt suchen" oder der tägliche Lauf) von selbst nach „Automatisch abgelehnt" bzw. „Zu prüfen", ohne neue KI-Analyse.
+
 ## 2.77.1
 
 Die Auswahllisten für Bank, Inhaber und Kontoart gehen jetzt auch in der Home-Assistant-App auf Android auf. Bisher erschien beim Antippen nur der Cursor.
