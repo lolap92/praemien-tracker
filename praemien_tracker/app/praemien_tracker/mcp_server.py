@@ -18,6 +18,12 @@ E-Mail, IBAN) und der Text gespeicherter Kündigungsschreiben gibt es nur über
 die beiden Kündigungs-Werkzeuge (kuendigung_daten, kuendigungsschreiben) -
 dort werden sie für das Kündigen gebraucht. Alle übrigen Werkzeuge zeigen nur
 "hinterlegt ja/nein", das Änderungsprotokoll "(verdeckt)".
+
+Dateien (Bankformular leer oder ausgefüllt, gespeicherte Schreiben als PDF
+bzw. Word) gibt es über einfache HTTP-Downloads auf demselben Port unter
+/dateien/..., geschützt mit demselben Schlüssel - als Base64 im
+Werkzeug-Ergebnis sprengten sie das Antwortlimit des MCP-Clients. Auch das
+Ausfüllen dort (POST) speichert nichts, es liefert nur die Datei zurück.
 """
 
 # Bewusst ohne "from __future__ import annotations": FastMCP baut die
@@ -25,6 +31,7 @@ dort werden sie für das Kündigen gebraucht. Alle übrigen Werkzeuge zeigen nur
 import contextlib
 import datetime
 import hmac
+import json
 import logging
 from decimal import Decimal
 from typing import Any, Literal
@@ -33,11 +40,14 @@ import anyio
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from sqlalchemy.orm import Session, joinedload
-from starlette.responses import JSONResponse
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
+from starlette.routing import Route
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from . import derived, iban
 from . import kuendigung_assistent as ka
+from . import kuendigung_dokumente as kd
 from . import kuendigung_formular as kf
 from .database import SessionLocal
 from .finder import matching
@@ -75,7 +85,10 @@ Vorschläge des KI-Deal-Finders und das Änderungsprotokoll. Beträge in Euro. \
 Einstieg: uebersicht(), dann deals_suchen()/deal_details() oder todos(). \
 Kündigen: todos(kategorie="Kündigen"), dann kuendigung_daten(deal_id) - liefert \
 alle Angaben für das Schreiben samt fertigem Entwurf; gespeicherte Schreiben \
-mit Volltext über kuendigungsschreiben(). \
+mit Volltext über kuendigungsschreiben(), Bankformular mit Feldern über \
+kuendigungsformular(deal_id). Dateien (PDF/Word) als HTTP-Download unter dem \
+Pfad aus "downloads", relativ zur Adresse dieses MCP-Servers (ohne /mcp), mit \
+demselben Authorization-Kopf. \
 Nur lesend - Änderungen macht die Nutzerin/der Nutzer in der App."""
 
 
@@ -494,6 +507,11 @@ def _schreiben(k: Kuendigungsschreiben) -> dict:
         "erstellt_am": _wert(k.erstellt_am),
         "versendet_am": _wert(k.versendet_am),
         "entwurf": k.versendet_am is None,
+        "downloads": (
+            {"pdf": f"/dateien/schreiben/{k.id}.pdf"}
+            if k.kanal == "formular"
+            else {"pdf": f"/dateien/schreiben/{k.id}.pdf", "docx": f"/dateien/schreiben/{k.id}.docx"}
+        ),
     }
 
 
@@ -508,6 +526,52 @@ def kuendigungsschreiben_abfragen(db: Session, deal_id: int | None, nur_entwuerf
         abfrage = abfrage.filter(Kuendigungsschreiben.versendet_am.is_(None))
     zeilen = abfrage.order_by(Kuendigungsschreiben.id.desc()).all()
     return {"anzahl": len(zeilen), "schreiben": [_schreiben(k) for k in zeilen]}
+
+
+def _formular_downloads(deal_id: int) -> dict:
+    return {
+        "leer": f"/dateien/formular/{deal_id}/leer.pdf",
+        "ausgefuellt": f"/dateien/formular/{deal_id}/ausgefuellt.pdf",
+    }
+
+
+def kuendigungsformular_abfragen(db: Session, deal_id: int) -> dict:
+    """Das hinterlegte Bankformular eines Deals: Text der Seiten und jedes
+    Feld mit dem Wert, den die App eintragen würde (dieselbe Logik wie die
+    Ausfüllhilfe, kuendigung_formular.feldwerte)."""
+    deal = (
+        db.query(Deal).options(joinedload(Deal.bank), joinedload(Deal.inhaber)).filter(Deal.id == deal_id).one_or_none()
+    )
+    if deal is None:
+        return {"fehler": f"Deal {deal_id} existiert nicht."}
+    formular = kf.formular_fuer(db, deal)
+    if formular is None:
+        return {"fehler": f"Für {_bezeichnung(deal)} ist kein Bankformular hinterlegt."}
+    return {
+        "deal_id": deal.id,
+        "deal": _bezeichnung(deal),
+        "quelle": formular.quelle,
+        "nicht_ausfuellbar_weil": formular.hinweis,
+        "zuordnung_ki": formular.zuordnung_ki,
+        "seitentext": kf.seitentext(formular.pdf),
+        "felder": [
+            {
+                "name": fw.feld.name,
+                "label": fw.feld.label,
+                "typ": fw.feld.typ,
+                "optionen": fw.feld.optionen,
+                "max_laenge": fw.feld.max_len,
+                "wert": fw.wert,
+                "vorschlag_aus_angaben": fw.vorschlag,
+                "fehlende_angaben": fw.fehlt,
+                "eigene_eingabe": fw.eigen,
+            }
+            for fw in kf.feldwerte(formular, deal)
+        ],
+        "zusatzfelder": kf.zusatzfelder_von(formular),
+        "werte_fuer_ankreuzfelder": [kf.AN, kf.AUS],
+        "downloads": _formular_downloads(deal.id),
+    }
 
 
 def kuendigung_daten_abfragen(db: Session, deal_id: int) -> dict:
@@ -570,7 +634,7 @@ def kuendigung_daten_abfragen(db: Session, deal_id: int) -> dict:
             if not fehlend
             else None
         ),
-        "bankformular": formular_info,
+        "bankformular": {**formular_info, "downloads": _formular_downloads(deal.id)} if formular_info else None,
         "gespeicherte_schreiben": [_schreiben(k) for k in reversed(deal.kuendigungsschreiben)],
     }
 
@@ -739,11 +803,23 @@ def server_bauen() -> FastMCP:
         return await laufen(kuendigung_daten_abfragen, deal_id)
 
     @mcp.tool(annotations=_NUR_LESEN)
+    async def kuendigungsformular(deal_id: int) -> dict:
+        """Das hinterlegte Kündigungsformular der Bank zu einem Deal: Text
+        der Seiten und jedes ausfüllbare Feld (name, Typ, Optionen, maximale
+        Länge) mit dem Wert, den die App eintragen würde, und welche Angaben
+        dafür fehlen. downloads.leer: das Original-PDF.
+        downloads.ausgefuellt: GET = mit den Werten der App ausgefüllt,
+        POST mit JSON {"feldname": "wert", ...} = mit diesen Werten statt
+        der App-Werte (Ankreuzfelder "an"/"aus"). Nichts wird gespeichert."""
+        return await laufen(kuendigungsformular_abfragen, deal_id)
+
+    @mcp.tool(annotations=_NUR_LESEN)
     async def kuendigungsschreiben(deal_id: int | None = None, nur_entwuerfe: bool = False) -> dict:
         """Gespeicherte Kündigungsschreiben im Wortlaut, neueste zuerst:
         Empfänger, Absender, Datum, Betreff, Text, Unterschrift-Name und
         wann versendet (leer = Entwurf). deal_id: nur die eines Deals.
-        nur_entwuerfe: nur noch nicht versendete."""
+        nur_entwuerfe: nur noch nicht versendete. downloads: das Schreiben
+        als PDF (bei Formularen das ausgefüllte Bankformular) bzw. Word."""
         return await laufen(kuendigungsschreiben_abfragen, deal_id, nur_entwuerfe)
 
     @mcp.tool(annotations=_NUR_LESEN)
@@ -760,6 +836,108 @@ def server_bauen() -> FastMCP:
         return await laufen(finder_laeufe_abfragen, max(1, min(limit, 50)))
 
     return mcp
+
+
+# --- Dateien (HTTP-Downloads neben /mcp) ----------------------------------
+
+
+_MEDIENTYPEN = {
+    "pdf": "application/pdf",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
+_MAX_POST = 256 * 1024
+
+
+def _fehler(text: str, status: int) -> JSONResponse:
+    return JSONResponse({"fehler": text}, status_code=status)
+
+
+def _datei_antwort(inhalt: bytes, format_: str, name: str) -> Response:
+    return Response(
+        content=inhalt,
+        media_type=_MEDIENTYPEN[format_],
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )
+
+
+def _schreiben_datei(db: Session, schreiben_id: int, format_: str) -> Response:
+    k = db.get(Kuendigungsschreiben, schreiben_id)
+    if k is None:
+        return _fehler(f"Schreiben {schreiben_id} existiert nicht.", 404)
+    if k.kanal == "formular":
+        if format_ != "pdf":
+            return _fehler("Ein ausgefülltes Formular gibt es nur als PDF.", 404)
+        if not k.datei:
+            return _fehler("Zu diesem Schreiben ist keine Datei gespeichert.", 404)
+        inhalt = k.datei
+    else:
+        brief = kd.brief_aus(k)
+        inhalt = kd.als_pdf(brief) if format_ == "pdf" else kd.als_docx(brief)
+    return _datei_antwort(inhalt, format_, f"Kuendigungsschreiben-{k.id}.{format_}")
+
+
+def _formular_datei(db: Session, deal_id: int, art: str, eingaben: dict[str, str] | None) -> Response:
+    deal = (
+        db.query(Deal).options(joinedload(Deal.bank), joinedload(Deal.inhaber)).filter(Deal.id == deal_id).one_or_none()
+    )
+    if deal is None:
+        return _fehler(f"Deal {deal_id} existiert nicht.", 404)
+    formular = kf.formular_fuer(db, deal)
+    if formular is None:
+        return _fehler("Für diesen Deal ist kein Bankformular hinterlegt.", 404)
+    if art == "leer":
+        return _datei_antwort(formular.pdf, "pdf", f"Kuendigungsformular-{deal_id}-leer.pdf")
+    werte = kf.feldwerte(formular, deal)
+    if eingaben:
+        bekannt = {fw.feld.name for fw in werte}
+        unbekannt = sorted(set(eingaben) - bekannt)
+        if unbekannt:
+            return _fehler(f"Unbekannte Felder: {', '.join(unbekannt)}", 400)
+        for fw in werte:
+            if fw.feld.name in eingaben:
+                fw.wert = eingaben[fw.feld.name]
+    try:
+        pdf = kf.ausfuellen(formular.pdf, werte)
+    except Exception:
+        logger.exception("Formular für Deal %s ließ sich nicht ausfüllen.", deal_id)
+        return _fehler("Das Formular ließ sich nicht ausfüllen.", 422)
+    return _datei_antwort(pdf, "pdf", f"Kuendigungsformular-{deal_id}-ausgefuellt.pdf")
+
+
+async def _schreiben_route(request: Request) -> Response:
+    teile = request.path_params["datei"].rsplit(".", 1)
+    if len(teile) != 2 or not teile[0].isdigit() or teile[1] not in _MEDIENTYPEN:
+        return _fehler("Erwartet: /dateien/schreiben/<id>.pdf oder .docx", 404)
+    return await anyio.to_thread.run_sync(_in_sitzung, _schreiben_datei, int(teile[0]), teile[1])
+
+
+async def _formular_route(request: Request) -> Response:
+    art = request.path_params["art"]
+    if art not in ("leer.pdf", "ausgefuellt.pdf"):
+        return _fehler("Erwartet: leer.pdf oder ausgefuellt.pdf", 404)
+    eingaben = None
+    if request.method == "POST":
+        if art != "ausgefuellt.pdf":
+            return _fehler("POST nur für ausgefuellt.pdf.", 405)
+        roh = await request.body()
+        if len(roh) > _MAX_POST:
+            return _fehler("Anfrage zu groß.", 413)
+        try:
+            daten = json.loads(roh or b"{}")
+        except ValueError:
+            return _fehler("Erwartet JSON {\"feldname\": \"wert\"}.", 400)
+        if not isinstance(daten, dict):
+            return _fehler("Erwartet JSON {\"feldname\": \"wert\"}.", 400)
+        eingaben = {str(k): "" if v is None else str(v) for k, v in daten.items()}
+    return await anyio.to_thread.run_sync(
+        _in_sitzung, _formular_datei, request.path_params["deal_id"], art.removesuffix(".pdf"), eingaben
+    )
+
+
+DATEI_ROUTEN = [
+    Route("/dateien/schreiben/{datei}", _schreiben_route, methods=["GET"]),
+    Route("/dateien/formular/{deal_id:int}/{art}", _formular_route, methods=["GET", "POST"]),
+]
 
 
 # --- Zugriffsschutz und Start --------------------------------------------
@@ -784,7 +962,9 @@ class BearerSchutz:
 
 
 def asgi_app(token: str) -> ASGIApp:
-    return BearerSchutz(server_bauen().streamable_http_app(), token)
+    app = server_bauen().streamable_http_app()
+    app.router.routes.extend(DATEI_ROUTEN)
+    return BearerSchutz(app, token)
 
 
 def token_ok(token: str | None) -> bool:

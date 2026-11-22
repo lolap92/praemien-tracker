@@ -316,9 +316,27 @@ bekannte Kündigungswege und das Änderungsprotokoll.
   - `kuendigungsschreiben`: gespeicherte Schreiben im Wortlaut, auf Wunsch
     nur Entwürfe.
 
+  - `kuendigungsformular`: das hinterlegte Bankformular mit dem Text
+    seiner Seiten und jedem ausfüllbaren Feld samt dem Wert, den die App
+    eintragen würde.
+
   Alle anderen Werkzeuge zeigen nur, ob diese Daten hinterlegt sind; im
-  Änderungsprotokoll stehen sie weiter als „(verdeckt)". Das ausgefüllte
-  PDF-Formular selbst gibt der Server nicht heraus, nur dass es existiert.
+  Änderungsprotokoll stehen sie weiter als „(verdeckt)".
+- **Kündigungsdateien zum Herunterladen.** Auf demselben Port und mit
+  demselben Schlüssel liefert der Server die Dateien selbst:
+  - `/dateien/schreiben/<id>.pdf` und `.docx`: ein gespeichertes Schreiben
+    als PDF bzw. Word, bei Formularen das ausgefüllte Bankformular.
+  - `/dateien/formular/<deal-id>/leer.pdf`: das Original-Bankformular.
+  - `/dateien/formular/<deal-id>/ausgefuellt.pdf`: das Formular, ausgefüllt
+    mit den Angaben aus der App. Per POST mit JSON wie
+    `{"Kundennummer": "K-77", "Restguthaben": "an"}` setzt Claude einzelne
+    Felder selbst. Das ist nur eine Vorschau: gespeichert wird nichts.
+
+  Die Pfade nennen die Werkzeuge unter `downloads`. Claude Code lädt sie
+  z. B. mit `curl -H "Authorization: Bearer DEIN-SCHLÜSSEL"
+  http://homeassistant.local:8001/dateien/...` herunter und kann die PDFs
+  dann selbst lesen. Ein fertiges Formular speicherst du wie bisher in der
+  App über die Ausfüllhilfe, dann steht es unter „Gespeicherte Schreiben".
 - **Standardmäßig aus.** Der Server startet nur mit einem Schlüssel, und sein
   Port ist erst erreichbar, wenn du ihn freigibst.
 
@@ -342,7 +360,8 @@ bekannte Kündigungswege und das Änderungsprotokoll.
 Danach kannst du Claude z. B. fragen: „Was ist beim Prämien-Tracker
 überfällig?", „Welche Konten kosten noch Gebühren?", „Fasse die
 Vorschläge zusammen, die zu prüfen sind." oder „Welche Kündigungen stehen
-an, und welche Angaben fehlen mir dafür noch?"
+an, und welche Angaben fehlen mir dafür noch?" oder „Füll das
+Kündigungsformular für Deal 12 aus und zeig mir das PDF."
 
 Der Port gehört nur ins Heimnetz - bitte nicht über den Router ins Internet
 weiterleiten. Wer den Schlüssel kennt, kann alles oben Genannte lesen,

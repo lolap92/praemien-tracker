@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.76.0
+
+Claude kann über den MCP-Server jetzt auch die Kündigungsdateien selbst lesen und Bankformulare ausfüllen: als Vorschau, ohne dass in der App etwas gespeichert wird. Bisher sah er nur den Text der Schreiben und dass es ein ausgefülltes Formular gibt.
+
+- **Neues Werkzeug `kuendigungsformular` (`mcp_server.py`).** Es liefert das hinterlegte Bankformular eines Deals: Text der Seiten und jedes ausfüllbare Feld mit Name, Typ, Auswahlmöglichkeiten und maximaler Länge. Dazu kommen der Wert, den die App eintragen würde, und welche Angaben dafür fehlen. Grundlage ist dieselbe Logik wie in der Ausfüllhilfe (`kuendigung_formular.feldwerte`).
+- **Dateien als Download auf dem MCP-Port.** Gespeicherte Schreiben gibt es als PDF bzw. Word unter `/dateien/schreiben/<id>.pdf` und `.docx`. Das Bankformular gibt es leer unter `/dateien/formular/<deal-id>/leer.pdf` und ausgefüllt unter `.../ausgefuellt.pdf`. Die Werkzeuge nennen die Pfade unter `downloads`. Geschützt ist alles mit demselben Schlüssel wie `/mcp`.
+- **Warum Downloads statt Datei im Werkzeug-Ergebnis:** Ein PDF als Base64 im Werkzeug-Ergebnis ist schnell größer als das, was ein MCP-Client wie Claude Code pro Antwort annimmt. Dann käme es abgeschnitten an. Als Download landet die Datei vollständig auf deinem Rechner, und Claude liest sie von dort.
+- **Ausfüllen mit eigenen Werten, aber ohne Speichern.** `POST /dateien/formular/<deal-id>/ausgefuellt.pdf` mit JSON `{"feldname": "wert"}` füllt das Formular mit diesen Werten statt der App-Werte, Ankreuzfelder mit `an`/`aus`. Unbekannte Feldnamen werden mit einer Fehlermeldung abgelehnt, statt still ignoriert zu werden. Das ist nur eine Vorschau: Es entsteht kein gespeichertes Schreiben, und die Formular-Eingaben am Deal bleiben unverändert. Der Server ändert weiterhin nichts an deinen Daten. Ein fertiges Formular speicherst du wie bisher in der App.
+
 ## 2.75.0
 
 Der MCP-Server liest jetzt auch Kündigungsschreiben und alle Angaben, die man zum Kündigen braucht. So kann Claude bei den Kündigungen helfen: prüfen, was fehlt, Schreiben gegenlesen, an Entwürfe erinnern. Der Server bleibt nur lesend – Claude ändert weiter nichts.

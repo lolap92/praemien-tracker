@@ -4,12 +4,17 @@ Daten wie Kontonummer, Anschrift oder IBAN nur über die Kündigungs-Werkzeuge."
 from __future__ import annotations
 
 import datetime
+import io
 import json
 from decimal import Decimal
 
 import pytest
+from pypdf import PdfReader
 from starlette.testclient import TestClient
 
+from formular_hilfen import STANDARD_FORMULAR, formular_pdf
+
+from praemien_tracker import kuendigung_formular as kf
 from praemien_tracker import mcp_server
 from praemien_tracker.main import app  # noqa: F401  (registriert u. a. das Änderungsprotokoll)
 from praemien_tracker.models import (
@@ -240,7 +245,8 @@ def test_mcp_ueber_http_nur_lesende_werkzeuge(db, daten):
         namen = {w["name"] for w in werkzeuge}
         assert namen == {
             "uebersicht", "deals_suchen", "deal_details", "todos", "sperrfristen", "statistiken",
-            "vorschlaege", "inhaber", "kuendigung_infos", "kuendigung_daten", "kuendigungsschreiben",
+            "vorschlaege", "inhaber", "kuendigung_infos", "kuendigung_daten", "kuendigungsformular",
+            "kuendigungsschreiben",
             "aenderungsprotokoll", "finder_laeufe",
         }
         assert all(w["annotations"]["readOnlyHint"] is True for w in werkzeuge)
@@ -268,3 +274,81 @@ def test_server_laesst_das_logging_der_oberflaeche_in_ruhe():
     mcp_server.server_erstellen(TOKEN, 8099)
     nachher = {name: logging.getLogger(name).level for name in vorher}
     assert nachher == vorher
+
+
+# --- Kündigungsdateien -------------------------------------------------------
+
+
+@pytest.fixture()
+def formular(db, daten):
+    daten["inhaber"].voller_name = "Max Muster"
+    pdf = formular_pdf(STANDARD_FORMULAR)
+    kf.speichern(db, daten["deal"], pdf, "hochgeladen: k.pdf", None)
+    db.commit()
+    return pdf
+
+
+def _felder(inhalt: bytes) -> dict:
+    return {k: v.get("/V") for k, v in PdfReader(io.BytesIO(inhalt)).get_fields().items()}
+
+
+def test_kuendigungsformular_mit_feldern(db, daten, formular):
+    f = mcp_server.kuendigungsformular_abfragen(db, daten["deal"].id)
+    felder = {x["name"]: x for x in f["felder"]}
+    assert felder["IBAN"]["wert"] == "DE02120300000000202051"
+    assert felder["Grund"]["optionen"] == ["Umzug", "Sonstiges"]
+    assert f["downloads"]["ausgefuellt"] == f"/dateien/formular/{daten['deal'].id}/ausgefuellt.pdf"
+    assert mcp_server.kuendigungsformular_abfragen(db, daten["konto"].id)["fehler"].startswith("Für Altbank")
+    assert mcp_server.kuendigung_daten_abfragen(db, daten["deal"].id)["bankformular"]["downloads"]
+
+
+def test_formular_downloads(db, daten, formular):
+    kopf = {"Authorization": f"Bearer {TOKEN}"}
+    basis = f"/dateien/formular/{daten['deal'].id}"
+    with TestClient(mcp_server.asgi_app(TOKEN)) as client:
+        assert client.get(f"{basis}/leer.pdf").status_code == 401
+        assert client.get(f"{basis}/leer.pdf", headers=kopf).content == formular
+
+        app_werte = client.get(f"{basis}/ausgefuellt.pdf", headers=kopf)
+        assert app_werte.headers["content-type"] == "application/pdf"
+        assert _felder(app_werte.content)["IBAN"] == "DE02120300000000202051"
+
+        eigene = client.post(f"{basis}/ausgefuellt.pdf", headers=kopf, json={"Kundennummer": "K-9", "Restguthaben": "an"})
+        werte = _felder(eigene.content)
+        assert werte["Kundennummer"] == "K-9" and werte["Restguthaben"] == "/Ja"
+        assert werte["Feld2"] == "Muster"  # nicht übergeben: Wert der App
+
+        assert client.post(f"{basis}/ausgefuellt.pdf", headers=kopf, json={"Gibtsnicht": "x"}).status_code == 400
+        assert client.post(f"{basis}/leer.pdf", headers=kopf, json={}).status_code == 405
+        assert client.get(f"/dateien/formular/{daten['konto'].id}/leer.pdf", headers=kopf).status_code == 404
+    # Nur Vorschau - nichts gespeichert.
+    db.expire_all()
+    assert db.query(Kuendigungsschreiben).count() == 0
+    assert db.get(Deal, daten["deal"].id).kuendigung_formular_werte is None
+
+
+def test_schreiben_downloads(db, daten):
+    brief = Kuendigungsschreiben(
+        deal_id=daten["konto"].id, kanal="brief", empfaenger="Altbank\nPostfach 1", absender="Max Muster",
+        datum=datetime.date(2026, 1, 5), betreff="Kündigung Tagesgeld", text="Sehr geehrte Damen und Herren,", name="Max Muster",
+    )
+    ausgefuellt = Kuendigungsschreiben(
+        deal_id=daten["deal"].id, kanal="formular", absender="Max Muster", datum=datetime.date(2026, 1, 5),
+        betreff="Kündigungsformular", text="IBAN: DE02", name="Max Muster", datei=b"%PDF-1.4 ausgefuellt",
+    )
+    db.add_all([brief, ausgefuellt])
+    db.commit()
+    eintraege = {k["id"]: k for k in mcp_server.kuendigungsschreiben_abfragen(db, None, False)["schreiben"]}
+    assert set(eintraege[brief.id]["downloads"]) == {"pdf", "docx"}
+    assert set(eintraege[ausgefuellt.id]["downloads"]) == {"pdf"}
+    kopf = {"Authorization": f"Bearer {TOKEN}"}
+    with TestClient(mcp_server.asgi_app(TOKEN)) as client:
+        assert client.get(f"/dateien/schreiben/{brief.id}.pdf").status_code == 401
+        pdf = client.get(f"/dateien/schreiben/{brief.id}.pdf", headers=kopf)
+        assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+        docx = client.get(f"/dateien/schreiben/{brief.id}.docx", headers=kopf)
+        assert docx.status_code == 200 and docx.content.startswith(b"PK")
+        assert client.get(f"/dateien/schreiben/{ausgefuellt.id}.pdf", headers=kopf).content == b"%PDF-1.4 ausgefuellt"
+        assert client.get(f"/dateien/schreiben/{ausgefuellt.id}.docx", headers=kopf).status_code == 404
+        assert client.get("/dateien/schreiben/999999.pdf", headers=kopf).status_code == 404
+        assert client.get("/dateien/schreiben/x.exe", headers=kopf).status_code == 404
