@@ -1367,6 +1367,7 @@ input[type="text"],
    type-Attribut und blieben ohne diese Zeile ungestylt - im dunklen Design
    als weiße Kästen. */
 input[list],
+input[data-liste],
 input[type="search"],
 input[type="date"],
 input[type="number"],
@@ -3282,4 +3283,71 @@ textarea.ka-text {
   flex: 1 1 200px;
   min-width: 0;
   font-size: 0.85rem;
+}
+
+/* Eigene Vorschlagsliste für Eingaben mit <datalist> (Bank, Inhaber,
+   Kontoart), siehe Skript in base.html. Ersetzt die native Liste, weil die
+   im WebView der Home-Assistant-App auf Android nicht aufgeht - dort
+   erschien beim Antippen nur der Cursor. */
+.vorschlag-feld {
+  position: relative;
+}
+
+.vorschlag-feld > input {
+  padding-right: 2.6rem;
+}
+
+.vorschlag-pfeil {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 2.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.vorschlag-pfeil svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.15s;
+}
+
+.vorschlag-feld.offen .vorschlag-pfeil svg {
+  transform: rotate(180deg);
+}
+
+.vorschlag-liste {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 15rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.vorschlag-liste li {
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.vorschlag-liste li.aktiv,
+.vorschlag-liste li:hover {
+  background: var(--accent-soft);
 }

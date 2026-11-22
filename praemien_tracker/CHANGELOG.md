@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.77.1
+
+Die Auswahllisten für Bank, Inhaber und Kontoart gehen jetzt auch in der Home-Assistant-App auf Android auf. Bisher erschien beim Antippen nur der Cursor.
+
+- **Ursache.** Die Felder nutzten die eingebaute Vorschlagsliste des Browsers (`<datalist>`). Das WebView, in dem die Home-Assistant-App auf Android die Add-on-Seiten anzeigt, zeichnet zwar den Pfeil, öffnet die Liste aber nie.
+- **Eigene Auswahlliste (`templates/base.html`, `static/css/style.css`).** Jedes dieser Felder bekommt jetzt eine eigene Liste, die beim Antippen alle Einträge zeigt und beim Tippen nach dem eingegebenen Text filtert; der Pfeil rechts öffnet und schließt sie. Ein Antippen übernimmt den Eintrag. Freie Eingabe bleibt möglich, z. B. für eine neue Bank. Am PC funktioniert die Liste auch mit Pfeiltasten, Enter und Esc.
+- **Überall gleich.** Betrifft „Neues Konto", „Neuer Deal" und „Deal bearbeiten", in jedem Browser - nicht nur auf Android. So sieht die Liste überall gleich aus.
+
 ## 2.77.0
 
 Claude kann Kündigungsschreiben jetzt auch direkt in der App speichern, als Entwurf. Das gilt für Briefe, E-Mails und ausgefüllte Bankformulare. Bisher musstest du das von Claude ausgefüllte Formular in der App noch einmal selbst ausfüllen und speichern.

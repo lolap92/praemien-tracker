@@ -78,6 +78,90 @@
   </nav>
 </div>
 <script>
+  /* Vorschlagslisten: Jede Eingabe mit <datalist> (Bank, Inhaber, Kontoart)
+     bekommt eine eigene Auswahlliste. Die native Liste geht im WebView der
+     Home-Assistant-App auf Android nicht auf - dort erschien beim Antippen
+     nur der Cursor. Freie Eingabe bleibt möglich; die Liste filtert beim
+     Tippen, der Pfeil zeigt alle Einträge. */
+  (function () {
+    var PFEIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+    Array.prototype.forEach.call(document.querySelectorAll('input[list]'), function (input) {
+      var dl = document.getElementById(input.getAttribute('list'));
+      if (!dl) return;
+      var werte = Array.prototype.map.call(dl.options, function (o) { return o.value; }).filter(Boolean);
+      input.setAttribute('data-liste', input.getAttribute('list'));
+      input.removeAttribute('list');
+      input.setAttribute('autocomplete', 'off');
+
+      var feld = document.createElement('div');
+      feld.className = 'vorschlag-feld';
+      input.parentNode.insertBefore(feld, input);
+      feld.appendChild(input);
+
+      var knopf = document.createElement('button');
+      knopf.type = 'button';
+      knopf.className = 'vorschlag-pfeil';
+      knopf.tabIndex = -1;
+      knopf.setAttribute('aria-label', 'Auswahl anzeigen');
+      knopf.innerHTML = PFEIL;
+      feld.appendChild(knopf);
+
+      var liste = document.createElement('ul');
+      liste.className = 'vorschlag-liste';
+      liste.setAttribute('role', 'listbox');
+      liste.hidden = true;
+      feld.appendChild(liste);
+
+      var aktiv = -1;
+      function schliessen() { liste.hidden = true; feld.classList.remove('offen'); aktiv = -1; }
+      function waehlen(wert) {
+        input.value = wert;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        schliessen();
+      }
+      function markieren(i) {
+        var eintraege = liste.children;
+        if (!eintraege.length) return;
+        aktiv = (i + eintraege.length) % eintraege.length;
+        Array.prototype.forEach.call(eintraege, function (li, j) { li.classList.toggle('aktiv', j === aktiv); });
+        eintraege[aktiv].scrollIntoView({ block: 'nearest' });
+      }
+      function zeigen(alle) {
+        var q = alle ? '' : input.value.trim().toLowerCase();
+        var treffer = werte.filter(function (w) { return !q || w.toLowerCase().indexOf(q) !== -1; });
+        if (!alle && treffer.length === 1 && treffer[0] === input.value) treffer = [];
+        liste.innerHTML = '';
+        treffer.forEach(function (w) {
+          var li = document.createElement('li');
+          li.setAttribute('role', 'option');
+          li.textContent = w;
+          // mousedown statt click: sonst verliert das Feld vorher den Fokus
+          // und die Liste schließt sich, bevor der Tipp ankommt.
+          li.addEventListener('mousedown', function (e) { e.preventDefault(); waehlen(w); });
+          liste.appendChild(li);
+        });
+        aktiv = -1;
+        liste.hidden = !treffer.length;
+        feld.classList.toggle('offen', !!treffer.length);
+      }
+
+      input.addEventListener('focus', function () { zeigen(true); });
+      input.addEventListener('input', function () { zeigen(false); });
+      input.addEventListener('blur', function () { setTimeout(schliessen, 120); });
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowDown') { if (liste.hidden) zeigen(true); markieren(aktiv + 1); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { markieren(aktiv - 1); e.preventDefault(); }
+        else if (e.key === 'Enter' && !liste.hidden && aktiv >= 0) { waehlen(liste.children[aktiv].textContent); e.preventDefault(); }
+        else if (e.key === 'Escape') { schliessen(); }
+      });
+      knopf.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      knopf.addEventListener('click', function () {
+        if (liste.hidden) { input.focus(); zeigen(true); } else { schliessen(); }
+      });
+    });
+  })();
+
   /* Design-Umschalter: Automatisch -> Hell -> Dunkel -> Automatisch.
      "Automatisch" folgt der Systemeinstellung (kein data-theme, @media greift),
      die anderen beiden setzen data-theme fest. Die Wahl steckt in localStorage
