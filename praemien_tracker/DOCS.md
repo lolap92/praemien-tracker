@@ -137,6 +137,12 @@ Bank-Namen im Angebotstext gegen die selbst erfassten Banken - Groß-/
 Kleinschreibung, Leerzeichen und Interpunktion spielen dabei keine Rolle
 ("SMARTBROKER" erkennt z. B. eine selbst als "Smart Broker" angelegte Bank).
 Findet sich keine passende Bank, gilt der Fund automatisch als Neukunden-Deal.
+Gibt es die Bank schon, zählt jedes deiner Konten dort - Neukunde heißt in
+aller Regel, noch gar kein Kunde der Bank zu sein, egal ob mit Girokonto,
+Tagesgeld oder Depot. Nur wenn das Angebot ausdrücklich nur ein Produkt
+derselben Art ausschließt („wer noch kein Girokonto bei uns hat"), zählen
+allein Konten dieser Art. Die Neukunden-Definition aus dem Angebot steht dann
+im Ablehnungs- bzw. Prüfgrund der Karte.
 
 **Ein Fund erscheint nur einmal.** Passt ein Angebot zu mehreren Inhabern
 (z. B. ein Erwachsener und ein Kind bei einem Junior-Depot), steht es als eine

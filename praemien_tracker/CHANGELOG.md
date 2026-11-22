@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.78.0
+
+Neukunde heißt jetzt standardmäßig: noch gar kein Kunde der Bank. Außerdem liest die KI aus dem Angebot, wie die Bank „Neukunde" definiert.
+
+- **Jedes Konto bei der Bank zählt (`finder/matching.py`).** Bisher zählten für „Bin ich hier schon Kunde?" nur Konten derselben Art (seit 2.77.2 derselben Produktfamilie). Ein Tagesgeld bei der norisbank hätte ein Girokonto-Angebot dort also nicht ausgeschlossen. Fast alle Banken verlangen aber, dass man gar keine Kundenbeziehung hat bzw. in den letzten Monaten hatte. Jetzt zählt deshalb jeder nicht stornierte Deal bei der Bank, mit Kündigung und Sperrfrist wie bisher. Der Grund auf der Karte nennt die Konten, die du dort tatsächlich hast.
+- **Ausnahme laut Angebot (`finder/extraktion.py`).** Die Extraktion liefert zwei neue Felder: `neukunde_bezug` („bank" oder „produkt") und `neukunde_hinweis`, die Definition in einem Satz. Schränkt das Angebot ausdrücklich auf das Produkt ein („wer noch kein Girokonto bei uns hat", „auch Bestandskunden mit Depot"), zählen nur Konten derselben Produktfamilie. Sagt der Text nichts, gilt die ganze Bank.
+- **Definition im Grund.** Steht ein Fund wegen eines bestehenden Kontos unter „Automatisch abgelehnt" oder „Zu prüfen", hängt die Neukunden-Definition aus dem Angebot am Grund, z. B. „Neukunde laut Angebot: in den letzten 24 Monaten kein Kunde der norisbank".
+- **Ohne neue Analyse wirksam.** Die bankweite Regel gilt sofort beim nächsten Lauf für alle noch gelisteten Angebote, weil die Bewertung jedes Mal neu läuft. Die Neukunden-Definition aus dem Text und die Produkt-Ausnahme kennen ältere Funde erst nach „Alle neu analysieren"; bis dahin gelten sie als bankweit.
+
 ## 2.77.3
 
 Ein geforderter Kontowechselservice zählt beim Aufwand jetzt 4 Punkte, so viel wie ein Wertpapierkauf.

@@ -222,13 +222,25 @@ def kontoarten_ueberschneiden(a: str, b: str) -> bool:
 
 
 def _sperrfrist_pruefen(
-    db: Session, bank: Bank | None, kontoart: str, inhaber_id: int, sperrfrist_monate: int | None
+    db: Session,
+    bank: Bank | None,
+    kontoart: str,
+    inhaber_id: int,
+    sperrfrist_monate: int | None,
+    neukunde_bezug: str | None = None,
 ) -> tuple[str, str | None]:
     """Neukunden-/Sperrfrist-Kriterium prüfen. Liefert (einschaetzung, grund),
-    grund ist None bei "erfuellt"."""
+    grund ist None bei "erfuellt".
+
+    Neukunde heißt in aller Regel: noch gar kein Kunde der Bank, egal mit
+    welchem Produkt. Deshalb zählt jeder Deal bei dieser Bank - außer das
+    Angebot sagt ausdrücklich, dass nur ein Produkt derselben Art stört
+    (neukunde_bezug "produkt", siehe extraktion.py); dann nur Deals der
+    gleichen Kontoart-Familie (kontoarten_ueberschneiden)."""
     if bank is None:
         return EINSCHAETZUNG_ERFUELLT, None
 
+    nur_produkt = neukunde_bezug == "produkt"
     # Stornierte Deals zählen nicht als "war schon Kunde" - sie sind nie
     # zustande gekommen (siehe models.Deal.storniert).
     bestehende = [
@@ -236,10 +248,13 @@ def _sperrfrist_pruefen(
         for d in db.query(Deal).filter(
             Deal.bank_id == bank.id, Deal.inhaber_id == inhaber_id, Deal.storniert.is_(False)
         )
-        if kontoarten_ueberschneiden(d.kontoart, kontoart)
+        if not nur_produkt or kontoarten_ueberschneiden(d.kontoart, kontoart)
     ]
     if not bestehende:
         return EINSCHAETZUNG_ERFUELLT, None
+    # Die tatsächlich vorhandenen Konten nennen - bei bankweiter Neukunden-
+    # Regel kann das ein anderes Produkt als das angebotene sein.
+    kontoart = ", ".join(sorted({d.kontoart for d in bestehende}))
 
     aktiv = [d for d in bestehende if not d.gekuendigt]
     if aktiv:
@@ -405,8 +420,11 @@ def bewerten(
     # 3) Neukunden-/Sperrfrist-Check.
     bank = _bank_finden(db, extraktion.bank_name)
     sperrfrist_einschaetzung, sperrfrist_grund = _sperrfrist_pruefen(
-        db, bank, extraktion.kontoart, inhaber.id, extraktion.sperrfrist_monate
+        db, bank, extraktion.kontoart, inhaber.id, extraktion.sperrfrist_monate, extraktion.neukunde_bezug
     )
+    neukunde_hinweis = (extraktion.neukunde_hinweis or "").strip()
+    if sperrfrist_grund and neukunde_hinweis:
+        sperrfrist_grund = f"{sperrfrist_grund} Neukunde laut Angebot: {neukunde_hinweis}"
     if sperrfrist_einschaetzung == EINSCHAETZUNG_NICHT_ERFUELLT:
         ablehnung_gruende.append(sperrfrist_grund)
     elif sperrfrist_einschaetzung == EINSCHAETZUNG_ZU_PRUEFEN:

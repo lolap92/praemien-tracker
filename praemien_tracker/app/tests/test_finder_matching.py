@@ -645,9 +645,6 @@ def test_hoechstwert_nicht_ueber_dem_sicheren_betrag_wird_ignoriert(db, alice):
         ("Girokonto", "Girokonto und Tagesgeld", matching.STATUS_ABGELEHNT),
         ("Giro", "Girokonto", matching.STATUS_ABGELEHNT),
         ("Wertpapierdepot", "Depot", matching.STATUS_ABGELEHNT),
-        # Andere Produktfamilie bei derselben Bank bleibt ein Neukunden-Deal.
-        ("Tagesgeld", "Girokonto", matching.STATUS_VORGESCHLAGEN),
-        ("Depot", "Kreditkarte", matching.STATUS_VORGESCHLAGEN),
     ],
 )
 def test_bestehendes_konto_auch_bei_abweichender_kontoart(db, alice, deal_kontoart, angebot_kontoart, status):
@@ -674,3 +671,70 @@ def test_bestehendes_konto_auch_bei_abweichender_kontoart(db, alice, deal_kontoa
 )
 def test_kontoarten_ueberschneiden(a, b, erwartet):
     assert matching.kontoarten_ueberschneiden(a, b) is erwartet
+
+
+@pytest.mark.parametrize(
+    ("bezug", "status"),
+    [
+        # Normalfall: Neukunde heißt gar kein Kunde der Bank - auch ein
+        # Tagesgeld dort schließt das Girokonto-Angebot aus.
+        (None, matching.STATUS_ABGELEHNT),
+        ("bank", matching.STATUS_ABGELEHNT),
+        # Nur wenn das Angebot es ausdrücklich auf das Produkt beschränkt,
+        # zählt ein anderes Produkt der Bank nicht.
+        ("produkt", matching.STATUS_VORGESCHLAGEN),
+    ],
+)
+def test_neukunde_gilt_fuer_die_ganze_bank(db, alice, bezug, status):
+    bank = Bank(name="norisbank")
+    db.add(bank)
+    db.commit()
+    db.add(Deal(bank=bank, inhaber=alice, kontoart="Tagesgeld"))
+    db.commit()
+
+    fund = RohFund("spartanien", "https://spartanien.de/norisbank", "t", "x")
+    ext = AngebotExtraktion(
+        bank_name="norisbank", kontoart="Girokonto", praemie_betrag=200.0, bedingungen=[], neukunde_bezug=bezug
+    )
+    ergebnis = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE)
+    assert ergebnis.status == status
+    if status == matching.STATUS_ABGELEHNT:
+        # Grund nennt das tatsächlich vorhandene Konto, nicht das angebotene.
+        assert "(Tagesgeld)" in ergebnis.ablehnungsgruende
+
+
+def test_produktbezogen_zaehlt_gleiche_familie_weiter(db, alice):
+    bank = Bank(name="norisbank")
+    db.add(bank)
+    db.commit()
+    db.add(Deal(bank=bank, inhaber=alice, kontoart="Girokonto und Tagesgeldkonto"))
+    db.commit()
+    fund = RohFund("spartanien", "https://spartanien.de/norisbank", "t", "x")
+    ext = AngebotExtraktion(
+        bank_name="norisbank", kontoart="Girokonto", praemie_betrag=200.0, bedingungen=[], neukunde_bezug="produkt"
+    )
+    assert matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE).status == matching.STATUS_ABGELEHNT
+
+
+def test_neukunden_definition_steht_im_grund(db, alice):
+    bank = Bank(name="norisbank")
+    db.add(bank)
+    db.commit()
+    db.add(Deal(bank=bank, inhaber=alice, kontoart="Depot"))
+    db.commit()
+    fund = RohFund("spartanien", "https://spartanien.de/norisbank", "t", "x")
+    ext = AngebotExtraktion(
+        bank_name="norisbank",
+        kontoart="Girokonto",
+        praemie_betrag=200.0,
+        bedingungen=[],
+        neukunde_hinweis="in den letzten 24 Monaten kein Kunde der norisbank",
+    )
+    gruende = matching.bewerten(db, fund, ext, alice, MINDESTPRAEMIE).ablehnungsgruende
+    assert "Neukunde laut Angebot: in den letzten 24 Monaten kein Kunde der norisbank" in gruende
+
+
+def test_alter_cache_ohne_neukunde_bezug_bleibt_lesbar():
+    alt = '{"bank_name": "X", "kontoart": "Girokonto", "praemie_betrag": 50, "bedingungen": []}'
+    ext = AngebotExtraktion.model_validate_json(alt)
+    assert ext.neukunde_bezug is None and ext.neukunde_hinweis is None

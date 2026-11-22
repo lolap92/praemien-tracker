@@ -80,6 +80,15 @@ class AngebotExtraktion(BaseModel):
     # None, wenn im Text keine Sperrfrist erkennbar ist - wird in matching.py
     # zu "zu_pruefen", nicht zu "automatisch_abgelehnt".
     sperrfrist_monate: int | None = None
+    # Worauf sich "Neukunde" bezieht: "bank" = noch gar kein Produkt bei
+    # dieser Bank (der Normalfall), "produkt" = nur kein Produkt derselben
+    # Art (z.B. "wer noch kein Girokonto bei uns hat" - ein Depot dort wäre
+    # dann kein Hindernis). None, wenn der Text es nicht sagt; matching.py
+    # behandelt das wie "bank". Default None auch für alte Cache-Einträge.
+    neukunde_bezug: Literal["bank", "produkt"] | None = None
+    # Die Neukunden-Definition aus dem Text, kurz (z.B. "kein Girokonto bei
+    # der norisbank in den letzten 24 Monaten").
+    neukunde_hinweis: str | None = None
     # Ob das Angebot (auch) für Minderjährige offensteht (z.B. Kinderdepot,
     # Junior-Konto). Steuert in lauf.py, ob minderjährigen Inhabern der Fund
     # überhaupt vorgeschlagen wird. Default False (konservativ): fehlt das
@@ -183,6 +192,16 @@ Formulierungen wie "Kündigung darf nicht in den letzten 12 Monaten erfolgt \
 sein". Bei einer Mehrdeutigkeit wie "6 oder 12 Monate" die kürzere Zahl \
 übernehmen. Lässt sich aus dem Text keine Sperrfrist erkennen, dieses Feld \
 weglassen (null) - nicht raten.
+- neukunde_bezug: Worauf sich die Neukunden-Voraussetzung bezieht:
+  - "bank": man darf noch gar kein Kunde dieser Bank sein bzw. gewesen sein, \
+egal mit welchem Produkt (z.B. "Sie waren in den letzten 12 Monaten nicht \
+Kunde der Bank", "keine bestehende Kundenbeziehung").
+  - "produkt": nur ein Produkt derselben Art ist ausgeschlossen, andere \
+Produkte der Bank stören nicht (z.B. "wer noch kein Girokonto bei uns hat", \
+"auch Bestandskunden mit Depot können teilnehmen").
+  Sagt der Text nichts dazu, null - nicht raten.
+- neukunde_hinweis: die Neukunden-Definition aus dem Text in einem kurzen \
+Satz (z.B. "kein Girokonto in den letzten 24 Monaten"), sonst null.
 - fuer_kinder: true nur, wenn das Angebot ausdrücklich (auch) für \
 Minderjährige/Kinder offensteht - z.B. ein Kinderdepot, Junior-Depot, \
 Junior-Konto oder Kinder-Tagesgeld, oder wenn der Text explizit sagt, dass \
