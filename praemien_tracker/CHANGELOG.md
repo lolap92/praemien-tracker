@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.80.0
+
+Prämien landen nicht mehr automatisch als Forecast im Budget-Tracker.
+
+- **Neue Option „Prämien als Forecast in den Budget-Tracker übernehmen" (`budget_sync_aktiv`, Standard: aus).** Bisher legte jede erwartete Bank-Prämie im Budget-Tracker einen Forecast-Eintrag im Topf „Sonderausgaben" an. Ob und wann eine Prämie tatsächlich ankommt, ist aber zu unsicher (Bedingungen, verspätete Auszahlung), um damit ungefragt die Prognose zu erhöhen. Wer die Übernahme weiter möchte, schaltet die Option in der Add-on-Konfiguration ein; beim nächsten Start werden dann alle erwarteten Prämien wieder gemeldet.
+- **Bestehende Einträge werden aufgeräumt (`auszahlungs_sync.py`).** Ausgeschaltet meldet die App beim Start für jede Prämie „löschen" statt gar nichts – so verschwinden auch die schon übermittelten offenen Forecast-Einträge, ohne dass man sie im Budget-Tracker suchen muss. Bereits mit einer echten Buchung verknüpfte Einträge bleiben dort erhalten. Zusätzlich räumt der Budget-Tracker ab Version 1.50.0 die offenen Prämien-Einträge selbst einmalig ab, falls ein Event verloren gegangen ist.
+
 ## 2.79.2
 
 Der JSON-Endpunkt für die Unterschrift aus 2.79.1 ist wieder entfernt.

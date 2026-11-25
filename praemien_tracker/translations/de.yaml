@@ -45,6 +45,13 @@ configuration:
       ausschalten. Der Batch durchsucht alle aktiven Deals ohne Kündigungsweg
       und recherchiert diesen per KI-Websuche nach (erfordert einen
       konfigurierten Anthropic-API-Key).
+  budget_sync_aktiv:
+    name: Prämien als Forecast in den Budget-Tracker übernehmen
+    description: >-
+      Legt für jede erwartete Bank-Prämie automatisch einen Forecast-Eintrag
+      im Topf "Sonderausgaben" des Budget-Trackers an. Aus = es werden keine
+      neuen Einträge angelegt, und beim nächsten Start verschwinden die
+      bereits übermittelten offenen Einträge wieder.
   mcp_token:
     name: MCP-Schlüssel (Claude)
     description: >-

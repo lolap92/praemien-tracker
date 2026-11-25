@@ -2,6 +2,11 @@
 der Budget-Tracker (separates Add-on) daraus automatisch einen Forecast-
 Eintrag im Topf "Sonderausgaben" anlegt, aktualisiert oder entfernt.
 
+Abschaltbar über die Add-on-Option "budget_sync_aktiv" (Standard: aus). Aus
+heißt nicht "gar nichts senden", sondern "für jede Prämie loeschen melden" -
+so verschwinden beim nächsten Start auch die Einträge, die vorher schon
+übermittelt wurden, ohne dass sie jemand im Budget-Tracker suchen muss.
+
 Gemeldet werden ausschließlich Prämien der Quelle "bank" - nur sie erreichen
 das Konto, das der Budget-Tracker führt (siehe _vorkommen_payload).
 
@@ -27,6 +32,7 @@ import httpx
 from sqlalchemy import event, inspect
 from sqlalchemy.orm import Session, attributes, joinedload
 
+from . import config
 from .database import SessionLocal
 from .derived import QUELLE_BANK
 from .models import Bank, Deal, Inhaber, Praemie
@@ -86,6 +92,10 @@ def _vorkommen_payload(praemie: Praemie) -> dict | None:
     """None, wenn für diese Prämie aktuell kein Forecast-Eintrag sinnvoll ist
     (fremde Quelle, schon erhalten oder noch kein erwarteter Monat gepflegt) -
     der Budget-Tracker entfernt in dem Fall einen zuvor angelegten Eintrag."""
+    if not config.BUDGET_SYNC_AKTIV:
+        # Über config.<Name> statt "from .config import ..." gelesen, damit
+        # Tests den Schalter per monkeypatch umlegen können.
+        return None
     if praemie.quelle != QUELLE_BANK:
         # Nur Bank-Prämien landen auf dem im Budget-Tracker geführten Konto.
         # Eine Spartanien-Prämie zahlt das Portal auf einem anderen Weg aus;

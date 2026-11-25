@@ -163,6 +163,12 @@ TAEGLICHER_LAUF_AKTIV: bool = bool(_OPTIONEN.get("taeglicher_lauf_aktiv", True))
 # keine KI-Websuche für Kündigungswege wollen, oder umgekehrt).
 KUENDIGUNG_HINWEISE_BATCH_AKTIV: bool = bool(_OPTIONEN.get("kuendigung_hinweise_batch_aktiv", True))
 
+# Forecast-Einträge für erwartete Prämien im Budget-Tracker (siehe
+# auszahlungs_sync.py). Standardmäßig aus: Der Eingang einer Prämie ist zu
+# unsicher (Bedingungen, verspätete Auszahlung), als dass er ungefragt die
+# Prognose im Budget-Tracker erhöhen sollte.
+BUDGET_SYNC_AKTIV: bool = bool(_OPTIONEN.get("budget_sync_aktiv", False))
+
 # MCP-Server für Claude (siehe mcp_server.py): lesend, eigener Port neben
 # der Oberfläche. Startet nur mit gesetztem Schlüssel - ohne "mcp_token" gibt
 # es keinen offenen Endpunkt, auch wenn der Port freigegeben ist.

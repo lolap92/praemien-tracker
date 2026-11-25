@@ -1,5 +1,5 @@
 name: "Prämien-Tracker"
-version: "2.79.2"
+version: "2.80.0"
 slug: "praemien_tracker"
 description: "Private Übersicht und Verwaltung von Bank-Prämien-Deals"
 url: "https://github.com/lolap92/praemien-tracker"
@@ -39,6 +39,7 @@ options:
   benachrichtigungsgeraete: "sm_g990b,sm_g990u,fp5"
   taeglicher_lauf_aktiv: true
   kuendigung_hinweise_batch_aktiv: true
+  budget_sync_aktiv: false
   mcp_token: ""
   mcp_entwuerfe_speichern: false
 schema:
@@ -59,6 +60,7 @@ schema:
   benachrichtigungsgeraete: "str"
   taeglicher_lauf_aktiv: "bool"
   kuendigung_hinweise_batch_aktiv: "bool"
+  budget_sync_aktiv: "bool"
   # Leer = MCP-Server aus. Als "password?", damit der Schlüssel in der
   # Add-on-Konfiguration verdeckt angezeigt wird und leer bleiben darf.
   mcp_token: "password?"

@@ -6,13 +6,20 @@ from decimal import Decimal
 
 import pytest
 
-from praemien_tracker import auszahlungs_sync
+from praemien_tracker import auszahlungs_sync, config
 from praemien_tracker.models import Bank, Deal, Inhaber, Praemie
 
 
 class _FakeAntwort:
     def raise_for_status(self):
         pass
+
+
+@pytest.fixture(autouse=True)
+def sync_aktiv(monkeypatch):
+    """Die meisten Tests hier prüfen den eingeschalteten Sync - ohne diese
+    Fixture griffe der Standard (aus) und jeder Upsert-Test schlüge fehl."""
+    monkeypatch.setattr(config, "BUDGET_SYNC_AKTIV", True)
 
 
 @pytest.fixture
@@ -265,3 +272,41 @@ class TestSendeAlleAktuellen:
         assert len(aufrufe) == 1
         assert aufrufe[0]["aktion"] == "upsert"
         assert aufrufe[0]["bezeichnung"] == "Prämienauszahlung – Neue Bank GmbH · Girokonto · Max"
+
+
+class TestSyncAbgeschaltet:
+    """Option budget_sync_aktiv = false: keine neuen Forecast-Einträge, und
+    bereits übermittelte werden beim Start zurückgezogen."""
+
+    @pytest.fixture(autouse=True)
+    def aus(self, monkeypatch):
+        monkeypatch.setattr(config, "BUDGET_SYNC_AKTIV", False)
+
+    def test_neue_praemie_wird_nicht_gemeldet(self, db, deal, aufrufe):
+        db.add(Praemie(deal_id=deal.id, quelle="bank", betrag=Decimal("100"), erhalten=False, auszahlung_erwartet="2026-09"))
+        db.commit()
+
+        assert aufrufe == []
+
+    def test_aenderung_zieht_eintrag_zurueck_statt_upsert(self, db, deal, aufrufe):
+        praemie = Praemie(deal_id=deal.id, quelle="bank", betrag=Decimal("100"), erhalten=False, auszahlung_erwartet="2026-09")
+        db.add(praemie)
+        db.commit()
+
+        praemie.betrag = Decimal("150")
+        db.commit()
+
+        assert aufrufe == [{"external_id": f"praemientracker:{praemie.id}", "aktion": "loeschen"}]
+
+    def test_start_meldet_loeschen_fuer_jede_praemie(self, db, deal, aufrufe):
+        p1 = Praemie(deal_id=deal.id, quelle="bank", betrag=Decimal("100"), erhalten=False, auszahlung_erwartet="2026-09")
+        p2 = Praemie(deal_id=deal.id, quelle="bank", betrag=Decimal("50"), erhalten=False, auszahlung_erwartet="2026-10")
+        db.add_all([p1, p2])
+        db.commit()
+
+        anzahl = auszahlungs_sync.sende_alle_aktuellen()
+
+        assert anzahl == 2
+        assert all(a["aktion"] == "loeschen" for a in aufrufe)
+        assert {a["external_id"] for a in aufrufe} == {f"praemientracker:{p1.id}", f"praemientracker:{p2.id}"}
+
