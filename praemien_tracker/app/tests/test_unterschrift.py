@@ -164,3 +164,29 @@ def test_unbrauchbares_bild_zeigt_fehler_und_speichert_den_rest(db):
     assert "Unterschrift für Elli" in antwort.text
     db.refresh(inhaber)
     assert inhaber.ort == "Breuberg" and inhaber.unterschrift is None
+
+
+def test_unterschrift_per_json_setzen_laesst_den_rest_unberuehrt(db):
+    import base64
+
+    kind = Inhaber(name="Finn", ist_minderjaehrig=True)
+    elli = Inhaber(name="Elli")
+    db.add_all([kind, elli])
+    db.commit()
+    png = _png(2, 2, 6, RGBA_ZEILEN, 2)
+
+    antwort = client.post(f"/inhaber/{elli.id}/unterschrift", json={"bild_base64": base64.b64encode(png).decode()})
+    assert antwort.status_code == 200
+    assert antwort.json() == {"inhaber": "Elli", "unterschrift_hinterlegt": True, "breite": 2, "hoehe": 2}
+    db.refresh(elli)
+    db.refresh(kind)
+    assert elli.unterschrift == u.normalisieren(png)
+    assert kind.ist_minderjaehrig is True
+
+    # Auch als data-URI, Fehler und Entfernen
+    uri = "data:image/png;base64," + base64.b64encode(png).decode()
+    assert client.post(f"/inhaber/{elli.id}/unterschrift", json={"bild_base64": uri}).status_code == 200
+    assert client.post(f"/inhaber/{elli.id}/unterschrift", json={"bild_base64": "!!"}).status_code == 400
+    assert client.post(f"/inhaber/{elli.id}/unterschrift", json={"bild_base64": "R0lGODlh"}).status_code == 400
+    assert client.post("/inhaber/9999/unterschrift", json={"bild_base64": ""}).status_code == 404
+    assert client.post(f"/inhaber/{elli.id}/unterschrift", json={"bild_base64": ""}).json()["unterschrift_hinterlegt"] is False

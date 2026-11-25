@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.79.1
+
+Die Unterschrift lässt sich jetzt auch ohne Datei-Upload setzen.
+
+- **Neuer Endpunkt `POST /inhaber/{id}/unterschrift` (`routers/inhaber.py`).** Er nimmt das Bild als Base64 in JSON (`{"bild_base64": "..."}`, auch als `data:`-URI), prüft es wie der Upload auf der Inhaber-Seite und antwortet mit Name und Bildgröße. Ein leerer String entfernt die Unterschrift.
+- **Warum.** Der App-Proxy des Home-Assistant-MCP-Servers kann nur JSON senden, keine Datei. Über die Inhaber-Seite (`POST /inhaber`) wäre das auch riskant gewesen: Sie übernimmt immer alle Inhaber samt „minderjährig" aus dem Formular, ein Aufruf nur mit der Unterschrift hätte das Häkchen bei allen anderen gelöscht. Der neue Endpunkt ändert nur die Unterschrift dieses einen Inhabers.
+
 ## 2.79.0
 
 Kündigungsbriefe bekommen auf Wunsch die eingescannte Unterschrift des Inhabers.
