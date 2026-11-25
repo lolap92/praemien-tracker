@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.78.2
+
+Jedes Kündigungsschreiben nennt jetzt das Referenzkonto (IBAN) für ein Restguthaben.
+
+- **Satz wird ergänzt (`kuendigung_assistent.py`).** Bisher stand die IBAN nur in der Standardvorlage. Eine von der KI recherchierte Vorlage ließ sie weg, wenn die Bank sie nicht ausdrücklich verlangt - ein Restguthaben landete dann im Zweifel per Scheck im Briefkasten oder blieb liegen. Fehlt `{iban}` in einer Vorlage, hängt die App jetzt den Satz „Ein eventuell vorhandenes Restguthaben überweisen Sie bitte auf mein Referenzkonto mit der IBAN …" an. Damit fragt der Assistent die IBAN auch ab, wenn sie am Inhaber noch fehlt.
+- **Auch für schon gecachte Recherchen.** Die Ergänzung passiert beim Laden der Vorlage, nicht beim Speichern - ältere Recherchen müssen also nicht neu angestoßen werden. Zusätzlich verlangt der Recherche-Prompt das Referenzkonto ausdrücklich.
+- **Bezeichnung.** Das Feld am Inhaber heißt jetzt „IBAN des Referenzkontos (für das Restguthaben)". Bankeigene PDF-Formulare bleiben unverändert: Hat ein Formular kein IBAN-Feld, kann die App dort nichts ergänzen.
+
 ## 2.78.1
 
 „Deal bearbeiten": Kontoführungsgebühren und Kontonummer tauschen die Plätze.

@@ -62,7 +62,7 @@
             </div>
           </div>
           <div class="feld">
-            <label for="iban_{{ inhaber.id }}">IBAN für das Restguthaben</label>
+            <label for="iban_{{ inhaber.id }}">IBAN des Referenzkontos (für das Restguthaben)</label>
             <input type="text" id="iban_{{ inhaber.id }}" name="iban_{{ inhaber.id }}" value="{{ iban_formatiert(inhaber.iban) }}" autocomplete="off" spellcheck="false">
             {% if inhaber.iban and not iban_gueltig(inhaber.iban) %}<p class="feld-hinweis ka-warnung">Die Prüfsumme dieser IBAN stimmt nicht - bitte auf Tippfehler prüfen.</p>{% endif %}
           </div>

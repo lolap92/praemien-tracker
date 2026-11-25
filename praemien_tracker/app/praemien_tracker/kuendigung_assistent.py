@@ -58,7 +58,7 @@ STANDARD_FELDER: dict[str, str] = {
     "ort": "Ort",
     "geburtsdatum": "Geburtsdatum",
     "email": "E-Mail-Adresse",
-    "iban": "IBAN für das Restguthaben",
+    "iban": "IBAN des Referenzkontos (für das Restguthaben)",
     "kontonummer": "Kontonummer",
     "bank": "Bank",
     "kontoart": "Kontoart",
@@ -84,6 +84,15 @@ STANDARD_TERMIN = "zum nächstmöglichen Zeitpunkt"
 ANREDE = "Sehr geehrte Damen und Herren,"
 GRUSS = "Mit freundlichen Grüßen"
 
+# Das Referenzkonto gehört in jedes Schreiben - auch wenn die Bank es nicht
+# ausdrücklich verlangt, sonst bleibt ein Restguthaben hängen oder die Bank
+# schickt einen Scheck. Fehlt {iban} in einer (recherchierten) Vorlage, hängt
+# mit_referenzkonto() diesen Satz an.
+REFERENZKONTO_SATZ = (
+    "Ein eventuell vorhandenes Restguthaben überweisen Sie bitte auf mein "
+    "Referenzkonto mit der IBAN {iban}."
+)
+
 # Bewusst kein "mein {kontoart}": die Kontoart ist Freitext, und "mein
 # Kreditkarte" wäre falsch - die Konstruktion hier passt zu jedem Produkt.
 STANDARD_BETREFF = "Kündigung {kontoart}, Kontonummer {kontonummer}"
@@ -92,8 +101,7 @@ STANDARD_TEXT = (
     "\n"
     "{kontoart}, Kontonummer {kontonummer}\n"
     "\n"
-    "Ein eventuell vorhandenes Restguthaben überweisen Sie bitte auf mein "
-    "Konto mit der IBAN {iban}.\n"
+    f"{REFERENZKONTO_SATZ}\n"
     "\n"
     "Bitte bestätigen Sie mir die Kündigung und das Datum der Beendigung "
     "schriftlich."
@@ -122,7 +130,8 @@ Verbraucherquellen, nicht in Foren - und liefere:
   nur der Kern - OHNE Anrede, OHNE Grußformel und OHNE Unterschrift (die
   ergänzt die App), beginnend klein nach der Anrede ("hiermit kündige ich
   ..."). Er muss alle Angaben enthalten, die diese Bank für die Kündigung
-  verlangt.
+  verlangt und immer das Referenzkonto für ein Restguthaben mit dem
+  Platzhalter {{iban}} nennen.
 - quelle_url: die URL, auf der du die Informationen gefunden hast.
 
 Du kennst keine persönlichen Daten und darfst keine erfinden. Schreibe für
@@ -174,6 +183,11 @@ class Anforderung:
     zusatzfelder: list[dict] = field(default_factory=list)
     recherchiert_am: datetime.datetime | None = None
 
+    def __post_init__(self) -> None:
+        # Greift für die Standardvorlage, frische Recherchen und auch für
+        # Vorlagen, die schon vor dieser Regel gecacht wurden.
+        self.text_vorlage = mit_referenzkonto(self.text_vorlage)
+
     @property
     def ki(self) -> bool:
         return self.recherchiert_am is not None
@@ -187,6 +201,15 @@ class Anforderung:
         """Alle Platzhalter in Betreff und Text, in Reihenfolge des ersten
         Auftretens - das ist auch die Reihenfolge der Rückfragen."""
         return platzhalter_in(self.betreff_vorlage + "\n" + self.text_vorlage)
+
+
+def mit_referenzkonto(text_vorlage: str) -> str:
+    """Stellt sicher, dass der Platzhalter {iban} (Referenzkonto) im Text
+    steht - wenn nicht, wird REFERENZKONTO_SATZ angehängt. Damit fragt der
+    Assistent die IBAN auch dann ab, wenn die KI sie vergessen hat."""
+    if "{iban}" in text_vorlage:
+        return text_vorlage
+    return f"{text_vorlage.rstrip()}\n\n{REFERENZKONTO_SATZ}"
 
 
 def standard_anforderung() -> Anforderung:

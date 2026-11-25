@@ -487,3 +487,25 @@ def test_protokoll_speichert_iban_nur_maskiert(db):
             assert "DE02120300000000202051" not in (text or "")
     aenderung = next(e for e in eintraege if e.feld == "iban")
     assert aenderung.neuer_wert == "DE02 … 2051"
+
+
+# ---------- Referenzkonto ----------
+
+
+def test_referenzkonto_wird_ergaenzt_wenn_vorlage_es_vergisst(db, deal):
+    db.add(
+        KuendigungAnforderung(
+            bank_name="Testbank", kontoart="Depot", kanal="brief",
+            betreff_vorlage="Kündigung {kontonummer}", text_vorlage="hiermit kündige ich mein Depot {kontonummer}.",
+        )
+    )
+    db.commit()
+    anforderung = ka.anforderung_fuer(db, deal)
+    assert anforderung.text_vorlage.endswith(ka.REFERENZKONTO_SATZ)
+    assert "iban" in anforderung.platzhalter
+    assert "iban" in ka.fehlende(anforderung, {"kontonummer": "123"})
+
+
+def test_referenzkonto_nicht_doppelt():
+    assert ka.standard_anforderung().text_vorlage.count("{iban}") == 1
+    assert ka.mit_referenzkonto("Restguthaben auf {iban}.") == "Restguthaben auf {iban}."

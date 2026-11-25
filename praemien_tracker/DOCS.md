@@ -20,8 +20,9 @@ Haushaltsmitglied ein Häkchen **"minderjährig"** setzen; das steuert im
 KI-Deal-Finder, ob ein reines Erwachsenen-Angebot für diese Person überhaupt
 als Vorschlag erscheint (siehe unten). Darunter lassen sich unter
 **"Anschrift & Bankverbindung"** vollständiger Name, Anschrift,
-Geburtsdatum, E-Mail und die IBAN für das Restguthaben pflegen - die
-Absenderdaten für den Kündigungs-Assistenten.
+Geburtsdatum, E-Mail und die IBAN des Referenzkontos pflegen - die
+Absenderdaten für den Kündigungs-Assistenten. Das Referenzkonto steht in
+jedem Kündigungsschreiben, damit ein Restguthaben dorthin überwiesen wird.
 
 ## Zu erledigen
 
