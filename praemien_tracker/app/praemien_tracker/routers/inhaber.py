@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import base64
-import binascii
-
-from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from starlette.datastructures import UploadFile
 from sqlalchemy.orm import Session
 
@@ -90,33 +87,3 @@ async def inhaber_speichern(request: Request, db: Session = Depends(get_db)):
         return _seite(request, db, fehler=fehler, status_code=400)
     return redirect(request, "inhaber")
 
-
-@router.post("/inhaber/{inhaber_id}/unterschrift")
-def unterschrift_setzen(inhaber_id: int, bild_base64: str = Body(..., embed=True), db: Session = Depends(get_db)):
-    """Setzt nur die Unterschrift eines Inhabers, das Bild als Base64 in JSON
-    ({"bild_base64": "..."}). Für Werkzeuge, die keine Datei hochladen
-    können (z. B. der App-Proxy des Home-Assistant-MCP-Servers) - und
-    anders als POST /inhaber, das immer alle Inhaber samt "minderjährig"
-    aus dem Formular übernimmt, lässt es alles andere unberührt. Ein leerer
-    String entfernt die Unterschrift."""
-    inhaber = db.get(Inhaber, inhaber_id)
-    if inhaber is None:
-        raise HTTPException(status_code=404, detail="Inhaber nicht gefunden.")
-    if not bild_base64.strip():
-        inhaber.unterschrift = None
-    else:
-        try:
-            roh = base64.b64decode(bild_base64.split(",", 1)[-1], validate=True)
-            inhaber.unterschrift = unterschrift.normalisieren(roh)
-        except binascii.Error as exc:
-            raise HTTPException(status_code=400, detail="Kein gültiges Base64.") from exc
-        except unterschrift.UngueltigesBild as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-    db.commit()
-    bild = unterschrift.lesen(inhaber.unterschrift)
-    return {
-        "inhaber": inhaber.name,
-        "unterschrift_hinterlegt": bild is not None,
-        "breite": bild.breite if bild else None,
-        "hoehe": bild.hoehe if bild else None,
-    }

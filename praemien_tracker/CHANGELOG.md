@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.79.2
+
+Der JSON-Endpunkt für die Unterschrift aus 2.79.1 ist wieder entfernt.
+
+- **`POST /inhaber/{id}/unterschrift` gestrichen (`routers/inhaber.py`).** Er war nur dafür gedacht, die Unterschriften einmalig über den App-Proxy des Home-Assistant-MCP-Servers hochzuladen. Die Unterschriften sind inzwischen über die Inhaber-Seite gespeichert, der Endpunkt wird nicht mehr gebraucht. Ein Zugang weniger, über den sich Daten ändern lassen. Hochladen, Ersetzen und Entfernen gehen weiter unter Mehr → Inhaber, gespeicherte Unterschriften bleiben erhalten.
+
 ## 2.79.1
 
 Die Unterschrift lässt sich jetzt auch ohne Datei-Upload setzen.
