@@ -167,10 +167,6 @@ class _Seiten:
             b"BT " + schrift + b" %.1f Tf %.2f %.2f Td " % (groesse, x, y) + _pdf_string(text) + b" Tj ET"
         )
 
-    def linie(self, x1_mm: float, x2_mm: float, y_mm: float) -> None:
-        y = (_SEITE_H - y_mm) * _MM
-        self.seiten[-1].append(b"0.5 w %.2f %.2f m %.2f %.2f l S" % (x1_mm * _MM, y, x2_mm * _MM, y))
-
     def neue_seite(self) -> None:
         self.seiten.append([])
 
@@ -186,12 +182,9 @@ def als_pdf(brief: Brief) -> bytes:
         s.text(rechts - _breite_mm(zeile, _SCHRIFT), y, zeile)
         y += _ZEILE
 
-    # Rücksendeangabe und Anschriftfeld (45 mm von oben, 85 mm breit)
-    ruecksende = " · ".join(brief.absender)
-    while ruecksende and _breite_mm(ruecksende, 7) > 85:
-        ruecksende = ruecksende[:-1]
-    s.text(_RAND_LINKS, 49.0, ruecksende, groesse=7)
-    s.linie(_RAND_LINKS, _RAND_LINKS + 85, 50.2)
+    # Anschriftfeld (45 mm von oben, 85 mm breit) - bewusst ohne
+    # Rücksendezeile mit der eigenen Anschrift darüber; der Empfänger steht
+    # aber an derselben Stelle wie bisher, damit er im Fenster bleibt.
     y = 50.2 + 1.5 + _SCHRIFT / _MM
     for zeile in brief.empfaenger:
         s.text(_RAND_LINKS, y, zeile)
@@ -330,10 +323,7 @@ def _absatz(
     vor_mm: float = 0,
     rechts: bool = False,
     fett: bool = False,
-    groesse_pt: float | None = None,
     zeile_exakt_pt: float | None = None,
-    rand_rechts_mm: float = 0,
-    linie_unten: bool = False,
 ) -> str:
     ppr = []
     if rechts:
@@ -342,15 +332,9 @@ def _absatz(
     if zeile_exakt_pt is not None:
         abstand += f' w:line="{round(zeile_exakt_pt * 20)}" w:lineRule="exact"'
     ppr.append(f"<w:spacing {abstand}/>")
-    if rand_rechts_mm:
-        ppr.append(f'<w:ind w:right="{_tw(rand_rechts_mm)}"/>')
-    if linie_unten:
-        ppr.append('<w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="555555"/></w:pBdr>')
     rpr = []
     if fett:
         rpr.append("<w:b/>")
-    if groesse_pt is not None:
-        rpr.append(f'<w:sz w:val="{round(groesse_pt * 2)}"/><w:szCs w:val="{round(groesse_pt * 2)}"/>')
     rpr_xml = f"<w:rPr>{''.join(rpr)}</w:rPr>" if rpr else ""
     laeufe = "<w:br/>".join(f'<w:t xml:space="preserve">{escape(z)}</w:t>' for z in zeilen)
     # Ordnung in pPr ist im Schema festgelegt: pBdr vor spacing vor ind vor jc.
@@ -370,21 +354,12 @@ def als_docx(brief: Brief) -> bytes:
         teile.append(_absatz([zeile], rechts=True, zeile_exakt_pt=14))
     stand = oben + len(brief.absender or [""]) * zeile_mm
 
-    ruecksende_hoehe = 10 / _MM
-    teile.append(
-        _absatz(
-            [" · ".join(brief.absender)],
-            vor_mm=46.0 - stand,
-            groesse_pt=7,
-            zeile_exakt_pt=10,
-            rand_rechts_mm=(_SEITE_B - _RAND_LINKS - _RAND_RECHTS) - 85,
-            linie_unten=True,
-        )
-    )
-    stand = max(stand, 46.0) + ruecksende_hoehe + 0.5
+    # Ohne Rücksendezeile; der Empfänger beginnt trotzdem auf derselben Höhe
+    # wie im PDF (knapp 52 mm von oben), damit er im Fensterkuvert sitzt.
+    empfaenger_oben = 46.0 + 10 / _MM + 0.5 + 1.5
     for i, zeile in enumerate(brief.empfaenger):
-        teile.append(_absatz([zeile], vor_mm=1.5 if i == 0 else 0, zeile_exakt_pt=14))
-    stand += 1.5 + len(brief.empfaenger) * zeile_mm
+        teile.append(_absatz([zeile], vor_mm=max(empfaenger_oben - stand, 0) if i == 0 else 0, zeile_exakt_pt=14))
+    stand = max(stand, empfaenger_oben) + len(brief.empfaenger) * zeile_mm
 
     teile.append(_absatz([brief.ort_datum], vor_mm=98.5 - stand, rechts=True, zeile_exakt_pt=14))
     teile.append(_absatz([brief.betreff], vor_mm=2 * zeile_mm, fett=True))

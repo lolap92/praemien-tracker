@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.78.3
+
+Im Kündigungsbrief steht die eigene Anschrift nicht mehr klein über dem Empfänger.
+
+- **Rücksendezeile entfernt (`templates/kuendigung_brief.html`, `kuendigung_dokumente.py`).** Bisher stand über der Empfängeranschrift noch einmal die eigene Anschrift in einer Zeile („Max Mustermann · Musterweg 1 · 12345 Musterstadt"), mit Strich darunter. Das ist doppelt, weil der Absender ohnehin oben rechts steht, und im Fensterkuvert unnötig. Die Zeile fehlt jetzt in der Druckansicht, im PDF und im Word-Dokument.
+- **Empfänger bleibt, wo er war.** Die Empfängeranschrift beginnt weiter auf derselben Höhe wie bisher, damit sie im Fenster des Kuverts sitzt. Bereits gespeicherte Schreiben erscheinen beim nächsten Öffnen oder Herunterladen ebenfalls ohne die Zeile, weil Brief, PDF und Word jedes Mal neu erzeugt werden.
+
 ## 2.78.2
 
 Jedes Kündigungsschreiben nennt jetzt das Referenzkonto (IBAN) für ein Restguthaben.

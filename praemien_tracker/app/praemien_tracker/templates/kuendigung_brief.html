@@ -67,15 +67,9 @@
     width: 85mm;
     height: 45mm;
   }
-  .ruecksende {
-    font-size: 7pt;
-    border-bottom: 0.5pt solid #555;
-    padding-bottom: 1mm;
-    margin-bottom: 3mm;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+  /* Keine Rücksendezeile mit der eigenen Anschrift; der Abstand hält den
+     Empfänger auf derselben Höhe wie im PDF. */
+  .empfaenger { padding-top: 6.7mm; }
   .inhalt { padding-top: 98.5mm; }
   .datum { text-align: right; margin-bottom: 8mm; }
   .betreff { font-weight: bold; margin-bottom: 8mm; }
@@ -114,8 +108,7 @@
   </div>
 
   <div class="anschriftfeld">
-    <div class="ruecksende">{{ brief.absender | join(" · ") }}</div>
-    {% for zeile in brief.empfaenger %}{{ zeile }}<br>{% endfor %}
+    <div class="empfaenger">{% for zeile in brief.empfaenger %}{{ zeile }}<br>{% endfor %}</div>
   </div>
 
   <div class="inhalt">

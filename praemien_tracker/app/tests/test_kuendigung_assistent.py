@@ -509,3 +509,17 @@ def test_referenzkonto_wird_ergaenzt_wenn_vorlage_es_vergisst(db, deal):
 def test_referenzkonto_nicht_doppelt():
     assert ka.standard_anforderung().text_vorlage.count("{iban}") == 1
     assert ka.mit_referenzkonto("Restguthaben auf {iban}.") == "Restguthaben auf {iban}."
+
+
+def test_brief_ohne_ruecksendezeile():
+    """Die eigene Anschrift steht nur oben rechts, nicht noch einmal klein
+    über dem Empfänger im Anschriftfeld."""
+    import io
+    import zipfile
+
+    from praemien_tracker import kuendigung_dokumente as kd
+
+    brief = kd.Brief(["Max Muster", "Musterweg 1", "12345 Ort"], ["Bank AG"], "Ort", "Betreff", ["Text"], "Name")
+    dokument = zipfile.ZipFile(io.BytesIO(kd.als_docx(brief))).read("word/document.xml").decode()
+    assert dokument.count("Musterweg 1") == 1
+    assert "Max Muster · Musterweg 1" not in dokument
