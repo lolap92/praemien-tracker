@@ -6,7 +6,7 @@ gewesen - fpdf2 hängt aber zwingend an Pillow, und für Pillow gibt es keine
 fertigen Pakete für armv7: Der Add-on-Build müsste es dort aus dem Quelltext
 übersetzen, was im schlanken Basis-Image mangels Compiler und
 Bildbibliotheken scheitert. Ein Kündigungsbrief braucht davon ohnehin nichts:
-eine Schrift, Text, eine Linie.
+eine Schrift, Text und höchstens ein Bild (die Unterschrift, unterschrift.py).
 
 - PDF: die in jedem PDF-Betrachter eingebaute Schrift Helvetica mit
   WinAnsiEncoding (deckt Umlaute, ß, €, „" und – ab). Zeichen außerhalb
@@ -29,6 +29,7 @@ import zlib
 from dataclasses import dataclass
 from xml.sax.saxutils import escape
 
+from . import unterschrift as unterschrift_bild
 from .models import Kuendigungsschreiben
 
 
@@ -42,6 +43,9 @@ class Brief:
     # "Girokonto, Kontonummer 4711" direkt unter dem Einleitungssatz).
     absaetze: list[str]
     name: str
+    # Eingescannte Unterschrift des Inhabers (unterschrift.normalisieren),
+    # steht über dem Namen.
+    unterschrift: bytes | None = None
 
 
 def absaetze_aus(text: str) -> list[str]:
@@ -57,6 +61,10 @@ def brief_aus(schreiben: Kuendigungsschreiben) -> Brief:
         betreff=schreiben.betreff,
         absaetze=absaetze_aus(schreiben.text),
         name=schreiben.name,
+        # Bewusst die aktuelle Unterschrift des Inhabers statt einer Kopie im
+        # Schreiben: so bekommt auch ein älteres Schreiben sie beim nächsten
+        # Öffnen, und ein gelöschtes Bild verschwindet überall.
+        unterschrift=schreiben.deal.inhaber.unterschrift if schreiben.deal and schreiben.deal.inhaber else None,
     )
 
 
@@ -108,6 +116,9 @@ _RAND_UNTEN = 20.0
 _RAND_OBEN_FOLGESEITE = 20.0
 _SCHRIFT = 11.0
 _ZEILE = 14.0 / _MM  # Zeilenabstand 14 pt, in mm
+# Rahmen für die Unterschrift über dem Namen - passt in den Abstand zwischen
+# Grußformel und Name, ohne den Brief zu verlängern.
+UNTERSCHRIFT_MAX_MM = (50.0, 12.0)
 
 
 def _kodiert(text: str) -> bytes:
@@ -167,6 +178,13 @@ class _Seiten:
             b"BT " + schrift + b" %.1f Tf %.2f %.2f Td " % (groesse, x, y) + _pdf_string(text) + b" Tj ET"
         )
 
+    def bild(self, x_mm: float, unten_mm: float, breite_mm: float, hoehe_mm: float) -> None:
+        """Das eine Bild des Briefs (/Im1), unten_mm von oben gemessen."""
+        self.seiten[-1].append(
+            b"q %.2f 0 0 %.2f %.2f %.2f cm /Im1 Do Q"
+            % (breite_mm * _MM, hoehe_mm * _MM, x_mm * _MM, (_SEITE_H - unten_mm) * _MM)
+        )
+
     def neue_seite(self) -> None:
         self.seiten.append([])
 
@@ -213,12 +231,20 @@ def als_pdf(brief: Brief) -> bytes:
         y += _ZEILE * 0.85
     # Platz für die Unterschrift
     y += 3 * _ZEILE
+    bild = unterschrift_bild.lesen(brief.unterschrift)
+    if bild is not None:
+        breite, hoehe = unterschrift_bild.masse_mm(bild, *UNTERSCHRIFT_MAX_MM)
+        if y > _SEITE_H - _RAND_UNTEN:
+            # Unterschrift und Name zusammen auf die nächste Seite.
+            s.neue_seite()
+            y = _RAND_OBEN_FOLGESEITE + hoehe + 1.0 + _SCHRIFT / _MM
+        s.bild(_RAND_LINKS, y - _SCHRIFT / _MM - 1.0, breite, hoehe)
     zeile_setzen(brief.name)
 
-    return _pdf_datei(s.seiten, titel=brief.betreff)
+    return _pdf_datei(s.seiten, titel=brief.betreff, bild=bild)
 
 
-def _pdf_datei(seiten: list[list[bytes]], titel: str) -> bytes:
+def _pdf_datei(seiten: list[list[bytes]], titel: str, bild: unterschrift_bild.Bild | None = None) -> bytes:
     objekte: list[bytes] = []
 
     def neu(inhalt: bytes) -> int:
@@ -229,6 +255,13 @@ def _pdf_datei(seiten: list[list[bytes]], titel: str) -> bytes:
     seitenbaum = neu(b"")
     f1 = neu(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>")
     f2 = neu(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>")
+    xobjekte = b""
+    if bild is not None:
+        bild_obj, maske_obj = unterschrift_bild.pdf_teile(bild)
+        if maske_obj is not None:
+            maske = neu(maske_obj)
+            bild_obj = bild_obj.replace(b"%SMASK%", b"%d 0 R" % maske, 1)
+        xobjekte = b" /XObject << /Im1 %d 0 R >>" % neu(bild_obj)
     seiten_ids = []
     for befehle in seiten:
         daten = zlib.compress(b"\n".join(befehle))
@@ -236,8 +269,8 @@ def _pdf_datei(seiten: list[list[bytes]], titel: str) -> bytes:
         seiten_ids.append(
             neu(
                 b"<< /Type /Page /Parent %d 0 R /MediaBox [0 0 %.2f %.2f] "
-                b"/Resources << /Font << /F1 %d 0 R /F2 %d 0 R >> >> /Contents %d 0 R >>"
-                % (seitenbaum, _SEITE_B * _MM, _SEITE_H * _MM, f1, f2, inhalt)
+                b"/Resources << /Font << /F1 %d 0 R /F2 %d 0 R >>%s >> /Contents %d 0 R >>"
+                % (seitenbaum, _SEITE_B * _MM, _SEITE_H * _MM, f1, f2, xobjekte, inhalt)
             )
         )
     objekte[katalog - 1] = b"<< /Type /Catalog /Pages %d 0 R >>" % seitenbaum
@@ -281,6 +314,8 @@ _CONTENT_TYPES = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
 <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
 <Default Extension="xml" ContentType="application/xml"/>
+<Default Extension="png" ContentType="image/png"/>
+<Default Extension="jpeg" ContentType="image/jpeg"/>
 <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
 <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
 <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
@@ -295,7 +330,32 @@ _RELS = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 _DOCUMENT_RELS = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
 <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>"""
+{bild}</Relationships>"""
+_BILD_REL = (
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
+    'Target="media/unterschrift.{endung}"/>\n'
+)
+_R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+_WP_NS = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+_A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
+_PIC_NS = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+
+
+def _bild_absatz(breite_mm: float, hoehe_mm: float, vor_mm: float) -> str:
+    """Absatz mit der Unterschrift als eingebettetem Bild (rId2). EMU: 1 mm
+    = 36000. Ohne exakte Zeilenhöhe, sonst schnitte Word das Bild ab."""
+    cx, cy = round(breite_mm * 36000), round(hoehe_mm * 36000)
+    return (
+        f'<w:p><w:pPr><w:spacing w:before="{_tw(vor_mm)}"/></w:pPr><w:r><w:drawing>'
+        f'<wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="{cx}" cy="{cy}"/>'
+        '<wp:docPr id="1" name="Unterschrift"/>'
+        f'<a:graphic xmlns:a="{_A_NS}"><a:graphicData uri="{_PIC_NS}">'
+        f'<pic:pic xmlns:pic="{_PIC_NS}"><pic:nvPicPr><pic:cNvPr id="0" name="Unterschrift"/><pic:cNvPicPr/></pic:nvPicPr>'
+        '<pic:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+        f'<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>'
+        "</a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>"
+    )
 
 _STYLES = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles xmlns:w="{_W_NS}">
@@ -365,7 +425,13 @@ def als_docx(brief: Brief) -> bytes:
     teile.append(_absatz([brief.betreff], vor_mm=2 * zeile_mm, fett=True))
     for i, absatz in enumerate(brief.absaetze):
         teile.append(_absatz(absatz.split("\n"), vor_mm=(2 if i == 0 else 1) * zeile_mm * 0.85))
-    teile.append(_absatz([brief.name], vor_mm=3.5 * zeile_mm))
+    bild = unterschrift_bild.lesen(brief.unterschrift)
+    if bild is not None:
+        breite, hoehe = unterschrift_bild.masse_mm(bild, *UNTERSCHRIFT_MAX_MM)
+        teile.append(_bild_absatz(breite, hoehe, vor_mm=max(3.5 * zeile_mm - hoehe - 1.0, 1.0)))
+        teile.append(_absatz([brief.name], vor_mm=1.0))
+    else:
+        teile.append(_absatz([brief.name], vor_mm=3.5 * zeile_mm))
 
     abschnitt = (
         f'<w:sectPr><w:pgSz w:w="{_tw(_SEITE_B)}" w:h="{_tw(_SEITE_H)}"/>'
@@ -373,7 +439,8 @@ def als_docx(brief: Brief) -> bytes:
         f'w:left="{_tw(_RAND_LINKS)}" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>'
     )
     dokument = (
-        f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document xmlns:w="{_W_NS}">'
+        f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        f'<w:document xmlns:w="{_W_NS}" xmlns:r="{_R_NS}" xmlns:wp="{_WP_NS}">'
         f"<w:body>{''.join(teile)}{abschnitt}</w:body></w:document>"
     )
 
@@ -381,7 +448,13 @@ def als_docx(brief: Brief) -> bytes:
     with zipfile.ZipFile(ausgabe, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("[Content_Types].xml", _CONTENT_TYPES)
         z.writestr("_rels/.rels", _RELS)
-        z.writestr("word/_rels/document.xml.rels", _DOCUMENT_RELS)
+        endung = bild.format if bild is not None else ""
+        z.writestr(
+            "word/_rels/document.xml.rels",
+            _DOCUMENT_RELS.format(bild=_BILD_REL.format(endung=endung) if bild is not None else ""),
+        )
+        if bild is not None:
+            z.writestr(f"word/media/unterschrift.{endung}", bild.daten)
         z.writestr("word/document.xml", dokument)
         z.writestr("word/styles.xml", _STYLES)
         z.writestr("docProps/core.xml", _core(brief.betreff))

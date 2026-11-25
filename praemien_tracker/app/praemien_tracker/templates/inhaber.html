@@ -15,12 +15,18 @@
   <p style="color: var(--ink-soft); font-size: 0.88rem; margin: 0.6rem 0 0;">
     Name, Anschrift und IBAN braucht der Kündigungs-Assistent als Absender
     und Referenzkonto für das Restguthaben. Sie bleiben in dieser App und
-    gehen nie an die KI.
+    gehen nie an die KI. Eine hochgeladene <b>Unterschrift</b> (PNG oder
+    JPEG, am besten mit transparentem oder weißem Hintergrund) steht in jedem
+    Kündigungsbrief über dem Namen.
   </p>
 </div>
 
+{% for meldung in fehler %}
+<div class="card"><p class="ka-warnung" style="margin:0;">{{ meldung }}</p></div>
+{% endfor %}
+
 {% if inhaber_liste %}
-<form method="post" action="inhaber">
+<form method="post" action="inhaber" enctype="multipart/form-data">
   <div class="card">
     <ul class="unterliste">
       {% for inhaber in inhaber_liste %}
@@ -65,6 +71,19 @@
             <label for="iban_{{ inhaber.id }}">IBAN des Referenzkontos (für das Restguthaben)</label>
             <input type="text" id="iban_{{ inhaber.id }}" name="iban_{{ inhaber.id }}" value="{{ iban_formatiert(inhaber.iban) }}" autocomplete="off" spellcheck="false">
             {% if inhaber.iban and not iban_gueltig(inhaber.iban) %}<p class="feld-hinweis ka-warnung">Die Prüfsumme dieser IBAN stimmt nicht - bitte auf Tippfehler prüfen.</p>{% endif %}
+          </div>
+          {% set bild = unterschrift_lesen(inhaber.unterschrift) %}
+          <div class="feld">
+            <label for="unterschrift_{{ inhaber.id }}">Unterschrift für Kündigungsbriefe</label>
+            {% if bild %}
+            <img src="{{ bild.data_uri }}" alt="Unterschrift von {{ inhaber.name }}" style="display:block; max-width:200px; max-height:60px; background:#fff; padding:4px; border-radius:4px; margin-bottom:6px;">
+            <span class="checkbox-zeile">
+              <input type="checkbox" name="unterschrift_loeschen_{{ inhaber.id }}" id="unterschrift_loeschen_{{ inhaber.id }}">
+              <label for="unterschrift_loeschen_{{ inhaber.id }}" style="margin:0;">Unterschrift entfernen</label>
+            </span>
+            {% endif %}
+            <input type="file" id="unterschrift_{{ inhaber.id }}" name="unterschrift_{{ inhaber.id }}" accept="image/png,image/jpeg">
+            <p class="feld-hinweis">{{ "Neue Datei wählen, um sie zu ersetzen." if bild else "Noch keine hinterlegt - der Brief bekommt dann Platz zum Unterschreiben von Hand." }}</p>
           </div>
         </details>
       </li>

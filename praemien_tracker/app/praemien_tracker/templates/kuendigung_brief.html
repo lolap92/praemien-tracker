@@ -75,6 +75,10 @@
   .betreff { font-weight: bold; margin-bottom: 8mm; }
   .inhalt p { margin: 0 0 4.2mm; white-space: pre-line; }
   .unterschrift { margin-top: 18mm; }
+  /* Mit eingescannter Unterschrift: dieselbe Höhe wie ohne, das Bild füllt
+     den Platz über dem Namen (Rahmen wie im PDF, kuendigung_dokumente.py). */
+  .unterschrift.mit-bild { margin-top: 4mm; }
+  .unterschrift-bild { display: block; max-width: 50mm; max-height: 12mm; margin-bottom: 1mm; }
   @media screen and (max-width: 820px) {
     /* Am Handy als lesbare Vorschau statt eines winzig skalierten Blatts -
        gedruckt wird trotzdem im A4-Maß (@media print unten). */
@@ -117,7 +121,10 @@
     {% for absatz in brief.absaetze %}
     <p>{{ absatz }}</p>
     {% endfor %}
-    <div class="unterschrift">{{ brief.name }}</div>
+    <div class="unterschrift{{ ' mit-bild' if unterschrift }}">
+      {% if unterschrift %}<img class="unterschrift-bild" src="{{ unterschrift.data_uri }}" alt="Unterschrift">{% endif %}
+      {{ brief.name }}
+    </div>
   </div>
 </div>
 </body>

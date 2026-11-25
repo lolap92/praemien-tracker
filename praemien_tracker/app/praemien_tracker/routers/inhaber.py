@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
+from starlette.datastructures import UploadFile
 from sqlalchemy.orm import Session
 
-from .. import iban
+from .. import iban, unterschrift
 from ..database import get_db
 from ..helpers import parse_date
 from ..ingress import redirect
@@ -17,6 +18,22 @@ router = APIRouter()
 TEXT_FELDER = ("voller_name", "strasse", "plz", "ort", "email")
 
 
+def _seite(request: Request, db: Session, fehler: list[str] | None = None, status_code: int = 200):
+    inhaber_liste = db.query(Inhaber).order_by(Inhaber.name).all()
+    return templates.TemplateResponse(
+        "inhaber.html",
+        {
+            "request": request,
+            "inhaber_liste": inhaber_liste,
+            "iban_formatiert": iban.formatiert,
+            "iban_gueltig": iban.gueltig,
+            "unterschrift_lesen": unterschrift.lesen,
+            "fehler": fehler or [],
+        },
+        status_code=status_code,
+    )
+
+
 @router.get("/inhaber")
 def inhaber_view(request: Request, db: Session = Depends(get_db)):
     """Verwaltung der Haushaltsmitglieder: einzige Stelle, an der sich
@@ -26,16 +43,7 @@ def inhaber_view(request: Request, db: Session = Depends(get_db)):
     Neue Inhaber entstehen weiterhin automatisch beim Anlegen eines Deals
     (helpers.get_or_create_inhaber, immer erwachsen per Default) - hier lässt
     sich das nachträglich korrigieren, ohne direkten Datenbankzugriff."""
-    inhaber_liste = db.query(Inhaber).order_by(Inhaber.name).all()
-    return templates.TemplateResponse(
-        "inhaber.html",
-        {
-            "request": request,
-            "inhaber_liste": inhaber_liste,
-            "iban_formatiert": iban.formatiert,
-            "iban_gueltig": iban.gueltig,
-        },
-    )
+    return _seite(request, db)
 
 
 @router.post("/inhaber")
@@ -48,8 +56,14 @@ async def inhaber_speichern(request: Request, db: Session = Depends(get_db)):
 
     Die Absenderangaben werden nur angefasst, wenn ihr Feld mitgeschickt
     wurde - sonst löschte ein Formular ohne diese Felder (oder ein alter
-    Browser-Tab) still die gepflegte Anschrift."""
+    Browser-Tab) still die gepflegte Anschrift.
+
+    Die Unterschrift ist ein Datei-Feld: ohne gewählte Datei bleibt die
+    gespeicherte unverändert, "Unterschrift entfernen" löscht sie. Ein
+    unbrauchbares Bild verwirft nur dieses Bild - die übrigen Angaben werden
+    gespeichert und die Seite zeigt den Grund an."""
     form = await request.form()
+    fehler: list[str] = []
     for inhaber in db.query(Inhaber).all():
         inhaber.ist_minderjaehrig = form.get(f"minderjaehrig_{inhaber.id}") is not None
         for feld in TEXT_FELDER:
@@ -60,5 +74,15 @@ async def inhaber_speichern(request: Request, db: Session = Depends(get_db)):
             inhaber.geburtsdatum = parse_date(str(wert).strip())
         if (wert := form.get(f"iban_{inhaber.id}")) is not None:
             inhaber.iban = iban.normalisieren(str(wert))
+        if form.get(f"unterschrift_loeschen_{inhaber.id}") is not None:
+            inhaber.unterschrift = None
+        datei = form.get(f"unterschrift_{inhaber.id}")
+        if isinstance(datei, UploadFile) and datei.filename:
+            try:
+                inhaber.unterschrift = unterschrift.normalisieren(await datei.read())
+            except unterschrift.UngueltigesBild as exc:
+                fehler.append(f"Unterschrift für {inhaber.name}: {exc}")
     db.commit()
+    if fehler:
+        return _seite(request, db, fehler=fehler, status_code=400)
     return redirect(request, "inhaber")

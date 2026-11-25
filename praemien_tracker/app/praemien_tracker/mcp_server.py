@@ -457,6 +457,7 @@ def inhaber_abfragen(db: Session) -> dict:
                 # Anschrift, Geburtsdatum, E-Mail und IBAN selbst nicht.
                 "absenderangaben_vollstaendig": bool(inh.voller_name and inh.strasse and inh.plz and inh.ort),
                 "iban_hinterlegt": bool(inh.iban),
+                "unterschrift_hinterlegt": bool(inh.unterschrift),
             }
         )
     return {"inhaber": ergebnis}

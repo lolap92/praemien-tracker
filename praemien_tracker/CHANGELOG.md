@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.79.0
+
+Kündigungsbriefe bekommen auf Wunsch die eingescannte Unterschrift des Inhabers.
+
+- **Hochladen unter Mehr → Inhaber (`routers/inhaber.py`, `templates/inhaber.html`).** Bei „Anschrift & Bankverbindung" gibt es je Inhaber das Feld „Unterschrift für Kündigungsbriefe" (PNG oder JPEG, höchstens 2 MB bzw. 2000 Pixel). Die Seite zeigt die hinterlegte Unterschrift als Vorschau. Ohne neue Datei bleibt sie beim Speichern unverändert, „Unterschrift entfernen" löscht sie. Ist ein Bild unbrauchbar, wird nur dieses verworfen, die übrigen Angaben werden gespeichert und die Seite nennt den Grund.
+- **Im Brief über dem Namen (`kuendigung_dokumente.py`, `templates/kuendigung_brief.html`).** Druckansicht, PDF und Word setzen die Unterschrift zwischen Grußformel und Namen, höchstens 50 × 12 mm, mit erhaltenem Seitenverhältnis. Transparente PNGs bleiben auch im PDF transparent. Der Brief wird dadurch nicht länger. Rutscht der Name auf eine neue Seite, kommt die Unterschrift mit. Ohne hinterlegte Unterschrift bleibt der Brief wie bisher, mit Platz zum Unterschreiben von Hand.
+- **Immer die aktuelle Unterschrift.** Sie wird nicht ins gespeicherte Schreiben kopiert, sondern bei jedem Öffnen vom Inhaber geholt. Damit bekommen auch schon gespeicherte Schreiben die Unterschrift, und eine gelöschte verschwindet überall.
+- **Warum ohne Bildbibliothek (`unterschrift.py`).** Wie PDF und Word bisher kommt auch das Bild ohne Pillow aus, das es für armv7 nicht fertig gibt. PNGs werden beim Hochladen einmal entpackt und einheitlich neu gespeichert, JPEGs bleiben unverändert.
+- **Datenschutz.** Die Unterschrift liegt nur in der Datenbank der App (und damit im Backup), nicht im Repository. Das Änderungsprotokoll vermerkt nur „Bild (… Bytes)", nie das Bild selbst. Über MCP sieht Claude nur, *ob* eine Unterschrift hinterlegt ist (`unterschrift_hinterlegt`).
+- Neue Migration `0030_inhaber_unterschrift` (Spalte `inhaber.unterschrift`). Bankeigene PDF-Formulare bekommen keine Unterschrift.
+
 ## 2.78.3
 
 Im Kündigungsbrief steht die eigene Anschrift nicht mehr klein über dem Empfänger.

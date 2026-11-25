@@ -23,6 +23,9 @@ als Vorschlag erscheint (siehe unten). Darunter lassen sich unter
 Geburtsdatum, E-Mail und die IBAN des Referenzkontos pflegen - die
 Absenderdaten für den Kündigungs-Assistenten. Das Referenzkonto steht in
 jedem Kündigungsschreiben, damit ein Restguthaben dorthin überwiesen wird.
+Dort lässt sich außerdem je Inhaber eine eingescannte **Unterschrift** (PNG
+oder JPEG) hochladen. Sie steht dann in jedem Kündigungsbrief (Druckansicht,
+PDF und Word) über dem Namen.
 
 ## Zu erledigen
 

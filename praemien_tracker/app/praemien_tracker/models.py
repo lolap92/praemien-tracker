@@ -53,6 +53,10 @@ class Inhaber(Base):
     # und in Großbuchstaben gespeichert (helpers.iban_normalisieren); im
     # Änderungsprotokoll erscheint sie nur maskiert (protokoll.py).
     iban: Mapped[str | None] = mapped_column(String(34), nullable=True)
+    # Eingescannte Unterschrift (PNG oder JPEG, unterschrift.normalisieren)
+    # - steht im Kündigungsbrief über dem Namen. Liegt nur in der Datenbank
+    # dieser App, nie im Repository.
+    unterschrift: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
 
     deals: Mapped[list["Deal"]] = relationship(back_populates="inhaber")
 

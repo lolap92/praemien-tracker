@@ -35,7 +35,11 @@ IGNORIERTE_FELDER = {"id", "erstellt_am", "geaendert_am"}
 # Werden protokolliert, aber nur maskiert - sonst läge jede je gepflegte IBAN
 # dauerhaft im Klartext im Protokoll, auch nachdem sie am Inhaber geändert
 # oder gelöscht wurde. Dass sie sich geändert hat, bleibt nachvollziehbar.
-MASKIERTE_FELDER = {(Inhaber, "iban"): iban.maskiert}
+# Die Unterschrift ist ein Bild - im Protokoll steht nur, dass es eines gibt.
+MASKIERTE_FELDER = {
+    (Inhaber, "iban"): iban.maskiert,
+    (Inhaber, "unterschrift"): lambda bild: f"Bild ({len(bild)} Bytes)",
+}
 
 
 def _serialisiere(wert):

@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session, joinedload
 
-from .. import config, iban
+from .. import config, iban, unterschrift
 from .. import kuendigung_assistent as ka
 from .. import kuendigung_dokumente as kd
 from .. import kuendigung_formular as kf
@@ -228,7 +228,13 @@ def _datei(deal: Deal, schreiben: Kuendigungsschreiben, format_: str) -> Respons
 def _druckansicht(request: Request, deal: Deal, schreiben: Kuendigungsschreiben):
     return templates.TemplateResponse(
         "kuendigung_brief.html",
-        {"request": request, "deal": deal, "schreiben": schreiben, "brief": kd.brief_aus(schreiben)},
+        {
+            "request": request,
+            "deal": deal,
+            "schreiben": schreiben,
+            "brief": (brief := kd.brief_aus(schreiben)),
+            "unterschrift": unterschrift.lesen(brief.unterschrift),
+        },
     )
 
 
@@ -274,7 +280,8 @@ def kuendigung_schreiben(
 @router.get("/deals/{deal_id}/kuendigung/schreiben/{schreiben_id}/{format_}")
 def kuendigung_schreiben_abrufen(request: Request, deal_id: int, schreiben_id: int, format_: str, db: Session = Depends(get_db)):
     """Ein gespeichertes Schreiben erneut ausgeben - aus der Momentaufnahme,
-    also genau so, wie es damals erzeugt wurde."""
+    also genau so, wie es damals erzeugt wurde - nur die Unterschrift kommt
+    immer aktuell vom Inhaber (kuendigung_dokumente.brief_aus)."""
     deal = _hole_deal(db, deal_id)
     schreiben = _hole_schreiben(deal, schreiben_id)
     if format_ == "druck" and schreiben.kanal == "brief":
